@@ -18,6 +18,290 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0b3] - 2026-05-11
+
+This third **1.0 beta release** focuses on CI/workflow documentation harmonization,
+documentation-governance hardening, published-artifact validation, and Windows portability fixes
+ahead of the `1.0.0rc1` release candidate.
+
+It does not reopen frozen CLI, API, configuration, registry, probe, machine-readable output, or
+pipeline contracts. Instead, it strengthens the documentation, workflow, release, and validation
+surfaces around those contracts by standardizing workflow documentation, expanding documentation
+hygiene checks, clarifying release responsibilities, improving contributor-facing navigation, and
+hardening published-artifact validation across platforms.
+
+It also fixes a Windows-only atomic writer failure discovered by the published-artifact validation
+workflow after `1.0.0b2`. On Windows, `topmark check --apply` could fail with `PIPELINE_ERROR (70)`
+because the atomic writer called POSIX-only APIs such as `os.fchmod()`.
+
+> [!CAUTION] **Breaking changes**
+>
+> - Markdown headings across repository and generated documentation are now intentionally
+>   emoji-free.
+> - `make docs-hygiene` now validates MkDocs navigation membership and rejects emoji in headings.
+> - CI and workflow documentation structure was standardized across all documented workflows.
+
+### Breaking Changes - 1.0.0b3
+
+- **Documentation governance and heading policy**
+
+  - Markdown headings and navigation labels are now standardized as plain, emoji-free text.
+  - Changelog breaking-change entries now use GitHub `[!CAUTION]` callouts followed by plain,
+    anchor-friendly level-3 headings.
+  - `make docs-hygiene` now rejects emoji in Markdown headings and validates that Markdown files
+    under `docs/` are represented in the MkDocs navigation.
+
+- **Workflow documentation structure**
+
+  - CI workflow documentation now follows a shared page structure covering purpose, trigger
+    conditions, permissions/trust boundaries, validation scope, artifact handling, local
+    reproduction, maintenance notes, and related pages.
+  - Documentation contributors should follow the standardized workflow-page structure for future
+    workflow documentation.
+
+### Highlights - 1.0.0b3
+
+- Fixed Windows atomic writer portability by avoiding unconditional use of POSIX-only `os.fchmod()`
+  and `os.O_DIRECTORY`.
+- Added configurable platform, Python-version, and TopMark runtime-log-level controls to the
+  published-artifact validation workflow.
+- Added focused Windows diagnostics to published-artifact validation for investigating installed
+  package failures.
+- Added a GitHub Action pin-audit workflow and offline audit tool for detecting diverging action
+  pins across workflows and local composite actions.
+- Standardized CI workflow documentation across CI, release, published-artifact validation,
+  Dependabot, and action-pin-audit pages.
+- Renamed `docs/ci/dev-validation.md` to `docs/ci/test-validation.md` and expanded it into a broader
+  validation and pytest-marker taxonomy page.
+- Extracted detailed maintainer release guidance into `docs/dev/release-process.md`.
+- Reorganized documentation conventions and documentation-pipeline guidance around current
+  documentation hygiene, reuse, snippet, heading, and workflow conventions.
+- Expanded `tools/docs/check_docs_hygiene.py` to validate emoji-free headings, MkDocs navigation
+  membership, top-level Markdown files, nested snippets, and related-pages snippet exceptions.
+- Improved README, CONTRIBUTING, changelog, and API-stability documentation discoverability.
+
+### Added - 1.0.0b3
+
+- **GitHub Action pin audit**
+
+  - Added `.github/workflows/action-pin-audit.yml` as a scheduled, manual, and pull-request based
+    maintenance workflow for auditing GitHub Action pin consistency.
+  - Added `tools/ci/audit_action_pins.py` as an offline static-analysis tool for scanning workflow
+    files and local composite actions.
+  - Added optional action-pin audit reports for:
+    - summary reporting;
+    - per-file reporting;
+    - version-count reporting;
+    - file-count reporting.
+
+- **Published artifact validation controls**
+
+  - Added manual workflow inputs to `.github/workflows/published-artifact-validation.yml` for:
+    - selecting all platforms or a single platform;
+    - selecting all supported Python versions or one specific Python version;
+    - selecting optional TopMark runtime logging (`TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`) or
+      leaving runtime logging disabled.
+  - Added dynamic matrix generation so targeted platform/interpreter combinations can be rerun
+    without executing the full validation matrix.
+  - Added Windows-only diagnostic steps for inspecting validation workspace contents and check
+    machine output when investigating platform-specific failures.
+
+- **Release-process documentation**
+
+  - Added `docs/dev/release-process.md` as the canonical maintainer release-process page.
+  - Documented release philosophy, versioning, tag forms, TestPyPI/PyPI routing, artifact handoff,
+    prerelease/final release flow, published artifact validation, and recovery notes.
+
+- **CI documentation family**
+
+  - Added `docs/ci/index.md` as the CI and validation overview page.
+  - Added `docs/ci/action-pin-audit.md` for the new action-pin audit workflow and tool.
+  - Added `docs/_snippets/ci/related-pages.md` as the shared related-pages block for CI workflow
+    documentation pages.
+
+### Changed - 1.0.0b3
+
+- **Published artifact validation workflow**
+
+  - Renamed the workflow job and temporary workspace terminology from smoke testing to validation.
+  - Added explicit UTF-8 environment handling for deterministic cross-platform behavior.
+  - Expanded installed-package validation to exercise both dry-run and mutating forms of
+    `topmark check` and `topmark strip`.
+  - Split CLI validation into focused read-only, check-apply, check-idempotence, strip-apply, and
+    strip-idempotence steps for easier platform-specific diagnosis.
+  - Replaced heredoc-based validation file creation with deterministic `printf` output.
+  - Centralized `TOPMARK_LOG_LEVEL` handling at job scope and made runtime logging opt-in through a
+    workflow input instead of hardcoding Windows `DEBUG` logging.
+
+- **CI and validation documentation**
+
+  - Renamed `docs/ci/dev-validation.md` to `docs/ci/test-validation.md`.
+  - Expanded the validation documentation to cover pytest markers, validation layering, nox
+    integration, CI inclusion/exclusion semantics, and local validation workflows.
+  - Updated MkDocs navigation and cross-references for the renamed validation page.
+
+- **Workflow documentation harmonization**
+
+  - Standardized the structure and terminology of:
+    - `docs/ci/ci-workflow.md`;
+    - `docs/ci/release-workflow.md`;
+    - `docs/ci/published-artifact-validation.md`;
+    - `docs/ci/dependabot.md`;
+    - `docs/ci/action-pin-audit.md`.
+  - Documented workflow trigger models, trust boundaries, validation scope, artifact handling, local
+    reproduction, and maintenance expectations consistently across workflow pages.
+
+- **Atomic writer portability**
+
+  - Updated `AtomicFileSink` to treat POSIX durability and permission helpers as optional platform
+    capabilities.
+  - Preserved POSIX behavior by using file-descriptor permission updates and directory `fsync()`
+    when available.
+  - Documented the Windows deviation where path-based `chmod()` is used as a best-effort fallback
+    and directory `fsync()` is skipped.
+
+- **Documentation conventions and pipeline guidance**
+
+  - Reorganized `docs/dev/documentation-conventions.md` around documentation surfaces, page
+    structure, navigation, links, callouts, command/workflow templates, docstrings, snippets,
+    generated docs, validation, reuse, and stability expectations.
+  - Updated `docs/dev/documentation-pipeline.md` to focus on documentation generation and validation
+    tooling while delegating authoring rules to the conventions page.
+  - Moved public API exception-docstring guidance into the documentation conventions page.
+
+- **Documentation hygiene tooling**
+
+  - Expanded `tools/docs/check_docs_hygiene.py` to scan documentation sources and top-level Markdown
+    files.
+  - Added emoji-in-heading rejection and MkDocs navigation membership validation.
+  - Added nested snippet discovery and related-pages snippet exceptions for reusable navigation
+    snippets named `related-pages*.md`.
+  - Improved typing, constants, path handling, and hygiene statistics.
+
+- **Repository-facing documentation**
+
+  - Updated `README.md` for clearer project discovery, hosted-documentation links, public API
+    examples, release references, and CI/validation navigation.
+  - Fixed README API links by pointing separately to the hosted public API page and generated
+    internal API reference.
+  - Updated `CONTRIBUTING.md` for clearer local environment, nox, documentation, release, and pull
+    request guidance.
+  - Updated `docs/contributing.md` to summarize release guidance and point to the canonical release
+    process.
+
+- **Changelog formatting**
+
+  - Replaced emoji-based breaking-change headings with plain level-3 headings.
+  - Added standardized `[!CAUTION] **Breaking changes**` summaries before detailed breaking-change
+    sections.
+  - Preserved Keep-a-Changelog-compatible level-3 release section headings.
+
+- **API stability documentation**
+
+  - Improved `docs/dev/api-stability.md` with clearer scope, stability boundaries, relationships to
+    machine-readable output, CI validation, and release/versioning semantics.
+
+### Fixed - 1.0.0b3
+
+- **Windows atomic writer failure**
+
+  - Fixed `AtomicFileSink` calling `os.fchmod()` unconditionally on Windows, where the API is not
+    available.
+  - Fixed published-artifact validation failure where `topmark check --apply README.md --no-color`
+    reported `no changes to apply` but exited with `PIPELINE_ERROR (70)` after the underlying
+    `AttributeError: module 'os' has no attribute 'fchmod'`.
+  - Added best-effort fallback behavior that applies permissions to the temporary path when
+    file-descriptor permission updates are unavailable.
+  - Guarded directory `fsync()` behind `os.O_DIRECTORY` availability so Windows skips the POSIX-only
+    durability step cleanly.
+
+- **Published artifact validation diagnostics**
+
+  - Fixed the workflow's initial installed-package validation sequence so default configuration is
+    tested against a deterministic validation workspace rather than repository-specific TopMark
+    header policy.
+  - Improved workflow failure localization by separating check and strip lifecycle phases into
+    independent steps.
+  - Added opt-in runtime logging and targeted matrix selection to make platform-specific failures
+    reproducible without running the entire matrix.
+
+- **Documentation drift and discoverability**
+
+  - Fixed stale or inconsistent references across CI, release, validation, README, contributing, and
+    developer documentation.
+  - Fixed outdated release-process details duplicated in contributor-facing files by moving detailed
+    maintainer guidance to `docs/dev/release-process.md`.
+  - Fixed inconsistent workflow-documentation headings and section ordering.
+  - Fixed README hosted API links that referenced a non-existent top-level API page.
+
+- **Documentation hygiene coverage**
+
+  - Fixed documentation hygiene gaps where top-level Markdown files, nested snippets, emoji
+    headings, and MkDocs nav membership were not validated.
+  - Fixed the reusable CI related-pages snippet warning by explicitly allowing relative links in
+    navigation snippets.
+
+### Documentation - 1.0.0b3
+
+- Added and updated CI documentation pages for workflow responsibilities, trigger semantics,
+  validation scope, release boundaries, dependency automation, published artifact validation, and
+  action-pin auditing.
+- Added maintainer release-process documentation and reduced release-process duplication in
+  repository-facing contributor docs.
+- Updated documentation conventions to formalize:
+  - emoji-free headings;
+  - GitHub alert callouts;
+  - hosted-doc link labeling;
+  - command and workflow page templates;
+  - snippet governance;
+  - documentation reuse and duplication policy;
+  - docs hygiene validation expectations.
+- Updated documentation pipeline and API stability pages for clearer cross-page navigation and
+  validation context.
+- Updated changelog formatting for stable, anchor-friendly breaking-change sections.
+- Updated published-artifact validation documentation for the renamed validation terminology,
+  configurable platform/Python/log-level controls, Windows diagnostics, and check/strip validation
+  lifecycle.
+
+### Internal - 1.0.0b3
+
+- **Composite-action governance clarification**
+
+  - Clarified the rationale for retaining some duplicated workflow setup logic after moving away
+    from direct shared composite-action reuse for security-boundary reasons.
+  - Added the action-pin audit to detect version drift between workflow files and local composite
+    actions that Dependabot may not update consistently.
+
+- **Documentation reuse policy**
+
+  - Formalized that snippets should remain semantic and lightweight.
+  - Documented that broad prose reuse is discouraged.
+  - Accepted related-pages navigation snippets for tightly coupled documentation families.
+  - Clarified that limited duplication is acceptable when it improves discoverability, onboarding,
+    and local readability.
+
+- **Published artifact validation diagnostics**
+
+  - Added workflow controls that allow maintainers to rerun a single platform and Python version
+    with elevated runtime logging when investigating published-package behavior.
+  - Kept runtime logging disabled by default so normal validation output remains concise.
+
+### Notes - 1.0.0b3
+
+- This beta does not introduce new user-facing CLI/API features.
+- Frozen 1.0 contracts for CLI behavior, config semantics, probe, registry/resolution,
+  machine-readable output, and public API remain unchanged.
+- The focus is CI/workflow documentation consistency, release-process discoverability,
+  documentation-governance hardening, validation-tooling coverage, and Windows published-artifact
+  validation fixes.
+- The Windows `os.fchmod` failure discovered in `1.0.0b2` is fixed by making atomic writer
+  permission and durability handling platform-aware.
+- Current validation status is clean for Ruff, Pyright, documentation links, and `make verify`.
+- Remaining work before `1.0.0rc1` should be limited to release validation, packaging checks,
+  published artifact validation, and any final beta feedback fixes.
+
+______________________________________________________________________
+
 ## [1.0.0b2] – 2026-05-10
 
 This second **1.0 beta release** focuses on documentation UX, documentation governance, generated
