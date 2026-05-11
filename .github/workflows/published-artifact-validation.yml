@@ -29,10 +29,13 @@ on:
           - pypi
 
 jobs:
-  install-smoke:
+  published-artifact-validation:
     name: ${{ matrix.os }} / Python ${{ matrix.python-version }} / ${{ inputs.index }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
     strategy:
       fail-fast: false
       matrix:
@@ -90,31 +93,35 @@ jobs:
               raise SystemExit(f"Expected topmark=={expected}, got {installed}")
           PY
 
-      - name: Create smoke-test workspace
+      - name: Create validation workspace
         shell: bash
         run: |
           set -euo pipefail
-          mkdir smoke-workspace
-          cat > smoke-workspace/README.md <<'EOF'
-          # Smoke workspace
+          mkdir validation-workspace
+          cat > validation-workspace/README.md <<'EOF'
+          # Validation workspace
 
-          This file is used by the install-smoke workflow.
+          This file is used by the published artifact validation workflow.
           EOF
 
-      - name: Run CLI smoke tests
+      - name: Run CLI validation checks
         shell: bash
-        working-directory: smoke-workspace
+        working-directory: validation-workspace
         run: |
           set -euo pipefail
           topmark version
           topmark config defaults
           topmark registry filetypes
           topmark probe README.md
-          topmark check . --no-color
+          topmark check --apply README.md --no-color
+          topmark check README.md --no-color
+          cp README.md STRIPME.md
+          topmark strip --apply STRIPME.md --no-color
+          topmark strip STRIPME.md --no-color
 
-      - name: Run API smoke test
+      - name: Run API validation check
         shell: bash
-        working-directory: smoke-workspace
+        working-directory: validation-workspace
         run: |
           set -euo pipefail
           python - <<'PY'
