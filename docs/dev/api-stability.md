@@ -12,10 +12,12 @@ topmark:header:end
 
 # API Stability & Snapshot Policy
 
-TopMark enforces a **stable public API** across all supported Python versions (**3.10–3.14**) using
-a JSON-based snapshot test.\
-This ensures that downstream users can rely on consistent function signatures and symbols across
-releases.
+TopMark enforces a stable public Python API across all supported Python versions (3.10–3.14) using a
+JSON-based snapshot test.
+
+The snapshot system protects the documented public execution surface exposed through `topmark.api`,
+helping downstream users rely on stable symbols, signatures, and machine-readable behavior contracts
+across releases.
 
 See also:
 
@@ -23,7 +25,26 @@ See also:
 - [Registry model](registry-model.md)
 - [Machine-readable output](machine-output.md)
 - [Machine-readable formats](machine-formats.md)
-- [Configuration](../usage/configuration.md)
+- [Configuration](../configuration/index.md)
+- [Release Process](release-process.md)
+- [Test and validation architecture](../ci/test-validation.md)
+
+______________________________________________________________________
+
+## Scope of this document
+
+This page documents:
+
+- the stable public API boundary;
+- API snapshot generation and validation;
+- compatibility expectations across Python versions;
+- relationships between API stability, machine-readable output, configuration behavior, and
+  release/versioning policy.
+
+It also explains which TopMark subsystems are intentionally excluded from the public stability
+contract.
+
+______________________________________________________________________
 
 ## Public API Contract
 
@@ -39,7 +60,7 @@ In practice this means:
   advanced integrations but are **not part of the snapshot stability contract**.
 
 The API snapshot test therefore derives its reference surface directly from `topmark.api.__all__`
-and verifies that this façade remains stable across Python versions.
+and verifies that this public façade remains stable across Python versions.
 
 This boundary intentionally separates:
 
@@ -49,7 +70,7 @@ This boundary intentionally separates:
 
 ______________________________________________________________________
 
-## 🧩 What’s Covered
+## What the snapshot covers
 
 The snapshot captures the **stable programmatic API exposed via \[`topmark.api`\][topmark.api]**,
 including:
@@ -70,7 +91,7 @@ This includes read-only diagnostic APIs such as \[`topmark.api.probe()`\][topmar
 addition to content-processing commands.
 
 The snapshot intentionally **does not include internal registries or implementation modules**. Only
-the façade defined by `topmark.api.__all__` is considered part of the stable surface.
+the public façade defined by `topmark.api.__all__` is considered part of the stable surface.
 
 Overlay state and internal registries are intentionally excluded from the snapshot; only symbols and
 signatures exported via \[`topmark.api`\][topmark.api] are tracked.
@@ -92,7 +113,21 @@ ordering.
 
 ______________________________________________________________________
 
-## 🔍 Running the API Stability Tests
+## Stability boundaries
+
+TopMark intentionally separates:
+
+- stable execution APIs;
+- stable machine-readable output contracts;
+- configuration and filtering behavior contracts;
+- evolving internal orchestration and registry internals.
+
+The snapshot protects the stable public surface exposed through `topmark.api`, while allowing
+controlled internal refactoring and pipeline evolution.
+
+______________________________________________________________________
+
+## Running the API stability tests
 
 You can verify API stability via either **nox** or **make**.
 
@@ -135,70 +170,43 @@ make api-snapshot-ensure-clean
 Fails if the current working tree differs from the committed snapshot — useful in CI to detect
 unintended API drift.
 
-______________________________________________________________________
+These commands map directly to the validation tooling documented in:
 
-## TOML I/O and `tomlkit` internals
-
-The helper
-\[`topmark.toml.surgery.nest_toml_under_section`\][topmark.toml.surgery.nest_toml_under_section]
-uses `tomlkit`’s `TOMLDocument` and its `.body` layout to preserve comments and whitespace when
-nesting an existing document under a dotted section (for example `tool.topmark` when generating a
-`pyproject.toml` block).
-
-This function is intentionally covered by focused tests (see `tests/config/test_io.py`) so that
-changes in tomlkit’s internal representation (e.g. how comments or whitespace nodes are stored) are
-caught early. If a future `tomlkit` release breaks these tests, the expected behavior here is the
-reference: preamble and postamble comments must be preserved, and the nested document must remain
-valid TOML.
+- [Test and validation architecture](../ci/test-validation.md)
+- [CI workflow](../ci/ci-workflow.md)
 
 ______________________________________________________________________
 
-## Config sanitization and invariants
+## Relationship to machine-readable output
 
-The method \[`MutableConfig.sanitize()`\][topmark.config.model.MutableConfig.sanitize] in
-\[`topmark.config.model`\][topmark.config.model] is the central place to enforce invariants on
-configuration values before they are frozen into an immutable
-\[`Config`\][topmark.config.model.Config].
+The API snapshot protects importable Python symbols and signatures exposed through `topmark.api`.
+Machine-readable output stability is tracked separately.
 
-Current rules are intentionally conservative (for example, rejecting glob-like paths in
-`include_from` / `exclude_from` / `files_from`), but this method is expected to grow stricter over
-time. New checks should:
+Stable JSON and NDJSON contracts include canonical identifiers such as:
 
-- Prefer emitting diagnostics (warnings or errors) over raising exceptions where possible.
-- Use `Config.diagnostics` to surface problems to the CLI and JSON/NDJSON machine-readable output.
-- Avoid changing the *shape* of the public config API; instead, treat sanitization as validating and
-  annotating existing fields.
+- `qualified_key`
+- `file_type_key`
+- `processor_key`
 
-If downstream tools rely on exact error messages or the absence of diagnostics, they should be
-treated as internal integrations rather than stable public API.
+These identifiers are intentionally shared across:
+
+- CLI filtering;
+- TOML configuration;
+- API overlays;
+- resolver filtering;
+- machine-readable output.
 
 See also:
 
-- [`Configuration overview`](../configuration/index.md)
-- [`Discovery & Precedence`](../configuration/discovery.md)
+- [Machine-readable output](machine-output.md)
+- [Machine-readable formats](machine-formats.md)
 
 ______________________________________________________________________
 
-## Machine-readable output stability
+## Stability policy
 
-Machine-readable output contracts are documented separately from the Python API snapshot contract.
-
-In particular:
-
-- JSON and NDJSON payload structure are documented in [`machine-output.md`](machine-output.md);
-- machine-format conventions are documented in [`machine-formats.md`](machine-formats.md);
-- canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key` are part
-  of the stable machine-readable output contract.
-
-The Python API snapshot protects importable symbols and signatures exposed via
-\[`topmark.api`\][topmark.api]. It does not directly snapshot JSON payload schemas.
-
-______________________________________________________________________
-
-## 🧱 Policy
-
-- **Automatic validation:**\
-  Every PR and CI run verifies that the public API matches the committed snapshot.
+- **Automatic validation:** Every PR and CI run verifies that the public API matches the committed
+  snapshot.
 
 - **If the snapshot test fails:**
 
@@ -230,7 +238,7 @@ evolve independently as long as:
 
 ______________________________________________________________________
 
-## ⚙️ Implementation Notes
+## Implementation notes
 
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
@@ -244,6 +252,25 @@ ______________________________________________________________________
   and
   \[`topmark.processors.instances.get_base_header_processor_registry`\][topmark.processors.instances.get_base_header_processor_registry]
   are not part of the public API and may change without notice.
+
+______________________________________________________________________
+
+## Relationship to release versioning
+
+Intentional public API changes should:
+
+1. update the snapshot;
+1. update `CHANGELOG.md`;
+1. align with the intended release-version semantics.
+
+TopMark derives package versions from Git tags through `setuptools-scm`. Public API evolution,
+snapshot updates, changelog entries, and release tags together form the historical record of API
+evolution.
+
+See also:
+
+- [Release Process](release-process.md)
+- [CI & Validation](../ci/index.md)
 
 ______________________________________________________________________
 
@@ -261,7 +288,7 @@ Only documented public APIs and machine-readable output contracts are considered
 
 ______________________________________________________________________
 
-## ✅ Practical Workflow
+## Practical workflow
 
 1. Modify or extend the TopMark public API.
 
@@ -288,37 +315,18 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Versioning and intentional API changes
+## Related Pages
 
-When an intentional public API change is made, treat the snapshot update and changelog entry as the
-source-controlled record of that API evolution.
+- [Public API](../api/public.md)
+- [Machine-readable output](machine-output.md)
+- [Machine-readable formats](machine-formats.md)
+- [Registry model](registry-model.md)
+- [Release Process](release-process.md)
+- [Test and validation architecture](../ci/test-validation.md)
 
-TopMark now uses **Git tags as the single source of truth** for versioning. Package versions are
-resolved at build time via `setuptools-scm` and exposed at runtime from generated package metadata.
-This means intentional API changes do **not** require editing a static version field in
-`pyproject.toml`.
+**Summary:**
 
-Typical tag progression looks like this:
-
-- `v1.0.0a1` → first alpha release
-- `v1.0.0a2` → second alpha release
-- `v1.0.0b1` → first beta release
-- `v1.0.0rc1` → first release candidate
-- `v1.0.0` → final release
-
-During development between tags, TopMark may report SCM-derived development versions such as:
-
-- `1.0.0a1.dev3+g<commit>` (PEP 440)
-- `1.0.0-a.1.dev.3+g<commit>` or equivalent project SemVer rendering, depending on the CLI mode
-
-This matters for API snapshot updates as well: when the public API changes intentionally, update the
-snapshot, document the change in `CHANGELOG.md`, and ensure the next release tag reflects the
-intended version stage.
-
-______________________________________________________________________
-
-**Summary:**\
 TopMark separates stable public execution APIs and machine-readable output contracts from more
 flexible internal registry and orchestration details. The snapshot system protects the documented
 public surface while still allowing controlled internal evolution under the project's Git-tag-driven
-versioning model.
+release and versioning model.
