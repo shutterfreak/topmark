@@ -190,7 +190,14 @@ feature exploration. Post-1.0 deferrals such as in-memory pipeline support, Rich
 migration, staged diagnostic schema expansion, registry query commands, and config schema versioning
 remain deferred.
 
-### ⚠️ Breaking Changes - 1.0.0b1
+> [!CAUTION] **Breaking changes**
+>
+> - Config machine-readable payloads now include TOML-authored runtime sections such as `[writer]`
+> - Synthetic config provenance is now typed and rendered as stable labels.
+> - `config init` machine-readable output now represents the bundled starter template.
+> - CLI and documentation terminology was finalized for shared options and machine-readable output
+
+### Breaking Changes - 1.0.0b1
 
 - **Config machine-readable payloads now include TOML-authored runtime sections such as
   `[writer]`.**
@@ -409,7 +416,14 @@ machine-output naming accordingly, and documents the decision not to add an expl
 version key for 1.0. Explicit configuration schema versioning remains deferred until a future
 non-additive schema change requires it.
 
-### ⚠️ Breaking Changes - 1.0.0a13
+> [!CAUTION] **Breaking changes**
+>
+> - The alpha-only TOML setting `[config].strict_config_checking` has been renamed to
+>   `[config].strict`.
+> - The `config check` machine-output payload now emits `strict` instead of
+>   `strict_config_checking`.
+
+### Breaking Changes - 1.0.0a13
 
 - The alpha-only TOML setting `[config].strict_config_checking` has been renamed to
   `[config].strict`.
@@ -490,7 +504,13 @@ parity, classifying typed override helpers as internal bridge objects, freezing 
 identifier behavior, and documenting the resulting public/internal boundaries across the user and
 developer documentation.
 
-### ⚠️ Breaking Changes - 1.0.0a12
+> [!CAUTION] **Breaking changes**
+>
+> - Frozen `Config.policy_by_type` keys are now canonical qualified file type identifiers.
+> - Runtime effective-policy lookup now uses canonical qualified file type identifiers.
+> - Configuration, CLI, API, and machine-output consumers should expect normalized identifiers.
+
+### Breaking Changes - 1.0.0a12
 
 - **Frozen `Config.policy_by_type` keys are now canonical qualified file type identifiers.**
 
@@ -765,7 +785,13 @@ behavior across CLI help, user documentation, architecture notes, and the roadma
 This release completes the remaining CLI/policy freeze work after the exit-code and output-contract
 milestones from earlier alphas.
 
-### ⚠️ Breaking Changes - 1.0.0a11
+> [!CAUTION] **Breaking changes**
+>
+> - CLI command and option applicability is now strictly enforced.
+> - The `--stdin` flag is rejected; use `-` with `--stdin-filename` for STDIN content.
+> - CLI help and error text changed; downstream exact-output assertions may need updates.
+
+### Breaking Changes - 1.0.0a11
 
 - CLI now strictly enforces command applicability:
   - unsupported options are rejected with usage errors instead of being ignored
@@ -849,7 +875,13 @@ results using deterministic priority ordering.
 This release completes the CLI contract work following the output-contract, probe, and resolution
 explainability milestones from earlier alphas.
 
-### ⚠️ Breaking Changes - 1.0.0a10
+> [!CAUTION] **Breaking changes**
+>
+> - The CLI `--quiet` / verbosity contract was tightened for pure informational commands.
+> - Explicit missing inputs are now reported and affect output and exit codes.
+> - File-list resolution and pipeline-result exit-code semantics changed.
+
+### Breaking Changes - 1.0.0a10
 
 - **CLI quiet/verbosity contract tightened**
 
@@ -1148,7 +1180,12 @@ distinguishing **path-filtered** inputs from **file-type-filtered** inputs.
 It keeps exact pattern/source attribution out of scope, but improves `topmark probe` explainability
 with stable, machine-friendly reason categories.
 
-### ⚠️ Breaking Changes - 1.0.0a8
+> [!CAUTION] **Breaking changes**
+>
+> - Filtered probe results no longer always use `reason="excluded_by_discovery_filter"`.
+> - Probe machine output may emit more specific filtered-input reason values.
+
+### Breaking Changes - 1.0.0a8
 
 - Filtered probe results no longer always use `reason="excluded_by_discovery_filter"`.
 - Probe machine output may now emit:
@@ -1218,7 +1255,13 @@ It follows `1.0.0a6`, which introduced the `probe` command and probe-backed reso
 extends that contract so explicitly requested paths that are filtered out are still reported in
 TEXT, Markdown, JSON, and NDJSON output.
 
-### ⚠️ Breaking Changes - 1.0.0a7
+> [!CAUTION] **Breaking changes**
+>
+> - `topmark probe` now reports explicitly requested paths filtered during discovery.
+> - Probe JSON / NDJSON output should now be interpreted as per-path / per-result output.
+> - Filtered explicit inputs can now affect the `topmark probe` exit code.
+
+### Breaking Changes - 1.0.0a7
 
 - `topmark probe` now reports explicitly requested paths filtered during discovery instead of
   treating them as silently absent from the probe result set.
@@ -1355,7 +1398,14 @@ It completes the registry / resolution freeze by unifying file-type and processo
 a single probe-based contract, removing legacy helpers, and exposing deterministic, inspectable
 resolution behavior across CLI, pipeline, API, documentation, and machine formats.
 
-### ⚠️ Breaking Changes - 1.0.0a6
+> [!CAUTION] **Breaking changes**
+>
+> - Legacy resolution helpers were removed.
+> - Resolution is now probe-driven across pipeline and public diagnostic surfaces.
+> - `probe_resolution_for_path()` is the single path-based resolution surface for callers that need
+>   file-type / processor resolution details.
+
+### Breaking Changes - 1.0.0a6
 
 - Removed legacy resolution helpers:
   - `resolve_file_type_for_path()`
@@ -1512,7 +1562,11 @@ It completes the CLI/output-surface stabilization work by enforcing a clear sepa
 console-oriented output, document-oriented rendering, and machine-readable formats, backed by
 comprehensive tests and fully aligned documentation.
 
-### ⚠️ Breaking Changes - 1.0.0a5
+> [!CAUTION] **Breaking changes**
+>
+> - TopMark now requires `pathspec>=1.1.0,<1.2.0`.
+
+### Breaking Changes - 1.0.0a5
 
 - TopMark now requires `pathspec>=1.1.0,<1.2.0`. Environments pinning older `pathspec` versions must
   update their constraints.
@@ -1939,81 +1993,90 @@ The focus of `1.0.0a1` is **contract stabilization**:
 This alpha is intended for validation of the new 1.0 architecture and observable contracts before
 the final 1.0 release.
 
-### ⚠️ Breaking Changes - 1.0.0a1
+> [!CAUTION] **Breaking changes**
+>
+> - Registry and resolution behavior now use explicit namespace-aware bindings and qualified
+>   identities.
+> - Configuration is split across TOML loading, layered config construction, and runtime execution.
+> - Machine-output contracts were realigned across config, pipeline, registry, and version commands.
+> - Developer and release workflows moved to a uv-first / nox-based model with SCM-derived versions
+>   and artifact-based publishing.
 
-#### Registry / resolution model
+### Breaking Changes - 1.0.0a1
 
-- Built-in processor registration no longer relies on import-time decorators or bootstrap scanning.
-  Processor/file-type relationships now use an explicit **binding model**.
-- Registry responsibilities are now explicitly split across:
-  - file types,
-  - processors,
-  - bindings,
-  - and a thin façade.
-- File types and processors now expose **namespace-aware stable identities** with canonical
-  `qualified_key` values.
-- Unqualified file type identifiers may now be treated as **ambiguous** where multiple namespaces
-  overlap; callers must be prepared for explicit ambiguity handling.
-- Registry machine and human outputs are now **identity-focused** and expose namespace/qualified-key
-  metadata.
-- A first-class `bindings` view is now part of the registry surface.
+- **Registry / resolution model:**
 
-#### Config / TOML / runtime boundary
+  - Built-in processor registration no longer relies on import-time decorators or bootstrap
+    scanning. Processor/file-type relationships now use an explicit **binding model**.
+  - Registry responsibilities are now explicitly split across:
+    - file types,
+    - processors,
+    - bindings,
+    - and a thin façade.
+  - File types and processors now expose **namespace-aware stable identities** with canonical
+    `qualified_key` values.
+  - Unqualified file type identifiers may now be treated as **ambiguous** where multiple namespaces
+    overlap; callers must be prepared for explicit ambiguity handling.
+  - Registry machine and human outputs are now **identity-focused** and expose
+    namespace/qualified-key metadata.
+  - A first-class `bindings` view is now part of the registry surface.
 
-- Configuration concerns are now explicitly separated into:
-  - `topmark.toml.*` for TOML loading, source resolution, defaults/templates, and whole-source TOML
-    validation,
-  - `topmark.config.*` for layered config construction, merge semantics, and effective per-path
-    resolution,
-  - `topmark.runtime.*` for execution-only runtime state.
-- Package/runtime behavior no longer depends on conflating layered configuration with execution-time
-  intent.
-- The old boolean mutation policy pair (`add_only` / `update_only`) has been replaced by the scalar
-  `header_mutation_mode` model.
-- Source-local TOML options such as `strict_config_checking` are now treated explicitly as
-  **TOML-source-local config-loading options**, not as layered `Config` fields.
-- Whole-source TOML validation is now stricter and happens earlier in the load path; malformed or
-  unknown TOML structure now surfaces consistently as diagnostics.
+- **Config / TOML / runtime boundary:**
 
-#### CLI / output / machine-format contracts
+  - Configuration concerns are now explicitly separated into:
+    - `topmark.toml.*` for TOML loading, source resolution, defaults/templates, and whole-source
+      TOML validation,
+    - `topmark.config.*` for layered config construction, merge semantics, and effective per-path
+      resolution,
+    - `topmark.runtime.*` for execution-only runtime state.
+  - Package/runtime behavior no longer depends on conflating layered configuration with
+    execution-time intent.
+  - The old boolean mutation policy pair (`add_only` / `update_only`) has been replaced by the
+    scalar `header_mutation_mode` model.
+  - Source-local TOML options such as `strict_config_checking` are now treated explicitly as
+    **TOML-source-local config-loading options**, not as layered `Config` fields.
+  - Whole-source TOML validation is now stricter and happens earlier in the load path; malformed or
+    unknown TOML structure now surfaces consistently as diagnostics.
 
-- CLI output architecture has been refactored around a clearer split between:
-  - Click-free human presentation,
-  - CLI console/runtime helpers,
-  - and domain-scoped machine serializers.
-- Machine-output generation is no longer constructed ad hoc in CLI commands.
-- Machine-output contracts were realigned across config, pipeline, registry, and version commands.
-- Pipeline summary machine output now uses explicit flat rows with:
-  - `outcome`
-  - `reason`
-  - `count`
-- `config check` machine output now consistently uses the explicit `config_check` payload/record
-  kind.
-- Human output behavior was also normalized:
-  - dry-run/apply semantics are now explicit,
-  - summary grouping is outcome-driven,
-  - verbosity behavior is more clearly defined.
+- **CLI / output / machine-format contracts:**
 
-#### Developer / release workflow
+  - CLI output architecture has been refactored around a clearer split between:
+    - Click-free human presentation,
+    - CLI console/runtime helpers,
+    - and domain-scoped machine serializers.
+  - Machine-output generation is no longer constructed ad hoc in CLI commands.
+  - Machine-output contracts were realigned across config, pipeline, registry, and version commands.
+  - Pipeline summary machine output now uses explicit flat rows with:
+    - `outcome`
+    - `reason`
+    - `count`
+  - `config check` machine output now consistently uses the explicit `config_check` payload/record
+    kind.
+  - Human output behavior was also normalized:
+    - dry-run/apply semantics are now explicit,
+    - summary grouping is outcome-driven,
+    - verbosity behavior is more clearly defined.
 
-- tox support was removed; contributors and CI now use **nox** with **uv-backed** environments.
-- The project no longer maintains committed `requirements*.txt` / `constraints.txt` as its primary
-  dependency workflow.
-- `uv.lock` is now the canonical committed lock artifact.
-- Package versioning no longer uses a manually maintained static `[project].version` in
-  `pyproject.toml`.
-- TopMark now derives package versions from Git tags via `setuptools-scm`, and release validation
-  checks the **SCM-derived artifact version** against the release tag.
-- The GitHub release pipeline has been restructured to an **artifact-based model**:
-  - CI (`ci.yml`) builds and uploads `sdist` and `wheel` artifacts on tag pushes in an unprivileged
-    context.
-  - The release workflow (`release.yml`) runs in a privileged `workflow_run` context, downloads
-    these artifacts, verifies tag/version consistency and checksums, and publishes them.
-- Repository code is no longer built or executed in the privileged release workflow; only prebuilt
-  CI artifacts are used for publishing.
-- Compact PEP 440-style prerelease tags (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`) are now the preferred
-  form for new releases, while legacy dashed prerelease tags remain supported for backward
-  compatibility.
+- **Developer / release workflow:**
+
+  - tox support was removed; contributors and CI now use **nox** with **uv-backed** environments.
+  - The project no longer maintains committed `requirements*.txt` / `constraints.txt` as its primary
+    dependency workflow.
+  - `uv.lock` is now the canonical committed lock artifact.
+  - Package versioning no longer uses a manually maintained static `[project].version` in
+    `pyproject.toml`.
+  - TopMark now derives package versions from Git tags via `setuptools-scm`, and release validation
+    checks the **SCM-derived artifact version** against the release tag.
+  - The GitHub release pipeline has been restructured to an **artifact-based model**:
+    - CI (`ci.yml`) builds and uploads `sdist` and `wheel` artifacts on tag pushes in an
+      unprivileged context.
+    - The release workflow (`release.yml`) runs in a privileged `workflow_run` context, downloads
+      these artifacts, verifies tag/version consistency and checksums, and publishes them.
+  - Repository code is no longer built or executed in the privileged release workflow; only prebuilt
+    CI artifacts are used for publishing.
+  - Compact PEP 440-style prerelease tags (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`) are now the
+    preferred form for new releases, while legacy dashed prerelease tags remain supported for
+    backward compatibility.
 
 ### Highlights — 1.0.0a1
 
@@ -2213,7 +2276,13 @@ correctness, STDIN handling, and CLI/API parity. While user-facing behavior rema
 the 0.10.x series, there is an **intentional internal breaking change** for integrators relying on
 TopMark internals.
 
-### ⚠️ Breaking Changes - 0.11.0
+> [!CAUTION] **Breaking changes**
+>
+> - `ProcessingContext.bootstrap()` now requires an explicit `PolicyRegistry`.
+> - Internal pipeline bootstrapping and test harness setup must construct a `PolicyRegistry`.
+> - Public CLI and `topmark.api` entry points remain source-compatible.
+
+### Breaking Changes - 0.11.0
 
 - **PolicyRegistry is now mandatory at pipeline bootstrap time**
 
@@ -2332,45 +2401,51 @@ This release introduces **major pipeline and CLI changes**, a full **machine-out
 redesign**, a refactored **ProcessingContext**, and multiple BREAKING CHANGES. It also includes
 substantial internal cleanup, dependency updates, and correctness fixes.
 
-### ⚠️ Breaking Changes - 0.10.0
+> [!CAUTION] **Breaking changes**
+>
+> - Machine-output JSON and NDJSON schemas were redesigned and are not backward compatible.
+> - Internal pipeline module structure and import paths changed.
+> - Legacy CLI compatibility commands and code paths were removed.
 
-#### Machine Output (JSON / NDJSON)
+### Breaking Changes - 0.10.0
 
-- **Completely redesigned schema**:
-  - All records include a `kind` discriminator (`config`, `config_diagnostics`, `result`,
-    `summary`).
-  - All records include a top-level `meta` block (version, intent, timestamps).
-  - File-level results now use a stable, explicit envelope (`file`, `statuses`, `hints`,
-    `diagnostic_counts`, `outcome`).
-  - NDJSON encoding is now strictly one-record-per-line with unified keys.
-- **Old JSON/NDJSON formats from \<0.10.0 are no longer emitted.**
-- Downstream tools **must** update their parsers.
+- **Machine Output (JSON / NDJSON):**
 
-#### CLI / Presentation Rendering
+  - Completely redesigned schema\*\*:
+    - All records include a `kind` discriminator (`config`, `config_diagnostics`, `result`,
+      `summary`).
+    - All records include a top-level `meta` block (version, intent, timestamps).
+    - File-level results now use a stable, explicit envelope (`file`, `statuses`, `hints`,
+      `diagnostic_counts`, `outcome`).
+    - NDJSON encoding is now strictly one-record-per-line with unified keys.
+  - **Old JSON/NDJSON formats from \<0.10.0 are no longer emitted.**
+  - Downstream tools **must** update their parsers.
 
-- CLI output formatting has been fully rewritten:
-  - Bucketing semantics changed (mapping to new axes + unified policy signals).
-  - Summary footer replaced with new consistent reporting structure.
-  - Changed/unchanged/would-change groupings now computed via the new comparison axis.
-  - Hints are now grouped and severity-ordered; rendering is verbosity-dependent.
-- Legacy formatting and legacy summary behavior have been removed.
+- **CLI / Presentation Rendering:**
 
-#### Pipeline Architecture
+  - CLI output formatting has been fully rewritten:
+    - Bucketing semantics changed (mapping to new axes + unified policy signals).
+    - Summary footer replaced with new consistent reporting structure.
+    - Changed/unchanged/would-change groupings now computed via the new comparison axis.
+    - Hints are now grouped and severity-ordered; rendering is verbosity-dependent.
+  - Legacy formatting and legacy summary behavior have been removed.
 
-- `ProcessingContext` split into:
-  - `pipeline.context.model` (state + orchestration),
-  - `pipeline.context.policy` (pure policy + feasibility),
-  - `pipeline.context.status` (all axis statuses).
-- Legacy modules (`pipeline/context.py`, `pipeline/contracts.py`, etc.) removed.
-- Steps updated to use new context accessors and policy helpers.
-- Any consumer importing internal pipeline modules by path must update imports.
+- **Pipeline Architecture:**
 
-#### Legacy CLI Commands
+  - `ProcessingContext` split into:
+    - `pipeline.context.model` (state + orchestration),
+    - `pipeline.context.policy` (pure policy + feasibility),
+    - `pipeline.context.status` (all axis statuses).
+  - Legacy modules (`pipeline/context.py`, `pipeline/contracts.py`, etc.) removed.
+  - Steps updated to use new context accessors and policy helpers.
+  - Any consumer importing internal pipeline modules by path must update imports.
 
-- Several deprecated commands were **removed entirely**:
-  - Old compatibility shims for `topmark header …`
-  - Legacy updater/stripper debug modes.
-- These commands now fail fast with a clear error.
+- **Legacy CLI Commands:**
+
+  - Several deprecated commands were **removed entirely**:
+    - Old compatibility shims for `topmark header …`
+    - Legacy updater/stripper debug modes.
+  - These commands now fail fast with a clear error.
 
 ### Highlights — 0.10.0
 
@@ -2395,7 +2470,7 @@ substantial internal cleanup, dependency updates, and correctness fixes.
 
 ### Changed — 0.10.0
 
-- **ProcessingContext**
+- **`ProcessingContext`:**
 
   - No longer contains embedded policy decisions.
   - Explicit release interfaces for summary, machine-output, and updated lines.
@@ -2534,11 +2609,6 @@ ______________________________________________________________________
   - Use `make verify`, `make test`, `make pytest [PYTEST_PAR="-n auto"]`, `make docs-*`,
     `make api-snapshot*`, and the `lock-*` targets for daily work.
 
-### ⚠️ Breaking Changes - 0.9.1
-
-None.\
-Public API remains stable; changes focus on tooling, CI reliability, and correctness fixes.
-
 ______________________________________________________________________
 
 ## [0.9.0] - 2025-10-06
@@ -2628,7 +2698,13 @@ ______________________________________________________________________
 - Bumped doc dependencies: `mkdocs>=1.6.0`, `mkdocs-material>=9.5.19`, `pymdown-extensions>=10.16`.
 - Removed obsolete `.mdformat.yml` and outdated constraints for `backrefs` and `markdown-it-py`.
 
-### ⚠️ Breaking Changes - 0.9.0
+> [!CAUTION] **Breaking changes**
+>
+> - No intentional public breaking changes in this release.
+> - Configuration discovery and precedence behavior was finalized and may affect effective config
+>   resolution in some repositories.
+
+### Breaking Changes - 0.9.0
 
 None (pre-1.0).\
 All changes are backward-compatible with v0.8.x configurations and APIs.
@@ -2677,10 +2753,6 @@ ______________________________________________________________________
 - **New CI job**: “Dev validation” runs only tests marked `dev_validation` with
   `TOPMARK_VALIDATE=1`.
 - **Pre-commit**: bump `ruff-pre-commit` to `v0.13.2`.
-
-### ⚠️ Breaking Changes - 0.8.1
-
-None.
 
 ______________________________________________________________________
 
@@ -2736,10 +2808,6 @@ ______________________________________________________________________
 
 - Add standard TopMark headers to files in `typings/`.
 - Dev tooling: keep pre-commit/hooks in sync (see commit history for exact bumps).
-
-### ⚠️ Breaking Changes - 0.8.0
-
-None.
 
 ______________________________________________________________________
 
@@ -2822,7 +2890,12 @@ ______________________________________________________________________
 - Pre-commit: bump `topmark-check` hook to v0.6.2.
 - Minor `tox.ini` whitespace tidy-ups.
 
-### ⚠️ Breaking Changes - 0.7.0
+> [!CAUTION] **Breaking changes**
+>
+> - The `version` command JSON and Markdown output schemas changed.
+> - Consumers parsing previous machine or Markdown output formats must update their parsers.
+
+### Breaking Changes - 0.7.0
 
 - **JSON** schema changed from `{"topmark_version": "<str>"}` to
   `{"version": "<str>", "format": "pep440|semver"}`.
@@ -2830,7 +2903,7 @@ ______________________________________________________________________
   `**TopMark version (pep440|semver): <version>**`.\
   Update any consumers/parsers that relied on the previous key or phrasing.
 
-#### Pre-Releases — 0.7.0
+### Pre-Releases — 0.7.0
 
 - `0.7.0-rc1` and `0.7.0-rc2` were published to **TestPyPI** for validation; their contents are
   fully included in this final release.
@@ -2943,7 +3016,7 @@ ______________________________________________________________________
 - Repository-wide header reformat to the new field order (no functional changes). (Commit:
   `bcac2ed`)
 
-#### Notes — 0.6.0
+### Notes — 0.6.0
 
 - **No public API surface changes**: `topmark.api.check/strip` signatures unchanged.
 - `MutableConfig` is **internal** (not part of the stable API); public callers should pass a mapping
@@ -3004,7 +3077,12 @@ ______________________________________________________________________
   - Add “Numbered output & verbosity” notes to `filetypes` / `processors`
   - Add `version` command page; tidy headings and separators
 
-### ⚠️ Breaking Changes - 0.5.0
+> [!CAUTION] **Breaking changes**
+>
+> - Dry-run summaries now use `previewed` instead of terminal mutation verbs.
+> - Human-readable CLI output formatting changed and may affect output parsers.
+
+### Breaking Changes - 0.5.0
 
 - Dry‑run summaries now end with **`- previewed`** instead of terminal verbs.\
   Update any scripts/tests parsing human summaries that previously matched `- inserted` /
@@ -3051,7 +3129,12 @@ ______________________________________________________________________
 
 - Expanded inline docstrings for diagnostics, public types, and verbosity semantics.
 
-### ⚠️ Breaking Changes - 0.4.0
+> [!CAUTION] **Breaking changes**
+>
+> - `RunResult.diagnostics` now exposes structured diagnostic objects instead of plain strings.
+> - New aggregate diagnostic fields were added to `RunResult`.
+
+### Breaking Changes - 0.4.0
 
 - `RunResult.diagnostics` type changed to a structured public form. Integrations consuming plain
   strings should switch to `d["message"]` and may use `d["level"]` for triage.
@@ -3131,7 +3214,12 @@ ______________________________________________________________________
 - **Tooling**: bump pre-commit hooks (ruff v0.12.12, pyright v1.1.405); set project version to
   `0.3.0` in `pyproject.toml` and `CONTRIBUTING.md`.
 
-### ⚠️ Breaking Changes - 0.3.0
+> [!CAUTION] **Breaking changes**
+>
+> - The stable public API surface was explicitly defined starting with this release.
+> - The implicit default CLI command and legacy `typed_*` helpers were removed.
+
+### Breaking Changes - 0.3.0
 
 - The public API surface is explicitly defined from this release forward and will follow semver.
   Low‑level registries and internals remain **unstable**.
