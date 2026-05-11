@@ -16,7 +16,8 @@ This page documents `.github/workflows/release.yml`.
 
 The release workflow is TopMark's privileged package-publishing workflow. It is triggered by a
 completed CI workflow run, verifies that the CI run corresponds to exactly one release tag,
-downloads CI-built artifacts, and publishes those artifacts to PyPI or TestPyPI.
+downloads CI-built artifacts, publishes those artifacts to PyPI or TestPyPI, and creates the
+corresponding GitHub Release or prerelease.
 
 ## Purpose
 
@@ -87,7 +88,8 @@ permissions:
   contents: write
 ```
 
-That write permission is used only to create the GitHub Release for final, non-prerelease tags.
+That write permission is used only to create the GitHub Release object. Prerelease tags create
+GitHub prereleases; final tags create normal GitHub releases.
 
 The release trust boundary is intentionally strict:
 
@@ -110,7 +112,7 @@ ______________________________________________________________________
 | `preflight`       | Resolve release eligibility, tag, normalized version, channel, and release name | `git`, `packaging.version.Version`                   |
 | `details`         | Download CI artifacts and verify artifact metadata and package versions         | `actions/download-artifact`, Python metadata readers |
 | `publish-package` | Verify checksums, validate target-index state, and publish to PyPI or TestPyPI  | `sha256sum`, `curl`, `pypa/gh-action-pypi-publish`   |
-| `github-release`  | Create a GitHub Release for final releases                                      | `softprops/action-gh-release`                        |
+| `github-release`  | Create a GitHub Release or GitHub prerelease for the resolved tag               | `softprops/action-gh-release`                        |
 
 The `preflight` job decides whether publication should proceed. It emits release context outputs
 such as the resolved tag, PEP 440 version, prerelease flag, target channel, and release name.
@@ -124,7 +126,8 @@ confirms that the target version does not already exist on the selected package 
 with Trusted Publishing.
 
 Final releases also check that the new version is newer than the latest final version on PyPI.
-Prereleases publish to TestPyPI and skip GitHub Release creation.
+Prereleases publish to TestPyPI and create GitHub prereleases; final releases publish to PyPI and
+create normal GitHub releases.
 
 ______________________________________________________________________
 
@@ -206,11 +209,17 @@ When preparing a release:
 - prefer compact PEP 440 tag forms such as `v1.0.0rc1` for new prereleases;
 - keep dashed prerelease forms only as compatibility forms;
 - run local verification before pushing tags;
-- let CI build artifacts and let the release workflow publish them.
+- let CI build artifacts and let the release workflow publish them and create the matching GitHub
+  Release or prerelease.
 
 Do not move artifact building into the release workflow without deliberately revisiting the release
 trust boundary. The workflow is intentionally designed so package publication does not rebuild from
 repository source code.
+
+Do not suppress GitHub prerelease creation for beta or release-candidate tags unless the release
+visibility policy is deliberately revisited. GitHub prereleases provide the public release-note and
+traceability surface for prerelease milestones, while package publication continues to route
+prerelease artifacts to TestPyPI.
 
 GitHub Actions are pinned to commit SHAs. Use the [GitHub Action pin audit](./action-pin-audit.md)
 to detect drift between workflow files and local composite actions.
