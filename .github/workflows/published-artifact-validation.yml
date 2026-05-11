@@ -110,6 +110,25 @@ jobs:
           topmark registry filetypes
           topmark probe README.md
 
+      - name: Inspect validation workspace on Windows
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        working-directory: validation-workspace
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("README.md")
+          print(f"path: {path}")
+          print(f"resolved: {path.resolve()}")
+          print(f"exists: {path.exists()}")
+          print(f"is_file: {path.is_file()}")
+          print(f"size: {path.stat().st_size if path.exists() else '<missing>'}")
+          print("content repr:")
+          print(repr(path.read_text(encoding="utf-8")))
+          PY
+
       - name: Validate check apply
         shell: bash
         working-directory: validation-workspace
