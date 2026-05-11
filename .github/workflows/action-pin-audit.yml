@@ -1,0 +1,40 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : action-pin-audit.yml
+#   file_relpath : .github/workflows/action-pin-audit.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+name: GitHub Actions Pin Audit
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+      - "tools/ci/audit_action_pins.py"
+
+permissions:
+  contents: read
+
+jobs:
+  audit-action-pins:
+    name: Audit action pin consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Audit GitHub Action pin consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/ci/audit_action_pins.py
