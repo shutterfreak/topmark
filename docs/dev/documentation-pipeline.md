@@ -12,8 +12,8 @@ topmark:header:end
 
 # Documentation Pipeline & Reference Hygiene
 
-This page documents how **TopMark’s documentation is generated, validated, and kept consistent**
-using the helpers in `tools/docs/`.
+This page documents how TopMark's documentation is generated, validated, and kept consistent using
+the tooling under `tools/docs/`.
 
 It is intended for contributors working on:
 
@@ -21,6 +21,27 @@ It is intended for contributors working on:
 - Internal architecture docs
 - Docstring quality and reference hygiene
 - MkDocs / mkdocs-gen-files integration
+
+This page focuses on the documentation-generation and validation pipeline itself. Detailed writing
+conventions, workflow-page structure, heading policy, and snippet usage rules are documented in
+[Documentation Conventions](documentation-conventions.md).
+
+______________________________________________________________________
+
+## Scope of this document
+
+This page documents:
+
+- generated documentation architecture;
+- MkDocs integration and generation hooks;
+- API and docstring scanning behavior;
+- documentation hygiene validation;
+- snippet and draft handling;
+- strict-mode and validation behavior.
+
+It intentionally does not redefine authoring conventions already covered by:
+
+- [Documentation Conventions](documentation-conventions.md)
 
 ______________________________________________________________________
 
@@ -37,7 +58,7 @@ and is aligned with TopMark’s layered architecture:
 
 See [`Architecture`](./architecture.md) for details.
 
-TopMark’s documentation build consists of **three coordinated layers**:
+TopMark's documentation build consists of three coordinated layers:
 
 1. **Hand-written Markdown**
    - Located under `docs/`
@@ -58,23 +79,24 @@ tools/docs/
 
 and is **only executed during documentation builds**.
 
+Documentation validation is also integrated into local contributor workflows, CI verification, and
+release-readiness checks through `make verify`, `nox`, and GitHub Actions.
+
 ______________________________________________________________________
 
-## Directory Structure
+## Relationship to CI and validation tooling
 
-```text
-tools/docs/
-├── __init__.py
-├── hooks.py           # MkDocs simple-hooks
-├── gen_api_pages.py   # mkdocs-gen-files script
-└── docs_utils.py      # Shared helpers (reference hygiene, logging, paths)
-```
+Documentation validation is intentionally layered:
 
-This separation is intentional:
+- MkDocs performs rendering-time validation;
+- `tools/docs/` performs deterministic repository hygiene checks;
+- `make verify` and `nox` integrate documentation validation into contributor workflows;
+- GitHub Actions enforce documentation validation in CI.
 
-- `hooks.py` operates on **Markdown pages**
-- `gen_api_pages.py` operates on **Python source modules**
-- `docs_utils.py` contains **pure, reusable logic** shared by both
+See also:
+
+- [CI workflow](../ci/ci-workflow.md)
+- [Test and validation architecture](../ci/test-validation.md)
 
 ______________________________________________________________________
 
@@ -119,7 +141,11 @@ PUBLIC_API_PREFIXES = (
 )
 ```
 
-These pages represent **stable, supported public surfaces**.
+These pages represent stable, supported public surfaces.
+
+Public API stability expectations and snapshot validation are documented in:
+
+- [API Stability & Snapshot Policy](api-stability.md)
 
 ### CLI reference pages
 
@@ -140,51 +166,27 @@ This guarantees version-accurate CLI documentation.
 
 ______________________________________________________________________
 
-## Documentation Guidelines
+## Relationship to documentation conventions
 
-The following rules define how TopMark docstrings and documentation describe the public API and its
-observable behavior.
+The documentation pipeline enforces generated-page consistency and validation behavior, while
+authoring conventions are documented separately.
 
-### Exception documentation (public API contract)
+Authoring conventions include:
 
-TopMark treats docstrings as part of the **observable API contract**, not merely a reflection of the
-local function body or static analysis of the immediate implementation.
+- heading structure;
+- snippet conventions;
+- workflow-page templates;
+- related-pages conventions;
+- heading-style policy;
+- Markdown organization rules.
 
-For public APIs, the `Raises:` section may document exceptions intentionally **propagated** from
-lower-level helpers when those exceptions are part of the supported caller-facing contract at the
-current abstraction level.
+See:
 
-Accordingly:
-
-- TopMark does **not** add redundant `try/except: raise` blocks solely to satisfy docstring linting.
-- Public façade and delegation helpers should prefer accurate `Raises:` documentation over
-  artificial re-raise code.
-- When `pydoclint` rule `DOC503` would otherwise complain because a docstring intentionally
-  documents propagated exceptions, TopMark uses a **targeted** suppression on the closing docstring
-  line:
-
-```python
-"""Bind an existing processor definition to a registered file type.
-
-Raises:
-    UnknownFileTypeError: If `file_type_id` does not resolve.
-    ProcessorBindingError: If the processor qualified key is unknown.
-"""  # noqa: DOC503 - documents propagated exceptions from delegated registry helpers
-```
-
-This suppression should be used **sparingly** and only when all of the following are true:
-
-- the method is a public façade or delegation helper,
-- the documented exceptions are part of the supported contract,
-- the exceptions originate in delegated helpers,
-- and adding local catch-and-reraise code would make the implementation worse.
-
-This policy keeps TopMark's implementations clean while preserving accurate and stable exception
-documentation for callers.
+- [Documentation Conventions](documentation-conventions.md)
 
 ______________________________________________________________________
 
-## Docstring Scanning & Reference Hygiene
+## Docstring scanning and reference hygiene
 
 Both handwritten Markdown **and Python module docstrings** are scanned for **unlinked backticked
 symbol references**, such as:
@@ -212,9 +214,10 @@ and is used identically by:
 This ensures that documentation remains navigable and that symbol references stay valid even as
 internal modules evolve.
 
-- mkdocs-autorefs can only resolve symbols that are **properly linked**
-- Backticked-but-unlinked symbols silently break cross-references
-- Docstrings are part of the rendered documentation and must obey the same rules
+- mkdocs-autorefs can only resolve symbols that are properly linked;
+- backticked-but-unlinked symbols silently break cross-references;
+- docstrings are rendered into the generated documentation and must follow the same hygiene rules as
+  handwritten Markdown.
 
 ### What is considered a symbol
 
@@ -233,7 +236,7 @@ tools/docs/docs_utils.should_enforce_link()
 
 ______________________________________________________________________
 
-## Whitelisting Non-linkable Symbols
+## Whitelisting non-linkable symbols
 
 Some backticked identifiers are intentional and should **not** be linked.
 
@@ -251,7 +254,7 @@ Rules:
 
 ______________________________________________________________________
 
-## Logging, Debug & Strict Modes
+## Logging, debug, and strict modes
 
 Two environment variables control behavior:
 
@@ -281,7 +284,7 @@ Severity parity is enforced between:
 
 ______________________________________________________________________
 
-## Contextual Logging
+## Contextual logging
 
 All diagnostics aim to be **actionable**.
 
@@ -300,7 +303,7 @@ tools/docs/docs_utils.context_lines()
 
 ______________________________________________________________________
 
-## Drafts and Snippets
+## Drafts and snippets
 
 ### Draft files
 
@@ -345,36 +348,41 @@ which runs:
 python tools/docs/check_docs_hygiene.py --docs-hygiene --stats
 ```
 
-The validation fails on objective problems such as:
+The validation performs deterministic repository-hygiene checks for:
 
-- broken include paths
-- malformed docs-root-relative include paths
-- include targets resolving outside `docs/`
-- nested snippet includes
-- accidental macOS `._*` files under `docs/`
+- broken include paths;
+- malformed docs-root-relative include paths;
+- include targets resolving outside `docs/`;
+- nested snippet includes;
+- accidental macOS `._*` files under documentation sources;
+- Markdown files under `docs/` missing from `mkdocs.yml` navigation;
+- emoji in Markdown headings;
+- missing section separators between level-2 headings.
 
-It also reports non-fatal maintainability warnings for:
+The checker also reports maintainability warnings for:
 
-- orphaned snippets
-- headings inside snippets
-- relative links inside snippets
-- snippet include paths that do not use the formatter-stable `\_snippets/` prefix
+- orphaned snippets;
+- headings inside snippets;
+- relative links inside reusable snippets;
+- snippet include paths that do not use the formatter-stable `\_snippets/` prefix.
 
-These checks intentionally remain lightweight and deterministic. They are intended to reinforce the
-project’s documentation conventions without turning every documentation-style preference into a hard
-release blocker.
+Shared navigation snippets such as `related-pages*.md` are intentionally allowed to contain relative
+links because they centralize reusable documentation navigation.
+
+These checks intentionally remain lightweight and deterministic. They reinforce repository-wide
+documentation consistency without turning every style preference into a hard release blocker.
 
 ______________________________________________________________________
 
-## Design Principles
+## Design principles
 
 The documentation tooling follows a few strict principles:
 
 - **Deterministic** — no hidden state, no reliance on import order
 
-- **Fail-late, report-all** Especially in strict mode
+- **Fail-late, report-all** — especially in strict mode
 
-- **Shared logic, single source of truth** No duplicated regexes, include semantics, or hygiene
+- **Shared logic, single source of truth** — no duplicated regexes, include semantics, or hygiene
   heuristics
 
 - **Docs are code** Docstrings and Markdown are held to the same standard
@@ -391,3 +399,14 @@ ______________________________________________________________________
 
 If you change how TopMark is structured, **update the docs pipeline accordingly** — it is a
 first-class part of the project.
+
+______________________________________________________________________
+
+## Related Pages
+
+- [Documentation Conventions](documentation-conventions.md)
+- [API Stability & Snapshot Policy](api-stability.md)
+- [Machine-readable output](machine-output.md)
+- [CI workflow](../ci/ci-workflow.md)
+- [Test and validation architecture](../ci/test-validation.md)
+- [Contributing](../contributing.md)
