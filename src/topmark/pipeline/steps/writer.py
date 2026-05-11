@@ -21,7 +21,11 @@ and config policies are centralized here.
 
 Sinks
 -----
-- FileSystemSink: writes in-place to the file path.
+- InplaceFileSink: writes in-place to the file path.
+- AtomicFileSink: writes through a same-directory temporary file and atomically replaces the target.
+  POSIX-only durability and permission helpers such as `os.fchmod()` and `os.O_DIRECTORY` are used
+  only when available; Windows falls back to best-effort path-based permission handling and skips
+  directory `fsync()`.
 - StdoutSink: writes the updated content to stdout (stdin-content mode).
 - NullSink: no-op (dry-run).
 
@@ -230,10 +234,16 @@ class AtomicFileSink(WriteSink):
     This sink writes to a temporary file in the **same directory** as the
     target, `fsync()`s it, then calls `os.replace()` to atomically swap it in.
 
+    Permission preservation and directory durability are best-effort and platform-aware:
+    POSIX uses `os.fchmod()` and directory `fsync()` when available, while Windows falls back to
+    path-based `chmod()` and skips directory `fsync()` because `os.fchmod` and `os.O_DIRECTORY` are
+    not exposed there.
+
     Pros:
         - Atomic visibility; crash-safe (old file remains until replace).
     Cons:
         - New inode/ID on POSIX; slightly more I/O.
+        - Directory `fsync()` is POSIX-only and therefore skipped on Windows.
     """
 
     def write(self, *, ctx: ProcessingContext) -> WriteResult:
@@ -268,12 +278,19 @@ class AtomicFileSink(WriteSink):
             with tmp.open("wb") as f:
                 # Apply permissions early to reduce race windows.
                 if mode is not None:
-                    try:
-                        # Try to apply permissions to the open file descriptor (fchmod).
-                        # This is ideal: no race window, applies before rename.
-                        os.fchmod(f.fileno(), mode)
-                    except OSError:
-                        # Fallback behavior: Only if fchmod raises any exception, try chmod(tmp).
+                    fchmod = getattr(os, "fchmod", None)
+                    if fchmod is not None:
+                        try:
+                            # Try to apply permissions to the open file descriptor (fchmod).
+                            # This is ideal: no race window, applies before rename.
+                            fchmod(f.fileno(), mode)
+                        except OSError:
+                            # Fallback behavior: if fchmod fails, try chmod(tmp).
+                            with contextlib.suppress(OSError):
+                                tmp.chmod(mode)
+                    else:
+                        # Windows does not expose os.fchmod. Apply permissions to the temporary path
+                        # directly as a best-effort fallback.
                         with contextlib.suppress(OSError):
                             tmp.chmod(mode)
                 # Prefer streaming via the iterator (good for memory)
@@ -284,16 +301,20 @@ class AtomicFileSink(WriteSink):
 
             tmp.replace(path)
 
-            # Try to fsync the directory for durability (POSIX only)
-            try:
-                dir_fd: int = os.open(str(dirpath), os.O_DIRECTORY)
+            # Try to fsync the directory for durability (POSIX only).
+            o_directory: int | None = getattr(os, "O_DIRECTORY", None)
+            if o_directory is not None:
                 try:
-                    os.fsync(dir_fd)
-                finally:
-                    os.close(dir_fd)
-            except OSError:
-                # Best-effort durability; ignore on platforms/filesystems that don't support it.
-                logger.debug("AtomicFileSink: directory fsync not supported", exc_info=True)
+                    dir_fd: int = os.open(str(dirpath), o_directory)
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
+                except OSError:
+                    # Best-effort durability; ignore on platforms/filesystems that don't support it.
+                    logger.debug("AtomicFileSink: directory fsync not supported", exc_info=True)
+            else:
+                logger.debug("AtomicFileSink: directory fsync not available on this platform")
 
             return WriteResult(status=WriteStatus.WRITTEN)
         except (OSError, UnicodeError) as e:
