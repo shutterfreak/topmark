@@ -118,22 +118,53 @@ HEADING_LINE_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?P<marker>#{1,6})\s+(?P<title>.+)$",
     re.MULTILINE,
 )
-EMOJI_RE: Final[re.Pattern[str]] = re.compile(
-    "["
-    "\U0001f1e6-\U0001f1ff"  # flags
-    "\U0001f300-\U0001f5ff"  # symbols and pictographs
-    "\U0001f600-\U0001f64f"  # emoticons
-    "\U0001f680-\U0001f6ff"  # transport and map symbols
-    "\U0001f700-\U0001f77f"  # alchemical symbols
-    "\U0001f780-\U0001f7ff"  # geometric shapes extended
-    "\U0001f800-\U0001f8ff"  # supplemental arrows-c
-    "\U0001f900-\U0001f9ff"  # supplemental symbols and pictographs
-    "\U0001fa00-\U0001fa6f"  # chess symbols
-    "\U0001fa70-\U0001faff"  # symbols and pictographs extended-a
-    "\u2600-\u26ff"  # miscellaneous symbols
-    "\u2700-\u27bf"  # dingbats
-    "]"
+
+# Dedicated changelog hygiene constants
+CHANGELOG_PATH: Final[Path] = Path("CHANGELOG.md")
+CHANGELOG_RELEASE_HEADING_RE: Final[re.Pattern[str]] = re.compile(
+    r"^## \[(?P<version>[^\]]+)\] - \d{4}-\d{2}-\d{2}$"
 )
+CHANGELOG_SECTION_HEADING_RE: Final[re.Pattern[str]] = re.compile(
+    r"^### (?P<section>[A-Za-z][A-Za-z /-]*) - (?P<version>\S+)$"
+)
+CHANGELOG_ALLOWED_SECTIONS: Final[frozenset[str]] = frozenset(
+    {
+        "Added",
+        "Breaking Changes",
+        "Changed",
+        "Deprecated",
+        "Documentation",
+        "Fixed",
+        "Highlights",
+        "Internal",
+        "Notes",
+        "Removed",
+        "Security",
+    }
+)
+
+# This deliberately checks a broad Unicode-symbol range rather than full emoji grapheme clusters.
+# The docs policy is stricter than "no rendered emoji": documentation headings should avoid
+# decorative symbols entirely. That makes a lightweight dependency-free check sufficient here.
+DECORATIVE_SYMBOL_RANGES: Final[tuple[tuple[int, int], ...]] = (
+    (0x1F1E6, 0x1F1FF),  # flags
+    (0x1F300, 0x1F5FF),  # symbols and pictographs
+    (0x1F600, 0x1F64F),  # emoticons
+    (0x1F680, 0x1F6FF),  # transport and map symbols
+    (0x1F900, 0x1F9FF),  # supplemental symbols and pictographs
+    (0x1FA70, 0x1FAFF),  # symbols and pictographs extended-a
+    (0x2600, 0x26FF),  # miscellaneous symbols
+    (0x2700, 0x27BF),  # dingbats
+)
+
+
+def has_decorative_symbol(text: str) -> bool:
+    """Return True when text contains a decorative symbol disallowed in headings."""
+    return any(
+        start <= ord(char) <= end for char in text for start, end in DECORATIVE_SYMBOL_RANGES
+    )
+
+
 LEVEL2_HEADING_RE: Final[re.Pattern[str]] = re.compile(
     r"^##\s+",
     re.MULTILINE,
@@ -484,6 +515,99 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
+    """Validate TopMark-specific changelog heading conventions.
+
+    Args:
+        path: Changelog path.
+        text: Changelog source text.
+
+    Returns:
+        Diagnostics for changelog structure violations.
+    """
+    diagnostics: list[Diagnostic] = []
+
+    for heading in HEADING_LINE_RE.finditer(text):
+        marker: str = heading.group("marker")
+        title: str = heading.group("title")
+        line: int = _line_for_offset(text, heading.start())
+
+        if marker == "#":
+            continue
+
+        if marker == "##":
+            if not CHANGELOG_RELEASE_HEADING_RE.fullmatch(heading.group(0)):
+                diagnostics.append(
+                    Diagnostic(
+                        severity="error",
+                        path=path,
+                        line=line,
+                        message=(
+                            "CHANGELOG.md level-2 headings must be release entries shaped "
+                            f"like '## [1.0.0] - YYYY-MM-DD', found '{marker} {title}'"
+                        ),
+                    )
+                )
+            continue
+
+        if marker == "###":
+            section_match: re.Match[str] | None = CHANGELOG_SECTION_HEADING_RE.fullmatch(
+                heading.group(0)
+            )
+            if section_match is None:
+                diagnostics.append(
+                    Diagnostic(
+                        severity="error",
+                        path=path,
+                        line=line,
+                        message=(
+                            "CHANGELOG.md level-3 headings must be release sections shaped "
+                            f"like '### Fixed - 1.0.0', found '{marker} {title}'"
+                        ),
+                    )
+                )
+                continue
+
+            section: str = section_match.group("section")
+            if section not in CHANGELOG_ALLOWED_SECTIONS:
+                diagnostics.append(
+                    Diagnostic(
+                        severity="error",
+                        path=path,
+                        line=line,
+                        message=(
+                            "CHANGELOG.md level-3 heading uses an unsupported section name: "
+                            f"{section!r}"
+                        ),
+                    )
+                )
+
+            if has_decorative_symbol(title):
+                diagnostics.append(
+                    Diagnostic(
+                        severity="error",
+                        path=path,
+                        line=line,
+                        message="emoji are not allowed in CHANGELOG.md headings",
+                    )
+                )
+            continue
+
+        diagnostics.append(
+            Diagnostic(
+                severity="error",
+                path=path,
+                line=line,
+                message=(
+                    "CHANGELOG.md must not use level-4 or deeper headings; "
+                    "use bold list labels for level-4 and list labels for level-5+ sections instead"
+                ),
+            )
+        )
+
+    return diagnostics
+
+
 def check_docs_hygiene(
     paths: Sequence[str] | None,
     *,
@@ -564,7 +688,7 @@ def check_docs_hygiene(
                     )
 
             for heading in HEADING_LINE_RE.finditer(text):
-                if EMOJI_RE.search(heading.group("title")):
+                if has_decorative_symbol(heading.group("title")):
                     diagnostics.append(
                         Diagnostic(
                             severity="error",
@@ -573,6 +697,8 @@ def check_docs_hygiene(
                             message="emoji are not allowed in Markdown headings",
                         )
                     )
+            if path == CHANGELOG_PATH:
+                diagnostics.extend(_check_changelog_hygiene(path, text))
 
             level2_matches: list[re.Match[str]] = list(LEVEL2_HEADING_RE.finditer(text))
             for heading_match in level2_matches[1:]:

@@ -302,7 +302,7 @@ because the atomic writer called POSIX-only APIs such as `os.fchmod()`.
 
 ______________________________________________________________________
 
-## [1.0.0b2] – 2026-05-10
+## [1.0.0b2] - 2026-05-10
 
 This second **1.0 beta release** focuses on documentation UX, documentation governance, generated
 site maintainability, and release-validation tooling. It does not reopen frozen CLI, API,
@@ -311,7 +311,7 @@ strengthens the documentation system around those contracts by standardizing pag
 improving navigation, reducing snippet overuse, and adding lightweight documentation hygiene
 validation to the normal verification and release gates.
 
-### Highlights — 1.0.0b2
+### Highlights - 1.0.0b2
 
 - Established canonical documentation conventions for TopMark’s 1.0 documentation system
 - Harmonized command-page structure across pipeline, config, registry, version, and shared-option
@@ -326,7 +326,7 @@ validation to the normal verification and release gates.
   public/internal registry boundaries
 - Updated roadmap status to reflect post-beta documentation governance and release-readiness status
 
-### Added — 1.0.0b2
+### Added - 1.0.0b2
 
 - **Documentation conventions**
   - Added `docs/dev/documentation-conventions.md` as the canonical guide for documentation
@@ -358,7 +358,7 @@ validation to the normal verification and release gates.
   - Added `make docs-hygiene`.
   - Integrated docs hygiene checks into `verify`, `release-check`, and `release-full`.
 
-### Changed — 1.0.0b2
+### Changed - 1.0.0b2
 
 - **Documentation navigation and site UX**
   - Improved MkDocs navigation discoverability.
@@ -420,7 +420,7 @@ validation to the normal verification and release gates.
   - Updated the TopMark pre-commit hook to `v1.0.0b1`.
   - Updated locked dependency versions for `uv` and `build`.
 
-### Fixed — 1.0.0b2
+### Fixed - 1.0.0b2
 
 - **Documentation drift and navigation density**
   - Fixed inconsistent command-page structure across command families.
@@ -437,7 +437,7 @@ validation to the normal verification and release gates.
     hygiene validation.
   - Ensured documentation structure issues are checked as part of release validation.
 
-### Documentation — 1.0.0b2
+### Documentation - 1.0.0b2
 
 - Added the documentation conventions guide.
 - Updated command, shared-option, filtering, registry, configuration, architecture, machine-readable
@@ -447,7 +447,7 @@ validation to the normal verification and release gates.
 - Updated roadmap status to record completed documentation governance, documentation validation, and
   post-beta readiness work.
 
-### Notes — 1.0.0b2
+### Notes - 1.0.0b2
 
 - This beta does not introduce new user-facing CLI/API features.
 - Frozen 1.0 contracts for CLI behavior, config semantics, probe, registry/resolution,
@@ -459,7 +459,7 @@ validation to the normal verification and release gates.
 
 ______________________________________________________________________
 
-## [1.0.0b1] – 2026-05-09
+## [1.0.0b1] - 2026-05-09
 
 This first **1.0 beta release** marks the transition from alpha contract stabilization to beta
 validation for TopMark’s 1.0 release line.
@@ -524,7 +524,7 @@ remain deferred.
     while retaining “machine-output contract/schema” where referring to formal internal contracts.
   - Downstream tests that assert exact help text or documentation snippets may need updating.
 
-### Highlights — 1.0.0b1
+### Highlights - 1.0.0b1
 
 - Completed the final beta freeze review for CLI help, docs, generated site, alpha semantics,
   warnings/errors, and machine-readable output wording
@@ -541,7 +541,7 @@ remain deferred.
 - Harmonized machine-readable output terminology across docs, source docstrings, and tests
 - Updated the roadmap to mark the `v1.0.0b1` beta freeze review complete
 
-### Added — 1.0.0b1
+### Added - 1.0.0b1
 
 - **Typed synthetic config provenance**
 
@@ -577,7 +577,7 @@ remain deferred.
     error diagnostics.
   - Added tests for typed synthetic provenance preservation and config model export behavior.
 
-### Changed — 1.0.0b1
+### Changed - 1.0.0b1
 
 - **Config output snapshots**
 
@@ -628,7 +628,7 @@ remain deferred.
   - Clarified that “machine-readable output” is the preferred user-facing term, while
     “machine-output contract/schema” remains appropriate for formal schema references.
 
-### Fixed — 1.0.0b1
+### Fixed - 1.0.0b1
 
 - **Missing `[writer]` in config output snapshots**
 
@@ -662,7 +662,7 @@ remain deferred.
   - Fixed machine-readable terminology drift across command docs, machine-format docs, generated
     API-facing docstrings, and tests.
 
-### Documentation — 1.0.0b1
+### Documentation - 1.0.0b1
 
 - Completed the documentation consistency and generated-site freeze review.
 - Updated CLI usage docs for `config defaults`, `config init`, shared options, option spelling,
@@ -674,7 +674,7 @@ remain deferred.
 - Kept historical alpha release notes unchanged except where current documentation surfaces needed
   beta-facing clarification.
 
-### Notes — 1.0.0b1
+### Notes - 1.0.0b1
 
 - This is the first beta release in the 1.0 line.
 - The beta focuses on validation of frozen contracts, not broad new feature development.
@@ -690,7 +690,7 @@ remain deferred.
 
 ______________________________________________________________________
 
-## [1.0.0a13] – 2026-05-07
+## [1.0.0a13] - 2026-05-07
 
 This thirteenth **1.0 alpha release** finalizes TopMark’s TOML strictness naming and closes the
 explicit schema-versioning decision for the 1.0 configuration contract.
@@ -718,7 +718,7 @@ non-additive schema change requires it.
 - The `config check` machine-output payload now emits `strict` instead of `strict_config_checking`.
   - Consumers of alpha config-check JSON/NDJSON output must update their parsers.
 
-### Highlights — 1.0.0a13
+### Highlights - 1.0.0a13
 
 - Renamed `[config].strict_config_checking` to `[config].strict`
 - Updated config-check machine-output naming from `strict_config_checking` to `strict`
@@ -727,7 +727,7 @@ non-additive schema change requires it.
 - Decided to defer explicit TOML schema versioning beyond 1.0 until it is actually needed
 - Updated roadmap status for the completed strictness rename and schema-versioning decision
 
-### Changed — 1.0.0a13
+### Changed - 1.0.0a13
 
 - **TOML strictness key**
 
@@ -749,7 +749,7 @@ non-additive schema change requires it.
   - Deferred explicit TOML schema versioning until a future non-additive schema change requires it.
   - Updated the roadmap to mark this decision as complete for the 1.0 freeze.
 
-### Documentation — 1.0.0a13
+### Documentation - 1.0.0a13
 
 - Added `_snippets/config-strictness.md` for consistent `[config].strict` wording.
 - Updated README, configuration docs, command pages, API docs, pipeline docs, machine-output docs,
@@ -757,7 +757,7 @@ non-additive schema change requires it.
 - Removed obsolete documentation references to the alpha-only `strict_config_checking` name.
 - Documented that schema versioning remains intentionally absent from the 1.0 TOML format.
 
-### Notes — 1.0.0a13
+### Notes - 1.0.0a13
 
 - This rename is intentionally completed before the stable 1.0 configuration contract is frozen.
 - `[config].strict` is now the stable 1.0 TOML key for config-loading strictness behavior.
@@ -817,7 +817,7 @@ developer documentation.
   - Downstream tooling that relied on preserving the exact user-supplied identifier spelling should
     compare canonical keys instead.
 
-### Highlights — 1.0.0a12
+### Highlights - 1.0.0a12
 
 - Added `topmark.api.probe()` as the stable public Python API for resolution diagnostics
 - Introduced normalized public probe DTOs for run, file, and candidate results
@@ -835,7 +835,7 @@ developer documentation.
   boundary
 - Reorganized registry and plugin documentation around a dedicated registry model reference
 
-### Added — 1.0.0a12
+### Added - 1.0.0a12
 
 - **Public probe API**
 
@@ -908,7 +908,7 @@ developer documentation.
   - Added `docs/dev/registry-model.md` as the dedicated registry architecture, identity, binding,
     overlay, and plugin-integration reference.
 
-### Changed — 1.0.0a12
+### Changed - 1.0.0a12
 
 - **Configuration normalization**
 
@@ -989,7 +989,7 @@ developer documentation.
   - Updated registry command documentation to describe effective composed registry views and
     canonical qualified identity fields.
 
-### Fixed — 1.0.0a12
+### Fixed - 1.0.0a12
 
 - Fixed `policy_by_type` inconsistency where filters accepted qualified identifiers but per-type
   policy keys were effectively local-only.
@@ -1003,7 +1003,7 @@ developer documentation.
 - Fixed documentation drift around registry helpers, plugin identity guidance, command filtering,
   machine-output identity fields, and public mapping-based API overlays.
 
-### Documentation — 1.0.0a12
+### Documentation - 1.0.0a12
 
 - Updated README with:
   - a public `api.probe()` usage example
@@ -1038,7 +1038,7 @@ developer documentation.
 - Updated roadmap status to reflect completion of the public probe API, resolution-diagnostics
   boundary freeze and qualified/local file type identifier semantics freeze.
 
-### Notes — 1.0.0a12
+### Notes - 1.0.0a12
 
 - `topmark.api.probe()` is now considered part of the stable 1.x public API contract.
 - Probe remains read-only and does not perform header inspection, comparison, planning, patching, or
@@ -1147,7 +1147,7 @@ milestones from earlier alphas.
 
 ______________________________________________________________________
 
-## [1.0.0a10] – 2026-05-04
+## [1.0.0a10] - 2026-05-04
 
 This tenth **1.0 alpha release** finalizes TopMark’s **CLI exit-code contract**, tightens the
 `--quiet` / verbosity surface, and completes the file-resolution diagnostics model for 1.0.
@@ -1216,7 +1216,7 @@ explainability milestones from earlier alphas.
     - non-fatal diagnostics for `check` / `strip`
     - semantic resolution outcomes for `probe` (`UNSUPPORTED_FILE_TYPE (69)`)
 
-### Highlights — 1.0.0a10
+### Highlights - 1.0.0a10
 
 - Finalized CLI `--quiet` / verbosity contract for pure informational commands
 - Finalized CLI exit-code contract for 1.0
@@ -1226,7 +1226,7 @@ explainability milestones from earlier alphas.
 - Completed probe/check/strip parity for filesystem and resolution errors
 - Fully aligned tests, CLI behavior, and documentation
 
-### Added — 1.0.0a10
+### Added - 1.0.0a10
 
 - **File resolution diagnostics**
 
@@ -1262,7 +1262,7 @@ explainability milestones from earlier alphas.
     - mixed-result exit-code priority
   - Introduced `pytest.mark.exit_code` and centralized assertion helpers
 
-### Changed — 1.0.0a10
+### Changed - 1.0.0a10
 
 - **CLI quiet/verbosity behavior**
 
@@ -1330,7 +1330,7 @@ explainability milestones from earlier alphas.
     - remove overlapping quiet-behavior tests for version/config commands
     - align logging flag tests with commands that support quiet
 
-### Fixed — 1.0.0a10
+### Fixed - 1.0.0a10
 
 - **Missing input handling**
 
@@ -1358,7 +1358,7 @@ explainability milestones from earlier alphas.
   - Fixed the generated `config defaults` documentation page incorrectly showing `config init`
     output.
 
-### Notes — 1.0.0a10
+### Notes - 1.0.0a10
 
 - The **CLI exit-code contract and `--quiet` / verbosity surface are now finalized and considered
   stable for 1.0**.
@@ -1373,7 +1373,7 @@ explainability milestones from earlier alphas.
 
 ______________________________________________________________________
 
-## [1.0.0a9] – 2026-04-28
+## [1.0.0a9] - 2026-04-28
 
 This ninth **1.0 alpha release** finalizes TopMark’s **line-ending support contract** for 1.0.
 
@@ -1381,7 +1381,7 @@ It audits and freezes how the pipeline detects, preserves, and rejects newline s
 that TopMark supports only standard physical newline sequences while tolerating nonstandard Unicode
 separators as ordinary content characters.
 
-### Highlights — 1.0.0a9
+### Highlights - 1.0.0a9
 
 - Froze the 1.0 line-ending support contract
 - Standardized newline detection around LF, CRLF, and CR only
@@ -1389,7 +1389,7 @@ separators as ordinary content characters.
 - Strengthened reader, sniffer, XML safety, and property-based tests
 - Documented that newline behavior is global and not configurable by policy for 1.0
 
-### Added — 1.0.0a9
+### Added - 1.0.0a9
 
 - **Pipeline / newline contract**
 
@@ -1406,7 +1406,7 @@ separators as ordinary content characters.
   - Added XML processor coverage for conservative idempotence skips near unsupported separators.
   - Updated property-based tests to generate only standard newline styles.
 
-### Changed — 1.0.0a9
+### Changed - 1.0.0a9
 
 - **Pipeline behavior**
 
@@ -1432,7 +1432,7 @@ separators as ordinary content characters.
   - Clarified that no newline-related policy surface is introduced for 1.0.
   - Updated roadmap status to mark the line-ending support audit as completed.
 
-### Fixed — 1.0.0a9
+### Fixed - 1.0.0a9
 
 - **Property-test overreach**
 
@@ -1444,7 +1444,7 @@ separators as ordinary content characters.
   - Ensured reader and sniffer behavior agree on which newline styles are recognized.
   - Reduced risk of accidental future expansion of newline semantics through tests or regex changes.
 
-### Notes — 1.0.0a9
+### Notes - 1.0.0a9
 
 - TopMark’s supported physical newline styles for 1.0 are:
   - LF (`\n`)
@@ -1456,7 +1456,7 @@ separators as ordinary content characters.
 
 ______________________________________________________________________
 
-## [1.0.0a8] – 2026-04-28
+## [1.0.0a8] - 2026-04-28
 
 This eighth **1.0 alpha release** refines the filtered-input diagnostics introduced in `1.0.0a7` by
 distinguishing **path-filtered** inputs from **file-type-filtered** inputs.
@@ -1479,7 +1479,7 @@ with stable, machine-friendly reason categories.
 - Consumers that assumed only `excluded_by_discovery_filter` for filtered probe results must accept
   the refined reason values.
 
-### Highlights — 1.0.0a8
+### Highlights - 1.0.0a8
 
 - Refined filtered-input reasons for `topmark probe`
 - Distinguished path filters from file-type filters
@@ -1487,7 +1487,7 @@ with stable, machine-friendly reason categories.
 - Updated TEXT, JSON, and NDJSON tests
 - Aligned probe, filtering, machine-output, API, README, and roadmap documentation
 
-### Added — 1.0.0a8
+### Added - 1.0.0a8
 
 - **Refined filtered probe reasons**
 
@@ -1506,7 +1506,7 @@ with stable, machine-friendly reason categories.
     - generic fallback filtering
   - Updated CLI human-output and machine-output tests for refined reason values.
 
-### Changed — 1.0.0a8
+### Changed - 1.0.0a8
 
 - **Probe behavior**
 
@@ -1521,7 +1521,7 @@ with stable, machine-friendly reason categories.
   - Updated resolution, filtering, API, README, and roadmap documentation.
   - Clarified that exact filter pattern/source attribution remains out of scope.
 
-### Notes — 1.0.0a8
+### Notes - 1.0.0a8
 
 - This alpha refines the `1.0.0a7` filtered-input probe contract.
 - `topmark probe` still reports only explicitly requested filtered inputs.
@@ -1530,7 +1530,7 @@ with stable, machine-friendly reason categories.
 
 ______________________________________________________________________
 
-## [1.0.0a7] – 2026-04-28
+## [1.0.0a7] - 2026-04-28
 
 This seventh **1.0 alpha release** completes the `probe` diagnostics surface by explaining
 **explicit inputs filtered during discovery** before file-type probing begins.
@@ -1557,7 +1557,7 @@ TEXT, Markdown, JSON, and NDJSON output.
 - `topmark probe` returns `UNSUPPORTED_FILE_TYPE` (69) when one or more explicit inputs are filtered
   before probing, because those paths did not resolve to a supported file type and processor.
 
-### Highlights — 1.0.0a7
+### Highlights - 1.0.0a7
 
 - Added discovery-level explainability for explicitly filtered inputs
 - Completed the `probe` diagnostics model across discovery and resolution
@@ -1566,7 +1566,7 @@ TEXT, Markdown, JSON, and NDJSON output.
 - Strengthened unit and CLI coverage for filtered probe inputs
 - Aligned user and developer documentation with the updated probe contract
 
-### Added — 1.0.0a7
+### Added - 1.0.0a7
 
 - **Discovery-level probe model**
 
@@ -1602,7 +1602,7 @@ TEXT, Markdown, JSON, and NDJSON output.
   - Added path-preservation assertions for filtered explicit inputs.
   - Added resolver-level discovery tests for the new discovery explanation helper.
 
-### Changed — 1.0.0a7
+### Changed - 1.0.0a7
 
 - **Probe behavior**
 
@@ -1645,7 +1645,7 @@ TEXT, Markdown, JSON, and NDJSON output.
     inputs.
   - Updated README and docs index with filtered-input probe examples.
 
-### Fixed — 1.0.0a7
+### Fixed - 1.0.0a7
 
 - **Probe explainability gap**
 
@@ -1660,7 +1660,7 @@ TEXT, Markdown, JSON, and NDJSON output.
   - Improved docstrings and inline comments in probe, pipeline, discovery, and machine-output code
     paths.
 
-### Notes — 1.0.0a7
+### Notes - 1.0.0a7
 
 - `topmark probe` now covers both:
   - discovery-level explanations for explicitly filtered inputs
@@ -1673,7 +1673,7 @@ TEXT, Markdown, JSON, and NDJSON output.
 
 ______________________________________________________________________
 
-## [1.0.0a6] – 2026-04-28
+## [1.0.0a6] - 2026-04-28
 
 This sixth **1.0 alpha release** focuses on **finalizing the resolution contract** and introducing
 full **resolution explainability** via the new `probe` command and probe-backed pipeline model.
@@ -1701,7 +1701,7 @@ resolution behavior across CLI, pipeline, API, documentation, and machine format
   - pipeline resolution derives from `ResolutionProbeResult`
   - no parallel file-type / binding resolution path remains
 
-### Highlights — 1.0.0a6
+### Highlights - 1.0.0a6
 
 - Introduced **resolution explainability** via `topmark probe`
 - Unified resolution across CLI, pipeline, and API using a shared **probe result** model
@@ -1710,7 +1710,7 @@ resolution behavior across CLI, pipeline, API, documentation, and machine format
 - Added full **machine-output support** for probe diagnostics (JSON + NDJSON)
 - Strengthened test coverage across resolution, pipeline, CLI, and machine formats
 
-### Added — 1.0.0a6
+### Added - 1.0.0a6
 
 - **Probe command (`topmark probe`)**
 
@@ -1762,7 +1762,7 @@ resolution behavior across CLI, pipeline, API, documentation, and machine format
     - NDJSON record shape
     - regression coverage for probe record wrapping
 
-### Changed — 1.0.0a6
+### Changed - 1.0.0a6
 
 - **Resolution model**
 
@@ -1804,7 +1804,7 @@ resolution behavior across CLI, pipeline, API, documentation, and machine format
   - Roadmap updated to mark resolution explainability as complete and registry query/filter commands
     as deferred
 
-### Removed — 1.0.0a6
+### Removed - 1.0.0a6
 
 - Legacy non-probe resolution helpers:
   - `resolve_file_type_for_path()`
@@ -1812,7 +1812,7 @@ resolution behavior across CLI, pipeline, API, documentation, and machine format
   - `ResolvedBinding`
 - Redundant file-type / processor resolution paths outside the probe-backed model
 
-### Fixed — 1.0.0a6
+### Fixed - 1.0.0a6
 
 - **NDJSON probe output**
 
@@ -1825,7 +1825,7 @@ resolution behavior across CLI, pipeline, API, documentation, and machine format
   - Preserved header-unsupported precedence for `skip_processing=True` file types
   - Ensured deterministic tie-break behavior is consistently applied and exposed
 
-### Notes — 1.0.0a6
+### Notes - 1.0.0a6
 
 - The **resolution contract is now finalized and considered stable for 1.0**.
 - `probe_resolution_for_path()` is the canonical path-based resolution surface.
@@ -1837,7 +1837,7 @@ resolution behavior across CLI, pipeline, API, documentation, and machine format
 
 ______________________________________________________________________
 
-## [1.0.0a5] – 2026-04-27
+## [1.0.0a5] - 2026-04-27
 
 This fifth **1.0 alpha release** focuses on **finalizing the CLI output contract and human-output
 semantics** across TEXT, Markdown, and machine formats.
@@ -1855,7 +1855,7 @@ comprehensive tests and fully aligned documentation.
 - TopMark now requires `pathspec>=1.1.0,<1.2.0`. Environments pinning older `pathspec` versions must
   update their constraints.
 
-### Highlights — 1.0.0a5
+### Highlights - 1.0.0a5
 
 - Finalized and enforced the **TEXT vs Markdown vs machine output contract**
 - Introduced **typed CLI runtime state** and removed untyped context usage
@@ -1864,7 +1864,7 @@ comprehensive tests and fully aligned documentation.
   commands
 - Fully aligned CLI, presentation layer, and documentation ahead of the 1.0 freeze
 
-### Added — 1.0.0a5
+### Added - 1.0.0a5
 
 - **CLI / human-output tests**
 
@@ -1884,7 +1884,7 @@ comprehensive tests and fully aligned documentation.
     - detailed output at higher verbosity levels
     - consistent behavior across formats
 
-### Changed — 1.0.0a5
+### Changed - 1.0.0a5
 
 - **CLI output contract**
 
@@ -1946,7 +1946,7 @@ comprehensive tests and fully aligned documentation.
   - TopMark now requires the `pathspec 1.1.x` series; environments pinning older `pathspec` versions
     must update their constraints.
 
-### Fixed — 1.0.0a5
+### Fixed - 1.0.0a5
 
 - **Version command output**
 
@@ -1959,7 +1959,7 @@ comprehensive tests and fully aligned documentation.
   - Resolved inconsistencies between TEXT and Markdown summary/detail behavior
   - Ensured consistent compact vs detailed output across verbosity levels
 
-### Notes — 1.0.0a5
+### Notes - 1.0.0a5
 
 - The **CLI output contract is now finalized and considered stable for 1.0**.
 - TEXT, Markdown, and machine outputs now have **clearly defined and enforced roles**.
@@ -1970,7 +1970,7 @@ comprehensive tests and fully aligned documentation.
 
 ______________________________________________________________________
 
-## [1.0.0a4] – 2026-04-22
+## [1.0.0a4] - 2026-04-22
 
 This fourth **1.0 alpha release** focuses on **finalizing the runtime dependency model** for
 reliable execution in isolated environments.
@@ -1979,13 +1979,13 @@ It follows `1.0.0a3` and addresses an additional implicit dependency discovered 
 usage, while also introducing dependency-audit configuration to reduce the risk of further
 dependency drift.
 
-### Highlights — 1.0.0a4
+### Highlights - 1.0.0a4
 
 - Completed promotion of implicit runtime dependencies to explicit core dependencies
 - Added dependency-audit configuration to help prevent further dependency drift
 - Further improved reliability in pre-commit, CI, and clean environments
 
-### Changed — 1.0.0a4
+### Changed - 1.0.0a4
 
 - **Dependencies / packaging**
 
@@ -1996,7 +1996,7 @@ dependency drift.
   - Added a `deptry` configuration block in `pyproject.toml` so dependency-audit checks model the
     development/documentation optional-dependency groups explicitly.
 
-### Fixed — 1.0.0a4
+### Fixed - 1.0.0a4
 
 - **Runtime import failure in isolated environments**
 
@@ -2005,7 +2005,7 @@ dependency drift.
     - fresh virtual environments
     - minimal CI environments
 
-### Notes — 1.0.0a4
+### Notes - 1.0.0a4
 
 - This release continues the cleanup of **implicit runtime dependencies** discovered during alpha
   testing.
@@ -2015,7 +2015,7 @@ dependency drift.
 
 ______________________________________________________________________
 
-## [1.0.0a3] – 2026-04-22
+## [1.0.0a3] - 2026-04-22
 
 This third **1.0 alpha release** focuses on **packaging correctness, machine-output finalization,
 and documentation alignment**.
@@ -2027,7 +2027,7 @@ ahead of the 1.0 release.
 This release completes the machine-output track and introduces important packaging fixes discovered
 during real-world usage.
 
-### Highlights — 1.0.0a3
+### Highlights - 1.0.0a3
 
 - Corrected runtime dependency model for reliable execution in isolated environments
 - Finalized registry machine-output contract (JSON + NDJSON)
@@ -2035,7 +2035,7 @@ during real-world usage.
 - Fully aligned machine-output documentation and roadmap with frozen 1.0 contract
 - Introduced markdownlint integration for documentation quality
 
-### Added — 1.0.0a3
+### Added - 1.0.0a3
 
 - **Registry machine-output tests**
 
@@ -2067,7 +2067,7 @@ during real-world usage.
   - Added `markdownlint-cli2` integration via pre-commit
   - Introduced `.markdownlint.jsonc` for documentation consistency
 
-### Changed — 1.0.0a3
+### Changed - 1.0.0a3
 
 - **Dependencies / packaging**
 
@@ -2109,7 +2109,7 @@ during real-world usage.
     - reflect contract freeze
     - narrow remaining work to CLI/human-output
 
-### Fixed — 1.0.0a3
+### Fixed - 1.0.0a3
 
 - **Runtime import failure in isolated environments**
 
@@ -2124,7 +2124,7 @@ during real-world usage.
   - Fixed asymmetries between filetypes, processors, and bindings outputs
   - Corrected JSON structure mismatches with documented contract
 
-### Notes — 1.0.0a3
+### Notes - 1.0.0a3
 
 - Machine output is now **fully finalized, tested, and documented** for 1.0.
 - The runtime dependency model is now **explicit and reliable across environments**.
@@ -2136,7 +2136,7 @@ during real-world usage.
 
 ______________________________________________________________________
 
-## [1.0.0a2] – 2026-04-21
+## [1.0.0a2] - 2026-04-21
 
 This second **1.0 alpha release** finalizes the internal configuration-validation model, strengthens
 machine-output and test coverage, and hardens the release workflow.
@@ -2152,7 +2152,7 @@ The focus of `1.0.0a2` is **internal contract completion and release-path reliab
 This alpha continues the transition from large-scale refactoring to **final contract validation
 before 1.0**.
 
-### Highlights — 1.0.0a2
+### Highlights - 1.0.0a2
 
 - Staged validation logs as the single internal representation of config diagnostics
 - Removal of duplicated flattened diagnostics state from config models
@@ -2163,7 +2163,7 @@ before 1.0**.
 - Hardened artifact-based release workflow with strict tag preflight rules
 - Fully aligned documentation and roadmap for 1.0 contract freeze
 
-### Added — 1.0.0a2
+### Added - 1.0.0a2
 
 - **Configuration / validation**
 
@@ -2190,7 +2190,7 @@ before 1.0**.
   - Added a native built-in `jsonc` file type for `.jsonc` extension files.
   - Renamed the former content-detected `.json` JSONC variant from `jsonc` to `json-as-jsonc`.
 
-### Changed — 1.0.0a2
+### Changed - 1.0.0a2
 
 - **Configuration / validation model**
 
@@ -2231,13 +2231,13 @@ before 1.0**.
   - Processor-path resolution and tests now distinguish native `.jsonc` handling from ambiguous
     `.json` files detected as JSONC by content.
 
-### Removed — 1.0.0a2
+### Removed - 1.0.0a2
 
 - Stored flattened diagnostics fields from configuration models
 - Redundant synchronization logic between staged and flattened diagnostics
 - Legacy reliance on flattened diagnostics as internal state
 
-### Fixed — 1.0.0a2
+### Fixed - 1.0.0a2
 
 - Consistency of config-validation behavior across CLI, API, and machine-output paths
 - JSONC handling for real `.jsonc` files, which could previously be blocked by JSON-promotion logic
@@ -2245,7 +2245,7 @@ before 1.0**.
 - Release workflow ambiguity when multiple tags pointed to the same commit
 - Documentation inconsistencies around validation behavior and strictness semantics
 
-### Notes — 1.0.0a2
+### Notes - 1.0.0a2
 
 - The **staged validation model is now complete internally** and considered stable for 1.0.
 - The **flattened diagnostics contract remains the official 1.0 public surface**.
@@ -2258,7 +2258,7 @@ contract freeze, coverage completion, and selected feature decisions (notably in
 
 ______________________________________________________________________
 
-## [1.0.0a1] – 2026-04-18
+## [1.0.0a1] - 2026-04-18
 
 This first **1.0 alpha release** consolidates the large pre-1.0 refactor series into a coherent
 release candidate for wider testing. It introduces major architectural cleanup across the registry,
@@ -2362,7 +2362,7 @@ the final 1.0 release.
     preferred form for new releases, while legacy dashed prerelease tags remain supported for
     backward compatibility.
 
-### Highlights — 1.0.0a1
+### Highlights - 1.0.0a1
 
 - Explicit, namespace-aware registry architecture with canonical qualified identities
 - Shared resolution layer for file discovery and file-type binding resolution
@@ -2373,7 +2373,7 @@ the final 1.0 release.
 - Git-tag-driven SCM versioning via `setuptools-scm`
 - Broad documentation alignment across contributor, CI, machine-output, and command-reference pages
 
-### Added — 1.0.0a1
+### Added - 1.0.0a1
 
 - **Registry & resolution**
 
@@ -2408,7 +2408,7 @@ the final 1.0 release.
   - Artifact-based release pipeline using GitHub Actions (`workflow_run`) with CI-produced artifacts
     (`dist/` + release metadata) consumed by the release workflow
 
-### Changed — 1.0.0a1
+### Changed - 1.0.0a1
 
 - **Registry architecture**
 
@@ -2455,7 +2455,7 @@ the final 1.0 release.
   - Release orchestration is now split into explicit preflight/details/publish stages, with a strict
     separation between build (CI) and publish (release workflow)
 
-### Removed — 1.0.0a1
+### Removed - 1.0.0a1
 
 - Legacy built-in processor bootstrap / decorator registration path
 - `topmark.processors.bootstrap`
@@ -2466,7 +2466,7 @@ the final 1.0 release.
 - Static package version maintenance in `pyproject.toml`
 - Legacy CLI/machine-output construction paths that mixed rendering, serialization, and console I/O
 
-### Fixed — 1.0.0a1
+### Fixed - 1.0.0a1
 
 - Namespace-aware configured file-type filtering in file-input resolution
 - Resolver behavior when include/exclude file type collections are empty
@@ -2481,7 +2481,7 @@ the final 1.0 release.
   idempotent and understandable
 - Built-site docs/linkcheck reliability in CI and release workflows
 
-### Notes — 1.0.0a1
+### Notes - 1.0.0a1
 
 - This is the **first 1.0 alpha release**, intended to validate the new architecture and observable
   contracts before 1.0 final.
@@ -2498,12 +2498,12 @@ the final 1.0 release.
 
 ______________________________________________________________________
 
-## [0.11.1] – 2026-01-18
+## [0.11.1] - 2026-01-18
 
 This patch release focuses exclusively on **developer tooling, CI reliability, and release
 automation**. There are **no user-facing or runtime behavior changes** relative to 0.11.0.
 
-### Changed — 0.11.1
+### Changed - 0.11.1
 
 - **CI / developer automation migrated from tox to nox (uv-backed)**
 
@@ -2533,7 +2533,7 @@ automation**. There are **no user-facing or runtime behavior changes** relative 
   - Pre-releases (`-rc`, `-a`, `-b`) automatically publish to **TestPyPI**; finals publish to
     **PyPI**.
 
-### Fixed — 0.11.1
+### Fixed - 0.11.1
 
 - **Nox bootstrap robustness on Python < 3.11**
 
@@ -2545,7 +2545,7 @@ automation**. There are **no user-facing or runtime behavior changes** relative 
     - Happens at **nox import/bootstrap time**
     - Relies only on tooling dependencies, not TopMark runtime dependencies
 
-### Notes — 0.11.1
+### Notes - 0.11.1
 
 - This release **does not change TopMark’s runtime behavior, public API, or CLI output**.
 - The migration affects **developers and CI only**.
@@ -2553,7 +2553,7 @@ automation**. There are **no user-facing or runtime behavior changes** relative 
 
 ______________________________________________________________________
 
-## [0.11.0] – 2026-01-15
+## [0.11.0] - 2026-01-15
 
 This release introduces a set of **internal architectural improvements** that strengthen policy
 correctness, STDIN handling, and CLI/API parity. While user-facing behavior remains compatible with
@@ -2579,7 +2579,7 @@ TopMark internals.
   > **Note:** This affects **internal and test code only**. The public API (`topmark.api.check`,
   > `topmark.api.strip`, CLI commands) remains source-compatible.
 
-### Changed — 0.11.0
+### Changed - 0.11.0
 
 - **Policy evaluation**
 
@@ -2628,19 +2628,19 @@ TopMark internals.
   - Aligned API runtime behavior with CLI behavior by applying the same config discovery,
     normalization, and policy overlays.
 
-### Fixed — 0.11.0
+### Fixed - 0.11.0
 
 - **CLI guidance correctness**
   - Made `check` and `strip` per-file guidance policy-aware and feasibility-aware.
   - Prevented misleading “run --apply …” suggestions when policy or feasibility blocks changes,
     especially for empty files and strip-only scenarios.
 
-### Tests — 0.11.0
+### Internal - 0.11.0
 
 - Updated pipeline and API tests to bootstrap contexts via `PolicyRegistry`.
 - Added shared helpers to keep test setup DRY and consistent across pipeline, API, and CLI tests.
 
-### Notes — 0.11.0
+### Notes - 0.11.0
 
 - There are **no user-facing breaking changes** relative to 0.10.x.
 - The public API surface remains stable, but **internal consumers and test harnesses must be
@@ -2648,14 +2648,14 @@ TopMark internals.
 
 ______________________________________________________________________
 
-## [0.10.1] – 2025-11-20
+## [0.10.1] - 2025-11-20
 
 This patch release republishes the intended `0.10.0` release with two commits that were accidentally
 omitted from the PyPI artifact.\
 There are **no functional code changes** relative to `0.10.0`; this release only corrects packaging
 and metadata.
 
-### Changed — 0.10.1
+### Changed - 0.10.1
 
 - **Tooling & dependency maintenance**
 
@@ -2672,14 +2672,14 @@ and metadata.
   - Added the `0.10.0` CHANGELOG entry that was missing in the PyPI package.
   - Set the project version to `0.10.0` in `pyproject.toml` for the corrected build.
 
-### Notes — 0.10.1
+### Notes - 0.10.1
 
 This release contains **only packaging, metadata, and dependency housekeeping**.\
 All functionality, schemas, and breaking changes remain exactly as described in **0.10.0**.
 
 ______________________________________________________________________
 
-## [0.10.0] – 2025-11-20
+## [0.10.0] - 2025-11-20
 
 This release introduces **major pipeline and CLI changes**, a full **machine-output schema
 redesign**, a refactored **ProcessingContext**, and multiple BREAKING CHANGES. It also includes
@@ -2731,7 +2731,7 @@ substantial internal cleanup, dependency updates, and correctness fixes.
     - Legacy updater/stripper debug modes.
   - These commands now fail fast with a clear error.
 
-### Highlights — 0.10.0
+### Highlights - 0.10.0
 
 - Clean separation of pipeline responsibilities (context, policy, status).
 - Unified machine-readable output schema supporting stable integrations.
@@ -2741,7 +2741,7 @@ substantial internal cleanup, dependency updates, and correctness fixes.
 - Full modernization of imports, dependency ranges, and development tooling.
 - Large suite of correctness fixes across header bounds, scanner, renderer, patcher, and writer.
 
-### Added — 0.10.0
+### Added - 0.10.0
 
 - New `pipeline/context/` package with:
   - `model.py` (ProcessingContext core),
@@ -2752,7 +2752,7 @@ substantial internal cleanup, dependency updates, and correctness fixes.
 - Linting policy section in `CONTRIBUTING.md`.
 - Support for GitHub-Flavored Markdown tables via `mdformat-gfm`.
 
-### Changed — 0.10.0
+### Changed - 0.10.0
 
 - **`ProcessingContext`:**
 
@@ -2788,14 +2788,14 @@ substantial internal cleanup, dependency updates, and correctness fixes.
   - All requirements files regenerated via pip-tools.
   - Switched from `mdformat-tables` → `mdformat-gfm`.
 
-### Removed — 0.10.0
+### Removed - 0.10.0
 
 - `ReasonHint` (unused).
 - Legacy updater header code paths.
 - Deprecated CLI commands and code paths for pre-0.9 behaviors.
 - Legacy summary and bucket rendering pipeline.
 
-### Fixed — 0.10.0
+### Fixed - 0.10.0
 
 - Correct final newline + BOM + shebang interactions.
 - Accurate indentation handling for Markdown/HTML/XML processors.
@@ -2805,7 +2805,7 @@ substantial internal cleanup, dependency updates, and correctness fixes.
 - Corrected normalization for multi-line headers with mixed whitespace.
 - Better FileType detection for HTML/Markdown block-comments.
 
-### Notes — 0.10.0
+### Notes - 0.10.0
 
 `topmark.api` remains *public and stable*, but all **machine-readable formats** and **internal
 pipeline interfaces** changed and require downstream updates. Integrators consuming NDJSON/JSON must
@@ -2815,7 +2815,7 @@ ______________________________________________________________________
 
 ## [0.9.1] - 2025-10-07
 
-### Highlights — 0.9.1
+### Highlights - 0.9.1
 
 - **Python 3.14 support (prerelease)** — test matrix, classifiers, and tooling updated for
   3.10–3.14.
@@ -2825,7 +2825,7 @@ ______________________________________________________________________
 - **Robust idempotence & XML/HTML guardrails** — Safer insertion rules and whitespace/newline
   preservation.
 
-### Added — 0.9.1
+### Added - 0.9.1
 
 - **Testing & quality**
   - Hypothesis-based **property tests** for insert→strip→insert idempotence and edge cases across
@@ -2835,7 +2835,7 @@ ______________________________________________________________________
 - **Python versions**
   - CI matrix extended to **3.14** (rc/dev as needed) with `allow-prereleases: true`.
 
-### Changed — 0.9.1
+### Changed - 0.9.1
 
 - **Developer workflow**
   - **Makefile overhaul**: now a thin wrapper that delegates to tox envs:
@@ -2852,7 +2852,7 @@ ______________________________________________________________________
 - **XML/HTML insertion policy**
   - Assign XML insert checker to HTML where appropriate; add reflow/idempotence safety checks.
 
-### Fixed — 0.9.1
+### Fixed - 0.9.1
 
 - **Idempotence & formatting drift**
   - Preserve user whitespace; avoid collapsing whitespace-only lines (e.g., `" \n"` vs `"\n"`).
@@ -2863,7 +2863,7 @@ ______________________________________________________________________
   - Skip reflow-unsafe XML/HTML cases (e.g., single-line prolog/body, NEL/LS/PS scenarios).
   - Mixed line endings are skipped by the reader to avoid non-idempotent outcomes.
 
-### CI / Tooling — 0.9.1
+### Internal - 0.9.1
 
 - **CI (`ci.yml`)**
   - **Tox-first** for lint (`format-check`, `lint`, `docstring-links`), docs (`docs`), tests
@@ -2879,7 +2879,7 @@ ______________________________________________________________________
     match the tox/Makefile workflow.
   - New CI/release workflow docs; fix broken links to workflow YAMLs.
 
-### Developer Notes — 0.9.1
+### Notes - 0.9.1
 
 - We’ve moved from pure **venv** workflows (`.venv`, `.rtd`) to a **tox-based** model.
   - Please **delete** any old `.venv` and `.rtd` directories.
@@ -2897,7 +2897,11 @@ ______________________________________________________________________
 
 ## [0.9.0] - 2025-10-06
 
-### Highlights — 0.9.0
+TopMark 0.9.0 consolidates its configuration system, aligns CLI and API behavior, and modernizes the
+documentation pipeline. Config resolution, discovery anchors, and formatting flags now work
+predictably across CLI, API, and generated docs.
+
+### Highlights - 0.9.0
 
 - **Configuration resolution finalized** — TopMark now fully supports layered config discovery with
   deterministic merge precedence, explicit anchor semantics, and path-aware pattern resolution.
@@ -2911,7 +2915,7 @@ ______________________________________________________________________
   CWD-only behavior may see changes in which configuration takes effect.\
   See [**Configuration → Discovery & Precedence**](docs/configuration/discovery.md).
 
-### Added — 0.9.0
+### Added - 0.9.0
 
 - **Configuration system**
   - Complete implementation of **layered discovery**:
@@ -2938,7 +2942,7 @@ ______________________________________________________________________
   - Updated `mkdocs.yml` plugin chain (include-markdown, simple-hooks, md_in_html, gen-files).
   - Added dynamic version display in docs (via `pre_build` hook).
 
-### Changed — 0.9.0
+### Changed - 0.9.0
 
 - **CLI**
   - `--align-fields` is now **tri-state** (`True`, `False`, `None`)—when omitted, TOML defaults are
@@ -2958,7 +2962,7 @@ ______________________________________________________________________
 - **Formatting**
   - Reflowed all documentation via `mdformat` (100-column wrap, normalized lists and spacing).
 
-### Fixed — 0.9.0
+### Fixed - 0.9.0
 
 - **Config precedence bug** — Same-directory order (`pyproject.toml` before `topmark.toml`) was
   previously inverted; now fixed via per-directory grouping.
@@ -2972,7 +2976,7 @@ ______________________________________________________________________
 - **Version token substitution** — The documentation now correctly substitutes `%%TOPMARK_VERSION%%`
   via pre-build hook.
 
-### Docs / Tooling — 0.9.0
+### Documentation - 0.9.0
 
 - Overhauled `pyproject.toml` `[project.optional-dependencies].docs` section to include all MkDocs
   plugins.
@@ -2993,22 +2997,16 @@ ______________________________________________________________________
 None (pre-1.0).\
 All changes are backward-compatible with v0.8.x configurations and APIs.
 
-### Summary — 0.9.0
-
-TopMark 0.9.0 consolidates its configuration system, aligns CLI and API behavior, and modernizes the
-documentation pipeline. Config resolution, discovery anchors, and formatting flags now work
-predictably across CLI, API, and generated docs.
-
 ______________________________________________________________________
 
 ## [0.8.1] - 2025-09-26
 
-### Highlights — 0.8.1
+### Highlights - 0.8.1
 
 - **XML re-apply fix**: prevent double-wrapped `<!-- … -->` blocks by anchoring bounds via character
   offset for XML/HTML processors.
 
-### Added — 0.8.1
+### Added - 0.8.1
 
 - **Developer validation (opt-in)**: set `TOPMARK_VALIDATE=1` to validate:
   - Processor ↔ FileType registry integrity.
@@ -3017,7 +3015,7 @@ ______________________________________________________________________
   - Placement strategies (line-based vs char-offset) documented in `base.py` / `xml.py`.
   - New page `docs/ci/dev-validation.md`; CONTRIBUTING updated.
 
-### Changed — 0.8.1
+### Changed - 0.8.1
 
 - **Processor refactor**:
   - Introduce mixins: `LineCommentMixin`, `BlockCommentMixin`, `XmlPositionalMixin`.
@@ -3027,12 +3025,12 @@ ______________________________________________________________________
 - **File types**:
   - Instances module made lazy, plugin-aware, and type-safe; detectors split out (JSONC).
 
-### Fixed — 0.8.1
+### Fixed - 0.8.1
 
 - **XML idempotency**: re-apply no longer nests comment fences.
 - **Type checking & mypy**: generator return, entrypoint discovery, and strict typing cleanups.
 
-### CI / Tooling — 0.8.1
+### Internal - 0.8.1
 
 - **New CI job**: “Dev validation” runs only tests marked `dev_validation` with
   `TOPMARK_VALIDATE=1`.
@@ -3042,14 +3040,14 @@ ______________________________________________________________________
 
 ## [0.8.0] - 2025-09-24
 
-### Highlights — 0.8.0
+### Highlights - 0.8.0
 
 - **New C-style block header support**: introduce `CBlockHeaderProcessor` and register it for **CSS,
   SCSS, Less, Stylus, SQL, and Solidity**.
 - **Python stubs**: `.pyi` now use `PoundHeaderProcessor` (`#`-style), with sensible defaults (no
   shebang).
 
-### Added — 0.8.0
+### Added - 0.8.0
 
 - **Processors**
   - `CBlockHeaderProcessor` (C-style `/* … */` with per-line `*`) including tolerant directive
@@ -3063,7 +3061,7 @@ ______________________________________________________________________
     idempotency, CRLF preservation, strip (auto/explicit span), and parametric checks across
     registered extensions.
 
-### Changed — 0.8.0
+### Changed - 0.8.0
 
 - **Typing hardening (non-functional)**
   - Widespread strict typing across `pipeline/`, `cli/` & `cli_shared/`, remaining `src/` modules,
@@ -3072,7 +3070,7 @@ ______________________________________________________________________
     - Introduce `TopmarkLogger` annotations; add precise return/locals typing.
     - Minor import and hygiene cleanups for Pyright strict mode.
 
-### Fixed — 0.8.0
+### Fixed - 0.8.0
 
 - **CLI `processors` command**
   - Treat `filetypes` as dicts in `--long` + Markdown/default renderers to avoid `AttributeError`
@@ -3081,14 +3079,14 @@ ______________________________________________________________________
 - **Typing**
   - Resolve a redefinition error from an incorrectly placed annotation in types code.
 
-### Docs — 0.8.0
+### Documentation - 0.8.0
 
 - **README.md**: mention block (`/* … */`) alongside line (`#`, `//`) comment styles; add a CSS
   example.
 - **docs/usage/filetypes.md**: expand processor table with modules and registered file types; add
   `CBlockHeaderProcessor`.
 
-### Chore — 0.8.0
+### Internal - 0.8.0
 
 - Add standard TopMark headers to files in `typings/`.
 - Dev tooling: keep pre-commit/hooks in sync (see commit history for exact bumps).
@@ -3097,14 +3095,14 @@ ______________________________________________________________________
 
 ## [0.7.0] - 2025-09-23
 
-### Highlights — 0.7.0
+### Highlights - 0.7.0
 
 - **Version CLI overhaul**: `topmark version` now defaults to **PEP 440** output and supports
   multiple formats via `--format {pep440,semver,json,markdown}` (alias: `--semver`).
 - **Release hardening**: Fully revamped GitHub Actions release flow with strict gates (version/tag
   match, artifact checks, **docs must build**, TestPyPI for prereleases, PyPI for finals).
 
-### Added — 0.7.0
+### Added - 0.7.0
 
 - **CLI – `version` command**
   - `--semver` option to render a **SemVer** view while keeping **PEP 440** as the default.
@@ -3113,7 +3111,7 @@ ______________________________________________________________________
 - **Tests**
   - Expanded/parameterized tests for `version` across text/JSON/Markdown (PEP 440 vs SemVer).
 
-### Changed — 0.7.0
+### Changed - 0.7.0
 
 - **CLI output (breaking schemas; see “Breaking” below)**
   - **JSON** schema is now:
@@ -3147,30 +3145,27 @@ ______________________________________________________________________
       finals).
   - Creates a **GitHub Release** for finals using `details` outputs.
 
-### Fixed — 0.7.0
+### Fixed - 0.7.0
 
 - N/A (no user-visible fixes included in this release; tests/docs/tooling updates only).
 
-### Docs — 0.7.0
+### Documentation - 0.7.0
 
 - New & updated workflow docs:
   - `docs/ci/release-workflow.md` (RC vs final, gates, publishing).
   - `CONTRIBUTING.md` (CI expectations, local checks).
 - `README.md` and `docs/index.md` examples updated for the new `version` outputs.
 
-### Tooling / Reproducibility — 0.7.0
-
-- Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) and
-  `constraints.txt`.
-- Cache keyed on lockfiles; consistent `python -m pip` usage.
-
-### Removed — 0.7.0
+### Removed - 0.7.0
 
 - Duplicate “Build docs (strict)” step from the `lint` job.
 - Stray `topmark.toml` at repo root.
 
-### Chore — 0.7.0
+### Internal - 0.7.0
 
+- Adopt pinned lockfiles (`requirements.txt`, `requirements-dev.txt`, `requirements-docs.txt`) and
+  `constraints.txt`.
+- Cache keyed on lockfiles; consistent `python -m pip` usage.
 - Pre-commit: bump `topmark-check` hook to v0.6.2.
 - Minor `tox.ini` whitespace tidy-ups.
 
@@ -3187,21 +3182,18 @@ ______________________________________________________________________
   `**TopMark version (pep440|semver): <version>**`.\
   Update any consumers/parsers that relied on the previous key or phrasing.
 
-### Pre-Releases — 0.7.0
-
-- `0.7.0-rc1` and `0.7.0-rc2` were published to **TestPyPI** for validation; their contents are
-  fully included in this final release.
-
-### Developer Notes — 0.7.0
+### Notes - 0.7.0
 
 - For RCs: keep `pyproject.toml` at `0.7.0rcN` and tag `v0.7.0-rcN` to publish to TestPyPI.
 - For GA: bump to `0.7.0`, tag `v0.7.0`, and the workflow publishes to PyPI after docs/tests gates.
+- `0.7.0-rc1` and `0.7.0-rc2` were published to **TestPyPI** for validation; their contents are
+  fully included in this final release.
 
 ______________________________________________________________________
 
 ## [0.6.2] - 2025-09-15
 
-### Fixed — 0.6.2
+### Fixed - 0.6.2
 
 - **Docs build**: resolve Griffe parsing error by normalizing a parameter docstring format (remove
   stray space before colon) for `skip_compliant` in `topmark.api.check()` (file:
@@ -3212,7 +3204,7 @@ ______________________________________________________________________
 
 ## [0.6.1] - 2025-09-15
 
-### Added — 0.6.1
+### Added - 0.6.1
 
 - **Docstring link checker**: new `tools/check_docs_hygiene.py` to enforce reference-style object
   links and flag raw URLs in docstrings. Includes accurate line/range reporting, code-region
@@ -3220,19 +3212,19 @@ ______________________________________________________________________
 - **Makefile targets**: `docstring-links`, `links`, `links-src`, `links-all`; centralized
   `check-lychee` gate.
 
-### Changed — 0.6.1
+### Changed - 0.6.1
 
 - **MkDocs build**: enable `strict: true` and link validation to fail on broken internal links.
 - **Docstrings/x‑refs**: convert internal references to mkdocstrings+autorefs style (e.g.,
   `` [`pkg.mod.Object`][] `` or `[Text][pkg.mod.Object]`) and prefer fully‑qualified names.
 - **Docs structure**: normalize mkdocstrings blocks (minor tidy‑ups).
 
-### Fixed — 0.6.1
+### Fixed - 0.6.1
 
 - **README**: correct the “Adding & updating headers with topmark” link to
   `docs/usage/commands/check.md`.
 
-### Tooling — 0.6.1
+### Internal - 0.6.1
 
 - **Lychee integration**: adopt Lychee for link checks (local + CI); scoped pre‑commit hooks.
 - **Testing**: raise `pytest` minimum to `>=8.0` in the `test` optional dependencies.
@@ -3243,7 +3235,7 @@ ______________________________________________________________________
 
 ## [0.6.0] - 2025-09-12
 
-### Added — 0.6.0
+### Added - 0.6.0
 
 - **Public API docs**: explain configuration via mappings and why runtime uses an immutable
   `Config`. (Commit: `d778ace`)
@@ -3256,7 +3248,7 @@ ______________________________________________________________________
   - Standardize Google-style docstrings; integrate `pydoclint`.
   - Improve MkDocs + mkdocstrings rendering. (Commit: `f649731`)
 
-### Changed — 0.6.0
+### Changed - 0.6.0
 
 - **Configuration architecture**:
   - Introduce **`MutableConfig`** (internal builder) and **immutable `Config`** (runtime snapshot).
@@ -3275,32 +3267,29 @@ ______________________________________________________________________
   - Narrow typing imports; reduce unnecessary list materialization in CLI plumbing.
   - Faster imports; fewer cycles. (Commit: `adc35f9`)
 
-### Fixed — 0.6.0
+### Fixed - 0.6.0
 
 - CLI and pipeline now reflect header order deterministically (no “up-to-date” false negatives when
   order differed). (Commit: `d778ace`)
 - Type-checking and lint issues (casts, variable redefinitions, analyzer false positives) resolved
   in CLI helpers and resolver paths. (Commits: `d778ace`, `adc35f9`)
 
-### Docs — 0.6.0
+### Documentation - 0.6.0
 
 - Add **“Configuration via mappings (immutable at runtime)”** section to the public API docs and
   mirror a concise note in the `topmark.api` module docstring. (Commit: `d778ace`)
 - Normalize docstrings across the codebase; remove Sphinx roles in favor of Markdown-friendly
   mkdocstrings. (Commit: `f649731`)
 
-### Tooling — 0.6.0
+### Internal - 0.6.0
 
 - Add `pydoclint` to dev toolchain; wire into Makefile and pre-commit.
 - Reorder pre-commit hooks for faster feedback.
 - Snapshot workflow integrated into Makefile and CI-friendly checks. (Commits: `f649731`, `a584577`)
-
-### Chore — 0.6.0
-
 - Repository-wide header reformat to the new field order (no functional changes). (Commit:
   `bcac2ed`)
 
-### Notes — 0.6.0
+### Notes - 0.6.0
 
 - **No public API surface changes**: `topmark.api.check/strip` signatures unchanged.
 - `MutableConfig` is **internal** (not part of the stable API); public callers should pass a mapping
@@ -3310,14 +3299,14 @@ ______________________________________________________________________
 
 ## [0.5.1] - 2025-09-09
 
-### Fixed — 0.5.1
+### Fixed - 0.5.1
 
 - **Python 3.10/3.11 compatibility**: replace multiline f‑strings in CLI output code paths (not
   supported before Python 3.12) with concatenation/temporary variables. Affected commands:
   - `filetypes`: numbered list rendering and detail lines (description/content matcher)
   - `processors`: processor header lines and per‑filetype detail lines
 
-### Tooling — 0.5.1
+### Internal - 0.5.1
 
 - Bump project version to `0.5.1` in `pyproject.toml`.
 - Update local pre‑commit hook to use TopMark **v0.5.0**.
@@ -3326,7 +3315,7 @@ ______________________________________________________________________
 
 ## [0.5.0] - 2025-09-09
 
-### Added — 0.5.0
+### Added - 0.5.0
 
 - **Honest write statuses** across the pipeline:
   - Dry‑run ⇒ `WriteStatus.PREVIEWED`
@@ -3335,7 +3324,7 @@ ______________________________________________________________________
   - `Config.apply_changes` (tri‑state) consumed via `apply_cli_args()` and respected in updater
   - CLI and public API forward **apply** to the pipeline
 
-### Changed — 0.5.0
+### Changed - 0.5.0
 
 - **CLI & console output**
   - Decoupled program‑output verbosity from internal logging; all user output routed through
@@ -3348,12 +3337,12 @@ ______________________________________________________________________
   - Apply vs preview now consistently reflected in per‑file results (`PREVIEWED` vs terminal write
     statuses)
 
-### Fixed — 0.5.0
+### Fixed - 0.5.0
 
 - **Pre‑commit hooks**: remove redundant `--quiet` (default output is already terse) and fix its
   placement.
 
-### Docs — 0.5.0
+### Documentation - 0.5.0
 
 - Refresh CLI docs:
   - Explicit subcommands in examples; stdin examples use `topmark check - …`
@@ -3377,7 +3366,7 @@ ______________________________________________________________________
 
 ## [0.4.0] - 2025-09-08
 
-### Added — 0.4.0
+### Added - 0.4.0
 
 - **Structured diagnostics with severities** across the pipeline (`info`, `warning`, `error`).
   - New internal `DiagnosticLevel` enum and `Diagnostic` dataclass.
@@ -3391,7 +3380,7 @@ ______________________________________________________________________
 - **Console abstraction** to cleanly separate CLI user output from internal logging.
   - Console is initialized in the CLI and available via `ctx.obj["console"]`.
 
-### Changed — 0.4.0
+### Changed - 0.4.0
 
 - **Public API**: `diagnostics` in `RunResult` now returns a mapping
   `dict[str, list[PublicDiagnostic]]` instead of `dict[str, list[str]]`.
@@ -3403,13 +3392,13 @@ ______________________________________________________________________
   supports tri-state inheritance.
 - **API surface**: `PublicDiagnostic` re-exported from `topmark.api` and included in `__all__`.
 
-### Fixed — 0.4.0
+### Fixed - 0.4.0
 
 - Reader now surfaces an explicit diagnostic for empty files.
 - Minor wording/formatting improvements in `classify_outcome()` and summary output.
 - Import order cleanup in `pipelines.py`.
 
-### Docs — 0.4.0
+### Documentation - 0.4.0
 
 - Expanded inline docstrings for diagnostics, public types, and verbosity semantics.
 
@@ -3429,18 +3418,18 @@ ______________________________________________________________________
 
 ## [0.3.2] - 2025-09-07
 
-### Fixed — 0.3.2
+### Fixed - 0.3.2
 
 - **Pre-commit hooks**: update TopMark hooks to use the explicit `check` subcommand
   (`topmark check …`) instead of the removed implicit default command. This restores correct
   behavior for `topmark-check` and `topmark-apply` hooks.
 
-### Docs — 0.3.2
+### Documentation - 0.3.2
 
 - Add **API Stability** page and wire it into the MkDocs navigation (`Development → API Stability`).
 - Add a stability note/link to `docs/api/public.md` referencing the snapshot policy.
 
-### Tooling — 0.3.2
+### Internal - 0.3.2
 
 - Bump project version to `0.3.2` in `pyproject.toml`.
 
@@ -3448,7 +3437,7 @@ ______________________________________________________________________
 
 ## [0.3.1] - 2025-09-07
 
-### Fixed — 0.3.1
+### Fixed - 0.3.1
 
 - **Snapshot tests**: stabilize public API snapshot across Python 3.10–3.13 by normalizing
   constructor signatures in tests (`<enum>` for Enum subclasses, `<class>` for other classes) while
@@ -3460,7 +3449,7 @@ ______________________________________________________________________
 
 ## [0.3.0] - 2025-09-07
 
-### Added — 0.3.0
+### Added - 0.3.0
 
 - **Stable public API surface** under `topmark.api` and `topmark.registry`.
   - Functions: `check()`, `strip()`, `version()`, `get_filetype_info()`, `get_processor_info()`.
@@ -3482,7 +3471,7 @@ ______________________________________________________________________
   `--long` and `--format default|json|ndjson|markdown`). Shared Click‑free `markdown_table` helper
   for Markdown output. (Commits: `8742a46`, `ab346ed`)
 
-### Changed — 0.3.0
+### Changed - 0.3.0
 
 - **CLI refactor** to explicit subcommands and unified input planning; migrate away from custom
   `typed_*` helpers to native Click decorators. Includes: `check`, `strip`, `dump-config`,
@@ -3511,7 +3500,7 @@ ______________________________________________________________________
   `58476b9`)
 - Legacy `typed_*` Click helpers removed. (Commit: `58476b9`)
 
-### Fixed — 0.3.0
+### Fixed - 0.3.0
 
 - Correct enum comparisons for `OutputFormat` across commands. (Commit: `c815f72`)
 - Markdown rendering branches trigger consistently; format handling unified. (Commit: `8742a46`)
@@ -3522,14 +3511,14 @@ ______________________________________________________________________
 
 ## [0.2.1] - 2025-08-27
 
-### Added — 0.2.1
+### Added - 0.2.1
 
 - BOM‑aware pipeline behavior: detect BOM in reader and re‑attach in updater on all write paths.\
   (Commit: `27ad903`)
 - Newline detection utility centralised; tests and docs expanded accordingly.\
   (Commit: `27ad903`)
 
-### Changed — 0.2.1
+### Changed - 0.2.1
 
 - Comparer/renderer/updater flow consolidated; recognize formatting‑only drift as change; clarify
   responsibilities via richer docstrings.\
@@ -3537,7 +3526,7 @@ ______________________________________________________________________
 - CLI summary bucket precedence stabilized (e.g., “up‑to‑date”).\
   (Commit: `10bbf72`)
 
-### Fixed — 0.2.1
+### Fixed - 0.2.1
 
 - Strip fast‑path and BOM/newline preservation edge cases via new test coverage (matrix tests,
   inclusive spans).\
@@ -3547,19 +3536,19 @@ ______________________________________________________________________
 
 ## [0.2.0] - 2025-08-26
 
-### Added — 0.2.0
+### Added - 0.2.0
 
 - New `strip` command to remove TopMark headers (supports dry‑run/apply/summary).\
   (Commits: `c6b9df3`, `8b028d2`)
 - Pre‑commit integration docs and hooks; GitHub Actions workflow for PyPI releases.\
   (Commit: `050445a`)
 
-### Changed — 0.2.0
+### Changed - 0.2.0
 
 - CLI and pipeline improvements: comparer/patcher tweaks; context and processors updated.\
   (Commits: `c6b9df3`, `8b028d2`)
 
-### Fixed — 0.2.0
+### Fixed - 0.2.0
 
 - Initial CLI test suite for `strip`; early bug fixes discovered by tests.\
   (Commit: `8b028d2`)
@@ -3568,7 +3557,7 @@ ______________________________________________________________________
 
 ## [0.1.1] - 2025-08-25
 
-### Added — 0.1.1
+### Added - 0.1.1
 
 - Initial public repository with CLI, pipeline, processors, docs site (MkDocs), tests, and build
   tooling.\
@@ -3576,12 +3565,12 @@ ______________________________________________________________________
 - Trusted publishing workflow for PyPI and automated release notes.\
   (Commits: `6d702b4`, `0785e3c`)
 
-### Changed — 0.1.1
+### Changed - 0.1.1
 
 - Documentation passes and configuration updates (pre‑commit, pyproject, mkdocs).\
   (Commits: `399ea49`, `204a617`)
 
-### Fixed — 0.1.1
+### Fixed - 0.1.1
 
 - Early CI/publishing configuration issues.\
   (Commit: `0785e3c`)
