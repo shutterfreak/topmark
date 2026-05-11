@@ -13,12 +13,12 @@ topmark:header:end
 # Contributing to TopMark
 
 Thank you for your interest in contributing to **TopMark**!\
-This guide explains how to set up your environment, run checks, contribute code, and prepare
-releases.
+This guide explains how to set up a development environment, run validation checks, contribute code,
+and prepare releases.
 
 ______________________________________________________________________
 
-## 🧰 Prerequisites
+## Prerequisites
 
 - **Python 3.10–3.14**
 - **Git**
@@ -35,14 +35,14 @@ pyenv local 3.14.2 3.13.11 3.12.12 3.11.14 3.10.19
 
 ______________________________________________________________________
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Clone and enter the repo
 git clone https://github.com/shutterfreak/topmark.git
 cd topmark
 
-# Create local editor venv (optional for IDE/Pyright import resolution)
+# Create the local editor environment (optional but recommended)
 make venv
 make venv-sync-dev
 
@@ -54,16 +54,17 @@ make test       # tox default envs
 make pytest     # supports PYTEST_PAR="-n auto"
 ```
 
-> **Note**: `.venv` is the standard local development environment for IDE integration and
-> interactive work. It is managed with `uv` and intended for editor support (for example Pyright
-> import resolution). All automated validation, testing, and CI parity checks still run through
-> isolated `nox` environments.
+> [!NOTE] **local development environment**
+>
+> `.venv` is the standard local development environment for IDE integration and interactive work. It
+> is managed with `uv` and primarily exists for editor support and local tooling integration.
+> Automated validation and CI-parity checks still run through isolated `nox` environments.
 
 ______________________________________________________________________
 
-## 🧪 Testing
+## Testing
 
-Run the full tox test matrix:
+Run the full `nox` test matrix:
 
 ```bash
 make test
@@ -140,7 +141,7 @@ keys, accidental line-based use in XML processors).
 
 ______________________________________________________________________
 
-## 🧹 Linting and Formatting
+## Linting and Formatting
 
 TopMark enforces strict linting and consistent formatting:
 
@@ -241,7 +242,7 @@ When updating dependencies:
 
 ______________________________________________________________________
 
-## 🧠 Type Checking
+## Type Checking
 
 Run strict **Pyright** type checks via `nox`:
 
@@ -257,7 +258,7 @@ make verify
 
 ______________________________________________________________________
 
-## 📚 Documentation
+## Documentation
 
 Build or serve the docs through tox:
 
@@ -272,9 +273,19 @@ Configuration-related documentation lives under `docs/configuration/` and reflec
 MkDocs configuration lives in `mkdocs.yml`, and documentation dependencies are installed from the
 `docs` extra declared in `pyproject.toml` and resolved through `uv.lock`.
 
+The generated documentation site is available at:
+
+- <https://topmark.readthedocs.io/en/latest/>
+
+Contributor-facing and CI/CD-specific documentation includes:
+
+- `docs/contributing.md`
+- `docs/ci/`
+- `docs/dev/`
+
 ______________________________________________________________________
 
-## 🔒 API Stability
+## API Stability
 
 TopMark enforces a **stable public API** across Python 3.10–3.14.
 
@@ -292,7 +303,7 @@ source of truth for versioning via `setuptools-scm`, so there is no manual versi
 
 ______________________________________________________________________
 
-## 📦 Packaging and Releases
+## Packaging and Releases
 
 TopMark follows PEP 517/518 packaging standards and uses Git-tag-driven versions via
 `setuptools-scm`.
@@ -316,12 +327,16 @@ TopMark uses a two-stage release pipeline:
 
 This design avoids executing repository build logic in the privileged release workflow.
 
-For the detailed maintainer release process, see `docs/dev/release-process.md`. The generated
-documentation site also links this page from the development documentation navigation.
+For detailed maintainer release guidance, release architecture, prerelease handling, and
+published-artifact validation behavior, see:
+
+- `docs/dev/release-process.md`
+- `docs/ci/release-workflow.md`
+- `docs/ci/published-artifact-validation.md`
 
 ______________________________________________________________________
 
-## 🪝 Pre-commit Hooks
+## Pre-commit Hooks
 
 Pre-commit hooks are **optional but recommended**. They mirror the checks run by `make verify` and
 `make lint`.
@@ -332,7 +347,7 @@ pre-commit run --all-files
 pre-commit autoupdate
 ```
 
-Available hooks include:
+Common hooks include:
 
 - `topmark-check` — validates headers (non-destructive)
 - `topmark-apply` — updates headers (manual only)
@@ -348,11 +363,13 @@ pre-commit run topmark-apply --hook-stage manual --files path/to/file1 path/to/f
 
 ______________________________________________________________________
 
-## 💬 Commit & PR Guidelines
+## Commit and Pull Request Guidelines
 
 ### Conventional Commits
 
-Follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:
+Follow the Conventional Commits specification:
+
+- <https://www.conventionalcommits.org/>
 
 ```text
 <type>[optional scope]: <short summary>
@@ -374,7 +391,7 @@ Keep messages short (≤72 chars) and use the body to explain *why*.
 ### Pull Request Checklist
 
 - [ ] PR title follows Conventional Commits
-- [ ] Linked issue referenced
+- [ ] Related issue referenced when applicable
 - [ ] `make verify` and `make test` pass
 - [ ] Docs updated if needed
 - [ ] Public API snapshot updated if applicable
@@ -382,7 +399,7 @@ Keep messages short (≤72 chars) and use the body to explain *why*.
 
 ______________________________________________________________________
 
-## 🧾 Versioning Policy
+## Versioning Policy
 
 TopMark uses **Semantic Versioning (SemVer)** to describe compatibility intent:
 
@@ -395,7 +412,10 @@ Advanced/internal APIs may change between minor versions.
 
 ### PEP 440 and Git-tag-based versioning
 
-TopMark uses [PEP 440](https://peps.python.org/pep-0440/) version identifiers for packaging, but
+TopMark uses PEP 440 version identifiers for packaging, but
+
+- <https://peps.python.org/pep-0440/>
+
 package versions are **not** maintained manually in `pyproject.toml`.
 
 Instead, TopMark uses **Git tags as the single source of truth**:
@@ -444,9 +464,12 @@ Between tags, development builds may report SCM-derived versions such as:
 > [!NOTE] CI must succeed on the tag push, including artifact upload, before the release workflow
 > runs.
 
+For the complete maintainer release process, including prerelease flow, artifact validation, and
+recovery guidance, see `docs/dev/release-process.md`.
+
 ______________________________________________________________________
 
-## 🧭 Troubleshooting
+## Troubleshooting
 
 - **Missing tools:** run `make venv` then `make venv-sync-dev`
 - **mkdocs errors:** run `make venv-sync-all` or `make docs-serve` to ensure the docs extras are
@@ -458,4 +481,4 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-Happy coding! 🎉
+Happy coding!

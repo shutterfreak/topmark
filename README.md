@@ -28,43 +28,38 @@ formats, dry-run safety, and transparent resolution diagnostics.
 
 ______________________________________________________________________
 
-## 📚 Documentation
+## Documentation
 
 Full documentation is hosted on **Read the Docs**:\
-👉 <https://topmark.readthedocs.io>
+👉 <https://topmark.readthedocs.io/en/latest/>
 
-This README provides an overview. See the docs for deeper topics (install, usage, API, CI/CD, etc.).
-
-______________________________________________________________________
-
-## 🧩 Features
-
-- Detect, insert, and replace file headers across multiple file types
-- Comment-aware (line and block styles)
-- Configurable header fields and alignment
-- Dry-run by default for safety
-- **Policy-based control** over when headers may be inserted, updated, or added to empty files
-- Explain file-type and processor resolution with `topmark probe`, including why explicit inputs may
-  be filtered before probing
-- Whole-source TOML validation plus layered configuration via:
-  - `pyproject.toml` (`[tool.topmark]`)
-  - `topmark.toml`
-  - CLI overrides and `--config`
-- Inspectable layered config provenance via `topmark config dump --show-layers` and machine-readable
-  `config_provenance` output
-- Fine-grained include/exclude rules, including local or qualified file type identifiers
-- Selective application via file patterns or STDIN (`--files-from -` for list mode, `-` plus
-  `--stdin-filename` for single-file content mode)
-- Strict static typing (PEP 604 unions, Pyright)
-- Works well with `pre-commit`, CI, and Git hooks
-- Preserves newline style (LF/CRLF/CR) and BOM; non-standard Unicode separators (NEL/LS/PS) are
-  treated as ordinary content, not line endings
-- Idempotent: re-running on already-compliant files makes no changes
-- Configurable comment alignment and raw/pretty formatting
+This README provides a compact overview for GitHub and PyPI. Detailed usage, configuration,
+command-reference, API, CI/CD, and contributor documentation live in the generated documentation
+site.
 
 ______________________________________________________________________
 
-## 🧱 Example headers
+## Features
+
+- Detect, insert, update, validate, and remove file headers across multiple file types
+- Comment-aware rendering for line and block comment styles
+- Dry-run by default, with explicit `--apply` required for mutation
+- Layered configuration via `topmark.toml`, `pyproject.toml`, user config, explicit config files,
+  and CLI overrides
+- Policy controls for insertion, update, empty-file behavior, file-type filtering, and content
+  probing
+- Resolution diagnostics with `topmark probe`
+- Machine-readable JSON, NDJSON, and Markdown output where supported
+- Stable exit-code contracts for CI and scripting
+- Public Python API for programmatic access to all CLI commands
+- Plugin architecture which enables extending support for custom file types and header processors
+- Pre-commit, CI, and Git hook friendly
+- Preserves standard newline styles, shebangs, BOMs, and file-specific comment rules
+- Strictly typed Python implementation using Pyright
+
+______________________________________________________________________
+
+## Example headers
 
 TopMark adapts headers to the comment syntax of each supported file type.
 
@@ -139,7 +134,7 @@ body { margin: 0; }
 
 ______________________________________________________________________
 
-## ⚙️ Installation
+## Installation
 
 ### From PyPI
 
@@ -182,7 +177,7 @@ versions that include commit-based metadata.
 
 ______________________________________________________________________
 
-## 🚀 Usage
+## Usage
 
 ```bash
 topmark [COMMAND] [OPTIONS] [PATHS]...
@@ -201,6 +196,7 @@ topmark [COMMAND] [OPTIONS] [PATHS]...
 | `config init`         | Output the bundled example TopMark TOML resource with documentation           |
 | `registry filetypes`  | List supported file types from the registry                                   |
 | `registry processors` | List header processors and mappings from the registry                         |
+| `registry bindings`   | List effective filetype to processor bindings                                 |
 | `version`             | Print version (PEP 440 or SemVer)                                             |
 
 ### Examples
@@ -248,8 +244,8 @@ topmark config dump --show-layers --output-format json
 # Show supported file types in Markdown format
 topmark registry filetypes --output-format markdown --long
 
-# List processors and associated file types
-topmark registry processors --output-format markdown --long
+# List effective filetype to processor bindings
+topmark registry bindings --output-format markdown --long
 ```
 
 > Note:
@@ -268,9 +264,9 @@ topmark registry processors --output-format markdown --long
 > - `topmark probe` also reports explicitly requested paths that were filtered out before
 >   resolution, distinguishing between path filters, file-type filters, and a generic fallback.
 
-TopMark preserves standard line endings (LF, CRLF, CR), shebangs, BOMs, and indentation rules for
-each file type. Non-standard Unicode newline separators (NEL, LS, PS) are treated as ordinary
-content and are not recognized as physical line-ending styles.
+TopMark preserves standard line endings (LF, CRLF, CR), shebangs, BOMs, and file-specific
+indentation rules. Non-standard Unicode newline separators (NEL/LS/PS) are treated as ordinary
+content rather than physical line endings.
 
 ### Exit codes (CI / scripting)
 
@@ -290,33 +286,25 @@ accepted.
 
 For the complete, stable contract, see:
 
-- [`Exit codes`](docs/usage/exit-codes.md)
-- [`check`](docs/usage/commands/check.md)
-- [`strip`](docs/usage/commands/strip.md)
+- [Exit codes (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/exit-codes/)
+- [check command (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/commands/check/)
+- [strip command (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/commands/strip/)
 
 ______________________________________________________________________
 
-## 🧠 Configuration & Policy
+## Configuration and Policy
 
-TopMark supports **layered configuration discovery** and a flexible **policy system** controlling
-insert/update behavior.
+TopMark supports layered configuration discovery and policy-based control over header mutation.
 
-### Discovery order
+Common configuration sources include:
 
-1. Built-in defaults
-1. User config (`~/.config/topmark/topmark.toml` or `~/.topmark.toml`)
-1. Project config chain (root-most → nearest upward `pyproject.toml` or `topmark.toml`)
-1. Explicit `--config` files (merged in order)
-1. CLI flags and options (highest precedence)
+- `topmark.toml`
+- `pyproject.toml` under `[tool.topmark]`
+- user configuration
+- explicit `--config` files
+- CLI options
 
-This same ordering is exposed by `topmark config dump --show-layers` as a layered provenance view.
-Human-facing output renders ordered TOML layers before the final flattened config, while
-machine-readable output emits `config_provenance` before the final `config` snapshot.
-
-For a complete example configuration, see the generated documented
-[Example TOML document](docs/configuration/generated/example-config.md).
-
-### Example `topmark.toml`
+A minimal project configuration looks like this:
 
 ```toml
 [config]
@@ -348,82 +336,27 @@ exclude_file_types = ["topmark:html"]
 exclude_from = [".gitignore"]
 ```
 
-File type filters and `policy_by_type` keys accept local identifiers such as `python` when
-unambiguous, and qualified identifiers such as `topmark:python`. Qualified identifiers are the
-canonical internal representation and are recommended in shared configuration.
+TopMark can also control mutation policy, empty-file behavior, content probing, and per-file-type
+overrides. File type filters and `policy_by_type` keys accept local identifiers such as `python`
+when unambiguous and qualified identifiers such as `topmark:python` when explicitness matters.
 
-The same example can be written using local identifiers when unambiguous:
+Use the CLI to inspect the effective configuration:
 
-```toml
-...
-[policy_by_type."python"]
-allow_header_in_empty_files = true
-
-[formatting]
-align_fields = true
-
-[files]
-include_file_types = ["python", "markdown", "env"]
-exclude_file_types = ["html"]
-exclude_from = [".gitignore"]
+```bash
+topmark config dump --show-layers
+topmark config dump --show-layers --output-format json
 ```
 
-Source-local TOML options such as discovery boundaries and config-validation strictness live under
-`[config]` (or `[tool.topmark.config]` in `pyproject.toml`). They are resolved separately from
-layered `Config` values and do not participate in layered config merging.
+Detailed configuration and policy behavior is documented in:
 
-During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
-keys, malformed section shapes, missing known sections, etc.). Only the validated layered config
-fragment is then passed into layered config merging.
-
-At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
-known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before staged config-validation semantics are applied.
-
-For example, `strict` is resolved from TOML sources and affects configuration validation behaviour;
-it is not a normal layered `Config` field. In the current implementation, validation is evaluated
-across staged config-loading/preflight validation:
-
-- TOML-source diagnostics
-- merged-config diagnostics
-- runtime-applicability diagnostics
-
-The effective strictness governs this staged validation collectively (warnings become failures when
-strict mode is enabled). A flattened compatibility diagnostics view remains available for reporting
-and output surfaces, derived from staged validation logs. For 1.0, this boundary is intentional:
-staged validation remains primarily internal, while public reporting and CLI, API, and
-machine-readable output expose only the flattened compatibility diagnostics contract. CLI/API
-strictness overrides still take precedence for the current run.
-
-In layered provenance output, these source-local TOML fragments remain grouped under their original
-TOML sections (for example `[config]` and `[writer]`) rather than being collapsed into the final
-flattened runtime config payload. The stored TOML fragments correspond to the source-local TOML view
-after TOML-layer validation.
-
-### Policy semantics
-
-| Setting                              | Meaning                                                                 |
-| ------------------------------------ | ----------------------------------------------------------------------- |
-| `header_mutation_mode`               | Controls mutation: `all`, `add_only`, or `update_only`                  |
-| `allow_header_in_empty_files`        | Allow adding headers to empty-like files                                |
-| `empty_insert_mode`                  | Controls how TopMark classifies files as empty for insertion            |
-| `render_empty_header_when_no_fields` | Allow inserting an otherwise empty header when no fields are configured |
-| `allow_reflow`                       | Allow content reflow during header insertion/update                     |
-| `allow_content_probe`                | Allow file-type resolution to inspect file contents when needed         |
-
-Per-type overrides under `[policy_by_type."filetype"]` in `topmark.toml` (or
-`[tool.topmark.policy_by_type."filetype"]` in `pyproject.toml`) can adjust specific behavior.
-
-These policy options apply equally to the **CLI** and the **public API**.
-
-Policy resolution is fed by the validated layered config fragment only. TOML-source-local sections
-such as `[config]` influence loading behavior but do not participate in policy layering.
-
-For CLI usage, see the dedicated [Policy Guide](docs/usage/policies.md).
+- [Configuration Guide (hosted docs)](https://topmark.readthedocs.io/en/latest/configuration/discovery/)
+- [Example TOML document](https://github.com/shutterfreak/topmark/blob/main/src/topmark/toml/topmark-example.toml)
+- [Policy Guide (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/policies/)
+- [Filtering (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/filtering/)
 
 ______________________________________________________________________
 
-## 🪝 Pre-commit Integration
+## Pre-commit Integration
 
 TopMark includes **pre-commit** hooks for automated header management.
 
@@ -447,31 +380,24 @@ pre-commit run topmark-apply --hook-stage manual --all-files
 
 ______________________________________________________________________
 
-## 🔒 Public API
+## Public API
 
-The public API accepts plain mapping-based `config`, `policy`, and `policy_by_type` inputs. Policy
-inputs integrate with the same resolution mechanism used by the CLI. For `check()` and `strip()`,
-the returned result view is controlled via `report="all" | "actionable" | "noncompliant"`.
-
-When API callers provide mapping-based configuration, TopMark still follows the same staged model
-internally: whole-source TOML-style validation for source-local sections such as `[config]` /
-`[writer]`, then layered config deserialization and merge into the final immutable `Config`
-snapshot.
-
-API filters and `policy_by_type` follow the same identifier semantics as TOML and CLI inputs.
+TopMark exposes a public Python API for programmatic checks, stripping, probing, and registry
+discovery.
 
 Public API callers should use the functions and DTOs exposed from `topmark.api`. Runtime helpers,
 resolver internals, and pipeline contexts are implementation details.
 
-### Example
+Example dry-run check:
 
 ```python
 from pathlib import Path
+
 from topmark import api
 
 paths: list[Path] = [Path("src")]
 
-policy: dict[str, object] = {
+policy = {
     "header_mutation_mode": "add_only",
 }
 
@@ -503,60 +429,38 @@ For read-only resolution diagnostics, use `api.probe()`, which returns stable pu
 exposing resolver internals or pipeline objects.
 
 ```python
+from pathlib import Path
+
+from topmark import api
+
 # Explain file-type / processor resolution
-probe_result = api.probe(paths)
+probe_result = api.probe([Path("README.md")])
 
 for file_result in probe_result.files:
     print(file_result.path, file_result.status, file_result.reason)
 ```
 
-For programmatic discovery:
+For API details, see:
 
-```python
-from topmark.registry.registry import Registry
-
-for binding in Registry.bindings():
-    print(
-        binding.filetype.name,
-        binding.filetype.description,
-        "(bound)" if binding.processor else "(unbound)",
-    )
-```
+- [API reference (hosted docs)](https://topmark.readthedocs.io/en/latest/api/)
+- [Registry model](docs/dev/registry-model.md)
 
 ______________________________________________________________________
 
-## 📦 Packaging & Versioning
+## Packaging and Versioning
 
-TopMark follows **Semantic Versioning (SemVer)** to describe compatibility intent, while Python
-packaging uses SCM-derived [PEP 440](https://peps.python.org/pep-0440/) versions.
+TopMark uses Git-tag-driven package versions via `setuptools-scm`. Versions are derived from Git
+tags at build time rather than maintained manually in `pyproject.toml`.
 
-For development and CI, dependency resolution is driven by `uv`:
-
-- `pyproject.toml` defines supported dependency ranges
-- `uv.lock` is the committed lock file
-- `nox` installs session dependencies from project extras
-
-TopMark uses **Git tags as the single source of truth** for package versions:
-
-- versions are derived at build time via `setuptools-scm`
-- runtime version reporting uses generated package version metadata
-- release automation validates the SCM-derived artifact version against the release tag
-
-| Change Type                   | Version Impact |
-| ----------------------------- | -------------- |
-| `fix:`                        | Patch          |
-| `feat:`                       | Minor          |
-| `feat!:` / `BREAKING CHANGE:` | Major          |
+TopMark follows Semantic Versioning for compatibility intent while Python packaging uses SCM-derived
+PEP 440 versions.
 
 Typical release tag forms are:
 
-- Final releases: `vX.Y.Z`
-- Alpha releases: `vX.Y.ZaN`
-- Beta releases: `vX.Y.ZbN`
-- Release candidates: `vX.Y.ZrcN`
-
-Legacy dashed prerelease tags such as `vX.Y.Z-aN`, `vX.Y.Z-bN`, and `vX.Y.Z-rcN` remain supported
-for backward compatibility, but compact PEP 440 tag forms are preferred for new releases.
+- final releases: `vX.Y.Z`
+- alpha releases: `vX.Y.ZaN`
+- beta releases: `vX.Y.ZbN`
+- release candidates: `vX.Y.ZrcN`
 
 Build and validate artifacts locally:
 
@@ -564,14 +468,17 @@ Build and validate artifacts locally:
 make package-check
 ```
 
-Release candidates and final releases are published by CI when you push a matching Git tag.
+Releases are published by GitHub Actions when matching Git tags are pushed. Prereleases are
+published to TestPyPI for validation before final releases are published to PyPI.
 
-Prereleases are published to [TestPyPI](https://test.pypi.org/project/topmark/) for validation
-before final releases are published to [PyPI](https://pypi.org/project/topmark/).
+For detailed release architecture and maintainer guidance, see:
+
+- [Release Process](docs/dev/release-process.md)
+- [CI/CD documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
 
 ______________________________________________________________________
 
-## 🧪 Development
+## Development
 
 For day-to-day development, use the local `.venv` for editor integration and interactive work.
 Automated testing, typing, documentation, and validation still run in isolated environments managed
@@ -603,9 +510,15 @@ make docs-build        # build the docs
 make verify            # formatting, linting, docs, links
 ```
 
+For contributor setup and validation details, see:
+
+- [Contributing](docs/contributing.md)
+- [CI/CD and validation documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
+- [Documentation conventions](docs/dev/documentation-conventions.md)
+
 ______________________________________________________________________
 
-## 📄 License
+## License
 
 MIT License © 2025 Olivier Biot
 
