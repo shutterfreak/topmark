@@ -129,9 +129,22 @@ jobs:
           print(repr(path.read_text(encoding="utf-8")))
           PY
 
+      - name: Inspect check machine output on Windows
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        working-directory: validation-workspace
+        env:
+          TOPMARK_LOG_LEVEL: DEBUG
+        run: |
+          set -euo pipefail
+          topmark check README.md --output-format json --no-color || true
+          topmark check README.md --output-format ndjson --no-color || true
+
       - name: Validate check apply
         shell: bash
         working-directory: validation-workspace
+        env:
+          TOPMARK_LOG_LEVEL: ${{ runner.os == 'Windows' && 'DEBUG' || '' }}
         run: |
           set -euo pipefail
           topmark check --apply README.md --no-color
