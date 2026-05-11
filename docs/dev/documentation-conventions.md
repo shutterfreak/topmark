@@ -263,6 +263,81 @@ than theme-specific rendering.
 
 ______________________________________________________________________
 
+## Changelog Conventions
+
+`CHANGELOG.md` follows a Keep-a-Changelog-inspired structure with additional TopMark-specific
+release-note conventions.
+
+Release entries should use only:
+
+- level-2 headings for release entries;
+- level-3 headings for Keep-a-Changelog-compatible release sections;
+- lists below level-3 headings for detailed grouping.
+
+Do not introduce level-4 or deeper headings inside release entries. Use bold list labels instead:
+
+```md
+### Fixed - 1.0.0
+
+- **Windows atomic writer failure**
+  - Fixed platform-specific permission handling.
+  - Preserved POSIX behavior where supported.
+```
+
+Release headings should use this shape:
+
+```md
+\#\# [1.0.0] - 2026-05-11
+```
+
+Prerelease headings should use the same shape:
+
+```md
+\#\# [1.0.0b3] - 2026-05-11
+```
+
+Keep-a-Changelog-compatible section headings should use level-3 headings with stable, plain text:
+
+```md
+### Added - 1.0.0b3
+### Changed - 1.0.0b3
+### Fixed - 1.0.0b3
+### Documentation - 1.0.0b3
+### Internal - 1.0.0b3
+### Notes - 1.0.0b3
+```
+
+Use `### Breaking Changes - <version>` for breaking-change details. Do not use emoji headings such
+as `### ⚠️ Breaking Changes`.
+
+When a release has upgrade-impacting changes, add a GitHub-style caution block immediately before
+the detailed breaking-change section:
+
+```md
+> [!CAUTION] **Breaking changes**
+>
+> - Short upgrade-impacting summary.
+
+### Breaking Changes - 1.0.0
+```
+
+The caution block is the visual emphasis. The following level-3 heading remains plain,
+anchor-friendly, and compatible with generated navigation.
+
+Changelog entries should:
+
+- keep release summaries concise and factual;
+- avoid decorative emoji and informal markers;
+- group detailed items with bold list labels instead of nested headings;
+- keep the order of sections consistent with nearby release entries;
+- document compatibility and migration impact explicitly when behavior changes;
+- avoid documenting internal implementation details unless they explain a user-visible release
+  consequence or maintainer-facing workflow change.
+
+These conventions are intended to become enforceable through `tools/docs/check_docs_hygiene.py`.
+
+______________________________________________________________________
+
 ## Command Documentation Template
 
 Command documentation should follow a predictable structure. Consistency is more important than
