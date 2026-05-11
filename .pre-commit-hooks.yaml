@@ -30,3 +30,12 @@
   stages: [manual]
   require_serial: true # safer for file edits
   additional_dependencies: []
+
+- id: topmark-probe
+  name: topmark-probe
+  description: "Explain TopMark file-type and processor resolution; diagnostic-only and read-only. Behavior is configurable via consumer repo args."
+  entry: topmark probe
+  language: python
+  pass_filenames: true
+  stages: [manual]
+  additional_dependencies: []

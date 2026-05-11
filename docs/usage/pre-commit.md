@@ -65,13 +65,17 @@ ______________________________________________________________________
 
 ## Hooks provided by TopMark
 
-TopMark provides two pre-commit hooks to help manage file headers:
+TopMark provides three pre-commit hooks to help manage and diagnose file headers:
 
 - **`topmark-check`** — non-destructive validation. Fails if headers need changes.
   - Entry: `topmark check`
 - **`topmark-apply`** — destructive fix; requires `--apply`. Marked `manual` so it only runs when
   explicitly invoked.
   - Entry: `topmark check --apply`
+- **`topmark-probe`** — read-only resolution diagnostics. Explains which file type and processor
+  TopMark selects for each input. Marked `manual` because it is intended for troubleshooting and
+  investigation rather than routine commit validation.
+  - Entry: `topmark probe`
 
 ### Hook policy
 
@@ -81,6 +85,9 @@ By default:
   It validates headers and fails if changes are needed.
 - **`topmark-apply`** is restricted to the **manual** stage.\
   It may modify files and should only be invoked explicitly by developers.
+- **`topmark-probe`** is restricted to the **manual** stage.\
+  It is diagnostic-only and read-only, but its output is primarily useful when investigating file
+  discovery, filtering, file-type selection, or processor resolution.
 
 This policy ensures safety in CI and everyday workflows.\
 Teams that want formatter-like behavior (similar to Black or Prettier) may choose to enable
@@ -89,8 +96,8 @@ Teams that want formatter-like behavior (similar to Black or Prettier) may choos
 TopMark intentionally defaults to non-destructive behavior unless `--apply` is explicitly enabled.
 
 The hook manifest intentionally uses minimal defaults. All behavioral flags (such as `--summary`,
-`--report`, policy options, or output mode) should be supplied by consuming repositories via the
-hook’s `args:` configuration.
+`--report`, policy options, probe verbosity, file-type filters, or output mode) should be supplied
+by consuming repositories via the hook’s `args:` configuration.
 
 TopMark performs whole-source TOML schema validation during hook execution; any TOML-source
 diagnostics are included in the reported config diagnostics.
@@ -117,11 +124,14 @@ execution.
 Invoke the manual hook locally:
 
 ```bash
-# Run on the whole repo
+# Apply headers on the whole repo
 pre-commit run topmark-apply --all-files --hook-stage manual
 
-# Or target specific files
+# Or apply headers to specific files
 pre-commit run topmark-apply --files path/to/file1 path/to/file2 --hook-stage manual
+
+# Explain file-type and processor resolution for selected files
+pre-commit run topmark-probe --files README.md pyproject.toml --hook-stage manual
 ```
 
 ______________________________________________________________________
@@ -173,6 +183,13 @@ For the manual hook:
 ```yaml
 - id: topmark-apply
   args: ["--report", "actionable"]
+```
+
+For the diagnostic probe hook:
+
+```yaml
+- id: topmark-probe
+  args: ["-vv", "--output-format", "markdown"]
 ```
 
 Examples using canonical qualified identifiers:
@@ -256,11 +273,19 @@ TopMark hooks rely on the CLI exit-code contract to signal success or failure to
   - Exits with `SUCCESS (0)` on successful application of changes.
   - May exit with the same error codes as above if issues occur during processing.
 
+- **`topmark-probe` (manual, read-only diagnostic)**:
+
+  - Exits with `SUCCESS (0)` when all explicit inputs resolve successfully.
+  - Exits with `UNSUPPORTED_FILE_TYPE (69)` when one or more inputs are unsupported, filtered, or
+    unresolved.
+  - May exit with other non-zero codes for hard input, filesystem, usage, or configuration errors.
+
 Notes:
 
 - Pre-commit treats any non-zero exit code as a failure; this is expected for `topmark-check` when
   changes are needed (`WOULD_CHANGE (2)`).
 - Use `--quiet` in CI to suppress TEXT output and rely solely on exit status.
+- Use `topmark-probe` when a hook appears to skip, include, or classify files unexpectedly.
 - For full details and edge cases (mixed-result runs, precedence), see:
   - [`Exit codes`](./exit-codes.md)
   - [`check` command](./commands/check.md)
@@ -305,6 +330,9 @@ ______________________________________________________________________
 ## Related pages
 
 - [CLI overview](cli.md)
+  - [`topmark check`](commands/check.md)
+  - [`topmark probe`](commands/probe.md)
+  - [`topmark strip`](commands/strip.md)
 - [Configuration](configuration.md)
 - [Configuration discovery](../configuration/discovery.md)
 - [Filtering](filtering.md)
