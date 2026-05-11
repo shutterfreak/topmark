@@ -76,18 +76,22 @@ ______________________________________________________________________
 
 ## Workflow Inputs
 
-The workflow exposes manual `workflow_dispatch` inputs:
-
-| Input     | Required | Default    | Purpose                               |
-| --------- | -------- | ---------- | ------------------------------------- |
-| `version` | Yes      | None       | Published TopMark version to validate |
-| `index`   | Yes      | `testpypi` | Package index to install from         |
+| Input            | Required | Default    | Purpose                                                   |
+| ---------------- | -------- | ---------- | --------------------------------------------------------- |
+| `version`        | Yes      | None       | Published TopMark version to validate                     |
+| `index`          | Yes      | `testpypi` | Package index to install from                             |
+| `platform`       | Yes      | `all`      | Restrict validation to a specific platform subset         |
+| `python-version` | Yes      | `all`      | Restrict validation to a specific Python-version subset   |
+| `log-level`      | Yes      | `none`     | Optional runtime logging level for installed TopMark runs |
 
 Example manual run:
 
 ```text
-version: 1.0.0b2
+version: 1.0.0b3
 index: testpypi
+platform: windows-latest
+python-version: 3.11
+log-level: DEBUG
 ```
 
 Supported package indexes are:
@@ -97,6 +101,37 @@ Supported package indexes are:
 | `testpypi` | Validate prereleases or staged releases from TestPyPI |
 | `pypi`     | Validate final releases from PyPI                     |
 
+Supported platform selections are:
+
+| Value            | Meaning                          |
+| ---------------- | -------------------------------- |
+| `all`            | Run the complete platform matrix |
+| `ubuntu-latest`  | Validate Linux only              |
+| `macos-latest`   | Validate macOS only              |
+| `windows-latest` | Validate Windows only            |
+
+Supported Python-version selections are:
+
+| Value  | Meaning                                          |
+| ------ | ------------------------------------------------ |
+| `all`  | Run the complete supported Python-version matrix |
+| `3.10` | Validate Python 3.10 only                        |
+| `3.11` | Validate Python 3.11 only                        |
+| `3.12` | Validate Python 3.12 only                        |
+| `3.13` | Validate Python 3.13 only                        |
+| `3.14` | Validate Python 3.14 only                        |
+
+Supported runtime logging selections are:
+
+| Value     | Meaning                                                |
+| --------- | ------------------------------------------------------ |
+| `none`    | Disable explicit TopMark runtime logging configuration |
+| `TRACE`   | Enable maximum runtime diagnostic logging              |
+| `DEBUG`   | Enable detailed runtime diagnostic logging             |
+| `INFO`    | Enable informational runtime logging                   |
+| `WARNING` | Enable warning-only runtime logging                    |
+| `ERROR`   | Enable error-only runtime logging                      |
+
 ______________________________________________________________________
 
 ## Jobs and Validation Scope
@@ -105,7 +140,7 @@ ______________________________________________________________________
 | ------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | `published-artifact-validation` | Install and validate published TopMark packages across the supported platform and Python-version matrix | `pip`, `topmark`, `importlib.metadata` |
 
-The workflow validates installation across:
+By default, the workflow validates installation across:
 
 | Platform | Runner           |
 | -------- | ---------------- |
@@ -121,6 +156,10 @@ and across supported Python versions:
 - 3.13
 - 3.14
 
+The `platform` and `python-version` workflow inputs can reduce the matrix to a single platform or
+single Python version when reproducing or diagnosing platform-specific installation or runtime
+issues.
+
 The matrix uses:
 
 ```yaml
@@ -129,6 +168,12 @@ fail-fast: false
 
 so failures on one platform or Python version do not prevent validation of the remaining matrix
 environments.
+
+The workflow also supports optional runtime diagnostic logging through the `TOPMARK_LOG_LEVEL`
+environment variable exposed via the `log-level` workflow input.
+
+This is primarily intended for diagnosing published-package runtime failures in isolated runner
+environments, especially platform-specific issues such as Windows filesystem or permission behavior.
 
 For each matrix environment, the workflow:
 
@@ -139,6 +184,7 @@ For each matrix environment, the workflow:
 1. configures UTF-8 console behavior for deterministic cross-platform output handling;
 1. creates a temporary validation workspace;
 1. runs representative CLI validation checks;
+1. optionally emits runtime diagnostic logs from the installed package;
 1. runs a minimal public API validation check.
 
 The workflow validates representative CLI entry points such as:
@@ -154,6 +200,10 @@ cp README.md STRIPME.md
 topmark strip --apply STRIPME.md --no-color
 topmark strip STRIPME.md --no-color
 ```
+
+On Windows runners, the workflow also executes additional diagnostic inspection commands when
+investigating platform-specific failures. These diagnostics intentionally expose workspace state,
+machine-readable command output, and runtime logging behavior from the installed package.
 
 It also validates the public Python API:
 
@@ -254,13 +304,16 @@ When using this workflow:
 
 - use the exact version published by the release workflow;
 - validate prereleases from TestPyPI before publishing finals to PyPI;
+- use restricted platform or Python-version subsets when reproducing platform-specific failures;
+- temporarily enable `DEBUG` or `TRACE` runtime logging when diagnosing installed-package runtime
+  behavior;
 - confirm package metadata is visible before running validation;
 - investigate dependency-resolution failures separately from repository-source CI failures;
 - remember that this workflow validates published artifacts, not local source trees.
 
 The validation workspace intentionally starts without repository-specific TopMark configuration.
-This ensures the workflow validates installed-package defaults and CLI behavior rather than
-repository policy configuration.
+This ensures the workflow validates installed-package defaults, runtime logging behavior, and CLI
+behavior rather than repository policy configuration.
 
 GitHub Actions are pinned to commit SHAs. Use the [GitHub Action pin audit](./action-pin-audit.md)
 to detect drift between workflow files and local composite actions.
