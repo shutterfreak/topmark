@@ -365,15 +365,17 @@ At this point:
 - Qualified-vs-local file type identifier semantics are now frozen, implemented, tested, and
   documented across CLI, TOML configuration, API overlays, resolver filtering, policy lookup,
   registry-facing APIs, diagnostics, and machine output
-- Final documentation, generated-site, CLI/help, warning/error wording, alpha-semantics, and
-  machine-readable output terminology reviews have been completed for the `v1.0.0b1` beta gate
+- Final documentation, generated-site, CLI/help, warning/error wording, beta-semantics, and
+  machine-readable output terminology reviews have been completed through the `v1.0.0b3`
+  stabilization releases
 - Documentation UX, command-page structure, cross-reference conventions, snippet governance, and
   generated-site navigation are now convention-driven and validated through the documentation
   hygiene tooling
 
-The project is now in a **post-beta stabilization phase**, with broad architecture complete,
-in-memory pipeline support explicitly deferred, documentation governance established, and remaining
-work focused on real-world beta feedback, ecosystem validation, and targeted hardening.
+The project is now in a **late beta stabilization phase**, with broad architecture complete,
+in-memory pipeline support explicitly deferred, documentation governance established, and the
+remaining work focused primarily on real-world beta feedback, downstream ecosystem validation, and
+final targeted hardening before `1.0.0`.
 
 ______________________________________________________________________
 
@@ -805,10 +807,11 @@ Remaining follow-up:
   artifact-based release workflow all consume the same formatter/tool configuration.
 - Keep documentation hygiene validation integrated in local and release gates as the documentation
   conventions evolve.
-- Keep MkDocs 1.x as the accepted documentation generator for the `v1.0.0b1` beta gate because the
-  current strict docs build, link checks, generated API pages, and release validation are green.
-  Evaluate ProperDocs as a post-beta / post-1.0 tooling follow-up unless MkDocs becomes a concrete
-  release blocker before final `1.0.0`.
+  - Keep MkDocs 1.x as the accepted documentation generator through the `v1.0.0b3` stabilization
+    releases because the current strict docs build, link checks, generated API pages, release
+    validation, and cross-platform packaging/install validation are green. Evaluate ProperDocs as a
+    post-beta / post-1.0 tooling follow-up unless MkDocs becomes a concrete release blocker before
+    final `1.0.0`.
 
 ### Human-facing policy / behavior questions
 
@@ -1115,11 +1118,11 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] `make verify`, `make release-check`, and `make release-full` include documentation hygiene
     validation
 
-#### [Must] Beta validation gate for `v1.0.0b1`
+#### [Must] Beta stabilization and validation gates through `v1.0.0b3`
 
-Before cutting `v1.0.0b1`, run and record a positive validation pass for the current source
-snapshot. Packaging validation is intentionally handled through nox sessions, GitHub workflows, and
-release workflow checks rather than dedicated pytest tests.
+Before cutting the final `1.0.0` release, maintain and record positive validation passes across the
+beta stabilization series through `v1.0.0b3`. Packaging validation is intentionally handled through
+nox sessions, GitHub workflows, and release workflow checks rather than dedicated pytest tests.
 
 - [x] Packaging validation completed
   - [x] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
@@ -1127,6 +1130,8 @@ release workflow checks rather than dedicated pytest tests.
   - [x] sdist artifact installs into a clean environment and exposes the `topmark` console script
   - [x] dedicated install-smoke workflow validates installation and lightweight CLI execution on
     Linux, macOS, and Windows
+  - [x] published `v1.0.0b3` artifacts validated successfully on Windows, macOS, and Ubuntu through
+    real installation and execution testing
 - [x] uv-managed development environment works with the documented development extras
   - [x] TestPyPI upload/install rehearsal succeeds for the prerelease path
   - [x] dependency resolution succeeds without undeclared runtime dependencies
@@ -1165,8 +1170,9 @@ release workflow checks rather than dedicated pytest tests.
     exit-code contracts
   - [x] accepted imperfections are recorded explicitly as post-1.0 follow-up or non-blocking beta
     notes
-    - [x] MkDocs 1.x remains accepted for `v1.0.0b1`; ProperDocs evaluation is deferred unless the
-      current documentation toolchain becomes a concrete release blocker
+    - [x] MkDocs 1.x remains accepted through the `v1.0.0b3` stabilization releases; ProperDocs
+      evaluation is deferred unless the current documentation toolchain becomes a concrete release
+      blocker
     - [x] Documentation UX, command-page structure, cross-reference conventions, snippet governance,
       and generated-site navigation are accepted for the beta line and enforced through lightweight
       documentation hygiene validation
@@ -1283,7 +1289,8 @@ ______________________________________________________________________
 
 Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
 with rationale should `1.0.0` final be cut. The 1.0 alpha series served as the
-contract-stabilization and release-path rehearsal phase, and `v1.0.0b1` closed the beta readiness
-gate. The remaining path to final `1.0.0` is now focused on validating the frozen contracts in
-real-world beta use, preserving compatibility, and avoiding new scope unless concrete beta feedback
-identifies a release blocker.
+contract-stabilization and release-path rehearsal phase, while the beta stabilization series through
+`v1.0.0b3` validated the frozen contracts, release pipeline, and cross-platform installation
+behavior. The remaining path to final `1.0.0` is now focused on preserving compatibility, collecting
+final real-world beta feedback, and avoiding new scope unless concrete release-blocking issues are
+identified.
