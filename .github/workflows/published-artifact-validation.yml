@@ -98,13 +98,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir validation-workspace
-          cat > validation-workspace/README.md <<'EOF'
-          # Validation workspace
+          printf '# Validation workspace\n\nThis file is used by the published artifact validation workflow.\n' > validation-workspace/README.md
 
-          This file is used by the published artifact validation workflow.
-          EOF
-
-      - name: Run CLI validation checks
+      - name: Validate read-only CLI commands
         shell: bash
         working-directory: validation-workspace
         run: |
@@ -113,10 +109,34 @@ jobs:
           topmark config defaults
           topmark registry filetypes
           topmark probe README.md
+
+      - name: Validate check apply
+        shell: bash
+        working-directory: validation-workspace
+        run: |
+          set -euo pipefail
           topmark check --apply README.md --no-color
+
+      - name: Validate check idempotence
+        shell: bash
+        working-directory: validation-workspace
+        run: |
+          set -euo pipefail
           topmark check README.md --no-color
+
+      - name: Validate strip apply
+        shell: bash
+        working-directory: validation-workspace
+        run: |
+          set -euo pipefail
           cp README.md STRIPME.md
           topmark strip --apply STRIPME.md --no-color
+
+      - name: Validate strip idempotence
+        shell: bash
+        working-directory: validation-workspace
+        run: |
+          set -euo pipefail
           topmark strip STRIPME.md --no-color
 
       - name: Run API validation check
