@@ -15,7 +15,7 @@ topmark:header:end
 This page exists to keep MkDocs **strict** mode happy by providing a stable in-site link target. The
 canonical contributor guide lives at the repository root.
 
-## 📂 Where things live
+## Where things live
 
 - **README.md** — overview, features, usage, examples
 - **INSTALL.md** — installation & development setup
@@ -31,7 +31,7 @@ canonical contributor guide lives at the repository root.
 
 ______________________________________________________________________
 
-## 🧠 Architecture overview
+## Architecture overview
 
 TopMark uses a layered architecture:
 
@@ -65,16 +65,12 @@ Read the full contributor guide on GitHub:
 
 - <https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md>
 
-TopMark’s package versioning is Git-tag-driven via `setuptools-scm`; contributor and release
-workflow details are documented in the root `CONTRIBUTING.md` and the CI/release docs linked above.
+TopMark's package versioning is Git-tag-driven via `setuptools-scm`. Contributor-facing release
+guidance is summarized in the root `CONTRIBUTING.md` file.
 
-The release process uses an artifact-based workflow:
-
-- CI builds and uploads release artifacts on tag pushes
-- The release workflow downloads and verifies these artifacts before publishing
-
-This separation between build (CI) and publish (release workflow) avoids executing repository code
-in privileged contexts and improves supply-chain security.
+The detailed maintainer release process, including the artifact trust boundary, prerelease/final
+release flow, and post-publication validation expectations, is documented in
+[Release Process](./dev/release-process.md).
 
 If you’re viewing this on the published docs site, the link above opens the same document in the
 repository with richer GitHub rendering.

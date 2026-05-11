@@ -292,41 +292,32 @@ source of truth for versioning via `setuptools-scm`, so there is no manual versi
 
 ______________________________________________________________________
 
-## 📦 Packaging
+## 📦 Packaging and Releases
 
-TopMark follows PEP 517/518 standards.
+TopMark follows PEP 517/518 packaging standards and uses Git-tag-driven versions via
+`setuptools-scm`.
 
-Build and verify artifacts:
+Build and verify artifacts locally with:
 
 ```bash
 uv build
 twine check dist/*
 ```
 
-Upload to PyPI (or TestPyPI):
-
-```bash
-twine upload dist/*
-# or:
-twine upload --repository testpypi dist/*
-```
-
-Releases are typically handled by GitHub Actions when tags are pushed.
+Releases are normally handled by GitHub Actions rather than by manual `twine upload` commands.
 
 TopMark uses a two-stage release pipeline:
 
-- CI (`ci.yml`) builds release artifacts (`sdist` and `wheel`) on tag pushes in an **unprivileged
-  context** and uploads them as workflow artifacts.
-- The release workflow (`release.yml`) runs in a **privileged `workflow_run` context**, downloads
-  these artifacts, verifies version/tag consistency and checksums, and publishes them:
-  - **prereleases** to [TestPyPI](https://test.pypi.org/project/topmark/)
-  - **final releases** to [PyPI](https://pypi.org/project/topmark/)
+- CI (`.github/workflows/ci.yml`) builds release artifacts (`sdist` and `wheel`) on version-tag
+  pushes in an unprivileged context.
+- The release workflow (`.github/workflows/release.yml`) runs in a privileged `workflow_run`
+  context, downloads the CI-built artifacts, verifies version/tag consistency and checksums, and
+  publishes prereleases to TestPyPI or final releases to PyPI.
 
-This design ensures that repository build logic is never executed in the privileged release workflow
-and aligns with GitHub security best practices and CodeQL recommendations.
+This design avoids executing repository build logic in the privileged release workflow.
 
-TopMark uses **Git tags as the single source of truth** for package versions. Versions are derived
-at build time via `setuptools-scm`, and built artifacts include generated version metadata.
+For the detailed maintainer release process, see `docs/dev/release-process.md`. The generated
+documentation site also links this page from the development documentation navigation.
 
 ______________________________________________________________________
 

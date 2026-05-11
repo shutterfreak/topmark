@@ -232,6 +232,7 @@ nav:
       - Machine-readable formats: dev/machine-formats.md
       - Documentation pipeline and reference hygiene: dev/documentation-pipeline.md
       - Documentation conventions: dev/documentation-conventions.md
+      - Release process: dev/release-process.md
       - Roadmap: dev/roadmap.md
 
 # --- Development Server ---
