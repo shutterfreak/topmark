@@ -10,150 +10,213 @@ topmark:header:start
 topmark:header:end
 -->
 
-# 🚀 Release Workflow
+# Release Workflow
 
-This document describes the **automated package publish pipeline** defined in
-`.github/workflows/release.yml` (`Publish package`).
+This page documents `.github/workflows/release.yml`.
+
+The release workflow is TopMark's privileged package-publishing workflow. It is triggered by a
+completed CI workflow run, verifies that the CI run corresponds to exactly one release tag,
+downloads CI-built artifacts, and publishes those artifacts to PyPI or TestPyPI.
+
+## Purpose
+
+The release workflow publishes prebuilt release artifacts after CI has already validated and
+uploaded them. It is intentionally artifact-only: it does not rebuild the project from repository
+source code in the privileged publishing context.
+
+This separation keeps package publication distinct from source-tree validation. The CI workflow runs
+repository code and builds artifacts in a lower-privilege context; the release workflow verifies and
+publishes those artifacts using Trusted Publishing.
 
 ______________________________________________________________________
 
 ## Trigger Conditions
 
-The release workflow runs automatically when:
+| Trigger        | When it runs                      | Purpose                                                                           |
+| -------------- | --------------------------------- | --------------------------------------------------------------------------------- |
+| `workflow_run` | After the `CI` workflow completes | Publish CI-built artifacts only when the completed CI run is eligible for release |
 
-- The **CI** workflow completes successfully for a commit that has exactly one matching release tag
-  (for example `v1.0.0`, `v1.0.0rc1`, `v1.0.0-a1`)
+The workflow starts for completed CI runs, but publishing proceeds only when all release preflight
+checks pass.
 
-It supports both **final** and **pre-release** (rc/a/b) versions using **PEP 440 normalization**
-derived from Git tags via `setuptools-scm`.
+The `preflight` job requires that:
+
+- the triggering CI run completed successfully;
+- the CI run was triggered by a `push` event;
+- the CI run originated from the base repository;
+- exactly one release-style tag points at the CI commit.
 
 If no matching release tag points at the CI commit, the workflow exits cleanly without publishing.
-If multiple matching release tags point at the same commit, preflight fails rather than choosing one
-implicitly.
+If multiple matching release tags point at the same commit, preflight fails rather than choosing a
+tag implicitly.
+
+Supported release tags include final and prerelease forms such as:
+
+| Tag          | Channel  | Notes                                |
+| ------------ | -------- | ------------------------------------ |
+| `v1.0.0`     | PyPI     | Final release                        |
+| `v1.0.0rc1`  | TestPyPI | Release candidate                    |
+| `v1.0.0-rc1` | TestPyPI | Release candidate compatibility form |
+| `v1.0.0a1`   | TestPyPI | Alpha release                        |
+| `v1.0.0-a1`  | TestPyPI | Alpha compatibility form             |
+| `v1.0.0b1`   | TestPyPI | Beta release                         |
+| `v1.0.0-b1`  | TestPyPI | Beta compatibility form              |
+
+Tags are normalized with `packaging.version.Version` so prerelease routing follows PEP 440
+semantics.
 
 ______________________________________________________________________
 
-## Job Summary
+## Permissions and Trust Boundary
 
-| Job                 | Purpose                                                                                                                                 |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **preflight**       | Resolve release context, tag, version, and publish eligibility                                                                          |
-| **details**         | Verify downloaded CI-built artifacts and release metadata                                                                               |
-| **publish-package** | Verify and publish prebuilt artifacts to [PyPI](https://pypi.org/project/topmark/) / [TestPyPI](https://test.pypi.org/project/topmark/) |
-| **github-release**  | Create a GitHub release for final (non-prerelease) tags                                                                                 |
-
-______________________________________________________________________
-
-## 🧱 Core Design
-
-The release workflow is intentionally **artifact-only** and does not execute repository build logic.
-
-Prereleases are published to [TestPyPI](https://test.pypi.org/project/topmark/) for validation,
-while final releases are published to [PyPI](https://pypi.org/project/topmark/).
-
-### Trusted Publishing via OIDC
-
-No API tokens are stored — PyPI and TestPyPI releases use **Trusted Publishing** with OIDC
-credentials.
-
-### 🧰 Caching
-
-Each job restores the uv cache and keys it from the canonical dependency inputs:
+The workflow-level permissions are:
 
 ```yaml
-- name: Cache uv
-  uses: actions/cache@v5
-  with:
-      path: ~/.cache/uv
-      key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+permissions:
+  contents: read
+  id-token: write
 ```
 
-### 🧩 Version Validation
+`id-token: write` is required for PyPI and TestPyPI Trusted Publishing through OIDC. The workflow
+does not use stored PyPI API tokens.
 
-Before publishing, the workflow ensures:
+The `github-release` job narrows its own elevated permission to:
 
-- The **SCM-derived version** (via `setuptools-scm`) matches the release tag
-- The version does not already exist on the target index
-- (Final releases only) the new version is greater than the latest final on PyPI
-- Exactly **one** matching release tag points at the CI commit; ambiguous multi-tag release commits
-  are rejected during preflight
+```yaml
+permissions:
+  contents: write
+```
 
-Version validation is performed on **CI-built artifacts (wheel + sdist)** downloaded from the CI
-workflow, ensuring that the artifacts published to
-[TestPyPI](https://test.pypi.org/project/topmark/) or [PyPI](https://pypi.org/project/topmark/) are
-exactly those validated during CI.
+That write permission is used only to create the GitHub Release for final, non-prerelease tags.
 
-______________________________________________________________________
+The release trust boundary is intentionally strict:
 
-## 🔁 Release Flow
+- release artifacts are built by the CI workflow;
+- the release workflow downloads artifacts from the triggering CI run;
+- release metadata is verified against the resolved tag;
+- checksums are verified before publication;
+- package indexes are checked before publishing;
+- repository build logic is not executed in the publishing jobs.
 
-1. Commit changes (no manual version bump required)
-
-1. Tag the release with exactly one release-style tag on the target commit (version is derived from
-   Git tags):
-
-   ```bash
-   git commit -am "chore(release): 1.0.0"
-   git tag v1.0.0
-   git push origin main --tags
-   ```
-
-1. CI runs and passes (including building release artifacts)
-
-1. Release workflow downloads and verifies CI-produced artifacts
-
-1. Artifacts are published to [TestPyPI](https://test.pypi.org/project/topmark/) (prereleases) or
-   [PyPI](https://pypi.org/project/topmark/) (final releases)
-
-1. GitHub release is created automatically (for non-prereleases)
+The workflow uses concurrency keyed by the CI run commit SHA so repeated release attempts for the
+same commit do not run concurrently.
 
 ______________________________________________________________________
 
-## 🔖 Channels
+## Jobs and Validation Scope
 
-| Tag          | Channel  | Example           |
-| ------------ | -------- | ----------------- |
-| `v1.0.0`     | PyPI     | Stable            |
-| `v1.0.0rc1`  | TestPyPI | Release candidate |
-| `v1.0.0-rc1` | TestPyPI | Release candidate |
-| `v1.0.0a1`   | TestPyPI | Alpha             |
-| `v1.0.0-a1`  | TestPyPI | Alpha             |
-| `v1.0.0b1`   | TestPyPI | Beta              |
-| `v1.0.0-b1`  | TestPyPI | Beta              |
+| Job               | Purpose                                                                         | Main tools                                           |
+| ----------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `preflight`       | Resolve release eligibility, tag, normalized version, channel, and release name | `git`, `packaging.version.Version`                   |
+| `details`         | Download CI artifacts and verify artifact metadata and package versions         | `actions/download-artifact`, Python metadata readers |
+| `publish-package` | Verify checksums, validate target-index state, and publish to PyPI or TestPyPI  | `sha256sum`, `curl`, `pypa/gh-action-pypi-publish`   |
+| `github-release`  | Create a GitHub Release for final releases                                      | `softprops/action-gh-release`                        |
+
+The `preflight` job decides whether publication should proceed. It emits release context outputs
+such as the resolved tag, PEP 440 version, prerelease flag, target channel, and release name.
+
+The `details` job downloads the `topmark-dist` and `topmark-release-meta` artifacts from the CI run
+that triggered the workflow. It verifies that the artifact metadata matches the resolved release tag
+and that the wheel and source distribution versions match the normalized tag version.
+
+The `publish-package` job repeats critical metadata checks before publication, verifies checksums,
+confirms that the target version does not already exist on the selected package index, and publishes
+with Trusted Publishing.
+
+Final releases also check that the new version is newer than the latest final version on PyPI.
+Prereleases publish to TestPyPI and skip GitHub Release creation.
 
 ______________________________________________________________________
 
-## 🧠 Notes for Maintainers
+## Artifact Handling
 
-- Ensure release tags follow the expected versioning scheme (PEP 440-compatible, e.g. `v1.0.0`,
-  `v1.0.0rc1`, `v1.0.0-a1`).
+The release workflow consumes artifacts produced by the CI workflow. It does not build artifacts.
 
-- Do not place multiple release-style tags on the same commit. The release workflow now fails
-  preflight rather than choosing between ambiguous matching tags implicitly.
+Required CI artifacts are:
 
-- Prefer compact PEP 440 tag forms (e.g. `v1.0.0rc1`) for new releases; dashed variants remain
-  supported for backward compatibility.
+| Artifact               | Purpose                                                |
+| ---------------------- | ------------------------------------------------------ |
+| `topmark-dist`         | Source distribution and wheel built by CI              |
+| `topmark-release-meta` | Release tag, normalized version, and checksum metadata |
 
-- Delete stale `.nox`, `*.egg-info` or `.venv` dirs before local build tests.
+The release workflow downloads those artifacts by using the triggering CI run ID:
 
-- Validate with:
+```yaml
+run-id: ${{ github.event.workflow_run.id }}
+```
 
-  ```bash
-  nox -s docs
-  nox -s links_site
-  nox -s links_all
+This ensures the release workflow publishes the artifacts produced by the exact CI run that caused
+the release workflow to start.
 
-  uv build
-  ```
+Before publication, the workflow verifies:
 
-- Run `make verify` before tagging.
+- artifact tag metadata matches the resolved release tag;
+- artifact version metadata matches the normalized tag version;
+- exactly one wheel and one source distribution are present where required;
+- wheel and sdist metadata versions match the tag;
+- checksums match `release-meta/SHA256SUMS`;
+- expected filenames include the normalized version.
 
-GitHub Actions used by this workflow are pinned to specific commit hashes for supply-chain security.
+This artifact-only design is a core part of the release security model.
 
-Dependabot periodically opens PRs updating these hashes. Maintainers should review and merge these
-PRs once CI passes.
+______________________________________________________________________
 
-See [`docs/ci/dependabot.md`](./dependabot.md) for details.
+## Local Reproduction
 
-For published-package installation validation across platforms and Python versions, see
-[`published-artifact-validation.md`](./published-artifact-validation.md).
+The release workflow cannot be fully reproduced locally because it depends on GitHub `workflow_run`
+context, CI-uploaded artifacts, package-index state, OIDC Trusted Publishing, and GitHub Release
+permissions.
+
+The closest local checks are:
+
+```bash
+nox -s docs
+nox -s links_site
+nox -s links_all
+uv build
+```
+
+Before tagging a release, also run the project verification target:
+
+```bash
+make verify
+```
+
+To inspect local build output manually:
+
+```bash
+uv build
+ls -l dist
+```
+
+Local validation can confirm that the source tree builds and passes project checks, but it cannot
+exercise the Trusted Publishing, artifact-download, package-index, or GitHub Release portions of the
+workflow.
+
+______________________________________________________________________
+
+## Maintenance Notes
+
+Release tags must follow the expected PEP 440-compatible scheme, such as `v1.0.0`, `v1.0.0rc1`, or
+`v1.0.0-a1`.
+
+When preparing a release:
+
+- ensure exactly one release-style tag points at the target commit;
+- prefer compact PEP 440 tag forms such as `v1.0.0rc1` for new prereleases;
+- keep dashed prerelease forms only as compatibility forms;
+- run local verification before pushing tags;
+- let CI build artifacts and let the release workflow publish them.
+
+Do not move artifact building into the release workflow without deliberately revisiting the release
+trust boundary. The workflow is intentionally designed so package publication does not rebuild from
+repository source code.
+
+GitHub Actions are pinned to commit SHAs. Use the [GitHub Action pin audit](./action-pin-audit.md)
+to detect drift between workflow files and local composite actions.
+
+______________________________________________________________________
+
+## Related Pages
+
+{% include-markdown "\_snippets/ci/related-pages.md" %}

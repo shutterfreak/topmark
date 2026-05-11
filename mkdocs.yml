@@ -203,10 +203,14 @@ nav:
       - Example TOML document: configuration/generated/example-config.md
       - Default TOML settings: configuration/generated/config-defaults.md
   - CI/CD:
-      - CI workflow: ci/ci-workflow.md
-      - Dev validation: ci/dev-validation.md
-      - Dependabot: ci/dependabot.md
-      - Release workflow: ci/release-workflow.md
+      - Overview: ci/index.md
+      - Test and validation architecture: ci/test-validation.md
+      - Workflows:
+          - CI workflow: ci/ci-workflow.md
+          - Published artifact validation: ci/published-artifact-validation.md
+          - Release workflow: ci/release-workflow.md
+          - Dependabot: ci/dependabot.md
+          - GitHub Action pin audit: ci/action-pin-audit.md
   - Contributing: contributing.md
   - API:
       - Public API: api/public.md
