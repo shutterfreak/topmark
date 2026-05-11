@@ -529,6 +529,164 @@ reference material.
 
 ______________________________________________________________________
 
+## Workflow Documentation Conventions
+
+Workflow documentation pages describe GitHub workflows, their trigger model, their trust boundary,
+and their validation or maintenance responsibility.
+
+Workflow pages should be contributor-facing. They should explain when a workflow runs, what it
+validates or performs, and how maintainers can reproduce or reason about failures. They should not
+merely restate YAML structure.
+
+### Standard Workflow Page Structure
+
+Workflow documentation pages should use the following section order whenever applicable:
+
+```text
+Purpose
+Trigger conditions
+Permissions and trust boundary
+Workflow inputs
+Jobs and validation scope
+Artifact handling
+Local reproduction
+Maintenance notes
+Related pages
+```
+
+Sections may be omitted only when genuinely not applicable. For example, workflows without
+`workflow_dispatch` inputs may omit `Workflow inputs`, but workflows that do not handle artifacts
+should still include a short explicit `Artifact handling` section stating that no artifacts are
+produced, consumed, or published.
+
+### Purpose
+
+The `Purpose` section should explain the workflow's responsibility in one or two short paragraphs.
+
+It should cover:
+
+- what contract the workflow validates or enforces;
+- what problem it solves;
+- what it intentionally does not do;
+- whether it validates source, release artifacts, published artifacts, dependencies, or repository
+  maintenance state.
+
+The section should avoid copying job names as a substitute for explaining responsibility.
+
+### Trigger Conditions
+
+Each workflow page must explain how the workflow is initiated.
+
+Explicitly distinguish between:
+
+- pull-request-based runs;
+- push-based runs;
+- tag-based runs;
+- scheduled or cron-based runs;
+- manual `workflow_dispatch` runs;
+- workflow-chained runs such as `workflow_run`.
+
+Use a trigger table when a workflow has more than one trigger:
+
+| Trigger             | When it runs                           | Purpose                                |
+| ------------------- | -------------------------------------- | -------------------------------------- |
+| `pull_request`      | Pull requests affecting selected paths | Validate proposed changes before merge |
+| `push`              | Pushes to `main`                       | Validate committed source changes      |
+| `push.tags`         | Tags matching `v*`                     | Build release artifacts                |
+| `schedule`          | Weekly cron run                        | Detect maintenance drift               |
+| `workflow_dispatch` | Manual maintainer run                  | Run the workflow on demand             |
+
+Only include triggers used by that workflow.
+
+### Permissions and Trust Boundary
+
+Document:
+
+- the effective `permissions:` block;
+- whether the workflow is read-only or privileged;
+- whether it runs repository code;
+- whether it consumes artifacts from another workflow;
+- whether it publishes externally;
+- whether repeated setup is intentional for security or clarity.
+
+### Workflow Inputs
+
+Include this section only when the workflow exposes manual `workflow_dispatch` inputs.
+
+| Input     | Required | Default    | Purpose                       |
+| --------- | -------- | ---------- | ----------------------------- |
+| `version` | Yes      | None       | Package version to validate   |
+| `index`   | No       | `testpypi` | Package index to install from |
+
+### Jobs and Validation Scope
+
+Summarize jobs in a table:
+
+| Job     | Purpose                                  | Main tools               |
+| ------- | ---------------------------------------- | ------------------------ |
+| `lint`  | Validate formatting, linting, and typing | `nox`, `ruff`, `pyright` |
+| `tests` | Run the supported Python test matrix     | `nox`, `pytest`          |
+
+Then explain notable sequencing or job relationships.
+
+### Artifact Handling
+
+Explain whether the workflow produces, consumes, uploads, downloads, validates, or publishes
+artifacts.
+
+For workflows that do not handle artifacts, say explicitly:
+
+> This workflow does not produce, consume, or publish build artifacts.
+
+### Local Reproduction
+
+Provide the closest local commands, preferably canonical nox sessions or repository tools:
+
+```sh
+nox -s qa -p 3.13
+python tools/ci/audit_action_pins.py --report summary
+```
+
+If the workflow cannot be fully reproduced locally because it depends on GitHub events, OIDC,
+trusted publishing, or workflow artifacts, say so explicitly.
+
+### Maintenance Notes
+
+Document:
+
+- when to run the workflow manually;
+- what failures usually mean;
+- which files should be updated together;
+- which duplication is intentional;
+- what should not be refactored casually before a stable release.
+
+### Related Pages
+
+Workflow documentation pages should end with `Related pages`.
+
+CI workflow pages share the same related-pages block through:
+
+```jinja
+\{\% include-markdown "\_snippets/ci/related-pages.md" \%\}
+```
+
+This is an intentional exception to the general preference against related-links snippets. The CI
+workflow pages form a small, tightly coupled documentation family, and the shared block keeps
+navigation stable across related workflow pages.
+
+### Workflow Documentation Reuse
+
+Workflow pages should share structure, not broad prose.
+
+Accept local duplication for workflow-specific explanations about triggers, trust boundaries,
+artifact behavior, and maintenance expectations. These sections are similar across workflows but
+usually differ in important details.
+
+Avoid snippets for trigger explanations, permissions, artifact handling, or local reproduction
+commands.
+
+______________________________________________________________________
+
 ## Emoji Usage Conventions
 
 Emoji usage should be conservative and consistent.
@@ -722,6 +880,7 @@ Current Markdown snippets:
 | `output-contract.md`          | Defines shared output, quiet-mode, and machine-readable output guarantees for commands that support quiet mode. | Keep             |
 | `output-contract-no-quiet.md` | Defines shared output guarantees for informational commands that do not support quiet mode.                     | Keep             |
 | `report-scope.md`             | Defines shared report-scope behavior for sibling mutation commands.                                             | Keep but monitor |
+| `ci/related-pages.md`         | Defines the shared related-pages block for CI workflow documentation pages.                                     | Keep             |
 
 `docs/_snippets/.markdownlint.jsonc` configures Markdown linting for snippet files and is not itself
 a reusable content snippet.
@@ -748,7 +907,8 @@ Avoid creating snippets for:
 
 - page summaries
 - command-page skeletons
-- related-links sections
+- related-links sections, unless the exact same navigation block is intentionally shared across a
+  small documentation family
 - workflow-specific examples
 - command-specific behavior
 - large conceptual sections
@@ -839,13 +999,13 @@ Snippet includes use `mkdocs-include-markdown-plugin` and are resolved from `doc
 
 Use docs-root-relative include paths with the underscore escaped for formatter stability:
 
-```jinja
+```text
 \{\% include-markdown "\_snippets/config-strictness.md" \%\}
 ```
 
 Do not rewrite snippet includes to relative paths such as:
 
-```jinja
+```text
 \{\% include-markdown "../../_snippets/config-strictness.md" \%\}
 ```
 
