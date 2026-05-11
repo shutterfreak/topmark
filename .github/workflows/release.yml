@@ -12,8 +12,8 @@ name: Publish package
 
 on:
   workflow_run:
-    workflows: [ "CI" ]
-    types: [ completed ]
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -150,7 +150,7 @@ jobs:
 
   details:
     name: Verify downloaded release artifacts
-    needs: [ preflight ]
+    needs: [preflight]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     outputs:
@@ -245,7 +245,7 @@ jobs:
 
   publish-package:
     name: Publish to PyPI/TestPyPI
-    needs: [ preflight, details ]
+    needs: [preflight, details]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ needs.details.outputs.channel }} # 'testpypi' for rc/a/b, else 'pypi'
@@ -394,8 +394,8 @@ jobs:
           # (optionally omit skip-existing to fail on reuse; or set skip-existing: true if you prefer idempotency)
 
   github-release:
-    needs: [ preflight, details, publish-package ]
-    if: ${{ needs.preflight.outputs.should_release == 'true' && needs.details.outputs.is_prerelease != 'true' }}
+    needs: [preflight, details, publish-package]
+    if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -406,3 +406,4 @@ jobs:
           tag_name: ${{ needs.details.outputs.tag }}
           name: Release ${{ needs.details.outputs.release_name }}
           generate_release_notes: true
+          prerelease: ${{ needs.details.outputs.is_prerelease == 'true' }}
