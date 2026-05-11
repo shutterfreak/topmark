@@ -15,7 +15,7 @@
 This tool validates two documentation surfaces:
 
 * Python docstring link style.
-* Markdown snippet/include and section-structure hygiene under ``docs/``.
+* Markdown snippet/include, navigation, heading, and section-structure hygiene under ``docs/``.
 
 The checks are intentionally syntactic and deterministic. They are not a substitute for human
 review, strict MkDocs builds, or link checking. They catch small authoring mistakes that are easy to
@@ -44,14 +44,23 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+from typing import Final
 
 from yachalk import chalk
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+# Default Markdown paths to process.
+# The docs-hygiene scan covers documentation sources recursively and top-level Markdown files.
+DOCS_PATHS: Final[tuple[str, ...]] = ("docs", ".")
 
 # Reference-style links accepted by the checker:
 #   1) Full reference form:            [Text][pkg.mod.Object]
 #   2) Code label + full ref:          [`pkg.mod.Object`][pkg.mod.Object]
 #   3) Shortcut reference link:        [`pkg.mod.Object`][]
-REF_LINK_RE: re.Pattern[str] = re.compile(
+REF_LINK_RE: Final[re.Pattern[str]] = re.compile(
     r"""
     \[
       (?:`?[\w\.\-]+`?|\S[^]]+?) # label: either code-ish or any text
@@ -64,25 +73,34 @@ REF_LINK_RE: re.Pattern[str] = re.compile(
 )
 
 # Internal FQNs that *look like* symbols (final segment capitalized). We avoid module-only names.
-INTERNAL_FQN_RE: re.Pattern[str] = re.compile(r"\btopmark(?:\.[A-Za-z_][\w]*)+\.[A-Z][\w]*\b")
+INTERNAL_FQN_RE: Final[re.Pattern[str]] = re.compile(
+    r"\btopmark(?:\.[A-Za-z_][\w]*)+\.[A-Z][\w]*\b",
+)
 
 # Any raw URL inside a docstring is flagged unless whitelisted in ALLOWED_URLS.
 # Allow literal URLs matching these patterns inside docstrings
-ALLOWED_URLS: tuple[str, ...] = (
+ALLOWED_URLS: Final[tuple[str, ...]] = (
     r"https?://(www\.)?example\.(com|org|net)/?",
     r"https?://(docs\.)?python\.org/.*",
 )
 
 
-URL_RE: re.Pattern[str] = re.compile(r"https?://\S+")
+URL_RE: Final[re.Pattern[str]] = re.compile(
+    r"https?://\S+",
+)
 
 # We may ignore code regions when scanning text. For accurate index math (to compute line numbers),
 # code regions are masked with spaces (same length) rather than removed.
 # Regexes to ignore code segments in docstrings
-CODE_FENCE_RE: re.Pattern[str] = re.compile(r"```.*?```", re.DOTALL)  # fenced code blocks
-INLINE_CODE_RE: re.Pattern[str] = re.compile(r"`[^`]+`")  # inline code spans
+CODE_FENCE_RE: Final[re.Pattern[str]] = re.compile(
+    r"```.*?```",
+    re.DOTALL,
+)  # fenced code blocks
+INLINE_CODE_RE: Final[re.Pattern[str]] = re.compile(
+    r"`[^`]+`",
+)  # inline code spans
 # Lightweight Markdown hygiene checks.
-INCLUDE_MARKDOWN_RE: re.Pattern[str] = re.compile(
+INCLUDE_MARKDOWN_RE: Final[re.Pattern[str]] = re.compile(
     r"""
     \{%-?\s*include-markdown\s+
     (?P<quote>[\"'])
@@ -92,15 +110,48 @@ INCLUDE_MARKDOWN_RE: re.Pattern[str] = re.compile(
     """,
     re.VERBOSE,
 )
-HEADING_RE: re.Pattern[str] = re.compile(r"^#{1,6}\s+", re.MULTILINE)
-LEVEL2_HEADING_RE: re.Pattern[str] = re.compile(r"^##\s+", re.MULTILINE)
-HORIZONTAL_RULE_RE: re.Pattern[str] = re.compile(r"^\s{0,3}(?:-{3,}|\*{3,}|_{3,})\s*$")
-RELATIVE_LINK_RE: re.Pattern[str] = re.compile(
-    r"\[[^\]]+\]\((?!https?://|mailto:|#|/)(?P<target>[^)]+)\)"
+HEADING_RE: Final[re.Pattern[str]] = re.compile(
+    r"^#{1,6}\s+",
+    re.MULTILINE,
 )
-SNIPPET_INCLUDE_PREFIX = r"\_snippets/"
-SNIPPET_DIR = Path("docs/_snippets")
-DOCS_DIR = Path("docs")
+HEADING_LINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(?P<marker>#{1,6})\s+(?P<title>.+)$",
+    re.MULTILINE,
+)
+EMOJI_RE: Final[re.Pattern[str]] = re.compile(
+    "["
+    "\U0001f1e6-\U0001f1ff"  # flags
+    "\U0001f300-\U0001f5ff"  # symbols and pictographs
+    "\U0001f600-\U0001f64f"  # emoticons
+    "\U0001f680-\U0001f6ff"  # transport and map symbols
+    "\U0001f700-\U0001f77f"  # alchemical symbols
+    "\U0001f780-\U0001f7ff"  # geometric shapes extended
+    "\U0001f800-\U0001f8ff"  # supplemental arrows-c
+    "\U0001f900-\U0001f9ff"  # supplemental symbols and pictographs
+    "\U0001fa00-\U0001fa6f"  # chess symbols
+    "\U0001fa70-\U0001faff"  # symbols and pictographs extended-a
+    "\u2600-\u26ff"  # miscellaneous symbols
+    "\u2700-\u27bf"  # dingbats
+    "]"
+)
+LEVEL2_HEADING_RE: Final[re.Pattern[str]] = re.compile(
+    r"^##\s+",
+    re.MULTILINE,
+)
+HORIZONTAL_RULE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^\s{0,3}(?:-{3,}|\*{3,}|_{3,})\s*$",
+)
+RELATIVE_LINK_RE: Final[re.Pattern[str]] = re.compile(
+    r"\[[^\]]+\]\((?!https?://|mailto:|#|/)(?P<target>[^)]+)\)",
+)
+MKDOCS_NAV_PATH_RE: Final[re.Pattern[str]] = re.compile(
+    r"(?P<path>[A-Za-z0-9_./-]+\.md)(?:[#?][^\s'\"]*)?",
+)
+
+SNIPPET_INCLUDE_PREFIX: Final[str] = r"\_snippets/"
+SNIPPET_DIR: Final[Path] = Path("docs/_snippets")
+DOCS_DIR: Final[Path] = Path("docs")
+MKDOCS_CONFIG: Final[Path] = Path("mkdocs.yml")
 
 
 @dataclass(frozen=True)
@@ -134,7 +185,7 @@ class Diagnostic:
         return f"{chalk.bold(location)}: {label}: {self.message}"
 
 
-def iter_markdown_files(paths: list[str]) -> list[Path]:
+def iter_markdown_files(paths: Sequence[str] | None) -> list[Path]:
     """Expand input paths into a de-duplicated, lexicographically sorted list of Markdown files.
 
     Args:
@@ -144,11 +195,14 @@ def iter_markdown_files(paths: list[str]) -> list[Path]:
         Markdown source files to scan.
     """
     todo: list[Path] = []
-    use_paths: list[str] = paths or ["docs"]
+    use_paths: Sequence[str] = paths or DOCS_PATHS
     for p in use_paths:
         path = Path(p)
         if path.is_dir():
-            todo.extend(path.rglob("*.md"))
+            if path == Path():
+                todo.extend(child for child in path.glob("*.md") if child.is_file())
+            else:
+                todo.extend(path.rglob("*.md"))
         elif path.is_file() and path.suffix == ".md":
             todo.append(path)
 
@@ -159,6 +213,18 @@ def iter_markdown_files(paths: list[str]) -> list[Path]:
             seen.add(f)
             out.append(f)
     return out
+
+
+def _relative_to_docs(path: Path) -> Path:
+    """Return a docs-root-relative path.
+
+    Args:
+        path: Markdown file under ``docs/``.
+
+    Returns:
+        Path relative to ``DOCS_DIR``.
+    """
+    return path.resolve().relative_to(DOCS_DIR.resolve())
 
 
 def _line_for_offset(text: str, offset: int) -> int:
@@ -215,6 +281,76 @@ def _is_snippet(path: Path) -> bool:
     return (
         _is_under(path, SNIPPET_DIR) and path.suffix == ".md" and path.name != ".markdownlint.jsonc"
     )
+
+
+def _is_nav_exempt(path: Path) -> bool:
+    """Return True when a Markdown file is exempt from MkDocs nav membership.
+
+    Args:
+        path: Candidate Markdown file.
+
+    Returns:
+        True when the file is allowed to exist outside the MkDocs nav.
+    """
+    return _is_snippet(path)
+
+
+# Allow certain snippets to intentionally use relative links.
+def _allows_relative_links(path: Path) -> bool:
+    """Return True when a snippet intentionally allows relative links.
+
+    Relative links are normally discouraged inside reusable snippets because links should resolve
+    relative to the consuming page. However, shared navigation snippets intentionally centralize
+    relative documentation links.
+
+    Args:
+        path: Candidate Markdown snippet.
+
+    Returns:
+        True when the snippet intentionally permits relative links.
+    """
+    return _is_snippet(path) and path.name.startswith("related-pages")
+
+
+def _extract_mkdocs_nav_block(text: str) -> str:
+    """Extract the top-level MkDocs `nav` block from a config file.
+
+    Args:
+        text: Contents of `mkdocs.yml`.
+
+    Returns:
+        The raw nav block text, or an empty string if no top-level nav block is present.
+    """
+    lines: list[str] = text.splitlines()
+    nav_lines: list[str] = []
+    in_nav = False
+    for line in lines:
+        if not in_nav:
+            if line == "nav:":
+                in_nav = True
+                nav_lines.append(line)
+            continue
+
+        if line and not line.startswith((" ", "-")):
+            break
+        nav_lines.append(line)
+    return "\n".join(nav_lines)
+
+
+def _extract_nav_markdown_paths(mkdocs_config: Path) -> set[Path]:
+    """Extract Markdown paths referenced by the MkDocs nav section.
+
+    Args:
+        mkdocs_config: Path to `mkdocs.yml`.
+
+    Returns:
+        Docs-root-relative Markdown paths referenced by the nav section.
+    """
+    if not mkdocs_config.exists():
+        return set()
+
+    nav_block: str = _extract_mkdocs_nav_block(mkdocs_config.read_text(encoding="utf-8"))
+    return {Path(match.group("path")) for match in MKDOCS_NAV_PATH_RE.finditer(nav_block)}
 
 
 def _mask_code_regions(text: str, *, ignore_inline: bool = False) -> str:
@@ -349,7 +485,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def check_docs_hygiene(
-    paths: list[str] | None,
+    paths: Sequence[str] | None,
     *,
     stats: bool = False,
     fail_on_warnings: bool = False,
@@ -357,7 +493,9 @@ def check_docs_hygiene(
     """Validate lightweight Markdown documentation hygiene.
 
     Hard failures cover objective problems:
-    - accidental macOS ``._*`` resource files under ``docs/``;
+    - accidental macOS ``._*`` resource files under documentation sources;
+    - Markdown files under ``docs/`` that are missing from ``mkdocs.yml`` nav;
+    - emoji in Markdown headings;
     - malformed or broken ``include-markdown`` paths;
     - nested snippet includes;
     - level-2 Markdown sections that are not separated by a horizontal rule.
@@ -365,21 +503,22 @@ def check_docs_hygiene(
     Warnings cover maintainability concerns:
     - orphaned snippets;
     - headings inside snippets;
-    - relative links inside snippets;
+    - relative links inside snippets that are not explicit navigation snippets;
     - snippet include paths missing the mdformat-stable escaped underscore convention.
 
     Args:
-        paths: File or directory paths to check. If None or empty, defaults to ``["docs"]``.
+        paths: File or directory paths to check. If None or empty, defaults to ``DOCS_PATHS``.
         stats: If True, print summary counts.
         fail_on_warnings: If True, warnings also produce a non-zero exit code.
 
     Returns:
         0 if no errors were found; 1 otherwise. Warnings only fail when ``fail_on_warnings`` is set.
     """
-    md_files = iter_markdown_files(paths or ["docs"])
+    md_files: list[Path] = iter_markdown_files(paths or DOCS_PATHS)
     diagnostics: list[Diagnostic] = []
     normal_markdown_files: list[Path] = []
     included_targets: set[Path] = set()
+    nav_paths: set[Path] = _extract_nav_markdown_paths(MKDOCS_CONFIG)
 
     for path in md_files:
         if any(part.startswith("._") for part in path.parts):
@@ -394,7 +533,7 @@ def check_docs_hygiene(
             continue
 
         try:
-            text = path.read_text(encoding="utf-8")
+            text: str = path.read_text(encoding="utf-8")
         except UnicodeDecodeError as exc:
             diagnostics.append(
                 Diagnostic(
@@ -408,11 +547,38 @@ def check_docs_hygiene(
 
         if not _is_snippet(path):
             normal_markdown_files.append(path)
-            level2_matches = list(LEVEL2_HEADING_RE.finditer(text))
+
+            if _is_under(path, DOCS_DIR) and not _is_nav_exempt(path):
+                docs_relative_path = _relative_to_docs(path)
+                if docs_relative_path not in nav_paths:
+                    diagnostics.append(
+                        Diagnostic(
+                            severity="error",
+                            path=path,
+                            line=None,
+                            message=(
+                                "Markdown file under docs/ is missing from mkdocs.yml nav: "
+                                f"{docs_relative_path.as_posix()}"
+                            ),
+                        )
+                    )
+
+            for heading in HEADING_LINE_RE.finditer(text):
+                if EMOJI_RE.search(heading.group("title")):
+                    diagnostics.append(
+                        Diagnostic(
+                            severity="error",
+                            path=path,
+                            line=_line_for_offset(text, heading.start()),
+                            message="emoji are not allowed in Markdown headings",
+                        )
+                    )
+
+            level2_matches: list[re.Match[str]] = list(LEVEL2_HEADING_RE.finditer(text))
             for heading_match in level2_matches[1:]:
-                heading_line = _line_for_offset(text, heading_match.start())
-                preceding_lines = text[: heading_match.start()].splitlines()
-                previous_non_empty = next(
+                heading_line: int = _line_for_offset(text, heading_match.start())
+                preceding_lines: list[str] = text[: heading_match.start()].splitlines()
+                previous_non_empty: str = next(
                     (line for line in reversed(preceding_lines) if line.strip()),
                     "",
                 )
@@ -430,8 +596,8 @@ def check_docs_hygiene(
 
         for match in INCLUDE_MARKDOWN_RE.finditer(text):
             raw_include = match.group("path")
-            include_line = _line_for_offset(text, match.start())
-            normalized = _normalize_include_path(raw_include)
+            include_line: int = _line_for_offset(text, match.start())
+            normalized: str = _normalize_include_path(raw_include)
 
             if raw_include.startswith("_snippets/"):
                 diagnostics.append(
@@ -446,7 +612,7 @@ def check_docs_hygiene(
                     )
                 )
 
-            normalized_parts = Path(normalized).parts
+            normalized_parts: tuple[str, ...] = Path(normalized).parts
             if (
                 normalized.startswith("/")
                 or normalized.startswith("./")
@@ -463,7 +629,7 @@ def check_docs_hygiene(
                 )
                 continue
 
-            target = DOCS_DIR / normalized
+            target: Path = DOCS_DIR / normalized
             if not _is_under(target, DOCS_DIR):
                 diagnostics.append(
                     Diagnostic(
@@ -498,8 +664,8 @@ def check_docs_hygiene(
                     )
                 )
 
-    snippets = (
-        sorted(p for p in SNIPPET_DIR.glob("*.md") if _is_snippet(p))
+    snippets: list[Path] = (
+        sorted(p for p in SNIPPET_DIR.rglob("*.md") if _is_snippet(p))
         if SNIPPET_DIR.exists()
         else []
     )
@@ -525,6 +691,8 @@ def check_docs_hygiene(
                 )
             )
 
+        if _allows_relative_links(snippet):
+            continue
         for rel_link in RELATIVE_LINK_RE.finditer(text):
             diagnostics.append(
                 Diagnostic(
@@ -536,8 +704,8 @@ def check_docs_hygiene(
                 )
             )
 
-    errors = [d for d in diagnostics if d.severity == "error"]
-    warnings = [d for d in diagnostics if d.severity == "warning"]
+    errors: list[Diagnostic] = [d for d in diagnostics if d.severity == "error"]
+    warnings: list[Diagnostic] = [d for d in diagnostics if d.severity == "warning"]
 
     for diagnostic in diagnostics:
         print(diagnostic.render())
@@ -546,6 +714,7 @@ def check_docs_hygiene(
         print(f"Markdown files checked: {len(md_files)}")
         print(f"Normal Markdown files checked: {len(normal_markdown_files)}")
         print(f"Snippets checked: {len(snippets)}")
+        print(f"MkDocs nav entries checked: {len(nav_paths)}")
         print(f"Errors found: {len(errors)}")
         print(f"Warnings found: {len(warnings)}")
 
@@ -656,7 +825,7 @@ if __name__ == "__main__":
     if args.docs_hygiene:
         sys.exit(
             check_docs_hygiene(
-                args.paths or ["docs"],
+                args.paths,
                 stats=args.stats,
                 fail_on_warnings=args.fail_on_warnings,
             )
