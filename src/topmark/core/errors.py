@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.validation import FrozenValidationLogs
-    from topmark.config.validation import ValidationLogs
+    from topmark.config.validation import MutableValidationLogs
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.diagnostic.model import MutableDiagnosticLog
@@ -551,7 +551,7 @@ class ConfigValidationError(TopmarkError):
     def __init__(
         self,
         *,
-        validation_logs: ValidationLogs | FrozenValidationLogs,
+        validation_logs: MutableValidationLogs | FrozenValidationLogs,
         strict: bool,
         details: tuple[str, ...] = (),
     ) -> None:

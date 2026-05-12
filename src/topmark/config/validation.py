@@ -57,7 +57,7 @@ class ValidationStage(str, Enum):
 
 
 @dataclass(kw_only=True, slots=True)
-class ValidationLogs:
+class MutableValidationLogs:
     """Mutable staged diagnostic logs for config validation.
 
     Attributes:
@@ -81,7 +81,7 @@ class ValidationLogs:
             runtime_applicability=self.runtime_applicability.freeze(),
         )
 
-    def merge_with(self, other: ValidationLogs) -> ValidationLogs:
+    def merge_with(self, other: MutableValidationLogs) -> MutableValidationLogs:
         """Return staged validation logs merged with a higher-precedence draft.
 
         Diagnostics accumulate within each validation stage. The merged result keeps
@@ -95,7 +95,7 @@ class ValidationLogs:
         Returns:
             A new staged validation-log container containing the merged result.
         """
-        return ValidationLogs(
+        return MutableValidationLogs(
             toml_source=MutableDiagnosticLog.from_iterable(
                 [
                     *self.toml_source,
@@ -136,9 +136,9 @@ class FrozenValidationLogs:
     merged_config: FrozenDiagnosticLog
     runtime_applicability: FrozenDiagnosticLog
 
-    def thaw(self) -> ValidationLogs:
+    def thaw(self) -> MutableValidationLogs:
         """Return a mutable copy of these staged validation logs."""
-        return ValidationLogs(
+        return MutableValidationLogs(
             toml_source=self.toml_source.thaw(),
             merged_config=self.merged_config.thaw(),
             runtime_applicability=self.runtime_applicability.thaw(),

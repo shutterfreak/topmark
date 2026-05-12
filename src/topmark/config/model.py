@@ -65,7 +65,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import MutablePolicy
-from topmark.config.validation import ValidationLogs
+from topmark.config.validation import MutableValidationLogs
 from topmark.core.errors import AmbiguousFileTypeIdentifierError
 from topmark.core.errors import ConfigValidationError
 from topmark.core.errors import InvalidRegistryIdentityError
@@ -254,7 +254,7 @@ class FrozenConfig:
         Returns:
             A mutable builder initialized from this snapshot.
         """
-        validation_logs: ValidationLogs = self.validation_logs.thaw()
+        validation_logs: MutableValidationLogs = self.validation_logs.thaw()
         return MutableConfig(
             policy=self.policy.thaw(),
             policy_by_type={k: v.thaw() for k, v in self.policy_by_type.items()},
@@ -364,7 +364,7 @@ class MutableConfig:
     exclude_file_types: set[str] = field(default_factory=lambda: set[str]())
 
     # Collected diagnostics while loading / merging / sanitizing config.
-    validation_logs: ValidationLogs = field(default_factory=ValidationLogs)
+    validation_logs: MutableValidationLogs = field(default_factory=MutableValidationLogs)
 
     def is_valid(
         self,
@@ -539,7 +539,7 @@ class MutableConfig:
             *other.config_files,
         ]
 
-        merged_validation_logs: ValidationLogs = self.validation_logs.merge_with(
+        merged_validation_logs: MutableValidationLogs = self.validation_logs.merge_with(
             other.validation_logs
         )
 
@@ -865,7 +865,7 @@ def _is_diagnostic_log_valid(
 
 
 def _is_validation_logs_valid(
-    validation_logs: ValidationLogs | FrozenValidationLogs,
+    validation_logs: MutableValidationLogs | FrozenValidationLogs,
     *,
     strict: bool,
 ) -> bool:

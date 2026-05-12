@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import MutableConfig
     from topmark.config.validation import FrozenValidationLogs
-    from topmark.config.validation import ValidationLogs
+    from topmark.config.validation import MutableValidationLogs
 
 
 NonEmptyExpectation: TypeAlias = Literal[">0"]
@@ -243,7 +243,7 @@ def _assert_stage_total(
 
 
 def assert_validation_stage_totals(
-    logs: ValidationLogs | FrozenValidationLogs,
+    logs: MutableValidationLogs | FrozenValidationLogs,
     *,
     toml: DiagnosticCountExpectation = None,
     config: DiagnosticCountExpectation = None,

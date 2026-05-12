@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from topmark.config.validation import ValidationLogs
+from topmark.config.validation import MutableValidationLogs
 from topmark.core.errors import ConfigValidationError
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ def test_config_validation_error_message_summarizes_stage_counts(
     strict_fragment: str,
 ) -> None:
     """The error message should summarize counts for each validation stage."""
-    logs = ValidationLogs()
+    logs = MutableValidationLogs()
     logs.toml_source.add_error("unknown top-level key")
     logs.toml_source.add_warning("missing known section")
     logs.merged_config.add_warning("duplicate include file types")
@@ -93,7 +93,7 @@ def test_config_validation_error_message_summarizes_stage_counts(
 
 def test_config_validation_error_attaches_flattened_diagnostics_in_stage_order() -> None:
     """The attached diagnostics should be the flattened compatibility view."""
-    logs = ValidationLogs()
+    logs = MutableValidationLogs()
     logs.toml_source.add_warning("toml warning")
     logs.merged_config.add_warning("merged warning")
     logs.runtime_applicability.add_warning("runtime warning")
@@ -119,7 +119,7 @@ def test_config_validation_error_attaches_flattened_diagnostics_in_stage_order()
 
 def test_config_validation_error_attaches_empty_flattened_diagnostics_when_logs_empty() -> None:
     """Empty staged logs should still attach an empty flattened diagnostics view."""
-    logs = ValidationLogs()
+    logs = MutableValidationLogs()
 
     err = ConfigValidationError(
         validation_logs=logs,
