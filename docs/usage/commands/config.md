@@ -157,7 +157,7 @@ ______________________________________________________________________
 - [Filtering](../filtering.md)
 - [Policies](../policies.md)
 - [Configuration discovery](../../configuration/discovery.md)
-- [Configuration schema](../../dev/config-schema.md)
+- [Configuration schema](../../dev/configuration-schema.md)
 - [Exit codes](../exit-codes.md)
 
 ______________________________________________________________________

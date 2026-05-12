@@ -206,7 +206,7 @@ ______________________________________________________________________
 - [Filtering](../../filtering.md)
 - [Policies](../../policies.md)
 - [Configuration discovery](../../../configuration/discovery.md)
-- [Configuration schema](../../../dev/config-schema.md)
+- [Configuration schema](../../../dev/configuration-schema.md)
 - [Machine-readable output schema](../../../dev/machine-output.md)
 - [Machine-readable formats](../../../dev/machine-formats.md)
 - [Exit codes](../../exit-codes.md)

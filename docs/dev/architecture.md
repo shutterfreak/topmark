@@ -420,7 +420,7 @@ machine-facing interfaces.
   semantics, and precedence
 - [`Machine-readable output schema`](./machine-output.md) — JSON / NDJSON envelope and payload
   shapes
-- [`Config schema`](./config-schema.md) — documented TOML schema and key placement
+- [`Configuration schema`](./configuration-schema.md) — documented TOML schema and key placement
 
 Registry design is documented in [`Registry model`](registry-model.md) because it underpins test
 isolation, plugin extensibility, file type identifier semantics, and API stability.

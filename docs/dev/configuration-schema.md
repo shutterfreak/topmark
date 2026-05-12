@@ -2,8 +2,8 @@
 topmark:header:start
 
   project      : TopMark
-  file         : config-schema.md
-  file_relpath : docs/dev/config-schema.md
+  file         : configuration-schema.md
+  file_relpath : docs/dev/configuration-schema.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
@@ -17,20 +17,27 @@ from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 
 > [!NOTE]
 >
-> - This is a schema *summary* (not a full JSON Schema).
+> - This page is a schema summary, not a full JSON Schema.
 > - The ordering mirrors `src/topmark/toml/topmark-example.toml`.
 > - Keys are defined authoritatively in `src/topmark/toml/keys.py`.
 >
-> Machine and human outputs expose a flattened compatibility view derived from these staged
-> validation logs; the staged form is not serialized directly. For 1.0, this flattened form is the
-> accepted machine/API contract (stable entry shape `{level, message}`).
+> TopMark internally maintains staged validation diagnostics, but public reporting, machine-readable
+> output, and API surfaces expose a flattened compatibility view.
 >
-> Presentation note:
+> For 1.0, this flattened compatibility view is the stable machine-readable and API contract.
 >
-> - Human-facing TEXT verbosity (`-v`) and quiet mode (`--quiet`) are presentation-layer concerns
->   and do not affect configuration schema validation, staged diagnostics, or machine/API outputs.
-> - Markdown and machine-readable output always reflect the full flattened compatibility view,
->   independent of TEXT-only verbosity controls.
+> [!NOTE]
+>
+> Human-facing TEXT verbosity (`-v`) and quiet mode (`--quiet`) are presentation-layer concerns.
+>
+> They do not affect:
+>
+> - configuration schema validation
+> - staged diagnostics
+> - machine-readable output
+> - API surfaces
+>
+> Markdown and machine-readable output always expose the full flattened compatibility view.
 
 See also:
 
@@ -40,26 +47,32 @@ See also:
 - [Registry model](registry-model.md)
 - [Resolution](resolution.md)
 
+See [Terminology and Canonical Vocabulary](terminology.md) for the normative definitions of
+machine-readable output, canonical identity, applicability, and staged diagnostics terminology.
+
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
-At this layer, override handling is expressed as plain mapping data; internal typed override objects
-are introduced later during CLI/API orchestration and are not part of the public schema.
+At this layer, override handling is represented as plain mapping data.
+
+Internal typed runtime override objects are introduced later during CLI/API orchestration and are
+not part of the public configuration schema.
 
 File type identifiers in TOML configuration may use either:
 
 - local identifiers such as `python`
 - canonical qualified identifiers such as `topmark:python`
 
-Internally, TopMark normalizes identifiers to canonical qualified keys during configuration freeze
-before resolver, filtering, policy, and binding evaluation.
+TopMark normalizes identifiers to canonical qualified keys during configuration freeze before
+resolver, filtering, policy, and binding evaluation.
 
 Local identifiers are accepted only when unambiguous in the effective composed registry.
 
 `strict` is a **TOML-source-local config-loading option**, not a layered
 \[`Config`\][topmark.config.model.Config] field. It is resolved from `[config]` /
-`[tool.topmark.config]` during TOML source resolution and applied after layered config merging. In
-the current implementation, its effective value governs staged config-loading validation evaluated
-across TOML-source, merged-config, and runtime-applicability diagnostics.
+`[tool.topmark.config]` during TOML source resolution and applied after layered config merging.
+
+Its effective value governs staged config-loading validation across TOML-source, merged-config, and
+runtime-applicability diagnostics.
 
 This distinction matters for
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md):
@@ -81,11 +94,12 @@ deserialized:
 - unknown keys within known sections (e.g. `[config].bogus`) are also reported
 - validation is source-local and happens per TOML file during loading
 
-After this step, only the **layered config fragment** is passed to the config layer
-(\[`MutableConfig`\][topmark.config.model.MutableConfig]) for value parsing and normalization.
+After this step, only the **layered config fragment** is passed to
+(\[`MutableConfig`\][topmark.config.model.MutableConfig]) for parsing and normalization before
+freezing into the immutable layered configuration snapshot.
 
-At this boundary, diagnostics remain **staged**; flattening into a single compatibility view is
-performed only at reporting, exception, and machine-readable output boundaries.
+At this boundary, diagnostics remain **staged**; flattening into the public compatibility view is
+performed only at reporting, exception, machine-readable output, and API boundaries.
 
 This reporting boundary is independent of human presentation controls: TEXT verbosity (`-v`) and
 quiet mode (`--quiet`) only influence how diagnostics are rendered in console output, not how they
@@ -95,22 +109,28 @@ For 1.0, staged validation remains primarily internal, while public reporting an
 surfaces expose only the flattened compatibility diagnostics contract.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
-known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before staged config-validation semantics are applied. These TOML-source
-diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
-during staged config-loading/preflight validation.
+known sections are emitted as INFO diagnostics.
 
-This means:
+This allows callers to distinguish absent sections from malformed-present sections before staged
+config-validation semantics are applied.
 
-- TOML schema validation is handled in \[`topmark.toml`\][topmark.toml]
-- file type identifier normalization and ambiguity evaluation are performed during config freeze and
-  runtime applicability validation
-- config value/type validation is handled in \[`topmark.config`\][topmark.config] as staged
-  validation logs (merged-config and runtime-applicability stages)
-- layered config deserialization
-  (\[`mutable_config_from_layered_toml_table`\][topmark.config.io.deserializers.mutable_config_from_layered_toml_table])
-  assumes schema validation already happened, but still performs defensive parsing for API and test
-  inputs
+These TOML-source diagnostics then participate together with merged-config and runtime-applicability
+diagnostics during staged config-loading validation.
+
+> [!NOTE]
+>
+> - TOML schema validation is handled in \[`topmark.toml`\][topmark.toml]
+> - file type identifier normalization and ambiguity evaluation are performed during config freeze
+>   and runtime applicability validation
+> - config value/type validation is handled in \[`topmark.config`\][topmark.config] as staged
+>   validation logs (merged-config and runtime-applicability stages)
+> - layered config deserialization
+>   (\[`mutable_config_from_layered_toml_table`\][topmark.config.io.deserializers.mutable_config_from_layered_toml_table])
+>   assumes schema validation already happened, but still performs defensive parsing for API and
+>   test inputs
+
+The following summary uses a YAML-like notation for readability and is not itself a machine-readable
+schema definition.
 
 ```yaml
 topmark:
@@ -317,6 +337,8 @@ ______________________________________________________________________
 
 ## Policy token notes
 
+### header_mutation_mode
+
 `header_mutation_mode` uses TOML/API tokens with underscores:
 
 - `all`: insert missing headers and update existing headers
@@ -325,11 +347,12 @@ ______________________________________________________________________
 
 The equivalent CLI values use hyphens for the non-default modes: `add-only` and `update-only`.
 
-This policy applies only to [`check`](../usage/commands/check.md). It affects dry-run reporting,
-apply behavior, API result views, and outcome bucketing. It does not apply to
-[`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety gates
-still take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem
-states, and other non-mutable conditions are not made mutable by this policy.
+This policy affects only the [`check`](../usage/commands/check.md) command.
+
+It affects dry-run reporting, apply behavior, API result views, and outcome bucketing. It does not
+apply to [`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety
+gates still take precedence: malformed headers, unreadable files, unsupported files, blocked
+filesystem states, and other non-mutable conditions are not made mutable by this policy.
 
 ______________________________________________________________________
 
