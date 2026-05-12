@@ -40,7 +40,7 @@ from topmark.cli.validators import validate_output_verbosity_policy
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
-from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.constants import CLI_OVERRIDE_STR
@@ -57,7 +57,7 @@ from topmark.utils.merge import none_if_empty
 if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.config.policy import MutablePolicy
     from topmark.core.exit_codes import ExitCode
@@ -134,7 +134,7 @@ def init_common_state(
 def build_file_resolution(
     *,
     run_options: RunOptions,
-    config: Config,
+    config: FrozenConfig,
     temp_path: Path | None,
 ) -> FileListResolution:
     """Return file-list resolution diagnostics for the current invocation.
@@ -392,7 +392,7 @@ def build_resolved_toml_sources_and_config_for_plan(
     discovery_inputs: list[Path] | None = _resolve_discovery_inputs()
     extra_config_files: list[Path] = [Path(p) for p in config_paths]
 
-    resolved_toml, draft = resolve_toml_sources_and_build_config_draft(
+    resolved_toml, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=discovery_inputs,
         extra_config_files=extra_config_files,
         strict=strict,

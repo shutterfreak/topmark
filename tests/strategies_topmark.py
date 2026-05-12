@@ -61,7 +61,7 @@ BLACKLIST_CATEGORIES = ("Cs",)
 
 
 # Typical comment styles your processors handle
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class CommentStyle:
     """Minimal comment style descriptor used by the synthetic renderer."""
 
@@ -71,11 +71,30 @@ class CommentStyle:
     block_suffix: str | None = None
 
 
-POUND = CommentStyle("pound", "# ")
-SLASH = CommentStyle("slash", "// ")
-XML = CommentStyle("xml", "", "<!--", "-->")
-CBLOCK = CommentStyle("cblock", " * ", "/*", " */")
-PLAIN = CommentStyle("plain", "")  # e.g. Markdown where headers are raw blocks
+POUND = CommentStyle(
+    family="pound",
+    line_prefix="# ",
+)
+SLASH = CommentStyle(
+    family="slash",
+    line_prefix="// ",
+)
+XML = CommentStyle(
+    family="xml",
+    line_prefix="",
+    block_prefix="<!--",
+    block_suffix="-->",
+)
+CBLOCK = CommentStyle(
+    family="cblock",
+    line_prefix=" * ",
+    block_prefix="/*",
+    block_suffix=" */",
+)
+PLAIN = CommentStyle(
+    family="plain",
+    line_prefix="",
+)  # e.g. Markdown where headers are raw blocks
 
 COMMENT_STYLES: tuple[CommentStyle, ...] = (
     POUND,

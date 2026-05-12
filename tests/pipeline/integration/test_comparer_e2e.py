@@ -41,7 +41,7 @@ from topmark.pipeline.views import RenderView
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
 
@@ -62,11 +62,10 @@ def test_e2e_content_change_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    # cfg: Config = MutableConfig.from_defaults().freeze()
     draft: MutableConfig = mutable_config_from_defaults()
     draft.header_fields = ["file", "file_relpath"]
     draft.policy.render_empty_header_when_no_fields = True
-    cfg: Config = draft.freeze()
+    cfg: FrozenConfig = draft.freeze()
 
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
@@ -103,7 +102,7 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
 
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
@@ -126,7 +125,7 @@ def test_e2e_formatting_only_change_detected(tmp_path: Path) -> None:
     # Prepare a render-config that expresses the canonical order for the fields.
     draft_cfg_for_render: MutableConfig = mutable_config_from_defaults()
     draft_cfg_for_render.header_fields = ["license", "project"]
-    cfg_for_render: Config = draft_cfg_for_render.freeze()
+    cfg_for_render: FrozenConfig = draft_cfg_for_render.freeze()
 
     assert ctx.header_processor is not None, "Header processor must be set by resolver"
     assert ctx.views.header is not None

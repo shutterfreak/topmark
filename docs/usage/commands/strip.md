@@ -392,7 +392,7 @@ ______________________________________________________________________
 - [`topmark probe`](./probe.md) — explain file-type and processor resolution.
 - [`topmark config check`](./config/check.md) — validate the effective merged configuration and
   report diagnostics.
-- [`topmark config dump`](./config/dump.md) — inspect the effective frozen configuration, including
+- [`topmark config dump`](./config/dump.md) — inspect the effective runtime configuration, including
   normalized file type identifiers.
 
 ______________________________________________________________________

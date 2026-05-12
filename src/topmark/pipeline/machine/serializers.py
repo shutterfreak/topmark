@@ -41,7 +41,7 @@ from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_re
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 def serialize_probe_results(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     fmt: OutputFormat,
@@ -98,7 +98,7 @@ def serialize_probe_results(
 def serialize_processing_results(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     fmt: OutputFormat,
@@ -148,7 +148,7 @@ def serialize_processing_results(
 def serialize_processing_results_json(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     summary_mode: bool,
@@ -178,7 +178,7 @@ def serialize_processing_results_json(
 def serialize_processing_results_ndjson(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     summary_mode: bool,

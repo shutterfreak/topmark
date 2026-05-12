@@ -57,7 +57,7 @@ class ConfigLayerKind(str, Enum):
     API = "api"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ConfigLayer:
     """Immutable config provenance layer used during layered resolution.
 
@@ -119,7 +119,7 @@ def _make_config_layer(
 def _make_default_config_layer() -> ConfigLayer:
     """Return the built-in defaults as the first config provenance layer."""
     return _make_config_layer(
-        origin=SyntheticConfigSource(DEFAULT_LAYER_ORIGIN),
+        origin=SyntheticConfigSource(label=DEFAULT_LAYER_ORIGIN),
         kind=ConfigLayerKind.DEFAULT,
         precedence=DEFAULT_LAYER_PRECEDENCE,
         scope_root=None,

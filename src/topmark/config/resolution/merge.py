@@ -62,7 +62,8 @@ def merge_layers_globally(layers: Iterable[ConfigLayer]) -> MutableConfig:
         layers: Config provenance layers in stable precedence order.
 
     Returns:
-        Mutable config draft produced by merging the supplied layers in order.
+        [`MutableConfig`][topmark.config.model.MutableConfig] draft produced by
+        merging the supplied layers in order.
     """
     layer_list: list[ConfigLayer] = list(layers)
     logger.debug("Merging %d config layer(s) into mutable config draft", len(layer_list))
@@ -120,14 +121,15 @@ def build_effective_config_for_path(
 
     This helper selects the config provenance layers whose scope applies to the
     target path, then merges them in stable precedence order using
-    `MutableConfig.merge_with`.
+    [`MutableConfig.merge_with()`][topmark.config.model.MutableConfig.merge_with].
 
     Args:
         layers: Candidate config provenance layers.
         path: Target file path for which to build the effective config.
 
     Returns:
-        The merged mutable config draft applicable to `path`.
+        The merged [`MutableConfig`][topmark.config.model.MutableConfig] draft
+        applicable to `path`.
     """
     applicable: list[ConfigLayer] = select_applicable_layers(layers, path)
     draft: MutableConfig = merge_layers_globally(applicable)

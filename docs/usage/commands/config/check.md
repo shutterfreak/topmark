@@ -321,8 +321,8 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config dump`](./dump.md) — show the effective frozen configuration, including normalized
-  canonical file type identifiers.
+- [`topmark config dump`](./dump.md) — show the effective runtime configuration, including
+  normalized canonical file type identifiers.
 - [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
 

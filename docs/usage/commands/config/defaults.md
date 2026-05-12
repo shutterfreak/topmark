@@ -136,7 +136,7 @@ Notes:
   canonical built-in defaults table (no discovery and no merge with project/user config).
 - The machine-readable snapshot includes TOML-authored runtime sections such as `[writer]` when they
   are present in the canonical defaults, even though those sections are resolved outside the layered
-  `Config` model at runtime.
+  Config model at runtime.
 - No diagnostics are emitted for this command.
 
 ### JSON schema
@@ -191,10 +191,10 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config check`](./check.md) — validate the effective frozen merged configuration and
-  staged config-loading diagnostics.
-- [`topmark config dump`](./dump.md) — show the effective frozen configuration, including normalized
-  canonical file type identifiers.
+- [`topmark config check`](./check.md) — validate the effective runtime configuration and staged
+  config-loading diagnostics.
+- [`topmark config dump`](./dump.md) — show the effective runtime configuration, including
+  normalized canonical file type identifiers.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
 
 ______________________________________________________________________

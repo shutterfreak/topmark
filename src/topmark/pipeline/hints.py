@@ -247,7 +247,7 @@ _CLUSTER_SCORE: dict[str, int] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class Hint:
     """Normalized hint payload attached to a `ProcessingContext`.
 
@@ -343,7 +343,7 @@ def make_hint(
     )
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class HintLog:
     """Mutable, per-context collection of diagnostic hints.
 

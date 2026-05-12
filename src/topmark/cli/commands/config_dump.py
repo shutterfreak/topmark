@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
@@ -273,7 +273,7 @@ def config_dump_command(
         enable_color=enable_color,
     )
 
-    config: Config = draft_config.freeze()
+    config: FrozenConfig = draft_config.freeze()
     logger.trace("Run config after layered CLI overrides: %s", config)
 
     # Render flattened config validation diagnostics before emitting the final dump.
@@ -297,7 +297,7 @@ def config_dump_command(
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
 
-    logger.trace("Config after merging CLI and discovered config: %s", draft_config)
+    logger.trace("MutableConfig after merging CLI and discovered config: %s", draft_config)
 
     def _exit() -> None:
         # Cleanup any temp file created by content-on-STDIN mode (defensive)

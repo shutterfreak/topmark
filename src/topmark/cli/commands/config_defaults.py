@@ -38,7 +38,7 @@ from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.cli.validators import validate_human_only_config_flags_for_machine_format
-from topmark.config.resolution.bridge import resolve_default_table_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_default_table_and_build_mutable_config
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_defaults_markdown
@@ -163,7 +163,7 @@ def config_defaults_command(
     )
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
-        resolved_toml, mutable_config = resolve_default_table_and_build_config_draft()
+        resolved_toml, mutable_config = resolve_default_table_and_build_mutable_config()
         # Machine-readable formats: emit JSON/NDJSON without human banners
         emit_config_machine(
             console=console,

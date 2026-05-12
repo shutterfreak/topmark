@@ -62,7 +62,7 @@ if TYPE_CHECKING:
 
     from topmark.config.machine.schemas import ConfigDiagnosticsPayload
     from topmark.config.machine.schemas import ConfigPayload
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
@@ -72,7 +72,7 @@ if TYPE_CHECKING:
 def build_probe_results_json_envelope(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
 ) -> dict[str, object]:
@@ -80,7 +80,8 @@ def build_probe_results_json_envelope(
 
     Args:
         meta: Shared metadata payload (`tool`/`version`).
-        config: The effective `Config` instance used for the run.
+        config: The effective [`FrozenConfig`][topmark.config.model.FrozenConfig]
+            instance used for the run.
         resolved_toml: Resolved TOML sources used to build the optional layered
             provenance export.
         results: Ordered list of probe contexts. The list may include normal
@@ -113,7 +114,7 @@ def build_probe_results_json_envelope(
 def iter_probe_results_ndjson_records(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
 ) -> Iterator[dict[str, object]]:
@@ -165,7 +166,7 @@ def iter_probe_results_ndjson_records(
 def build_processing_results_json_envelope(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     summary_mode: bool,
@@ -199,7 +200,8 @@ def build_processing_results_json_envelope(
 
     Args:
         meta: Shared metadata payload (`tool`/`version`).
-        config: The effective `Config` instance used for the run.
+        config: The effective [`FrozenConfig`][topmark.config.model.FrozenConfig]
+            instance used for the run.
         resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of per-file processing contexts.
         summary_mode: If True, emit flat summary rows instead of per-file results.
@@ -247,7 +249,7 @@ def build_processing_results_json_envelope(
 def iter_processing_results_ndjson_records(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     summary_mode: bool,

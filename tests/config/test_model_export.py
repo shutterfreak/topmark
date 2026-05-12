@@ -11,7 +11,7 @@
 """Tests for config model export and TOML rendering.
 
 These tests cover:
-- layered `Config` TOML serialization, and
+- layered [`FrozenConfig`][topmark.config.model.FrozenConfig] TOML serialization, and
 - `to_toml()` behavior around TOML-incompatible values like `None`.
 """
 
@@ -31,7 +31,7 @@ from topmark.toml.render import render_toml_table
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.toml.types import TomlTable
 
@@ -43,7 +43,7 @@ def test_to_toml_strips_none_entries() -> None:
     If your to_toml() strips None, validate it doesn’t crash and doesn’t emit None.
     """
     draft: MutableConfig = mutable_config_from_defaults()
-    c: Config = draft.freeze()
+    c: FrozenConfig = draft.freeze()
 
     # Create a dict with explicit None where TOML doesn't allow it
     td: TomlTable = config_to_topmark_toml_table(
@@ -92,7 +92,7 @@ def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tabl
         PatternSource(path=files_txt_path, base=proj),
     ]
 
-    c: Config = draft.freeze()
+    c: FrozenConfig = draft.freeze()
     d: TomlTable = config_to_topmark_toml_table(
         c,
         include_files=False,

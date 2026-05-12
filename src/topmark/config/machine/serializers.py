@@ -42,7 +42,7 @@ from topmark.toml.machine.payloads import build_toml_provenance_payload
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.toml.machine.schemas import TomlProvenancePayload
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -76,12 +76,12 @@ def _build_required_toml_provenance_payload(
 def serialize_config(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     fmt: OutputFormat,
     resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool = False,
 ) -> str | Iterator[str]:
-    """Serialize the effective Config snapshot in a machine-readable format.
+    """Serialize the effective `FrozenConfig` snapshot in a machine-readable format.
 
     Shapes:
       - JSON, default:
@@ -135,11 +135,11 @@ def serialize_config(
 def serialize_config_json(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool = False,
 ) -> str:
-    """Serialize the effective Config snapshot as a JSON envelope.
+    """Serialize the effective `FrozenConfig` snapshot as a JSON envelope.
 
     Shapes:
         - default:
@@ -179,11 +179,11 @@ def serialize_config_json(
 def serialize_config_ndjson(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool = False,
 ) -> Iterator[str]:
-    """Serialize the effective Config snapshot as NDJSON.
+    """Serialize the effective `FrozenConfig` snapshot as NDJSON.
 
     Record sequence:
         - default:
@@ -224,10 +224,10 @@ def serialize_config_ndjson(
 def serialize_config_diagnostics(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     fmt: OutputFormat,
 ) -> str | Iterator[str]:
-    """Serialize Config diagnostics in a machine-readable format.
+    """Serialize `FrozenConfig` diagnostics in a machine-readable format.
 
     Shapes:
       - JSON: one envelope object: {"meta": ..., "config_diagnostics": ...}
@@ -266,9 +266,9 @@ def serialize_config_diagnostics(
 def serialize_config_diagnostics_json(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
 ) -> str:
-    """Serialize Config diagnostics as a JSON envelope.
+    """Serialize `FrozenConfig` diagnostics as a JSON envelope.
 
     Shape:
         {"meta": <MetaPayload>, "config_diagnostics": <ConfigDiagnosticsPayload>}
@@ -290,9 +290,9 @@ def serialize_config_diagnostics_json(
 def serialize_config_diagnostics_ndjson(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
 ) -> Iterator[str]:
-    """Serialize Config diagnostics as NDJSON.
+    """Serialize `FrozenConfig` diagnostics as NDJSON.
 
     Record sequence:
       1) config_diagnostics (counts-only)
@@ -315,7 +315,7 @@ def serialize_config_diagnostics_ndjson(
 def serialize_config_check(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,
@@ -375,7 +375,7 @@ def serialize_config_check(
 def serialize_config_check_json(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,
@@ -409,7 +409,7 @@ def serialize_config_check_json(
 def serialize_config_check_ndjson(
     *,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,

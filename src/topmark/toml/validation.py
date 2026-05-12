@@ -53,11 +53,7 @@ class TomlDiagnosticCode(str, Enum):
     DUMP_ONLY_KEY_IN_INPUT = "toml.dump_only_key_in_input"
 
 
-@dataclass(
-    frozen=True,
-    kw_only=True,
-    slots=True,
-)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class TomlValidationIssue:
     """Structured TOML schema-validation issue.
 

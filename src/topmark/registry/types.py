@@ -27,7 +27,7 @@ def _empty_header_policy() -> dict[str, object]:
     return {}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FileTypeMeta:
     """Stable, serializable metadata describing a registered file type."""
 
@@ -53,7 +53,7 @@ class FileTypeMeta:
     header_policy: dict[str, object] = field(default_factory=_empty_header_policy)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessorMeta:
     """Stable, serializable metadata about a registered processor definition."""
 
@@ -78,7 +78,7 @@ class ProcessorMeta:
     line_suffix: str = ""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessorDefinition:
     """Stable definition of a registered processor identity and implementation class."""
 

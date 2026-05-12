@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from topmark.config.types import OutputTarget
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class RunOptions:
     """Execution-only options for a single TopMark run.
 

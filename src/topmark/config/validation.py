@@ -52,7 +52,7 @@ class ValidationStage(str, Enum):
     RUNTIME_APPLICABILITY = "runtime_applicability"
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class ValidationLogs:
     """Mutable staged diagnostic logs for config validation.
 
@@ -124,9 +124,9 @@ class ValidationLogs:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FrozenValidationLogs:
-    """Immutable staged diagnostic logs for frozen config snapshots."""
+    """Immutable staged diagnostic logs for immutable `FrozenConfig` snapshots."""
 
     toml_source: FrozenDiagnosticLog
     merged_config: FrozenDiagnosticLog

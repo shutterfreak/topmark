@@ -82,7 +82,7 @@ class FileImageView(Releasable, Protocol):
         ...
 
 
-@dataclass(slots=True, eq=False)
+@dataclass(kw_only=True, slots=True, eq=False)
 class ListFileImageView:
     """List-backed ``FileImageView`` implementation (and ``Releasable``).
 
@@ -123,7 +123,7 @@ class ListFileImageView:
         self._lines = None
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class HeaderView(Releasable):
     """Structured view of the *existing* header detected by the scanner.
 
@@ -154,7 +154,7 @@ class HeaderView(Releasable):
         self.mapping = None
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class BuilderView(Releasable):
     """Structured view of field dictionaries produced by the builder step.
 
@@ -176,7 +176,7 @@ class BuilderView(Releasable):
         self.selected = None
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class RenderView(Releasable):
     """Structured view of the *expected* header produced by the renderer.
 
@@ -198,7 +198,7 @@ class RenderView(Releasable):
         self.block = None
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class UpdatedView(Releasable):
     """View of the pipeline's updated file image.
 
@@ -222,7 +222,7 @@ class UpdatedView(Releasable):
         self.lines = None
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class DiffView(Releasable):
     """Unified diff view for CLI/CI consumption.
 
@@ -240,7 +240,7 @@ class DiffView(Releasable):
         self.text = None
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class Views:
     """Bundle of phase-scoped, releasable views for a single file.
 

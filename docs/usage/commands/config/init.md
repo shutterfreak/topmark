@@ -21,7 +21,7 @@ a starting point for a new configuration file.
 The example includes both layered-config sections (such as `[header]`, `[fields]`, `[formatting]`,
 and `[files]`) and TOML-source-local sections such as `[config]`. During normal loading, TopMark
 validates the whole source first and then deserializes only the layered fragment into the effective
-frozen configuration.
+runtime configuration.
 
 ______________________________________________________________________
 
@@ -142,8 +142,8 @@ Notes:
 - The machine-readable output represents the bundled template view, not a discovered or merged
   project configuration.
 - The snapshot includes TOML-authored runtime sections such as `[writer]` when they are present in
-  the bundled template, even though those sections are resolved outside the layered `Config` model
-  at runtime.
+  the bundled template, even though those sections are resolved outside the layered Config model at
+  runtime.
 - Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
   configuration freeze.
 - No diagnostics are emitted for this command.
@@ -200,10 +200,10 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config check`](./check.md) — validate the effective frozen configuration and staged
+- [`topmark config check`](./check.md) — validate the effective runtime configuration and staged
   config-loading diagnostics.
-- [`topmark config dump`](./dump.md) — show the effective frozen configuration, including normalized
-  canonical file type identifiers.
+- [`topmark config dump`](./dump.md) — show the effective runtime configuration, including
+  normalized canonical file type identifiers.
 - [`topmark config defaults`](./defaults.md) — show TopMark’s canonical built-in default TOML
   document.
 

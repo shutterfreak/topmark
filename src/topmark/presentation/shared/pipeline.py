@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.reporting import ReportScope
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProbeCommandHumanReport:
     """Prepared payload for human-facing pipeline probe command renderers.
 
@@ -61,7 +61,7 @@ class ProbeCommandHumanReport:
     view_results: list[ProcessingContext]
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PipelineCommandHumanReport:
     """Prepared payload for human-facing pipeline command renderers.
 

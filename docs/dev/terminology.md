@@ -31,12 +31,9 @@ explicitly documented otherwise.
 
 Behavior or terminology considered finalized for the 1.0 release cycle.
 
-“Frozen” primarily refers to release-contract stabilization rather than long-term immutability.
+“Frozen” refers to release-contract stabilization rather than long-term immutability.
 
 > [!NOTE]
->
-> In architectural and release documentation, “frozen” refers to contract or release-cycle
-> stabilization.
 >
 > In API and runtime contexts, “frozen” may additionally refer to immutable runtime objects such as
 > frozen dataclasses or immutable snapshots.

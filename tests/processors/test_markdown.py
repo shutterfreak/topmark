@@ -29,7 +29,7 @@ from topmark.constants import TOPMARK_START_MARKER
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -43,7 +43,7 @@ def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     f: Path = tmp_path / "FENCE.md"
     f.write_text(f"```html\n<!-- {TOPMARK_START_MARKER} -->\n```\nReal content\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -67,7 +67,7 @@ def test_markdown_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     f: Path = tmp_path / "README.md"
     f.write_text("# Title\n\nSome text.\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -91,7 +91,7 @@ def test_markdown_with_existing_banner_comment(tmp_path: Path) -> None:
     f: Path = tmp_path / "BANNER.md"
     f.write_text("<!-- md:banner -->\n# Title\n\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)

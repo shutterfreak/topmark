@@ -36,11 +36,11 @@ from topmark.rendering.unified_diff import format_patch_plain
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 
-def _run_to_patcher(file: Path, cfg: Config) -> ProcessingContext:
+def _run_to_patcher(file: Path, cfg: FrozenConfig) -> ProcessingContext:
     """Drive the v2 pipeline up to `patcher.patch()` and return the ctx."""
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
@@ -65,7 +65,7 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
             f"// {TOPMARK_START_MARKER}\n// test:header\n// {TOPMARK_END_MARKER}\nconsole.log(1)\n"
         )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = _run_to_patcher(path, cfg)
 
     # We expect a change (strip/replace) to have produced a diff.

@@ -12,8 +12,8 @@
 
 This module contains reusable helpers for TOML-related tests that operate at
 the boundary between:
-    - `topmark.toml` (whole-source loading, extraction, and schema validation)
-    - `topmark.config` (layered config deserialization)
+    - [`topmark.toml`][topmark.toml] (whole-source loading, extraction, and schema validation)
+    - [`topmark.config`][topmark.config] (layered config deserialization)
 
 The helpers here are intentionally pure (non-pytest-specific) so they can be
 reused across multiple test modules without relying on `conftest.py` import
@@ -21,12 +21,13 @@ magic.
 
 Typical responsibilities:
     - take a split-parsed `ParsedTopmarkToml`
-    - deserialize its layered config fragment into `MutableConfig`
+    - deserialize its layered config fragment into a mutable
+      [`MutableConfig`][topmark.config.model.MutableConfig]
     - replay TOML schema validation issues into `draft.validation_logs.toml_source`
 
 These helpers complement the higher-level fixtures in
-`tests/toml/conftest.py`, which provide ergonomic test entrypoints for
-in-memory and file-based TOML sources.
+[`tests.toml.conftest`][tests.toml.conftest], which provide ergonomic test entrypoints
+for in-memory and file-based TOML sources.
 """
 
 from __future__ import annotations
@@ -55,7 +56,8 @@ def draft_from_parsed_topmark_toml(
 
     This helper centralizes the shared TOML/config boundary tail used by the
     TOML-layer test fixtures:
-        1. deserialize the layered config fragment into `MutableConfig`,
+        1. deserialize the layered config fragment into a mutable
+           [`MutableConfig`][topmark.config.model.MutableConfig],
         2. replay TOML schema validation issues into
            `draft.validation_logs.toml_source`.
 

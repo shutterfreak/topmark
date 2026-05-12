@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import Diagnostic
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class HumanDiagnosticLine:
     """A human-facing diagnostic line (Click-free).
 
@@ -58,7 +58,7 @@ class HumanDiagnosticLine:
     message: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class HumanDiagnosticCounts:
     """Aggregated per-level counts for human-facing config output.
 

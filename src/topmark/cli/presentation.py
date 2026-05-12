@@ -138,7 +138,7 @@ DEFAULT_STYLE_ROLE_MAPPING: dict[StyleRole, TextStyler] = {
 }
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class Theme:
     """Theme for mapping `StyleRole` values to concrete terminal stylers.
 

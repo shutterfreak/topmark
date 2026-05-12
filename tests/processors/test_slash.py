@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
 
@@ -63,7 +63,7 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
     file: Path = tmp_path / "app.js"
     file.write_text("console.log('hi');\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
     assert ctx.file_type and ctx.file_type.local_key == "javascript"
     assert ctx.views.header is None
@@ -78,7 +78,7 @@ def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Pa
     should report no existing header.
     """
     file: Path = tmp_path / "test.json"
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     file.write_text("// JSON with comments\n" + json.dumps({"test": "Value", "try": True}))
 
     ctx: ProcessingContext = run_insert(file, cfg)
@@ -95,7 +95,7 @@ def test_slash_insert_top_and_trailing_blank(tmp_path: Path) -> None:
     """
     file: Path = tmp_path / "main.ts"
     file.write_text("export const x = 1;\n")
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -123,7 +123,7 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
         "\n"
         "#pragma once\n"
     )
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
@@ -184,7 +184,7 @@ def test_slash_malformed_header_fields(
     file.write_text(
         f"// {TOPMARK_START_MARKER}\n// {header_fields}// {TOPMARK_END_MARKER}\nexport {{}}\n"
     )
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
@@ -211,7 +211,7 @@ def test_slash_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     """
     file: Path = tmp_path / "idem.ts"
     file.write_text('{\n  // comment\n  "a": 1\n}\n')
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
 
     ctx1: ProcessingContext = run_insert(file, cfg)
 
@@ -235,7 +235,7 @@ def test_slash_crlf_preserves_newlines(tmp_path: Path) -> None:
     file: Path = tmp_path / "win.cpp"
     with file.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("int main(){return 0;}\n")
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)

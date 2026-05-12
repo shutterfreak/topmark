@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.runtime.model import RunOptions
 
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 def build_missing_file_contexts(
     *,
     paths: Sequence[Path],
-    config: Config,
+    config: FrozenConfig,
     run_options: RunOptions,
 ) -> list[ProcessingContext]:
     """Build synthetic filesystem contexts for missing explicit input paths.
@@ -62,7 +62,7 @@ def build_missing_file_contexts(
 
     Args:
         paths: Explicit literal input paths that were requested but do not exist.
-        config: Effective frozen configuration for the current command.
+        config: Effective runtime configuration for the current command.
         run_options: Runtime options used to bootstrap synthetic contexts.
 
     Returns:
@@ -128,7 +128,7 @@ def map_selection_reason_to_probe_reason(
 def build_filtered_probe_contexts(
     *,
     selection_results: Sequence[FileSelectionProbeResult],
-    config: Config,
+    config: FrozenConfig,
     run_options: RunOptions,
 ) -> list[ProcessingContext]:
     """Build synthetic probe contexts for explicit inputs filtered before probing.
@@ -142,7 +142,7 @@ def build_filtered_probe_contexts(
         selection_results: Discovery explanations for explicit input paths.
             Selected inputs are ignored because they are represented by real
             probe pipeline contexts.
-        config: Effective frozen configuration for the current command.
+        config: Effective immutable configuration for the current command.
         run_options: Runtime options used to bootstrap synthetic contexts.
 
     Returns:

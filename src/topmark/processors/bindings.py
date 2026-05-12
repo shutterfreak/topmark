@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from topmark.processors.base import HeaderProcessor
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessorBinding:
     """Declarative association between one file type name and one processor class.
 

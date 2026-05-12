@@ -39,7 +39,7 @@ from topmark.pipeline.steps.sniffer import inspect_bom_shebang
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -52,7 +52,7 @@ def test_sniff_skips_on_nul_byte_non_text(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     # First resolve the file type
@@ -72,7 +72,7 @@ def test_sniff_skips_when_bom_precedes_shebang(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx = run_resolver(ctx)
@@ -88,7 +88,7 @@ def test_sniff_marks_empty_file(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write("")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx = run_resolver(ctx)
@@ -103,7 +103,7 @@ def test_sniff_marks_not_found_when_disappears(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write("print('hi')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx = run_resolver(ctx)
@@ -121,7 +121,7 @@ def test_sniff_skips_on_invalid_utf8(tmp_path: Path) -> None:
     with file.open("wb") as fh:
         fh.write(bad)
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx = run_resolver(ctx)
@@ -137,7 +137,7 @@ def test_sniff_strict_mixed_newlines(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(mixed)
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx = run_resolver(ctx)
@@ -166,7 +166,7 @@ def test_sniff_treats_exotic_separators_as_content_not_newlines(
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx = run_resolver(ctx)
@@ -190,7 +190,7 @@ def test_sniff_does_not_count_exotic_separators_as_mixed_newlines(tmp_path: Path
     with file.open("w", encoding="utf-8", newline="") as fh:
         fh.write(content)
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx = run_resolver(ctx)

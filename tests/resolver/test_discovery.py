@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.helpers.config import make_config
+from tests.helpers.config import make_frozen_config
 from topmark.resolution.discovery import FileSelectionProbeResult
 from topmark.resolution.discovery import FileSelectionReason
 from topmark.resolution.discovery import FileSelectionStatus
@@ -27,14 +27,14 @@ from topmark.resolution.files import probe_explicit_file_selection
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
 
 
 def test_probe_explicit_file_selection_omits_selected_file(tmp_path: Path) -> None:
     """Explicit inputs already selected for probing should not be reported."""
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
-    cfg: Config = make_config(files=[str(file)])
+    cfg: FrozenConfig = make_frozen_config(files=[str(file)])
 
     results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
         cfg,
@@ -48,7 +48,7 @@ def test_probe_explicit_file_selection_reports_generic_filtered_file(tmp_path: P
     """Existing files with no clear filter cause should use generic filtered reason."""
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
-    cfg: Config = make_config(files=[str(file)])
+    cfg: FrozenConfig = make_frozen_config(files=[str(file)])
 
     results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
         cfg,
@@ -68,7 +68,7 @@ def test_probe_explicit_file_selection_reports_path_filtered_file(tmp_path: Path
     ignored_dir.mkdir()
     file: Path = ignored_dir / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=[str(file)],
         exclude_patterns=["ignored/"],
     )
@@ -89,7 +89,7 @@ def test_probe_explicit_file_selection_reports_file_type_filtered_file(tmp_path:
     """Existing files excluded by file-type filters should report file-type reason."""
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=[str(file)],
         include_file_types={"markdown"},
     )
@@ -113,7 +113,7 @@ def test_probe_explicit_file_selection_reports_exclude_file_type_filtered_file(
     file: Path = tmp_path / "example.py"
     file.write_text("print('hello')\n", encoding="utf-8")
 
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=[str(file)],
         exclude_file_types={"python"},
     )
@@ -133,7 +133,7 @@ def test_probe_explicit_file_selection_reports_exclude_file_type_filtered_file(
 def test_probe_explicit_file_selection_reports_missing_file(tmp_path: Path) -> None:
     """Missing explicit inputs should be reported as not found."""
     file: Path = tmp_path / "missing.py"
-    cfg: Config = make_config(files=[str(file)])
+    cfg: FrozenConfig = make_frozen_config(files=[str(file)])
 
     results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
         cfg,
@@ -151,7 +151,7 @@ def test_probe_explicit_file_selection_reports_directory(tmp_path: Path) -> None
     """Explicit directories omitted from selected files should be reported as not files."""
     directory: Path = tmp_path / "data"
     directory.mkdir()
-    cfg: Config = make_config(files=[str(directory)])
+    cfg: FrozenConfig = make_frozen_config(files=[str(directory)])
 
     results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
         cfg,

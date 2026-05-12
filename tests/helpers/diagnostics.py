@@ -259,7 +259,7 @@ def assert_validation_stage_totals(
     - `NON_EMPTY`: assert the stage contains at least one diagnostic.
 
     Args:
-        logs: Mutable or frozen staged validation logs to inspect.
+        logs: Mutable or immutable staged validation logs to inspect.
         toml: Expectation for the TOML-source stage.
         config: Expectation for the merged-config stage.
         runtime: Expectation for the runtime-applicability stage.

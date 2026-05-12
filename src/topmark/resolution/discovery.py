@@ -61,7 +61,7 @@ class FileSelectionReason(str, Enum):
     NOT_FOUND = "not_found"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FileSelectionProbeResult:
     """Explain whether an explicitly requested path reached file-type probing.
 

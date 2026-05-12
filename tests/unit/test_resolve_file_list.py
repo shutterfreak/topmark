@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import topmark.resolution.files as file_resolver_mod
 
 # Import the module under test
-from tests.helpers.config import make_config
+from tests.helpers.config import make_frozen_config
 from tests.helpers.registry import make_file_type
 from topmark.config.types import PatternGroup
 from topmark.filetypes.model import ContentGate
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
     import pytest
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.filetypes.model import FileType
 
 
@@ -87,7 +87,7 @@ def write(p: Path, text: str = "") -> Path:
     return p
 
 
-def resolve_selected(config: Config) -> list[Path]:
+def resolve_selected(config: FrozenConfig) -> list[Path]:
     """Resolve files and return only the selected processing candidates."""
     return list(file_resolver_mod.resolve_file_list_with_diagnostics(config).selected)
 
@@ -110,7 +110,7 @@ def test_candidates_from_positional_and_globs(
     # Glob relative to tmp_path as CWD
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(files=["**/*.py"])
+        cfg: FrozenConfig = make_frozen_config(files=["**/*.py"])
         files: list[Path] = resolve_selected(cfg)
         rel: list[str] = sorted(p.as_posix() for p in files)
 
@@ -136,7 +136,7 @@ def test_fallback_to_include_seed_when_no_positional(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             config_files=[str(cfg_file)],
             include_pattern_groups=[
                 PatternGroup(
@@ -162,7 +162,7 @@ def test_include_intersection_filters_candidates(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             files=["."],
             include_pattern_groups=[
                 PatternGroup(
@@ -187,7 +187,7 @@ def test_exclude_subtraction_filters_candidates(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             files=["."],
             exclude_pattern_groups=[
                 PatternGroup(
@@ -217,7 +217,7 @@ def test_include_from_and_exclude_from_files(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             files=["."],
             include_from=[str(inc)],
             exclude_from=[str(exc)],
@@ -251,7 +251,7 @@ def test_file_types_filtering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         FileTypeRegistry.register(ft_text)
 
         try:
-            cfg: Config = make_config(
+            cfg: FrozenConfig = make_frozen_config(
                 files=["."],
                 include_file_types={"py"},
             )
@@ -273,7 +273,7 @@ def test_returns_sorted_and_files_only(tmp_path: Path, monkeypatch: pytest.Monke
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(files=["."])
+        cfg: FrozenConfig = make_frozen_config(files=["."])
         files: list[Path] = resolve_selected(cfg)
         # No directories, sorted
         rel: list[str] = sorted(p.as_posix() for p in files)
@@ -289,7 +289,7 @@ def test_include_and_exclude_together(tmp_path: Path, monkeypatch: pytest.Monkey
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             files=["."],
             include_pattern_groups=[
                 PatternGroup(
@@ -313,7 +313,7 @@ def test_include_and_exclude_together(tmp_path: Path, monkeypatch: pytest.Monkey
 def test_no_inputs_returns_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Return an empty list when both positional and config_files are absent."""
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config()
+    cfg: FrozenConfig = make_frozen_config()
 
     assert resolve_selected(cfg) == []
 
@@ -322,7 +322,7 @@ def test_include_no_matches_yields_empty(tmp_path: Path, monkeypatch: pytest.Mon
     """Include patterns that match nothing yield an empty result set."""
     (tmp_path / "a.py").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_pattern_groups=[
             PatternGroup(
@@ -338,7 +338,7 @@ def test_exclude_wins_over_include(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     """Exclude takes precedence over include when both match."""
     (tmp_path / "keep.md").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_pattern_groups=[
             PatternGroup(
@@ -367,7 +367,7 @@ def test_pattern_files_ignore_comments_and_blanks(
     exc: Path = tmp_path / "exc.txt"
     exc.write_text("b.py\n# another\n\n")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_from=[str(inc)],
         exclude_from=[str(exc)],
@@ -381,7 +381,7 @@ def test_glob_relative_to_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     (tmp_path / "src" / "x.py").parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / "src" / "x.py").write_text("x")
     monkeypatch.chdir(tmp_path / "src")
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["*.py"],
     )
     rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
@@ -395,7 +395,7 @@ def test_includes_dotfiles_and_dotdirs_by_default(
     (tmp_path / ".hidden").mkdir()
     (tmp_path / ".hidden" / ".x.py").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_pattern_groups=[
             PatternGroup(
@@ -416,7 +416,7 @@ def test_deduplicates_overlapping_roots_and_globs(
     (tmp_path / "dir" / "b.py").parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / "dir" / "b.py").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=[".", "dir", "**/*.py"],
     )
     rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
@@ -446,7 +446,7 @@ def test_file_type_unknown_is_ignored(
     try:
         caplog.set_level("WARNING")
         include_file_types: set[str] = {"py", "unknown"}
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             files=["."],
             include_file_types=include_file_types,
         )
@@ -472,7 +472,7 @@ def test_config_files_respected_by_filters(tmp_path: Path, monkeypatch: pytest.M
     cfg_file: Path = tmp_path / "pyproject.toml"
     cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
 
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         config_files=[str(cfg_file)],
         include_pattern_groups=[
             PatternGroup(
@@ -495,7 +495,7 @@ def test_empty_include_means_no_include_filter(
     (tmp_path / "a.py").write_text("x")
     (tmp_path / "b.txt").write_text("x")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
     )
     rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
@@ -519,7 +519,7 @@ def test_no_seeding_when_files_from_present(
     (tmp_path / "src" / "a.py").write_text("x", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         include_pattern_groups=[
             PatternGroup(
                 patterns=("src/**/*.py",),
@@ -552,7 +552,7 @@ def test_config_declared_globs_match_under_config_dir_even_if_cwd_diff(
     cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path / "elsewhere")
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         config_files=[str(cfg_file)],
         include_pattern_groups=[
             PatternGroup(
@@ -585,7 +585,7 @@ def test_pattern_file_base_outside_cwd(tmp_path: Path, monkeypatch: pytest.Monke
     inc.write_text("pkg/**/*.py\n", encoding="utf-8")
 
     monkeypatch.chdir(root)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_from=[str(inc)],
     )
@@ -614,7 +614,7 @@ def test_pattern_file_base_outside_cwd_matches_within_pattern_base(
     inc.write_text("pkg/**/*.py\n", encoding="utf-8")
 
     monkeypatch.chdir(root)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=[".", str(ext.resolve())],
         include_from=[str(inc)],
     )
@@ -646,7 +646,7 @@ def test_include_intersection_mixed_sources(
     inc_file.write_text("**/*.md\n", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_pattern_groups=[
             PatternGroup(
@@ -672,7 +672,7 @@ def test_exclude_from_overrides_include_patterns(
     exc_file.write_text("**/b.py\n", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_pattern_groups=[
             PatternGroup(
@@ -694,7 +694,7 @@ def test_deduplicates_mixed_absolute_and_relative(
     a.parent.mkdir(parents=True, exist_ok=True)
     a.write_text("x", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["pkg", str(a.resolve()), "**/a.py"],
     )
     rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
@@ -719,7 +719,7 @@ def test_multiple_unknown_file_types_warn_once(
     try:
         caplog.set_level("WARNING")
         include_file_types: set[str] = {"unknown1", "py", "unknown2"}
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             files=["."],
             include_file_types=include_file_types,
         )
@@ -750,7 +750,7 @@ def test_pattern_files_trim_whitespace_and_trailing_spaces(
     exc.write_text("b.py   \n   \n", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_from=[str(inc)],
         exclude_from=[str(exc)],
@@ -767,7 +767,7 @@ def test_missing_pattern_files_fail_gracefully(
     monkeypatch.chdir(tmp_path)
     caplog.set_level("ERROR")
 
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_from=[str(tmp_path / "missing-include.txt")],  # non-existent
     )
@@ -782,7 +782,7 @@ def test_exclude_dotfiles_with_pattern(tmp_path: Path, monkeypatch: pytest.Monke
     (tmp_path / ".hidden").mkdir()
     (tmp_path / ".hidden" / ".x.py").write_text("x", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    cfg: Config = make_config(
+    cfg: FrozenConfig = make_frozen_config(
         files=["."],
         include_patterns=["**/*.py"],
         include_pattern_groups=[
@@ -825,7 +825,7 @@ def test_positional_glob_matches_path_rglob(
         expected: list[Path] = sorted(p for p in Path().rglob(pattern) if p.is_file())
 
         # TopMark resolver using the same positional glob
-        cfg: Config = make_config(files=[pattern])
+        cfg: FrozenConfig = make_frozen_config(files=[pattern])
         files: list[Path] = resolve_selected(cfg)
         result: list[Path] = sorted(files)
 
@@ -854,7 +854,7 @@ def test_files_from_seeds_candidates(tmp_path: Path, monkeypatch: pytest.MonkeyP
         m.chdir(tmp_path)
 
         # Use files_from as the only input source; no positional paths.
-        cfg: Config = make_config(
+        cfg: FrozenConfig = make_frozen_config(
             files_from=[str(lst)],
         )
         files: list[Path] = resolve_selected(cfg)
@@ -876,7 +876,7 @@ def test_nonexistent_literal_paths_are_reported_as_missing_diagnostics(
         m.chdir(tmp_path)
         caplog.set_level("WARNING")
 
-        cfg: Config = make_config(files=["a.py", str(missing)])
+        cfg: FrozenConfig = make_frozen_config(files=["a.py", str(missing)])
         resolution: file_resolver_mod.FileListResolution = (
             file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
         )
@@ -903,7 +903,7 @@ def test_unmatched_glob_patterns_are_reported_as_diagnostics(
     monkeypatch.chdir(tmp_path)
     caplog.set_level("WARNING")
 
-    cfg: Config = make_config(files=["missing/**/*.py"])
+    cfg: FrozenConfig = make_frozen_config(files=["missing/**/*.py"])
     resolution: file_resolver_mod.FileListResolution = (
         file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
     )
@@ -924,7 +924,7 @@ def test_resolve_file_list_wrapper_returns_selected_files_only(
 
     with monkeypatch.context() as m:
         m.chdir(tmp_path)
-        cfg: Config = make_config(files=["a.py", str(missing)])
+        cfg: FrozenConfig = make_frozen_config(files=["a.py", str(missing)])
         resolution: file_resolver_mod.FileListResolution = (
             file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
         )

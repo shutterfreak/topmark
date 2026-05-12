@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@dataclass(frozen=True, slots=True, init=True)
+@dataclass(frozen=True, init=True, kw_only=True, slots=True)
 class FileTypeCandidate:
     """Describe a scored file type resolution candidate.
 
@@ -104,7 +104,7 @@ def _matches_file_type_filter(
     return ft.qualified_key in filter_ids or ft.local_key in filter_ids
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class MatchSignals:
     """Name-based match signals for a FileType (extension, filename/tail, pattern)."""
 
@@ -178,7 +178,11 @@ def _compute_match_signals(
                 fname_match = True
                 break
     pat_match: bool = any(re.fullmatch(p, base_name) is not None for p in pats)
-    return MatchSignals(ext_match, fname_match, pat_match)
+    return MatchSignals(
+        extension=ext_match,
+        filename=fname_match,
+        pattern=pat_match,
+    )
 
 
 def _should_probe_content(
@@ -301,7 +305,7 @@ def _score_file_type_candidate(
     return s
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class _ProbeCandidateDraft:
     """Internal candidate draft preserving probe match signals before final ranking."""
 

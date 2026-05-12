@@ -28,13 +28,14 @@ Pipelines do not make high-level decisions themselves. Instead:
 
 This design guarantees predictability, debuggability, and idempotence.
 
-Pipeline execution consumes a frozen \[`Config`\][topmark.config.model.Config] plus runtime options
-assembled from the TOML → Config → Runtime flow documented in [`architecture.md`](architecture.md)
-and [`../configuration/discovery.md`](../configuration/discovery.md).
+Pipeline execution consumes an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] plus
+runtime options assembled from the TOML → Config → Runtime flow documented in
+[`architecture.md`](architecture.md) and
+[`../configuration/discovery.md`](../configuration/discovery.md).
 
 Source-local TOML options such as `[config].root` and `strict` are resolved before pipeline
 execution. They influence configuration discovery and validation behaviour, but do not become normal
-layered \[`Config`\][topmark.config.model.Config] fields.
+layered Config fields.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 

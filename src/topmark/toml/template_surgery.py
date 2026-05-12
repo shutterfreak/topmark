@@ -59,7 +59,7 @@ _ROOT_LINE: Final[str] = "root = true"
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class TemplateEditResult:
     """Result of applying a text edit to the template.
 

@@ -184,7 +184,7 @@ class InsertChecker(Protocol):
         ...
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class FileType:
     r"""Represents a file type recognized by TopMark.
 

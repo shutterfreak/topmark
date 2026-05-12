@@ -88,7 +88,7 @@ class ConfigKind(str, Enum):
     CONFIG_CHECK = "config_check"
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class ConfigPayload:
     """JSON-friendly representation of the effective TopMark configuration.
 
@@ -135,11 +135,11 @@ class ConfigPayload:
         }
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class ConfigDiagnosticsPayload:
-    """Machine-readable diagnostics collected while building the `Config`.
+    """Machine-readable diagnostics collected while building the `FrozenConfig`.
 
-    This represents the diagnostics for the [`Config`][topmark.config.model.Config]
+    This represents the diagnostics for the [`FrozenConfig`][topmark.config.model.FrozenConfig]
     as the diagnostics (list) and stats (counts per severity level).
 
     Attributes:
@@ -164,7 +164,7 @@ class ConfigDiagnosticsPayload:
         }
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class ConfigCheckSummary:
     """Summary payload for `topmark config check` machine-readable output.
 

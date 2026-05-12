@@ -160,7 +160,7 @@ config merging. Instead, they are resolved once during TOML source discovery and
 layered merging.
 
 These TOML-source-local options are still validated as part of whole-source TOML loading, but they
-do not become layered \[`Config`\][topmark.config.model.Config] fields.
+do not become layered Config fields.
 
 In TopMark's current layered TOML → Config → Runtime model, `strict` controls staged config-loading
 validation.
@@ -189,7 +189,7 @@ Key properties:
 
 - These values are resolved from TOML sources after TOML-layer validation and before building the
   layered config draft.
-- They are **not part of \[`Config`\][topmark.config.model.Config] /
+- They are **not part of \[`FrozenConfig`\][topmark.config.model.FrozenConfig] /
   \[`MutableConfig`\][topmark.config.model.MutableConfig] merge semantics**.
 - Effective validity is evaluated across the staged validation logs rather than a single
   undifferentiated diagnostic pool.
@@ -468,8 +468,8 @@ ______________________________________________________________________
     \[`resolve_topmark_toml_sources()`\][topmark.toml.resolution.resolve_topmark_toml_sources]
   - TOML source loading and validation:
     \[`load_topmark_toml_source()`\][topmark.toml.loaders.load_topmark_toml_source]
-  - Config draft construction:
-    \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
+  - Mutable (draft) \[`MutableConfig`\][topmark.config.model.MutableConfig]) construction:
+    \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config]
   - Policy evaluation: \[`effective_policy()`\][topmark.config.policy.effective_policy]
 - [Usage configuration guide](../usage/configuration.md)
 - [Filtering recipes](../usage/filtering.md)

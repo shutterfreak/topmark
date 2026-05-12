@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from topmark.api.types import ProcessorInfo
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FileTypePolicyHumanItem:
     r"""Stable metadata describing header insertion/stripping policy for a file type.
 
@@ -87,7 +87,7 @@ class FileTypePolicyHumanItem:
     blank_collapse_extra: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FileTypeHumanItem:
     """Click-free, human-facing view of one file type.
 
@@ -123,7 +123,7 @@ class FileTypeHumanItem:
     policy: FileTypePolicyHumanItem
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FileTypesHumanReport:
     """Click-free, human-facing report for `topmark registry filetypes`."""
 
@@ -133,7 +133,7 @@ class FileTypesHumanReport:
     items: tuple[FileTypeHumanItem, ...]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class BindingHumanItem:
     """Click-free, human-facing view of one effective binding.
 
@@ -160,7 +160,7 @@ class BindingHumanItem:
     processor_description: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessorHumanItem:
     """Click-free, human-facing view of one header processor.
 
@@ -191,7 +191,7 @@ class ProcessorHumanItem:
     block_suffix: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class UnboundFileTypeHumanItem:
     """Click-free, human-facing view of an unbound file type.
 
@@ -204,7 +204,7 @@ class UnboundFileTypeHumanItem:
     description: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessorsHumanReport:
     """Click-free, human-facing report for `topmark registry processors`."""
 
@@ -214,7 +214,7 @@ class ProcessorsHumanReport:
     styled: bool
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class BindingsHumanReport:
     """Click-free, human-facing report for `topmark registry bindings`."""
 

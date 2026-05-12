@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import Final
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class SyntheticConfigSource:
     """Typed provenance marker for non-filesystem configuration sources.
 
@@ -55,15 +55,17 @@ class SyntheticConfigSource:
         return self.label
 
 
-DEFAULT_CONFIG_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource("<defaults>")
+DEFAULT_CONFIG_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
+    label="<defaults>",
+)
 """Synthetic provenance marker for the built-in base config layer."""
 
 BUILTIN_DEFAULTS_TOML_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
-    "<built-in topmark defaults>"
+    label="<built-in topmark defaults>",
 )
 """Synthetic provenance marker for the canonical built-in default TOML table."""
 
 BUNDLED_TEMPLATE_TOML_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
-    "<bundled topmark-template.toml>"
+    label="<bundled topmark-template.toml>",
 )
 """Synthetic provenance marker for the bundled starter TOML template."""

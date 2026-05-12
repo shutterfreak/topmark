@@ -124,7 +124,7 @@ if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.policy import EmptyInsertMode
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
@@ -397,7 +397,7 @@ def check_command(
         enable_color=enable_color,
     )
 
-    config: Config = draft_config.freeze()
+    config: FrozenConfig = draft_config.freeze()
 
     logger.trace("Run config after layered CLI overrides: %s", config)
 

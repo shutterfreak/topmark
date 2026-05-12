@@ -19,12 +19,18 @@ registry overlays and composed-view caches between tests.
 Notes:
     Tests should respect the immutable/mutable configuration split:
 
-    - Build configs using `topmark.config.model.MutableConfig ` (mutable), then
-      `freeze()` into a `topmark.config.model.Config ` for **public API**
-      calls (``topmark.api.check/strip``).
-    - Do **not** mutate a frozen `Config`. If you need to tweak one,
-      call `Config.thaw()`, edit the returned `MutableConfig`,
-      then `freeze()` again.
+    - Build and adapt a mutable [`MutableConfig`][`topmark.config.model.MutableConfig`] instance.
+    - Freeze it into an immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] by calling
+      [`MutableConfig.freeze()`][`topmark.config.model.MutableConfig.freeze`].
+    - Use the [`FrozenConfig`][topmark.config.model.FrozenConfig] instance in **public API**
+      calls: [`topmark.api.check`][topmark.api.commands.pipeline.check],
+      [`topmark.api.strip`][topmark.api.commands.pipeline.strip],
+      [`topmark.api.probe`][topmark.api.commands.pipeline.probe].
+    - Do **not** mutate an immutable [`FrozenConfig`][topmark.config.model.FrozenConfig].
+      If you need to tweak one, call
+      [`FrozenConfig.thaw()`][topmark.config/model.FrozenConfig.thaw],
+      edit the returned [`MutableConfig`][`topmark.config.model.MutableConfig`],
+      then [`freeze()`][`topmark.config.model.MutableConfig.freeze`] again.
 """
 
 from __future__ import annotations
@@ -41,7 +47,7 @@ from typing import cast
 
 import pytest
 
-from tests.helpers.config import make_config
+from tests.helpers.config import make_frozen_config
 from tests.helpers.registry import patched_effective_registries
 from topmark.core import logging
 from topmark.filetypes.model import FileType
@@ -51,7 +57,7 @@ from topmark.registry.types import ProcessorDefinition
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
 
 AnyCallable = Callable[..., object]
 DecoratorType = Callable[[AnyCallable], AnyCallable]
@@ -244,9 +250,9 @@ def isolation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture
-def default_config() -> Config:
-    """Per-test default Config built from defaults."""
-    return make_config()
+def default_frozen_config() -> FrozenConfig:
+    """Per-test default `FrozenConfig` built from defaults."""
+    return make_frozen_config()
 
 
 # --- Fixture: effective_registries ---

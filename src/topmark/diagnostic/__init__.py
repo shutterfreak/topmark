@@ -15,9 +15,11 @@ informational messages, warnings, and errors in a consistent way.
 
 Design:
     - Internal diagnostics are represented by immutable `Diagnostic` instances.
-    - During processing, diagnostics are accumulated in a mutable `DiagnosticLog`.
-    - Frozen snapshots (e.g. `Config`) store diagnostics as an immutable
-      `FrozenDiagnosticLog`.
+    - During processing, diagnostics are accumulated in a mutable
+      [`DiagnosticLog`][topmark.diagnostic.model.DiagnosticLog].
+    - Frozen snapshots (e.g. [`FrozenConfig`][topmark.config.model.FrozenConfig])
+      store diagnostics as an immutable
+      [`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog].
 
 Machine-readable output:
     Machine-readable JSON/NDJSON representations live under

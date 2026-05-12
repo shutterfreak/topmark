@@ -23,7 +23,7 @@ from dataclasses import field
 from enum import Enum
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class HeaderParseResult:
     """Result of parsing key-value fields from a header block.
 
@@ -61,7 +61,7 @@ class BoundsKind(Enum):
     NONE = "none"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class HeaderBounds:
     """Structured result for header-bound detection.
 
@@ -111,7 +111,7 @@ class StripDiagKind(Enum):
     ERROR = "error"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class StripDiagnostic:
     """Diagnostic payload describing a strip attempt.
 

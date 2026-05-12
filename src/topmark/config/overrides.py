@@ -57,7 +57,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 # Internal bridge object: public callers pass mapping-shaped policy values to
 # `topmark.api` rather than constructing this dataclass directly.
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PolicyOverrides:
     """Internal typed overrides for global or per-file-type policy values.
 
@@ -77,7 +77,7 @@ class PolicyOverrides:
 
 # Internal bridge object: this represents normalized highest-precedence override
 # intent after CLI/API input handling, not a stable public configuration type.
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ConfigOverrides:
     """Internal highest-precedence config overrides from CLI or API orchestration.
 
@@ -120,7 +120,7 @@ class ConfigOverrides:
     """
 
     # Config-related options
-    config_origin: Path | SyntheticConfigSource = SyntheticConfigSource(CLI_OVERRIDE_STR)
+    config_origin: Path | SyntheticConfigSource = SyntheticConfigSource(label=CLI_OVERRIDE_STR)
     config_base: Path = field(default_factory=lambda: Path.cwd().resolve())
     strict: bool | None = None
 

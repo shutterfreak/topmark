@@ -11,14 +11,16 @@
 """Configuration model and merge policy.
 
 This module defines:
-    - `Config`: an immutable layered configuration snapshot used by processing
-      steps.
-    - `MutableConfig`: a mutable builder used during discovery/merge; it can
-      be frozen into `Config` and thawed back for edits.
+    - [`FrozenConfig`][topmark.config.model.FrozenConfig]: an immutable layered
+      configuration snapshot used by processing steps.
+    - [`MutableConfig`][topmark.config.model.MutableConfig]: a mutable builder
+      used during discovery/merge; it can be frozen into an immmutable
+      [`FrozenConfig`][topmark.config.model.FrozenConfig] and thawed back for edits.
 
 Scope:
     - *In scope*: data shapes, defaulting rules at the field level, merge policy
-      (`MutableConfig.merge_with`), and freeze/thaw mechanics.
+      ([`MutableConfig.merge_with()`][topmark.config.model.MutableConfig.merge_with]), and
+      freeze/thaw mechanics.
     - *Out of scope*: filesystem discovery, TOML I/O, and whole-source TOML
       schema validation. Those belong in dedicated modules to keep this model
       import-light and avoid import cycles, e.g.:
@@ -29,9 +31,10 @@ Scope:
         - [`topmark.toml.loaders`][topmark.toml.loaders]
 
 Immutability:
-    - `Config` stores tuples/frozensets and is ``frozen=True`` to prevent
-      accidental mutation at runtime. Use `Config.thaw` → edit →
-      `MutableConfig.freeze` for safe updates.
+    - [`FrozenConfig`][topmark.config.model.FrozenConfig] stores tuples/frozensets
+      and is ``frozen=True`` to prevent accidental mutation at runtime.
+      Use [`FrozenConfig.thaw()`][topmark.config.model.FrozenConfig.thaw] → edit
+      → [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze] for safe updates.
 
 Path semantics:
     - Path-to-file options declared in config are normalized against that config
@@ -91,14 +94,19 @@ logger: TopmarkLogger = get_logger(__name__)
 # ------------------ Immutable layered config ------------------
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
+@dataclass(frozen=True, kw_only=True, slots=True)
+class FrozenConfig:
     """Immutable layered configuration for TopMark.
 
-    This snapshot is produced by `MutableConfig.freeze` after merging defaults, project files, extra
-    config files, and config-like API overrides. Collections are immutable (``tuple``/``frozenset``)
-    to prevent accidental mutation during processing. Use `Config.thaw` to obtain a mutable builder
-    for edits, and `MutableConfig.freeze` to return to an immutable layered snapshot.
+    This snapshot is produced by
+    [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze]
+    after merging defaults, project files, extra config files, and config-like API
+    overrides. Collections are immutable (``tuple``/``frozenset``) to prevent
+    accidental mutation during processing.
+    Use [`FrozenConfig.thaw()`][topmark.config.model.FrozenConfig.thaw]
+    to obtain a mutable builder for edits,
+    and [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze]
+    to return to an immutable layered snapshot.
 
     Layered merging with clear precedence is provided by the config-resolution helpers in
     [topmark.config.resolution][topmark.config.resolution].
@@ -133,11 +141,12 @@ class Config:
 
     Policy resolution:
         - Public/API overlays are applied to a mutable draft **after** discovery and before
-            freezing to this immutable `Config`. Per-type policies override the global policy
-            for matching file types.
+            freezing to this immutable [`FrozenConfig`][topmark.config.model.FrozenConfig].
+            Per-type policies override the global policy for matching file types.
         - All entries in ``policy_by_type`` are resolved against the global ``policy`` during
-            ``MutableConfig.freeze``; at runtime the pipeline simply selects the appropriate
-            `Policy` via
+            [`MutableConfig.freeze`][topmark.config.model.MutableConfig.freeze];
+            at runtime the pipeline simply selects the appropriate
+            [`Policy`][topmark.config.policy.Policy] via
             [`topmark.config.policy.effective_policy`][topmark.config.policy.effective_policy]
             without further merging.
     """
@@ -192,7 +201,7 @@ class Config:
         `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
-        A similar helper exists on `MutableConfig`.
+        A similar helper exists on [`MutableConfig`][topmark.config.model.MutableConfig].
 
         Args:
             strict: Effective strictness for config/preflight validation.
@@ -220,7 +229,7 @@ class Config:
         `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
-        A similar helper exists on `MutableConfig`.
+        A similar helper exists on [`MutableConfig`][topmark.config.model.MutableConfig].
 
         Args:
             strict: Effective strictness for config/preflight validation.
@@ -235,11 +244,12 @@ class Config:
             )
 
     def thaw(self) -> MutableConfig:
-        """Return a mutable copy of this frozen config.
+        """Return a mutable copy of this immutable config.
 
         Symmetry:
-            Mirrors `MutableConfig.freeze`. Prefer thaw→edit→freeze rather
-            than mutating a runtime `Config`.
+            Mirrors [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze].
+            Prefer thaw→edit→freeze rather than mutating a runtime
+            [`FrozenConfig`][topmark.config.model.FrozenConfig].
 
         Returns:
             A mutable builder initialized from this snapshot.
@@ -266,19 +276,20 @@ class Config:
         )
 
 
-def sanitized_config(config: Config) -> Config:
-    """Sanitize a Config object.
+def sanitized_config(config: FrozenConfig) -> FrozenConfig:
+    """Sanitize a `FrozenConfig` object.
 
-    Thaws the Config into a MutableConfig, sanitizes and freezes again.
+    Thaws the [`FrozenConfig`][topmark.config.model.FrozenConfig] into a
+    [`MutableConfig`][topmark.config.model.MutableConfig], sanitizes and freezes again.
 
     Sanitization may add staged validation diagnostics, and those diagnostics
     participate in later config/preflight validity checks.
 
     Args:
-        config: The Config to sanitize.
+        config: The [`FrozenConfig`][topmark.config.model.FrozenConfig] to sanitize.
 
     Returns:
-        The sanitized Config instance.
+        The sanitized [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
     """
     m: MutableConfig = config.thaw()
     m.sanitize()
@@ -288,14 +299,15 @@ def sanitized_config(config: Config) -> Config:
 # -------------------------- Mutable layered builder --------------------------
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class MutableConfig:
     """Mutable configuration used during discovery and merging.
 
     This builder collects layered config from defaults, project files, extra files,
     and config-like API overrides. It remains convenient to mutate (``list``/``set``),
-    then produces an immutable `Config` via `freeze`. TOML I/O is delegated to
-    [`topmark.config.io`][topmark.config.io] to keep this class focused on merge policy.
+    then produces an immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] via `freeze`.
+    TOML I/O is delegated to [`topmark.config.io`][topmark.config.io] to keep
+    this class focused on merge policy.
 
     Attributes:
         policy: Optional global policy overrides (public shape).
@@ -369,7 +381,7 @@ class MutableConfig:
         `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
-        A similar helper exists on `Config`.
+        A similar helper exists on [`FrozenConfig`][topmark.config.model.FrozenConfig].
 
         Args:
             strict: Effective strictness for config/preflight validation.
@@ -397,7 +409,7 @@ class MutableConfig:
         `strict` after applying TOML resolution and any CLI/API
         override precedence.
 
-        A similar helper exists on `Config`.
+        A similar helper exists on [`FrozenConfig`][topmark.config.model.FrozenConfig].
 
         Args:
             strict: Effective strictness for config/preflight validation.
@@ -413,11 +425,12 @@ class MutableConfig:
 
     # ---------------------------- Build/freeze ----------------------------
 
-    def freeze(self) -> Config:
-        """Freeze this mutable builder into an immutable Config.
+    def freeze(self) -> FrozenConfig:
+        """Freeze this mutable builder into an immutable `FrozenConfig`.
 
         This method applies final sanitation and normalizes internal container
-        types before constructing the immutable `Config` snapshot.
+        types before constructing the immutable [`FrozenConfig`][topmark.config.model.FrozenConfig]
+        snapshot.
         """
         self.sanitize()
 
@@ -430,7 +443,7 @@ class MutableConfig:
             resolved: Policy = mp.resolve(global_policy_frozen)
             frozen_by_type[ft] = resolved
 
-        return Config(
+        return FrozenConfig(
             policy=global_policy_frozen,
             policy_by_type=frozen_by_type,
             config_files=tuple(self.config_files),
@@ -607,7 +620,7 @@ class MutableConfig:
         This step enforces downstream invariants expected by config resolution,
         runtime processing, and related components such as the file resolver,
         pipeline, and CLI. It is intended to be called just before freezing into
-        an immutable `Config`.
+        an immutable [`FrozenConfig`][topmark.config.model.FrozenConfig].
 
         Sanitization may drop or rewrite invalid entries and records diagnostics
         describing those recoveries. These diagnostics are part of the
@@ -782,7 +795,8 @@ class MutableConfig:
 
             Public `policy_by_type` keys accept the same identifier forms as file
             type filters: qualified keys such as `topmark:python`, or local keys
-            such as `python` when unambiguous. The frozen `Config` stores only
+            such as `python` when unambiguous. The immutable
+            [`FrozenConfig`][topmark.config.model.FrozenConfig] stores only
             canonical qualified keys.
             """
             if not self.policy_by_type:
@@ -838,7 +852,7 @@ def _is_diagnostic_log_valid(
     warning nor error diagnostics.
 
     Args:
-        diagnostics: Mutable or frozen diagnostic log to evaluate.
+        diagnostics: Mutable or immutable diagnostic log to evaluate.
         strict: Effective strictness for config/preflight validation.
 
     Returns:
@@ -862,7 +876,7 @@ def _is_validation_logs_valid(
     described in this module.
 
     Args:
-        validation_logs: Mutable or frozen staged validation logs.
+        validation_logs: Mutable or immutable staged validation logs.
         strict: Effective strictness for config/preflight validation.
 
     Returns:

@@ -54,7 +54,7 @@ from topmark.resolution.discovery import FileSelectionStatus
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.config.types import GitIgnorePathSpec
     from topmark.config.types import PatternSource
@@ -237,7 +237,7 @@ def _matches_any(
     return False
 
 
-def _explicit_input_paths(config: Config) -> list[Path]:
+def _explicit_input_paths(config: FrozenConfig) -> list[Path]:
     """Return explicit path inputs supplied by the user.
 
     Explicit inputs are positional paths and paths loaded through `files_from`.
@@ -282,7 +282,7 @@ def _selected_real_paths(selected_files: Sequence[Path]) -> set[Path]:
 
 def _is_excluded_by_path_filters(
     path: Path,
-    config: Config,
+    config: FrozenConfig,
 ) -> bool:
     """Return whether an explicit file path is excluded by path filters.
 
@@ -313,7 +313,7 @@ def _is_excluded_by_path_filters(
 
 def _is_excluded_by_file_type_filters(
     path: Path,
-    config: Config,
+    config: FrozenConfig,
 ) -> bool:
     """Return whether an explicit file path is excluded by file-type filters.
 
@@ -342,7 +342,7 @@ def _is_excluded_by_file_type_filters(
 
 def _classify_explicit_filter_reason(
     path: Path,
-    config: Config,
+    config: FrozenConfig,
 ) -> FileSelectionReason:
     """Classify why an explicit existing file was filtered before probing.
 
@@ -366,7 +366,7 @@ def _classify_explicit_filter_reason(
 
 
 def probe_explicit_file_selection(
-    config: Config,
+    config: FrozenConfig,
     *,
     selected_files: Sequence[Path],
 ) -> tuple[FileSelectionProbeResult, ...]:
@@ -492,7 +492,7 @@ def _matches_any_file_type(
 
 
 def resolve_file_list_with_diagnostics(
-    config: Config,
+    config: FrozenConfig,
 ) -> FileListResolution:
     """Return concrete input files plus discovery diagnostics.
 

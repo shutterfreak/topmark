@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
 
@@ -60,7 +60,7 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
     path: Path = tmp_path / "styles.css"
     path.write_text("body { margin: 0; }\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     # Use the short insert helper which runs resolver+reader+scanner, but we only
@@ -102,7 +102,7 @@ def test_cblock_all_registrations_insert_and_trailing_blank(
     file: Path = tmp_path / f"sample{ext}"
     file.write_text(body, encoding="utf-8")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -127,7 +127,7 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
         encoding="utf-8",
     )  # No header yet
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     # 1) Insert a canonical header using the updater path
@@ -170,7 +170,7 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
         encoding="utf-8",
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
@@ -214,7 +214,7 @@ def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("/* palette */\n")
         fp.write("@c: #abc;\n")
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -261,7 +261,7 @@ def test_cblock_banner_comment_after_header(tmp_path: Path) -> None:
     file: Path = tmp_path / "banner.css"
     file.write_text("/* existing:license banner */\nhtml{font-size:16px}\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -284,7 +284,7 @@ def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     """strip_header_block removes a canonical TopMark C-block header."""
     file: Path = tmp_path / "strip_me.css"
     file.write_text("html{font-size:16px}\n")
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
 
     # Generate a canonical header
     ctx: ProcessingContext = run_insert(file, cfg)
@@ -325,7 +325,7 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     # Resolve processor & basics
     proc: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert proc is not None, "Processor must resolve for .sql"
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
 
     # Render canonical header lines (no fields needed for structure check)
     header_values: dict[str, str] = dict.fromkeys(cfg.header_fields, "")

@@ -34,7 +34,7 @@ from topmark.toml.validation import TomlDiagnosticCode
 from topmark.toml.validation import TomlValidationIssue
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.toml.parse import ParsedTopmarkToml
 
@@ -169,7 +169,7 @@ def test_policy_by_type_public_identifier_freezes_to_qualified_key(
         }
     )
 
-    cfg: Config = draft.freeze()
+    cfg: FrozenConfig = draft.freeze()
 
     assert set(cfg.policy_by_type) == {"topmark:python"}
     assert cfg.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
@@ -194,7 +194,7 @@ def test_policy_by_type_quoted_qualified_toml_key_parses_and_freezes() -> None:
     assert not any(issue.level is not DiagnosticLevel.INFO for issue in parsed.validation_issues)
 
     draft: MutableConfig = draft_from_topmark_toml_table(parsed.layered_config)
-    cfg: Config = draft.freeze()
+    cfg: FrozenConfig = draft.freeze()
 
     assert set(cfg.policy_by_type) == {"topmark:python"}
     assert cfg.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY

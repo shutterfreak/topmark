@@ -47,7 +47,7 @@ from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
@@ -60,7 +60,7 @@ from topmark.presentation.text.config import render_config_check_text
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
 
@@ -175,14 +175,14 @@ def config_check_command(
     )
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
-    resolved_toml, draft_config = resolve_toml_sources_and_build_config_draft(
+    resolved_toml, draft_config = resolve_toml_sources_and_build_mutable_config(
         strict=strict,
         no_config=no_config,
         extra_config_files=[Path(p) for p in config_files],
     )
 
     # Freeze ensures sanitize + schema validation runs (and produces diagnostics)
-    config: Config = draft_config.freeze()
+    config: FrozenConfig = draft_config.freeze()
     logger.trace("Run config after layered CLI overrides: %s", config)
 
     # Check config validity:
@@ -191,7 +191,7 @@ def config_check_command(
         resolved=resolved_toml,
     )
 
-    logger.trace("Config after merging CLI and discovered config: %s", draft_config)
+    logger.trace("MutableConfig after merging CLI and discovered config: %s", draft_config)
 
     def _exit(ctx: click.Context, *, success: bool) -> None:
         """Select exit code depending on outcome."""

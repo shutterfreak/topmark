@@ -108,7 +108,7 @@ def determine_intent(ctx: ProcessingContext) -> Intent:
     return Intent.NONE
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResultBucket:
     """Outcome + optional human-facing reason used for bucketing.
 
@@ -128,7 +128,7 @@ class ResultBucket:
         return f"{self.outcome.value}: {self.reason or NO_REASON_PROVIDED}"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class OutcomeReasonCount:
     """Count for a specific `(outcome, reason)` summary bucket.
 

@@ -74,7 +74,7 @@ class ReportScope(str, Enum):
     ALL = "all"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ReportFilterResult:
     """Result of applying a report scope to pipeline contexts."""
 

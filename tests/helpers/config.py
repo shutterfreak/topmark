@@ -14,7 +14,8 @@ This module contains pure helper functions used by tests that operate on
 TopMark's config model and layered-config deserialization boundary.
 
 The helpers here intentionally work with fully materialized config objects or
-config-local value types such as `PatternSource` and `PatternGroup`. They do
+config-local value types such as [`PatternSource`][topmark.config.types.PatternSource]
+and [`PatternGroup`][topmark.config.types.PatternGroup]. They do
 not perform whole-source TOML loading or schema validation; TOML-layer tests
 should instead use helpers from `tests.helpers.toml` or `tests/toml/conftest.py`.
 """
@@ -32,7 +33,7 @@ from topmark.config.types import PatternGroup
 from topmark.config.types import PatternSource
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
 
 
@@ -49,14 +50,15 @@ def to_pattern_sources(values: Sequence[str | Path | PatternSource]) -> list[Pat
 
     Plain strings and `Path` values are normalized to absolute
     [`PatternSource`][topmark.config.types.PatternSource] objects whose base is
-    the resolved parent directory. Existing `PatternSource` instances are
+    the resolved parent directory. Existing
+    [`PatternSource`][topmark.config.types.PatternSource] instances are
     preserved unchanged.
 
     Args:
         values: Items to coerce.
 
     Returns:
-        Coerced list of `PatternSource` instances.
+        Coerced list of [`PatternSource`][topmark.config.types.PatternSource] instances.
     """
     if not values:
         return []
@@ -80,14 +82,14 @@ def to_pattern_groups(
     Plain string entries are grouped into a single
     [`PatternGroup`][topmark.config.types.PatternGroup] whose base defaults to
     the current working directory unless explicitly provided. Existing
-    `PatternGroup` instances are preserved as-is.
+    [`PatternGroup`][topmark.config.types.PatternGroup] instances are preserved as-is.
 
     Args:
         values: Items to coerce.
         base: Optional base directory for plain string pattern entries.
 
     Returns:
-        Coerced list of `PatternGroup` instances.
+        Coerced list of [`PatternGroup`][topmark.config.types.PatternGroup] instances.
     """
     if not values:
         return []
@@ -175,22 +177,27 @@ def make_mutable_config(**overrides: object) -> MutableConfig:
     """Build a mutable config from defaults plus convenient test overrides.
 
     This helper is intended for config-layer and merge tests that need a
-    `MutableConfig` builder rather than a frozen `Config` snapshot.
+    mutable [`MutableConfig`][topmark.config.model.MutableConfig] builder rather
+    than an immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] snapshot.
 
     It applies a small amount of test-oriented coercion for pattern- and
     path-related overrides so callers can use concise string/`Path` inputs
-    instead of constructing `PatternSource` or `PatternGroup` objects by hand.
+    instead of constructing [`PatternSource`][topmark.config.types.PatternSource]
+    or [`PatternGroup`][topmark.config.types.PatternGroup] objects by hand.
 
     For most tests, prefer the `default_config` fixture.
-    Use `make_mutable_config` only when deliberately testing config merge logic.
+    Use `make_mutable_config()` only when deliberately testing config merge logic.
 
     Args:
         **overrides: Keyword overrides to apply to the mutable builder.
             Keys `include_from`, `exclude_from`, and `files_from` may be sequences of
-            strings, `Path`, or `PatternSource`; these are coerced to `PatternSource`.
+            strings, `Path`, or [`PatternSource`][topmark.config.types.PatternSource];
+            these are coerced to [`PatternSource`][topmark.config.types.PatternSource].
             Keys `include_patterns` and `exclude_patterns` may be sequences of strings or
-            `PatternGroup`; plain strings are grouped into a single provenance-aware
-            `PatternGroup` rooted at the current working directory.
+            [`PatternGroup`][topmark.config.types.PatternGroup]; plain strings are
+            grouped into a single provenance-aware
+            [`PatternGroup`][topmark.config.types.PatternGroup] rooted at the
+            current working directory.
 
     Returns:
         A mutable configuration object ready to be frozen or further edited.
@@ -244,18 +251,18 @@ def make_mutable_config(**overrides: object) -> MutableConfig:
     return m
 
 
-def make_config(**overrides: object) -> Config:
-    """Return a frozen `Config` built from defaults and config-layer overrides.
+def make_frozen_config(**overrides: object) -> FrozenConfig:
+    """Return an immutable `Config` built from defaults and config-layer overrides.
 
     This helper is the strongly typed config-object companion to
     `make_mutable_config()`: it materializes a mutable builder, applies the
     requested overrides, and then freezes the result for use in tests that
-    want a real [`Config`][topmark.config.model.Config] instance.
+    want a real [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
 
     Unlike `tests.helpers.api.cfg()`, this helper does not build a plain
-    mapping for the public API's `config=` branch. Use `make_config()` when a
-    test needs an actual frozen config object; use `api.cfg()` when a test
-    specifically wants to exercise mapping-based API input.
+    mapping for the public API's `config=` branch. Use `make_frozen_config()` when a
+    test needs an actual immutable [`FrozenConfig`][topmark.config.model.FrozenConfig]
+    object; use `api.cfg()` when a test specifically wants to exercise mapping-based API input.
 
     Args:
         **overrides: Keyword overrides applied to the mutable builder before

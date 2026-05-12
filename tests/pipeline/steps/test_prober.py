@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from tests.conftest import EffectiveRegistries
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.filetypes.model import FileType
     from topmark.pipeline.context.model import ProcessingContext
 
@@ -54,7 +54,7 @@ def _make_context(path: Path) -> ProcessingContext:
     Returns:
         Processing context ready for direct pipeline-step execution.
     """
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     return make_pipeline_context(path=path, cfg=cfg)
 
 

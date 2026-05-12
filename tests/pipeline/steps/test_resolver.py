@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from tests.conftest import EffectiveRegistries
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.registry.types import ProcessorDefinition
 
@@ -82,11 +82,11 @@ def _resolve(
     filetypes: Mapping[str, FileType],
     processors: Mapping[str, HeaderProcessor | ProcessorDefinition],
     effective_registries: EffectiveRegistries,
-    cfg: Config | None = None,
+    cfg: FrozenConfig | None = None,
 ) -> ProcessingContext:
     """Run the resolver step for a single file under deterministic registries."""
     with effective_registries(filetypes, processors):
-        cfg_final: Config = cfg or mutable_config_from_defaults().freeze()
+        cfg_final: FrozenConfig = cfg or mutable_config_from_defaults().freeze()
         ctx: ProcessingContext = make_pipeline_context(file, cfg_final)
         return run_resolver(ctx)
 
@@ -703,7 +703,7 @@ def test_resolve_pattern_fullmatch_not_search(
     filetypes: dict[str, FileType] = {ft_pat_name: ft_pat, ft_bak_name: ft_bak}
     processors1: dict[str, HeaderProcessor] = {ft_pat_name: HeaderProcessor()}
     processors2: dict[str, HeaderProcessor] = {ft_bak_name: HeaderProcessor()}
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx1: ProcessingContext = _resolve(
         file1,
         filetypes=filetypes,

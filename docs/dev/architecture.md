@@ -50,7 +50,7 @@ flowchart TD
     A --> B --> C --> D --> E --> F --> G
 ```
 
-Not all TOML-defined values become layered `Config` fields. Source-local options such as
+Not all TOML-defined values become layered Config fields. Source-local options such as
 `[config].root` and `strict` are resolved on the TOML side first, then applied to config discovery
 and staged config-loading/preflight validation without participating in layered config merging.
 
@@ -71,7 +71,7 @@ from “present but malformed” before staged config-validation semantics are a
 
 The main integration point between TOML resolution and config merging is:
 
-- \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
+- \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config]
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 

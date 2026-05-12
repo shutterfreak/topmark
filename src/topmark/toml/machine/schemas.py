@@ -51,7 +51,7 @@ class TomlKey(str, Enum):
     SCOPE_ROOT = "scope_root"
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class TomlProvenanceLayerPayload:
     """One machine-readable TOML provenance layer.
 
@@ -86,7 +86,7 @@ class TomlProvenanceLayerPayload:
         return out
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class TomlProvenancePayload:
     """Machine-readable layered TopMark TOML provenance export.
 

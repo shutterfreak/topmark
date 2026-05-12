@@ -18,7 +18,7 @@ from topmark.cli.errors import TopmarkCliVersionConversionError
 from topmark.utils.version import compute_version_text
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class VersionHumanReport:
     """Representation of version information.
 

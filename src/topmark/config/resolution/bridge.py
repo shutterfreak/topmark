@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 # ---- Public TOML -> config bridge helpers ----
 
 
-def build_config_draft_from_resolved_toml_sources(
+def build_mutable_config_from_resolved_toml_sources(
     resolved: ResolvedTopmarkTomlSources,
 ) -> MutableConfig:
     """Merge resolved TOML sources into one mutable config draft.
@@ -99,7 +99,7 @@ def build_config_draft_from_resolved_toml_sources(
     return draft
 
 
-def resolve_toml_sources_and_build_config_draft(
+def resolve_toml_sources_and_build_mutable_config(
     *,
     input_paths: Iterable[Path] | None = None,
     extra_config_files: Iterable[Path] | None = None,
@@ -136,10 +136,10 @@ def resolve_toml_sources_and_build_config_draft(
         strict=strict,
         no_config=no_config,
     )
-    return resolved, build_config_draft_from_resolved_toml_sources(resolved)
+    return resolved, build_mutable_config_from_resolved_toml_sources(resolved)
 
 
-def _resolve_single_builtin_toml_table_and_build_config_draft(
+def _resolve_single_builtin_toml_table_and_build_mutable_config(
     *,
     table: TomlTable,
     source_path: Path | SyntheticConfigSource,
@@ -177,10 +177,10 @@ def _resolve_single_builtin_toml_table_and_build_config_draft(
         writer_options=parsed.writer_options if parsed is not None else None,
         strict=parsed.config_loading_options.strict if parsed is not None else None,
     )
-    return resolved, build_config_draft_from_resolved_toml_sources(resolved)
+    return resolved, build_mutable_config_from_resolved_toml_sources(resolved)
 
 
-def resolve_default_template_and_build_config_draft() -> tuple[
+def resolve_default_template_and_build_mutable_config() -> tuple[
     ResolvedTopmarkTomlSources,
     MutableConfig,
 ]:
@@ -201,14 +201,14 @@ def resolve_default_template_and_build_config_draft() -> tuple[
 
     doc: tomlkit.TOMLDocument = tomlkit.parse(text)
     table: TomlTable = toml_table_from_mapping(as_object_dict(doc.unwrap()))
-    return _resolve_single_builtin_toml_table_and_build_config_draft(
+    return _resolve_single_builtin_toml_table_and_build_mutable_config(
         table=table,
         source_path=BUNDLED_TEMPLATE_TOML_SOURCE,
         load_diagnostics=diagnostics,
     )
 
 
-def resolve_default_table_and_build_config_draft() -> tuple[
+def resolve_default_table_and_build_mutable_config() -> tuple[
     ResolvedTopmarkTomlSources,
     MutableConfig,
 ]:
@@ -222,7 +222,7 @@ def resolve_default_table_and_build_config_draft() -> tuple[
         Tuple containing the resolved TOML-side state and mutable config draft
         built from the canonical default TOML table.
     """
-    return _resolve_single_builtin_toml_table_and_build_config_draft(
+    return _resolve_single_builtin_toml_table_and_build_mutable_config(
         table=build_default_topmark_toml_table(),
         source_path=BUILTIN_DEFAULTS_TOML_SOURCE,
     )

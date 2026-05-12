@@ -41,7 +41,7 @@ from topmark.pipeline.steps.sniffer import SnifferStep
 from topmark.pipeline.views import UpdatedView
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 # --- File fixtures ---------------------------------------------------------
@@ -77,10 +77,10 @@ def shebang_only_file(tmp_path: Path) -> Path:
 @pytest.fixture
 def bom_shebang_ctx(
     bom_and_shebang_file: Path,
-    default_config: Config,
+    default_frozen_config: FrozenConfig,
 ) -> ProcessingContext:
     """Context for a file where BOM precedes the shebang, after reader."""
-    ctx: ProcessingContext = make_pipeline_context(bom_and_shebang_file, default_config)
+    ctx: ProcessingContext = make_pipeline_context(bom_and_shebang_file, default_frozen_config)
     return run_steps(
         ctx,
         (
@@ -111,10 +111,10 @@ def test_reader_skips_when_bom_precedes_shebang_python(
 
 def test_reader_allows_shebang_without_bom_python(
     shebang_only_file: Path,
-    default_config: Config,
+    default_frozen_config: FrozenConfig,
 ) -> None:
     """Shebang without BOM should proceed normally and not be skipped."""
-    ctx: ProcessingContext = make_pipeline_context(shebang_only_file, default_config)
+    ctx: ProcessingContext = make_pipeline_context(shebang_only_file, default_frozen_config)
     ctx = run_steps(
         ctx,
         (
@@ -139,11 +139,13 @@ def test_reader_allows_shebang_without_bom_python(
     )
 
 
-def test_updater_suppresses_bom_reprepend_in_strip_fastpath(default_config: Config) -> None:
+def test_updater_suppresses_bom_reprepend_in_strip_fastpath(
+    default_frozen_config: FrozenConfig,
+) -> None:
     """Updater must not re-prepend BOM when a shebang is present (fast path)."""
     # Construct a context hitting the strip fast-path in update():
     file: Path = Path("dummy.py")
-    ctx: ProcessingContext = make_pipeline_context(file, default_config)
+    ctx: ProcessingContext = make_pipeline_context(file, default_frozen_config)
 
     ctx.leading_bom = True
     ctx.has_shebang = True

@@ -10,13 +10,14 @@
 
 """Serialize TopMark configuration objects to TopMark TOML tables.
 
-This module provides helpers to convert immutable `Config` instances into
+This module provides helpers to convert immutable
+[`FrozenConfig`][topmark.config.model.FrozenConfig] instances into
 TopMark TOML-compatible tables for export, debugging, or documentation.
 
 TOML has no `null` value, so `None` entries are stripped during rendering.
 
 Responsibilities:
-    - convert layered `Config` into TopMark TOML tables
+    - convert layered [`FrozenConfig`][topmark.config.model.FrozenConfig] into TopMark TOML tables
     - normalize config values into stable TOML-compatible tokens
     - control inclusion of optional sections (for example large file lists)
 
@@ -45,7 +46,7 @@ from topmark.toml.utils import insert_if_present
 from topmark.utils.file import rebase_glob_patterns
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticLog
     from topmark.toml.types import TomlTable
@@ -72,7 +73,7 @@ def _format_config_source_path(source: Path | SyntheticConfigSource) -> str:
 
 
 def config_to_topmark_toml_table(
-    config: Config,
+    config: FrozenConfig,
     *,
     include_files: bool = False,
     files_serialization_mode: FilesSerializationMode = FilesSerializationMode.REBASED,
@@ -81,7 +82,8 @@ def config_to_topmark_toml_table(
     """Convert an immutable `Config` into a TopMark TOML table.
 
     Args:
-        config: The immutable Config instance to render as TOML.
+        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig]
+            instance to render as TOML.
         include_files: Whether to include the `files` list in the output.
             Defaults to False to avoid spamming the output with potentially
             large file lists. Set to True for full export.

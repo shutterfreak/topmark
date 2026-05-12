@@ -32,7 +32,7 @@ from topmark.constants import TOPMARK_START_MARKER
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -59,7 +59,7 @@ def test_replace_preserves_crlf(tmp_path: Path) -> None:
             f"// {TOPMARK_START_MARKER}\n// x\n// {TOPMARK_END_MARKER}\nint main(){{return 0;}}\n"
         )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)  # should replace header
     lines: list[str] = materialize_updated_lines(ctx)
 
@@ -74,7 +74,7 @@ def test_replace_preserves_no_final_newline_lf(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)  # should replace header
     lines: list[str] = materialize_updated_lines(ctx)
     out: str = "".join(lines)

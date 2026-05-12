@@ -74,7 +74,7 @@ class DiagnosticKind(str, Enum):
     DIAGNOSTIC = "diagnostic"
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class MachineDiagnosticEntry:
     """Machine-readable diagnostic entry.
 
@@ -106,7 +106,7 @@ class MachineDiagnosticEntry:
         }
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class MachineDiagnosticCounts:
     """Aggregated per-level counts for machine-readable output.
 

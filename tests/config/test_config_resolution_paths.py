@@ -30,7 +30,7 @@ from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
-from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.resolution.files import FileListResolution
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 
@@ -59,7 +59,7 @@ def test_relative_to_resolves_against_config_dir(
     )
 
     # Anchor discovery under nested path
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[src],
     )
     assert draft.relative_to is not None
@@ -143,7 +143,7 @@ def test_globs_evaluated_relative_to_relative_to(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
     )
     # File-list resolution should include our file based on the glob evaluated from proj.
@@ -178,7 +178,7 @@ def test_relative_to_inheritance_across_multiple_discovered_configs(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
     assert draft.relative_to is not None
@@ -210,7 +210,7 @@ def test_child_overrides_relative_to_with_its_own_dir(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
     assert draft.relative_to is not None
@@ -249,7 +249,7 @@ def test_parent_include_from_and_child_exclude_from_normalized_with_proper_bases
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
     # include_from normalized to root base
@@ -282,7 +282,7 @@ def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
 
     # Build merged config anchored under "elsewhere"
     monkeypatch.chdir(elsewhere)
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[elsewhere],
         extra_config_files=[proj / "pyproject.toml"],
     )

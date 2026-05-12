@@ -32,7 +32,8 @@ Typical discovery precedence (lowest -> highest, once later resolved):
 
 This module is intentionally separate from
 [`topmark.config.resolution`][topmark.config.resolution]. That module owns
-layered config provenance layers and `MutableConfig` merge behavior; this
+layered config provenance layers and
+[`MutableConfig`][topmark.config.model.MutableConfig] merge behavior; this
 module owns TOML-source discovery and TOML-side per-run resolution.
 """
 
@@ -72,7 +73,7 @@ Allowed values:
 """
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResolvedTopmarkTomlSource:
     """One TopMark TOML source participating in per-run resolution.
 
@@ -103,7 +104,7 @@ class ResolvedTopmarkTomlSource:
     load_diagnostics: FrozenDiagnosticLog
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResolvedTopmarkTomlSources:
     """Resolved TOML-side state across discovered TopMark TOML sources.
 
@@ -325,7 +326,7 @@ def resolve_topmark_toml_sources(
 
     This helper resolves TOML-side settings only. It does not construct
     `ConfigLayer` objects and does not merge layered config into a
-    `MutableConfig`.
+    [`MutableConfig`][topmark.config.model.MutableConfig].
 
     Precedence order (lowest -> highest):
         1. user-scoped TOML source

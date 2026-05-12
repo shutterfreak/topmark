@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ErrorContext:
     """Structured context attached to a core TopMark error.
 
@@ -536,8 +536,8 @@ class ConfigValidationError(TopmarkError):
     diagnostic. In strict mode, validation fails when any stage contains either
     a warning or an error diagnostic.
 
-    This error is used for both frozen `Config` and mutable `MutableConfig`
-    validation helpers.
+    This error is used for both immmutale [`FrozenConfig`][topmark.config.model.FrozenConfig]
+    and mutable [`MutableConfig`][topmark.config.model.MutableConfig] validation helpers.
 
     Args:
         validation_logs: Staged validation logs attached to the config being

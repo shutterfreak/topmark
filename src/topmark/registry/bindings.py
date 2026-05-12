@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from topmark.registry.types import ProcessorMeta
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class Binding:
     """Joined metadata view of one file type and its optionally bound processor.
 

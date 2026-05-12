@@ -28,14 +28,14 @@ from typing import Any
 
 import pytest
 
-from tests.helpers.config import make_config
+from tests.helpers.config import make_frozen_config
 from topmark.pipeline import engine
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.policy import PolicyRegistry
 
 
@@ -50,17 +50,17 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     file_a.write_text("print('a')\n", encoding="utf-8")
     file_b.write_text("print('b')\n", encoding="utf-8")
 
-    shared_cfg: Config = make_config(header_fields=["project"])
-    cfg_a: Config = make_config(header_fields=["file"])
-    cfg_b: Config = make_config(header_fields=["license"])
+    shared_cfg: FrozenConfig = make_frozen_config(header_fields=["project"])
+    cfg_a: FrozenConfig = make_frozen_config(header_fields=["file"])
+    cfg_b: FrozenConfig = make_frozen_config(header_fields=["license"])
 
-    path_configs: dict[Path, Config] = {
+    path_configs: dict[Path, FrozenConfig] = {
         file_a: cfg_a,
         file_b: cfg_b,
     }
 
-    bootstrap_calls: list[tuple[Path, Config, RunOptions, object]] = []
-    policy_calls: list[Config] = []
+    bootstrap_calls: list[tuple[Path, FrozenConfig, RunOptions, object]] = []
+    policy_calls: list[FrozenConfig] = []
 
     class FakeProcessingContext:
         """Minimal stand-in exposing the bootstrap contract used by the engine."""
@@ -70,14 +70,14 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
             cls,
             *,
             path: Path,
-            config: Config,
+            config: FrozenConfig,
             run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
         ) -> Any:
             bootstrap_calls.append((path, config, run_options, policy_registry_override))
             return SimpleNamespace(path=path, config=config, run_options=run_options)
 
-    def fake_make_policy_registry(config: Config) -> object:
+    def fake_make_policy_registry(config: FrozenConfig) -> object:
         policy_calls.append(config)
         return {"header_fields": tuple(config.header_fields)}
 
@@ -129,10 +129,10 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     file_a.write_text("print('a')\n", encoding="utf-8")
     file_b.write_text("print('b')\n", encoding="utf-8")
 
-    shared_cfg: Config = make_config(header_fields=["project", "file"])
+    shared_cfg: FrozenConfig = make_frozen_config(header_fields=["project", "file"])
 
-    bootstrap_calls: list[tuple[Path, Config, RunOptions, object]] = []
-    policy_calls: list[Config] = []
+    bootstrap_calls: list[tuple[Path, FrozenConfig, RunOptions, object]] = []
+    policy_calls: list[FrozenConfig] = []
 
     class FakeProcessingContext:
         """Minimal stand-in exposing the bootstrap contract used by the engine."""
@@ -142,14 +142,14 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
             cls,
             *,
             path: Path,
-            config: Config,
+            config: FrozenConfig,
             run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
         ) -> Any:
             bootstrap_calls.append((path, config, run_options, policy_registry_override))
             return SimpleNamespace(path=path, config=config, run_options=run_options)
 
-    def fake_make_policy_registry(config: Config) -> object:
+    def fake_make_policy_registry(config: FrozenConfig) -> object:
         policy_calls.append(config)
         return {"header_fields": tuple(config.header_fields)}
 

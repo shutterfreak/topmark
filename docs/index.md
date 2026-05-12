@@ -247,7 +247,7 @@ as `root` and `strict` under `[tool.topmark.config]`.
 
 Source-local options under `[config]` / `[tool.topmark.config]` do not participate in layered config
 merging. For example, `strict` affects configuration validation behaviour rather than becoming a
-normal layered `Config` field.
+normal layered Config field.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 

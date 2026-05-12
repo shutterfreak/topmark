@@ -24,7 +24,7 @@ from topmark.runtime.model import RunOptions
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
 
@@ -71,7 +71,7 @@ def test_nested_config_applies_only_within_its_subtree(tmp_path: Path) -> None:
     pkg_file.write_text("print('pkg')\n", encoding="utf-8")
     docs_file.write_text("print('docs')\n", encoding="utf-8")
 
-    _cfg: Config
+    _cfg: FrozenConfig
     file_list: list[Path]
     results: list[ProcessingContext]
     exit_code: ExitCode | None

@@ -12,18 +12,23 @@
 
 These tests exercise the interaction between:
 
-* `MutablePolicy` (tri-state builder)
-* `Policy` (fully-resolved runtime view)
-* `MutableConfig.merge_with` (policy merge semantics)
-* `MutableConfig.freeze` (inheritance from global → per-type)
-* `effective_policy` (runtime selection without further merging)
-* `apply_config_overrides` (structured policy override application)
+* [`MutablePolicy`][topmark.config.policy.model.MutablePolicy] (tri-state builder)
+* [`Policy`][topmark.config.policy.Policy] (fully-resolved runtime view)
+* [`MutableConfig.merge_with()`][topmark.config.model.MutableConfig.merge_with]
+  (policy merge semantics)
+* [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze]
+  (inheritance from global → per-type)
+* [`effective_policy()`][topmark.config.policy.effective_policy] (runtime
+  selection without further merging)
+* [`apply_config_overrides()`][topmark.config.overrides.apply_config_overrides]
+  (structured policy override application)
 
 The goal is to ensure that:
 
 * Global policy is resolved once at freeze time.
 * Per-file-type policies are resolved *on top of* the global policy.
-* `effective_policy` is a simple selector (no thaw/resolve at runtime).
+* [`effective_policy()`][topmark.config.policy.effective_policy] is a simple
+  selector (no thaw/resolve at runtime).
 * `header_mutation_mode` is resolved and preserved correctly.
 """
 
@@ -49,7 +54,7 @@ from topmark.config.policy import Policy
 from topmark.config.policy import effective_policy
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.filetypes.model import FileType
     from topmark.toml.types import TomlTable
@@ -81,7 +86,7 @@ def test_global_policy_only_resolves_correctly() -> None:
         allow_content_probe=False,
     )
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
     global_pol: Policy = cfg.policy
 
     # Global policy should reflect explicit overrides.
@@ -110,7 +115,7 @@ def test_per_type_override_inherits_global_policy(input_identifier: str) -> None
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
     global_pol: Policy = cfg.policy
     assert set(cfg.policy_by_type) == {"topmark:python"}
     py_pol: Policy = cfg.policy_by_type["topmark:python"]
@@ -144,7 +149,7 @@ def test_effective_policy_prefers_per_type_over_global(input_identifier: str) ->
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
     global_pol: Policy = cfg.policy
     assert set(cfg.policy_by_type) == {"topmark:python"}
     py_pol: Policy = cfg.policy_by_type["topmark:python"]
@@ -229,7 +234,7 @@ def test_freeze_resolves_global_header_mutation_mode() -> None:
         header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
     )
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
     assert cfg.policy.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
 
 
@@ -246,7 +251,7 @@ def test_freeze_resolves_per_type_header_mutation_mode(input_identifier: str) ->
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
     assert set(cfg.policy_by_type) == {"topmark:python"}
     assert (
         cfg.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
@@ -258,7 +263,8 @@ def test_policy_loaded_from_toml_tables(input_identifier: str) -> None:
     """TOML-shaped dicts must hydrate MutableConfig and resolve Policy correctly.
 
     This test ensures that `[policy]` and `[policy_by_type.*]` TOML tables are
-    parsed into `MutableConfig`, then frozen into a `Config` where:
+    parsed into `MutableConfig`, then frozen into an immutable
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] where:
 
     * `cfg.policy` reflects global policy fields from `[policy]`, and
     * `cfg.policy_by_type["python"]` inherits unset fields from the global
@@ -276,7 +282,7 @@ def test_policy_loaded_from_toml_tables(input_identifier: str) -> None:
         },
     }
     mc: MutableConfig = mutable_config_from_layered_toml_table(toml_root)
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
 
     # Global values from [policy]
     assert cfg.policy.header_mutation_mode == HeaderMutationMode.ADD_ONLY
@@ -317,7 +323,7 @@ def test_policy_precedence_across_merged_configs(input_identifier: str) -> None:
     local.policy_by_type = {input_identifier: MutablePolicy(allow_header_in_empty_files=True)}
 
     merged: MutableConfig = base.merge_with(project).merge_with(local)
-    cfg: Config = merged.freeze()
+    cfg: FrozenConfig = merged.freeze()
 
     # Global: local overrides project
     assert cfg.policy.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
@@ -346,7 +352,7 @@ def test_per_type_policy_local_key_freezes_to_qualified_key() -> None:
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
 
     assert set(cfg.policy_by_type) == {"topmark:python"}
     py_pol: Policy = cfg.policy_by_type["topmark:python"]
@@ -370,7 +376,7 @@ def test_per_type_policy_qualified_key_freezes_to_qualified_key() -> None:
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
 
     assert set(cfg.policy_by_type) == {"topmark:python"}
     py_pol: Policy = cfg.policy_by_type["topmark:python"]
@@ -397,7 +403,7 @@ def test_per_type_policy_mixed_local_and_qualified_keys_freeze_to_qualified_keys
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
 
     assert set(cfg.policy_by_type) == {"topmark:python", "topmark:markdown"}
     py_pol: Policy = cfg.policy_by_type["topmark:python"]
@@ -428,7 +434,7 @@ def test_effective_policy_accepts_canonical_qualified_file_type_key() -> None:
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
     global_pol: Policy = cfg.policy
     py_pol: Policy = cfg.policy_by_type["topmark:python"]
 
@@ -463,7 +469,7 @@ def test_policy_by_type_ambiguous_local_identifier_is_ignored() -> None:
         filetypes={"first-shared": first, "second-shared": second},
         processors={},
     ):
-        cfg: Config = mc.freeze()
+        cfg: FrozenConfig = mc.freeze()
 
     assert cfg.policy_by_type == {}
 
@@ -487,7 +493,7 @@ def test_policy_by_type_malformed_identifier_is_ignored(
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
 
     assert cfg.policy_by_type == {}
 
@@ -501,7 +507,7 @@ def test_policy_by_type_unknown_identifier_is_ignored() -> None:
         ),
     }
 
-    cfg: Config = mc.freeze()
+    cfg: FrozenConfig = mc.freeze()
 
     assert cfg.policy_by_type == {}
 
@@ -560,14 +566,14 @@ def test_apply_config_overrides_updates_per_type_policy_fields() -> None:
 def test_apply_config_overrides_noop_policy_still_leaves_runtime_policy_unchanged() -> None:
     """An empty `PolicyOverrides` object must not change resolved policy values."""
     mc: MutableConfig = mutable_config_from_defaults()
-    before: Config = mc.freeze()
+    before: FrozenConfig = mc.freeze()
 
     apply_config_overrides(
         mc,
         ConfigOverrides(),
     )
 
-    after: Config = mc.freeze()
+    after: FrozenConfig = mc.freeze()
     assert after.policy == before.policy
     assert after.policy_by_type == before.policy_by_type
 
@@ -575,7 +581,7 @@ def test_apply_config_overrides_noop_policy_still_leaves_runtime_policy_unchange
 def test_policy_and_mutable_policy_field_sets_are_in_sync() -> None:
     """Policy and MutablePolicy must expose the same set of field names.
 
-    This guards against drift between the frozen and mutable policy
+    This guards against drift between the froimmutablezen and mutable policy
     representations: adding a new field to one without updating the other
     will cause this test to fail.
     """

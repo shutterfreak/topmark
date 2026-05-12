@@ -34,7 +34,7 @@ from topmark.processors.types import StripDiagnostic
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
 
@@ -55,7 +55,7 @@ def test_multiple_headers_insert_replaces_first_only_pound(tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)

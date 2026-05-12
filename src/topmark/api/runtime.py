@@ -36,14 +36,14 @@ from typing import TYPE_CHECKING
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_mapping
-from topmark.config.model import Config
+from topmark.config.model import FrozenConfig
 from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
-from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.config.resolution.synthetic import SyntheticConfigSource
@@ -81,7 +81,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PreparedApiRun:
     """Shared resolved state needed to execute an API pipeline.
 
@@ -90,17 +90,17 @@ class PreparedApiRun:
     API runtime layer and deliberately not re-exported from `topmark.api`.
 
     Attributes:
-        effective_cfg: Final frozen config after layered discovery, explicit
+        effective_cfg: Final runtime config after layered discovery, explicit
             config seeding, file-type filters, and runtime policy overlays.
         run_options: Execution-only runtime options after persisted writer
             options have been applied.
         file_resolution: Diagnostic file-list resolution result.
         file_list: Selected files that should enter pipeline execution.
-        discovered_layers: Config provenance layers used to compute per-path
+        discovered_layers: FrozenConfig provenance layers used to compute per-path
             effective configs, or `None` when discovery was bypassed.
     """
 
-    effective_cfg: Config
+    effective_cfg: FrozenConfig
     run_options: RunOptions
     file_resolution: FileListResolution
     file_list: list[Path]
@@ -108,24 +108,26 @@ class PreparedApiRun:
 
 
 def ensure_mutable_config(
-    config: Mapping[str, object] | MutableConfig | Config | None,
+    config: Mapping[str, object] | MutableConfig | FrozenConfig | None,
 ) -> MutableConfig:
-    """Return a **MutableConfig** from a mapping or a frozen `Config`.
+    """Return a **MutableConfig** from a mapping or immutable `Config`.
 
-    This adapter normalizes public inputs (``Mapping[str, object]`` or frozen ``Config``) to a
-    mutable draft that internal runtime helpers can merge, inspect, and re-freeze.
+    This adapter normalizes public inputs (``Mapping[str, object]`` or immutable
+    [`FrozenConfig`][topmark.config.model.FrozenConfig]) to a mutable draft that
+    internal runtime helpers can merge, inspect, and re-freeze.
 
     Args:
-        config: Optional (TOML) mapping, draft, or frozen config instance.
+        config: Optional (TOML) mapping, mutable, or immutable config instance.
 
     Returns:
         A mutable draft configuration.
 
     Note:
-        Public API functions accept mappings or frozen `Config` instances. Passing a `MutableConfig`
-        is an internal/testing convenience, not part of the public API contract. It
-        normalizes config-like inputs, but it is not a TOML schema-validation entry
-        point.
+        Public API functions accept mappings or immutable
+        [`FrozenConfig`][topmark.config.model.FrozenConfig] instances. Passing a
+        mutable [`MutableConfig`][topmark.config.model.MutableConfig] is an
+        internal/testing convenience, not part of the public API contract.
+        It normalizes config-like inputs, but it is not a TOML schema-validation entry point.
     """
     if config is None:
         logger.debug("No config provided - returning MutableConfig.from_defaults()")
@@ -133,10 +135,10 @@ def ensure_mutable_config(
     if isinstance(config, MutableConfig):
         logger.debug("Supplied config is MutableConfig - returning as is")
         return config
-    if isinstance(config, Config):
-        # Thaw a frozen Config into a mutable draft while preserving staged
-        # validation logs and the flattened compatibility diagnostics.
-        logger.debug("Supplied config is Config - returning config.thaw()")
+    if isinstance(config, FrozenConfig):
+        # Thaw a n immutable FrozenConfig into a mutable draft while preserving
+        # staged validation logs and the flattened compatibility diagnostics.
+        logger.debug("Supplied config is FrozenConfig - returning config.thaw()")
         return config.thaw()
     # Accept a plain mapping and normalize it through the TOML-like config loader.
     logger.debug("Supplied config is TOML Mapping - returning mutable_config_from_mapping(config)")
@@ -147,7 +149,7 @@ def ensure_mutable_config(
 
 
 def is_config_valid(
-    cfg: Config | MutableConfig,
+    cfg: FrozenConfig | MutableConfig,
     *,
     resolved: ResolvedTopmarkTomlSources,
     override: bool | None = None,
@@ -185,7 +187,7 @@ def is_config_valid(
 
 
 def ensure_config_valid(
-    cfg: Config | MutableConfig,
+    cfg: FrozenConfig | MutableConfig,
     *,
     resolved: ResolvedTopmarkTomlSources,
     override: bool | None = None,
@@ -228,11 +230,11 @@ def ensure_config_valid(
 def _build_resolved_config_for_run(
     paths: Iterable[Path | str],
     *,
-    base_config: Mapping[str, object] | Config | None,
+    base_config: Mapping[str, object] | FrozenConfig | None,
     resolved_draft: MutableConfig | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
-) -> Config:
+) -> FrozenConfig:
     """Build the layered, file-backed config for an API run.
 
     This function resolves only config that legitimately participates in layered
@@ -260,7 +262,7 @@ def _build_resolved_config_for_run(
             file-list resolution.
 
     Returns:
-        The frozen resolved configuration that serves as the base for file discovery
+        The resolved runtime configuration that serves as the base for file discovery
         and later policy overlay application.
     """
     logger.debug("Normalizing input paths: %s", paths)
@@ -272,7 +274,7 @@ def _build_resolved_config_for_run(
         draft: MutableConfig = resolved_draft
     else:
         # Explicit seed mode: start from defaults, merge the supplied mapping /
-        # frozen Config on top, and skip all config discovery.
+        # immutable FrozenConfig on top, and skip all config discovery.
         seeded: MutableConfig = ensure_mutable_config(base_config)
         draft = mutable_config_from_defaults().merge_with(seeded)
 
@@ -280,7 +282,7 @@ def _build_resolved_config_for_run(
     # part of the resolved config because it directly affects which files are
     # selected for pipeline execution.
     overrides = ConfigOverrides(
-        config_origin=SyntheticConfigSource("<API overrides>"),
+        config_origin=SyntheticConfigSource(label="<API overrides>"),
         config_base=Path.cwd().resolve(),
         files=paths_str,
         include_file_types=list(include_file_types) if include_file_types is not None else None,
@@ -297,10 +299,10 @@ def _build_resolved_config_for_run(
 # ---- TOML-source resolution helpers ----
 
 
-def _prepare_toml_and_config_draft_for_api_run(
+def _prepare_toml_and_mutable_config_for_api_run(
     paths: Iterable[Path | str],
     *,
-    base_config: Mapping[str, object] | Config | None,
+    base_config: Mapping[str, object] | FrozenConfig | None,
 ) -> tuple[ResolvedTopmarkTomlSources | None, MutableConfig | None]:
     """Resolve TOML sources once and prebuild the merged config draft.
 
@@ -324,7 +326,7 @@ def _prepare_toml_and_config_draft_for_api_run(
         return None, None
 
     path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
-    return resolve_toml_sources_and_build_config_draft(
+    return resolve_toml_sources_and_build_mutable_config(
         input_paths=tuple(path_list),
         extra_config_files=(),
         strict=None,
@@ -339,8 +341,8 @@ def _build_path_configs(
     *,
     layers: Sequence[ConfigLayer] | None,
     file_list: Sequence[Path],
-    effective_cfg: Config,
-) -> dict[Path, Config]:
+    effective_cfg: FrozenConfig,
+) -> dict[Path, FrozenConfig]:
     """Build per-path effective layered configs for a run.
 
     When provenance layers are available, each file path receives a config built from the subset of
@@ -353,18 +355,18 @@ def _build_path_configs(
     Args:
         layers: Optional discovered config provenance layers for the run.
         file_list: Files that will be processed.
-        effective_cfg: Final frozen layered config carrying any runtime policy overlays.
+        effective_cfg: Final runtime runtime config carrying any runtime policy overlays.
 
     Returns:
-        A mapping from file path to the effective frozen config that should be used when
+        A mapping from file path to the effective runtime config that should be used when
         bootstrapping that file's processing context.
     """
     if layers is None:
         return dict.fromkeys(file_list, effective_cfg)
 
-    path_configs: dict[Path, Config] = {}
+    path_configs: dict[Path, FrozenConfig] = {}
     for path in file_list:
-        per_path_cfg: Config = build_effective_config_for_path(layers, path).freeze()
+        per_path_cfg: FrozenConfig = build_effective_config_for_path(layers, path).freeze()
         path_configs[path] = replace(
             per_path_cfg,
             policy=effective_cfg.policy,
@@ -378,11 +380,11 @@ def _build_path_configs(
 
 
 def _apply_runtime_policy_overlays(
-    cfg: Config,
+    cfg: FrozenConfig,
     *,
     policy: PublicPolicy | None,
     policy_by_type: Mapping[str, PublicPolicy] | None,
-) -> Config:
+) -> FrozenConfig:
     """Apply invocation-scoped policy overlays to a resolved layered config.
 
     These overlays affect processing behavior, but they are still config-like: they modify policy
@@ -394,12 +396,12 @@ def _apply_runtime_policy_overlays(
         policy_by_type: Optional per-type public policy overlays.
 
     Returns:
-        The final frozen layered config for the run after applying any runtime policy overlays.
+        The final runtime runtime config for the run after applying any runtime policy overlays.
     """
     if policy is None and policy_by_type is None:
         return cfg
 
-    # Start from the resolved frozen config and apply config-like policy intent on top.
+    # Start from the resolved immutable config and apply config-like policy intent on top.
     draft: MutableConfig = cfg.thaw()
 
     policy_overrides: PolicyOverrides = (
@@ -411,7 +413,7 @@ def _apply_runtime_policy_overlays(
     draft = apply_config_overrides(
         draft,
         ConfigOverrides(
-            config_origin=SyntheticConfigSource("<API policy overrides>"),
+            config_origin=SyntheticConfigSource(label="<API policy overrides>"),
             config_base=Path.cwd().resolve(),
             policy=policy_overrides,
             policy_by_type=policy_by_type_overrides,
@@ -555,7 +557,7 @@ def _prepare_api_pipeline_run(
     *,
     paths: Iterable[Path | str],
     run_options: RunOptions,
-    base_config: Mapping[str, object] | Config | None,
+    base_config: Mapping[str, object] | FrozenConfig | None,
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
     policy: PublicPolicy | None,
@@ -584,7 +586,7 @@ def _prepare_api_pipeline_run(
     """
     path_inputs: list[Path | str] = list(paths)
 
-    resolved_toml, resolved_draft = _prepare_toml_and_config_draft_for_api_run(
+    resolved_toml, resolved_draft = _prepare_toml_and_mutable_config_for_api_run(
         path_inputs,
         base_config=base_config,
     )
@@ -602,7 +604,7 @@ def _prepare_api_pipeline_run(
     # state when available. Runtime policy overlays, writer options, and
     # file-list resolution are handled below so all API commands share the same
     # ordering.
-    cfg: Config = _build_resolved_config_for_run(
+    cfg: FrozenConfig = _build_resolved_config_for_run(
         path_inputs,
         base_config=base_config,
         resolved_draft=resolved_draft,
@@ -612,7 +614,7 @@ def _prepare_api_pipeline_run(
     logger.debug("(1) Resolved config before runtime overlays: %s", cfg)
 
     # (2) Apply runtime policy overlays after layered config resolution.
-    effective_cfg: Config = _apply_runtime_policy_overlays(
+    effective_cfg: FrozenConfig = _apply_runtime_policy_overlays(
         cfg,
         policy=policy,
         policy_by_type=policy_by_type,
@@ -662,7 +664,7 @@ def _execute_pipeline_for_file_list(
         return [], None
 
     # (1) Build per-path effective configs for layered discovery.
-    path_configs: dict[Path, Config] = _build_path_configs(
+    path_configs: dict[Path, FrozenConfig] = _build_path_configs(
         layers=prepared.discovered_layers,
         file_list=prepared.file_list,
         effective_cfg=prepared.effective_cfg,
@@ -683,13 +685,13 @@ def run_pipeline(
     pipeline: Sequence[Step[ProcessingContext]],
     paths: Iterable[Path | str],
     run_options: RunOptions,
-    base_config: Mapping[str, object] | Config | None,
+    base_config: Mapping[str, object] | FrozenConfig | None,
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
     # public-policy overlays (None = no override)
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
-) -> tuple[Config, list[Path], list[ProcessingContext], ExitCode | None]:
+) -> tuple[FrozenConfig, list[Path], list[ProcessingContext], ExitCode | None]:
     """Resolve shared API runtime state and run a content-processing pipeline.
 
     Args:
@@ -708,7 +710,7 @@ def run_pipeline(
             config resolution and before file discovery.
 
     Returns:
-        A tuple containing the final frozen config, selected file list, pipeline
+        A tuple containing the resolved runtime config, selected file list, pipeline
         contexts, and any fatal exit code.
     """
     logger.info("Building config and file list for paths: %s", paths)
@@ -740,13 +742,13 @@ def run_probe_pipeline(
     pipeline: Sequence[Step[ProcessingContext]],
     paths: Iterable[Path | str],
     run_options: RunOptions,
-    base_config: Mapping[str, object] | Config | None,
+    base_config: Mapping[str, object] | FrozenConfig | None,
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
     # public-policy overlays (None = no override)
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
-) -> tuple[Config, list[Path], list[ProcessingContext], ExitCode | None]:
+) -> tuple[FrozenConfig, list[Path], list[ProcessingContext], ExitCode | None]:
     """Resolve shared API runtime state and run the probe pipeline.
 
     Probe has one behavior beyond `run_pipeline()`: it preserves explicit inputs
@@ -770,7 +772,7 @@ def run_probe_pipeline(
             config resolution and before file discovery.
 
     Returns:
-        A tuple containing the final frozen config, selected file list, real plus
+        A tuple containing the resolved runtime config, selected file list, real plus
         synthetic probe contexts, and any fatal exit code.
     """
     logger.info("Building probe config and file list for paths: %s", paths)

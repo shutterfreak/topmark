@@ -36,7 +36,7 @@ from topmark.processors.types import StripDiagnostic
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
@@ -48,7 +48,7 @@ def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> N
     original = '<?xml version="1.0"?><root/>'  # no trailing newline
     f.write_text(original, encoding="utf-8")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
@@ -61,7 +61,7 @@ def test_xml_prolog_and_body_with_exotic_separator_blocked_by_policy(tmp_path: P
     original: str = '<?xml version="1.0"?>\u2028<root/>'
     f.write_text(original, encoding="utf-8", newline="")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     assert ctx.status.content == ContentStatus.SKIPPED_REFLOW
@@ -76,7 +76,7 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
 
     draft: MutableConfig = mutable_config_from_defaults()
     draft.policy.allow_reflow = True
-    cfg: Config = draft.freeze()
+    cfg: FrozenConfig = draft.freeze()
     ctx: ProcessingContext = run_insert(f, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)

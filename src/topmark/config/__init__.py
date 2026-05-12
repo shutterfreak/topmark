@@ -13,7 +13,8 @@
 This package defines the configuration model and the utilities to normalize and
 resolve paths and pattern sources. The implementation is split for clarity:
 
-- [`topmark.config.model`][topmark.config.model] - immutable `Config` and mutable builder
+- [`topmark.config.model`][topmark.config.model] - immutable
+  [`FrozenConfig`][topmark.config.model.FrozenConfig] and mutable builder
   `MutableConfig`, including merge policy and freeze/thaw.
 - [`topmark.config.types`][topmark.config.types] - small value objects and aliases
   (`PatternSource`).
@@ -25,11 +26,15 @@ load/merge) may live in dedicated modules (``loader.py``, ``discovery.py``)
 and be re-exported here, keeping callers stable:
 
 Config-validation diagnostics are represented internally as staged validation
-logs (`validation_logs`) on `Config` / `MutableConfig`. Flattened diagnostics
+logs (`validation_logs`) on `FrozenConfig` / `MutableConfig`. Flattened diagnostics
 are no longer stored on the model and are instead derived at reporting and
 output boundaries.
 
->>> from topmark.config.model import Config, MutableConfig, PatternSource
+```python
+from topmark.config.model import FrozenConfig
+from topmark.config.model import MutableConfig
+from topmark.config.types import PatternSource
+```
 
 Path resolution policy (summary):
 * Globs in config files → resolved relative to the config file directory.

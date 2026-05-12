@@ -53,7 +53,7 @@ from topmark.toml.template_surgery import validate_toml_for_config_init
 from topmark.toml.utils import as_toml_table_list
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.runtime.writer_options import WriterOptions
@@ -67,7 +67,7 @@ if TYPE_CHECKING:
 # --- Prepare initial / default configuration documents ---
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ConfigInitHumanReport:
     """Prepared payload for `topmark config init` (human formats).
 
@@ -148,7 +148,7 @@ def build_config_init_human_report(
     )
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ConfigDefaultsHumanReport:
     """Prepared TOML payload for `topmark config defaults`.
 
@@ -204,7 +204,7 @@ def build_config_defaults_human_report(
 # --- Check a resolved Config
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ConfigCheckHumanReport:
     """Prepared human-facing data for `topmark config check`.
 
@@ -230,7 +230,7 @@ class ConfigCheckHumanReport:
     styled: bool
 
 
-def _stringify_config_files(config: Config) -> list[str]:
+def _stringify_config_files(config: FrozenConfig) -> list[str]:
     """Return `config.config_files` as a list of string paths.
 
     This keeps prepared payloads Click-free and renderer-friendly by avoiding `Path` objects in the
@@ -244,19 +244,21 @@ def _stringify_config_files(config: Config) -> list[str]:
 
 def render_effective_config_toml(
     *,
-    config: Config,
+    config: FrozenConfig,
     writer_options: WriterOptions | None,
     include_files: bool = False,
 ) -> str:
     """Render the effective configuration plus runtime writer options as TOML.
 
-    `Config` intentionally models the layered TopMark configuration, while
-    writer options are resolved from TOML into runtime-facing state outside the
-    frozen config model. Human-facing config reports still need to show the full
-    effective TOML surface authored by users, including the `[writer]` section.
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] intentionally models the
+    layered TopMark configuration, while writer options are resolved from TOML
+    into runtime-facing state outside the immutable
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] model.
+    Human-facing config reports still need to show the full effective TOML surface
+    authored by users, including the `[writer]` section.
 
     Args:
-        config: Effective frozen configuration to serialize.
+        config: Effective runtime configuration to serialize.
         writer_options: Resolved runtime writer options to merge into the
             exported TOML document, or `None` when no writer options were
             configured.
@@ -279,7 +281,7 @@ def render_effective_config_toml(
 
 def build_config_check_human_report(
     *,
-    config: Config,
+    config: FrozenConfig,
     resolved_sources: ResolvedTopmarkTomlSources,
     ok: bool,
     strict: bool,
@@ -292,7 +294,7 @@ def build_config_check_human_report(
     It does not print.
 
     Args:
-        config: Effective frozen configuration.
+        config: Effective runtime configuration.
         resolved_sources: Resolved sources (includes runtime options such as write options).
         ok: Whether the configuration passed validation.
         strict: Whether strict checking was enabled.
@@ -332,7 +334,7 @@ def build_config_check_human_report(
 # --- Dump a resolved Config
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ConfigDumpHumanReport:
     """Prepared human-facing data for `topmark config dump`.
 
@@ -446,7 +448,7 @@ def _build_config_layers_provenance_toml(
 
 def build_config_dump_human_report(
     *,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     show_config_layers: bool,
     verbosity_level: int,
@@ -459,7 +461,7 @@ def build_config_dump_human_report(
     TOML provenance export.
 
     Args:
-        config: Effective frozen configuration.
+        config: Effective runtime configuration.
         resolved_toml: Resolved TOML sources used to build the optional layered
             provenance export.
         show_config_layers: If `True`, include a layered TOML provenance export

@@ -82,7 +82,7 @@ class AxisStatusPayload(TypedDict):
     label: str
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class ProcessingStatus:
     """Tracks the status of each processing phase for a single file.
 

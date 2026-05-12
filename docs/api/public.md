@@ -36,11 +36,11 @@ Use this section if you need details on functions, classes, or constants availab
 
 ### Configuration via mappings (immutable at runtime)
 
-Public API functions accept either a plain **mapping** (that mirrors the TOML structure) or a frozen
-\[`Config`\][topmark.config.model.Config]. Internally, TopMark merges your input into a **mutable
-builder** and immediately \[`freeze()`s\][topmark.config.model.MutableConfig.freeze] it into an
-immutable snapshot before running, which prevents accidental mutation and keeps results
-deterministic.
+Public API functions accept either a plain **mapping** (that mirrors the TOML structure) or an
+immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Internally, TopMark merges your
+input into a **mutable builder** and immediately
+\[`freeze()`s\][topmark.config.model.MutableConfig.freeze] it into an immutable snapshot before
+running, which prevents accidental mutation and keeps results deterministic.
 
 The mapping mirrors the **layered TopMark config fragment** plus TOML-source-local sections such as
 `[config]` and `[writer]`. Source-local options such as `[config].root` and `strict` can also be
@@ -58,9 +58,9 @@ config = {
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-Note that `strict` is not a layered \[`Config`\][topmark.config.model.Config] field. It is resolved
-from `[config]` / `[tool.topmark.config]`-shaped input during configuration loading and influences
-validation behavior. API helpers such as
+Note that `strict` is not a layered Config field. It is resolved from `[config]` /
+`[tool.topmark.config]`-shaped input during configuration loading and influences validation
+behavior. API helpers such as
 \[`ensure_config_valid(...)`\][topmark.api.runtime.ensure_config_valid] apply this effective
 strictness (including optional overrides) when validating a config across staged
 config-loading/preflight validation:
@@ -69,23 +69,24 @@ config-loading/preflight validation:
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
-These options are resolved separately from layered \[`Config`\][topmark.config.model.Config] values
-and do not participate in layered config merging.
+These options are resolved separately from layered
+\[`FrozenConfig`\][topmark.config.model.FrozenConfig] values and do not participate in layered
+config merging.
 
 Internally, TopMark first performs whole-source TOML-style validation of these sections (unknown
 keys, malformed section shapes, etc.), then deserializes only the layered fragment into the final
-immutable \[`Config`\][topmark.config.model.Config] snapshot, and finally evaluates effective
-validity across staged config-loading/preflight validation. A flattened compatibility diagnostics
-view remains available for reporting and exception payloads, derived from the staged validation
-logs. This is why sections like `[config]` and `[writer]` can influence loading/runtime behavior
-without becoming layered \[`Config`\][topmark.config.model.Config] fields.
+immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] snapshot, and finally evaluates
+effective validity across staged config-loading/preflight validation. A flattened compatibility
+diagnostics view remains available for reporting and exception payloads, derived from the staged
+validation logs. This is why sections like `[config]` and `[writer]` can influence loading/runtime
+behavior without becoming layered Config fields.
 
 This distinction is also visible when inspecting configuration via
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md): source-local TOML fragments
 are preserved per layer (for example under `[[layers]].toml.*` in human output or
 `config_provenance.layers[].toml` in machine-readable output), while the final immutable
-\[`Config`\][topmark.config.model.Config] represents only the flattened effective configuration used
-at runtime.
+\[`FrozenConfig`\][topmark.config.model.FrozenConfig] represents only the flattened effective
+configuration used at runtime.
 
 ```python
 from topmark import api
@@ -218,26 +219,27 @@ The probe API is part of the stable 1.x public API surface.
 ### Configuration resolution and provenance
 
 Internally, TopMark resolves TOML sources into a layered configuration model before producing the
-final immutable \[`Config`\][topmark.config.model.Config] snapshot used by the public API.
+final immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] snapshot used by the public
+API.
 
 This process follows:
 
 1. TOML sources (defaults, user, project, `--config`)
 1. Layered config (merged by precedence)
 1. Staged config-loading/preflight validation
-1. Freeze into effective immutable \[`Config`\][topmark.config.model.Config]
+1. Freeze into effective immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig]
 1. Runtime overlays (API call arguments such as `diff`, `report`, etc.)
 
-The public API only operates on the flattened immutable \[`Config`\][topmark.config.model.Config].
-Staged validation logs are not exposed directly; only their flattened compatibility view is used at
-reporting and API boundaries.
+The public API only operates on the flattened immutable
+\[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Staged validation logs are not exposed
+directly; only their flattened compatibility view is used at reporting and API boundaries.
 
 Internally, TopMark resolves TOML sources, validates each whole-source TOML fragment, builds a
 merged mutable config draft, and evaluates effective validity across staged config-loading/preflight
 validation before freezing into or validating against an immutable
-\[`Config`\][topmark.config.model.Config]. Advanced users can inspect the TOML-resolution and
-draft-building portion of this process via
-\[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft].
+\[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Advanced users can inspect the
+TOML-resolution and draft-building portion of this process via
+\[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config].
 
 ### Recognized vs supported file types
 

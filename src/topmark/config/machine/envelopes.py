@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from topmark.config.machine.schemas import ConfigCheckSummary
     from topmark.config.machine.schemas import ConfigDiagnosticsPayload
     from topmark.config.machine.schemas import ConfigPayload
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
     from topmark.diagnostic.model import FrozenDiagnosticLog
@@ -56,12 +56,12 @@ if TYPE_CHECKING:
 # -- JSON shapes --
 def build_config_json_envelope(
     *,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     cfg_provenance_payload: TomlProvenancePayload | None = None,
 ) -> dict[str, object]:
-    """Build the JSON envelope for a Config snapshot.
+    """Build the JSON envelope for a `FrozenConfig` snapshot.
 
     Shape:
         {"meta": <MetaPayload>, "config": <ConfigPayload>}
@@ -99,12 +99,12 @@ def build_config_json_envelope(
 
 def iter_config_ndjson_records(
     *,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     cfg_provenance_payload: TomlProvenancePayload | None = None,
 ) -> Iterator[dict[str, object]]:
-    """Iterate NDJSON records for a Config snapshot.
+    """Iterate NDJSON records for a `FrozenConfig` snapshot.
 
     Shapes:
         - without provenance:
@@ -146,7 +146,7 @@ def iter_config_ndjson_records(
 
 def build_config_diagnostics_json_envelope(
     *,
-    config: Config,
+    config: FrozenConfig,
     meta: MetaPayload,
 ) -> dict[str, object]:
     """Build the JSON envelope for config diagnostics.
@@ -168,7 +168,7 @@ def build_config_diagnostics_json_envelope(
 
 def iter_config_diagnostics_ndjson_records(
     *,
-    config: Config,
+    config: FrozenConfig,
     meta: MetaPayload,
 ) -> Iterator[dict[str, object]]:
     """Iterate NDJSON records for config diagnostics.
@@ -212,7 +212,7 @@ def iter_config_diagnostics_ndjson_records(
 
 def build_config_check_json_envelope(
     *,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     strict: bool,
@@ -258,7 +258,7 @@ def build_config_check_json_envelope(
 
 def iter_config_prefix_ndjson_records(
     *,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     cfg_payload: ConfigPayload | None = None,
@@ -316,7 +316,7 @@ def iter_config_prefix_ndjson_records(
 
 def iter_config_check_ndjson_records(
     *,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     meta: MetaPayload,
     strict: bool,

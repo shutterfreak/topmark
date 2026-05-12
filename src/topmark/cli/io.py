@@ -182,9 +182,9 @@ def merge_cli_paths_with_stdin(
     return list(stdin_result.paths)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class InputPlan:
-    """Normalized inputs for building a Config and file list.
+    """Normalized inputs for building a `MutableConfig` and file list.
 
     Attributes:
         stdin_mode: True when reading a single file’s *content* from STDIN via "-".

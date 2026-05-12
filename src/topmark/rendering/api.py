@@ -23,7 +23,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from topmark.config.model import Config
+from topmark.config.model import FrozenConfig
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.pipeline import runner
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.protocols import Step
     from topmark.pipeline.views import RenderView
     from topmark.runtime.model import RunOptions
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 def render_header_for_path(
     *,
-    config: Config,
+    config: FrozenConfig,
     run_options: RunOptions,
     path: Path,
     header_overrides: dict[str, str] | None = None,
@@ -66,7 +66,7 @@ def render_header_for_path(
         The rendered header as a single string (joined lines).
         Returns an empty string if the render view is absent.
     """
-    # Prepare effective values without mutating the original Config (it's frozen)
+    # Prepare effective values without mutating the original immutable FrozenConfig
 
     # Compute effective field order (override > config)
     effective_fields: tuple[str, ...] = (
@@ -78,8 +78,8 @@ def render_header_for_path(
     if header_overrides:
         merged.update(header_overrides)
 
-    # Build an effective frozen snapshot for the renderer
-    eff_config: Config = replace(
+    # Build an effective runtime snapshot for the renderer
+    eff_config: FrozenConfig = replace(
         config,
         header_fields=effective_fields,
         field_values=merged,

@@ -68,7 +68,7 @@ class ResolutionProbeReason(str, Enum):
     SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR = "selected_file_type_has_no_bound_processor"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResolutionProbeMatchSignals:
     """Probe-visible match signals used while evaluating a file type candidate.
 
@@ -89,7 +89,7 @@ class ResolutionProbeMatchSignals:
     content_error: str | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResolutionProbeCandidate:
     """Probe-visible scored candidate considered by file type resolution.
 
@@ -112,7 +112,7 @@ class ResolutionProbeCandidate:
     match: ResolutionProbeMatchSignals
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResolutionProbeSelection:
     """Probe-visible selected file type or processor identity.
 
@@ -129,7 +129,7 @@ class ResolutionProbeSelection:
     score: int | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResolutionProbeResult:
     """Probe result explaining file type and processor resolution for one path.
 

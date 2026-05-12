@@ -21,8 +21,9 @@ Responsibilities:
     - delegate per-source split parsing to
       [`parse_topmark_toml_table`][topmark.toml.parse.parse_topmark_toml_table]
 
-This module does not deserialize layered config into `MutableConfig` and does
-not resolve precedence across multiple sources.
+This module does not deserialize layered config into
+[`MutableConfig`][topmark.config.model.MutableConfig] and does not resolve
+precedence across multiple sources.
 """
 
 from __future__ import annotations

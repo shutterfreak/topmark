@@ -76,11 +76,7 @@ class TomlValidationMode(str, Enum):
     PROVENANCE = "provenance"
 
 
-@dataclass(
-    frozen=True,
-    kw_only=True,
-    slots=True,
-)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class TomlSchemaSection:
     """Schema metadata for a named top-level TOML section.
 
@@ -110,11 +106,7 @@ class TomlSchemaSection:
         return self.allowed_keys
 
 
-@dataclass(
-    frozen=True,
-    kw_only=True,
-    slots=True,
-)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class TomlNestedSchema:
     """Schema metadata for dynamic nested TOML subtables.
 
@@ -133,11 +125,7 @@ class TomlNestedSchema:
     child_label: str
 
 
-@dataclass(
-    frozen=True,
-    kw_only=True,
-    slots=True,
-)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class TomlSchema:
     """Static schema for TopMark TOML document shape validation.
 

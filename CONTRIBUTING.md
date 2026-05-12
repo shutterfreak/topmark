@@ -100,10 +100,10 @@ Configuration loading follows a staged config-loading model:
 1. extract the layered config fragment
 1. deserialize and merge into a mutable config draft
 1. evaluate effective config validity across staged config-loading/preflight validation
-1. freeze into the final `Config`
+1. freeze into the final `FrozenConfig`
 
 Source-local options such as `strict` are resolved during configuration loading and influence
-validation behaviour, but do not become layered `Config` fields. In the current implementation,
+validation behaviour, but do not become layered Config fields. In the current implementation,
 effective strictness is applied across staged config-loading/preflight validation:
 
 - TOML-source diagnostics
@@ -118,7 +118,7 @@ overrides (`--strict` / `--no-strict`) take precedence for the current run.
 
 The main integration helper is:
 
-- `resolve_toml_sources_and_build_config_draft()`
+- `resolve_toml_sources_and_build_mutable_config()`
 
 ### Developer validation (optional)
 

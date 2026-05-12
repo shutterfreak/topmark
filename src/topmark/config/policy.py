@@ -20,8 +20,9 @@ Design:
       (defaults -> user -> project -> CLI).
     * `Policy` is the fully resolved, immutable runtime view with plain values,
       so pipeline steps do not branch on `None`.
-    * `MutablePolicy.resolve(base)` fills unset fields from `base` and returns a
-      frozen `Policy`; use it at `Config.freeze()` time.
+    * `MutablePolicy.resolve(base)` fills unset fields from `base` and returns an
+      immutable [`Policy`][topmark.config.policy.Policy]; use it at
+      [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze] time.
 
 TOML mapping:
 
@@ -87,7 +88,7 @@ class EmptyInsertMode(str, Enum):
     WHITESPACE_EMPTY = "whitespace_empty"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class Policy:
     """Immutable, runtime policy used by processing steps.
 
@@ -117,7 +118,7 @@ class Policy:
     allow_content_probe: bool = True
 
     def thaw(self) -> MutablePolicy:
-        """Return a mutable builder initialized from this frozen policy.
+        """Return a mutable builder initialized from this immutable policy.
 
         Returns:
             A tri-state mutable policy.
@@ -144,7 +145,7 @@ class Policy:
         return policy_to_dict(self)
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class MutablePolicy:
     """Mutable builder for `Policy`, suitable for config loading/merging.
 
@@ -205,7 +206,7 @@ class MutablePolicy:
         )
 
     def resolve(self, base: Policy) -> Policy:
-        """Resolve tri-state fields against a base frozen policy.
+        """Resolve tri-state fields against a base immutable policy.
 
         Args:
             base: Base policy that provides defaults for unset fields.
@@ -323,14 +324,17 @@ class HasPolicyConfig(Protocol):
     and `effective_policy`.
 
     It intentionally avoids importing the concrete
-    [`Config`][topmark.config.model.Config] / [`MutableConfig`][topmark.config.model.MutableConfig]
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] /
+    [`MutableConfig`][topmark.config.model.MutableConfig]
     classes to prevent type-check-time import cycles.
 
     Implementations are expected to expose *resolved* runtime policies:
       - `policy` is a fully resolved `Policy`
       - `policy_by_type` maps file-type identifiers to resolved per-type `Policy`
 
-    Attributes are defined as read-only properties so both frozen `Config` and mutable builders
+    Attributes are defined as read-only properties so both immutable
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] and mutable
+    [`MutableConfig`][topmark.config.model.MutableConfig] builders
     can satisfy the protocol.
     """
 
@@ -345,12 +349,14 @@ class HasPolicyConfig(Protocol):
         ...
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PolicyRegistry:
     """Immutable registry of effective policies per file type.
 
-    Instances of this class are derived from a resolved Config and provide constant-time lookup of
-    the effective Policy to apply for a given file type.
+    Instances of this class are derived from a resolved
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] and provide constant-time
+    lookup of the effective [`Policy`][topmark.config.policy.Policy] to apply
+    for a given file type.
     """
 
     global_policy: Policy

@@ -14,8 +14,9 @@
 These tests exercise:
 - strictness resolution from `[config].strict`,
 - explicit strictness overrides,
-- `MutableConfig.is_valid()` / `Config.is_valid()` semantics,
-- and preservation of diagnostics across `freeze()`.
+- [`MutableConfig.is_valid()`][topmark.config.model.MutableConfig.is_valid] /
+  [`FrozenConfig.is_valid()`][topmark.config.model.FrozenConfig.is_valid] semantics,
+- and preservation of diagnostics across [`freeze()`][topmark.config.model.MutableConfig.freeze].
 """
 
 from __future__ import annotations
@@ -30,12 +31,12 @@ from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from tests.helpers.diagnostics import assert_validation_stage_totals
 from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.diagnostic.model import FrozenDiagnosticLog
 
@@ -56,7 +57,7 @@ def test_load_resolved_config_applies_strictness_from_config_table(
         """,
     )
 
-    resolved, _draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
+    resolved, _draft = resolve_toml_sources_and_build_mutable_config(input_paths=[proj])
     assert resolved.strict is True
 
 
@@ -76,7 +77,7 @@ def test_explicit_strictness_override_false_wins_over_resolved_true(
         """,
     )
 
-    resolved, _draft = resolve_toml_sources_and_build_config_draft(
+    resolved, _draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
         strict=False,
     )
@@ -99,7 +100,7 @@ def test_explicit_strictness_override_true_wins_over_resolved_false(
         """,
     )
 
-    resolved, _draft = resolve_toml_sources_and_build_config_draft(
+    resolved, _draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
         strict=True,
     )
@@ -124,7 +125,7 @@ def test_replayed_toml_warning_is_non_strict_valid_but_strict_invalid(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(input_paths=[proj])
 
     assert_validation_stage_totals(
         draft.validation_logs,
@@ -136,7 +137,7 @@ def test_replayed_toml_warning_is_non_strict_valid_but_strict_invalid(
     assert draft.is_valid() is True
     assert draft.is_valid(strict=True) is False
 
-    frozen: Config = draft.freeze()
+    frozen: FrozenConfig = draft.freeze()
 
     assert_validation_stage_totals(
         frozen.validation_logs,
@@ -165,7 +166,7 @@ def test_missing_section_info_does_not_fail_even_when_strict(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(input_paths=[proj])
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(input_paths=[proj])
 
     assert draft.is_valid() is True
     assert draft.is_valid(strict=True) is True
@@ -183,7 +184,7 @@ def test_missing_section_info_does_not_fail_even_when_strict(
         runtime=0,
     )
 
-    frozen: Config = draft.freeze()
+    frozen: FrozenConfig = draft.freeze()
     assert frozen.is_valid() is True
     assert frozen.is_valid(strict=True) is True
 
@@ -221,7 +222,7 @@ def test_sanitization_warning_is_non_strict_valid_but_strict_invalid() -> None:
     assert draft.is_valid() is True
     assert draft.is_valid(strict=True) is False
 
-    frozen: Config = draft.freeze()
+    frozen: FrozenConfig = draft.freeze()
     assert frozen.is_valid() is True
     assert frozen.is_valid(strict=True) is False
 
@@ -240,7 +241,7 @@ def test_is_valid_false_on_errors() -> None:
     draft.validation_logs.merged_config.add_error("boom")
     assert draft.is_valid() is False
 
-    c: Config = draft.freeze()
+    c: FrozenConfig = draft.freeze()
     assert c.is_valid() is False
 
 
@@ -251,7 +252,7 @@ def test_is_valid_true_on_warnings() -> None:
     draft.validation_logs.merged_config.add_warning("warn")
     assert draft.is_valid() is True
 
-    c: Config = draft.freeze()
+    c: FrozenConfig = draft.freeze()
     assert c.is_valid() is True
 
 
@@ -262,7 +263,7 @@ def test_is_valid_false_on_warnings_when_strict() -> None:
     draft.validation_logs.merged_config.add_warning("warn")
     assert draft.is_valid(strict=True) is False
 
-    c: Config = draft.freeze()
+    c: FrozenConfig = draft.freeze()
     assert c.is_valid(strict=True) is False
 
 
@@ -271,7 +272,7 @@ def test_freeze_preserves_diagnostics() -> None:
     """freeze() must preserve staged diagnostics and their flattened view."""
     draft: MutableConfig = mutable_config_from_defaults()
     draft.validation_logs.merged_config.add_warning("hello")
-    c: Config = draft.freeze()
+    c: FrozenConfig = draft.freeze()
     flattened_diagnostics: FrozenDiagnosticLog = c.validation_logs.flattened()
     assert len(flattened_diagnostics.items) == 1
     assert flattened_diagnostics.items[0].message == "hello"

@@ -32,7 +32,7 @@ from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
-from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.config.resolution.merge import merge_layers_globally
@@ -43,7 +43,7 @@ from topmark.toml.resolution import resolve_topmark_toml_sources
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.config.resolution.layers import ConfigLayer
 
@@ -80,7 +80,7 @@ def test_include_from_accumulates_across_multiple_applicable_layers(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
     paths: list[Path] = [ps.path for ps in draft.include_from]
@@ -115,7 +115,7 @@ def test_files_nearest_non_empty_list_wins_across_layers(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
     assert draft.files == [str((child / "module.py").resolve())]
@@ -145,7 +145,7 @@ def test_include_file_types_nearest_non_empty_set_wins_across_layers(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
     assert draft.include_file_types == {"markdown"}
@@ -233,8 +233,8 @@ def test_build_effective_config_for_path_merges_only_applicable_layers(
     resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(input_paths=[child])
     layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(resolved.sources)
 
-    child_cfg: Config = build_effective_config_for_path(layers, child_file).freeze()
-    sibling_cfg: Config = build_effective_config_for_path(layers, sibling_file).freeze()
+    child_cfg: FrozenConfig = build_effective_config_for_path(layers, child_file).freeze()
+    sibling_cfg: FrozenConfig = build_effective_config_for_path(layers, sibling_file).freeze()
 
     assert child_cfg.header_fields == ("project", "file")
     assert child_cfg.field_values["project"] == "TopMark"
@@ -272,7 +272,7 @@ def test_cli_overrides_merge_last(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
     )
     # Simulate CLI override
@@ -301,7 +301,7 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
     )
 

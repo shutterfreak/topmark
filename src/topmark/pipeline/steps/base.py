@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class BaseStep:
     """Reusable foundation for pipeline steps.
 

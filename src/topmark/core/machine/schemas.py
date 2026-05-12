@@ -124,7 +124,7 @@ class DetailLevel(str, Enum):
     LONG = "long"
 
 
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class CommandSummary:
     """Identifies the TopMark command context for a machine-readable output record.
 

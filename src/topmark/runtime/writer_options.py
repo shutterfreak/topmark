@@ -12,8 +12,8 @@
 
 This module defines the non-layered writer preferences that may be authored in the
 same TOML document as layered TopMark configuration. These options are resolved
-separately from [`Config`][topmark.config.model.Config] and do not participate in
-config-layer merging.
+separately from [`FrozenConfig`][topmark.config.model.FrozenConfig] and do not
+participate in config-layer merging.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class WriterOptions:
     """Persisted writer preferences parsed from TOML.
 

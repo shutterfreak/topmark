@@ -12,15 +12,15 @@ topmark:header:end
 
 # TopMark `config dump` Command Guide
 
-**Purpose:** Dump the *effective* frozen configuration used by TopMark.
+**Purpose:** Dump the *effective* runtime configuration used by TopMark.
 
 The `config dump` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
-the *effective frozen TopMark configuration* as TOML after applying built-in defaults, discovered
+the *effective runtime TopMark configuration* as TOML after applying built-in defaults, discovered
 project/user config, and CLI overrides.
 
 During loading, TopMark first performs whole-source TOML schema validation for all
 discovered/configured TOML sources. Only the validated layered config fragment contributes to the
-final frozen output. Validation is evaluated across staged config-loading/preflight diagnostics,
+final runtime output. Validation is evaluated across staged config-loading/preflight diagnostics,
 which remain internal; reporting and CLI, API, and machine-readable output expose only the flattened
 compatibility diagnostics contract for 1.0.
 
@@ -61,7 +61,7 @@ ______________________________________________________________________
 
 ## Behavior details
 
-- Shows the effective frozen configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI
+- Shows the effective runtime configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI
   flags), after per-source TOML schema validation.
 
 - With `--show-layers`, also shows the **layered configuration provenance** before the flattened
@@ -118,7 +118,7 @@ Each layer includes:
 - `scope_root` — optional root for discovered configs
 - `toml` — the source-local TopMark TOML fragment after TOML-layer validation
 
-The second TOML document is identical to the standard flattened frozen configuration output.
+The second TOML document is identical to the standard flattened runtime configuration output.
 
 TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
 files, and CLI overrides before staged validation freezes the effective runtime configuration. See
@@ -188,7 +188,7 @@ Notes:
 - `config dump` is **file-agnostic** and emits the effective configuration after applying defaults →
   discovered config → `--config` files → CLI overrides, with whole-source TOML validation performed
   per source before layered config merging. Identifier normalization and runtime applicability
-  evaluation occur before the effective frozen configuration snapshot is emitted.
+  evaluation occur before the effective runtime configuration snapshot is emitted.
 - With `--show-layers`, machine-readable output also includes a `config_provenance` payload before
   the flattened config.
 - Diagnostics are not emitted for this command; it is an inspection view of the effective config.
@@ -200,7 +200,7 @@ A single JSON document is emitted:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload (effective frozen snapshot) */ }
+  "config": { /* ConfigPayload (effective runtime snapshot) */ }
 }
 ```
 
@@ -220,7 +220,7 @@ NDJSON is a stream where each line is a JSON object. Every record includes `kind
 
 Default mode:
 
-1. `kind="config"` (effective frozen config snapshot)
+1. `kind="config"` (effective runtime config snapshot)
 
 Example:
 
@@ -231,7 +231,7 @@ Example:
 With `--show-layers`:
 
 1. `kind="config_provenance"` (layered provenance export snapshot)
-1. `kind="config"` (effective frozen config snapshot)
+1. `kind="config"` (effective runtime config snapshot)
 
 Example:
 
@@ -281,7 +281,7 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config check`](./check.md) — validate the effective frozen configuration and staged
+- [`topmark config check`](./check.md) — validate the effective runtime configuration and staged
   config-loading diagnostics.
 - [`topmark config defaults`](./defaults.md) — show the canonical built-in default TOML document.
 - [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
@@ -304,7 +304,7 @@ ______________________________________________________________________
 
 ## Notes
 
-- The output reflects the effective frozen configuration TopMark would use if you ran processing
+- The output reflects the effective runtime configuration TopMark would use if you ran processing
   commands ([`check`](../check.md), [`strip`](../strip.md), or [`probe`](../probe.md)) with the same
   configuration-related flags in the current working directory, after TOML-layer validation and
   layered config merging.
@@ -317,7 +317,7 @@ ______________________________________________________________________
 
 - **Unexpected file type filter behavior**: prefer qualified identifiers such as `topmark:python`
   when local identifiers may be ambiguous.
-- **Unexpected policy application**: inspect normalized identifiers in the dumped frozen
+- **Unexpected policy application**: inspect normalized identifiers in the dumped runtime
   configuration.
 - **Unexpected config layering**: use `--show-layers` to inspect layered provenance and validated
   TOML fragments.

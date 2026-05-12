@@ -14,7 +14,8 @@ This module contains *pure* helpers that build strongly-typed payload objects
 (dataclasses) for config-related machine-readable output.
 
 Responsibilities:
-  - Convert `Config` / TOML-derived structures into JSON-friendly values.
+  - Convert [`FrozenConfig`][topmark.config.model.FrozenConfig] / TOML-derived
+    structures into JSON-friendly values.
   - Return schema dataclasses from
     [`topmark.config.machine.schemas`][topmark.config.machine.schemas].
   - Flatten staged config-validation diagnostics at the machine-output
@@ -45,23 +46,23 @@ from topmark.runtime.writer_options import writer_options_to_toml_table
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
     from topmark.toml.types import TomlTable
 
 
 def build_config_payload(
-    config: Config,
+    config: FrozenConfig,
     *,
     resolved_toml: ResolvedTopmarkTomlSources,
 ) -> ConfigPayload:
     """Build a JSON-friendly payload capturing an effective config snapshot.
 
-    `Config` contains the layered TopMark configuration. Resolved writer
-    options are runtime-facing but may originate from TOML, so callers can pass
-    them here to include the effective `[writer]` section in machine-readable
-    config output.
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] contains the layered
+    TopMark configuration. Resolved writer options are runtime-facing but may
+    originate from TOML, so callers can pass them here to include the effective
+    `[writer]` section in machine-readable config output.
 
     Args:
         config: Immutable layered configuration instance.
@@ -117,17 +118,18 @@ def build_config_payload(
     )
 
 
-def build_config_diagnostics_payload(config: Config) -> ConfigDiagnosticsPayload:
-    """Build a JSON-friendly diagnostics payload for a given Config.
+def build_config_diagnostics_payload(config: FrozenConfig) -> ConfigDiagnosticsPayload:
+    """Build a JSON-friendly diagnostics payload for a given `FrozenConfig`.
 
     Staged config-validation logs are flattened here so machine-readable output keeps
     exposing the current compatibility diagnostics view.
 
     Args:
-        config: The Config instance.
+        config: The [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
 
     Returns:
-        JSON-serializable diagnostics metadata for the given `Config`.
+        JSON-serializable diagnostics metadata for the given
+        [`FrozenConfig`][topmark.config.model.FrozenConfig].
     """
     flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
     diag_entries: list[MachineDiagnosticEntry] = [
@@ -147,15 +149,15 @@ def build_config_diagnostics_payload(config: Config) -> ConfigDiagnosticsPayload
     )
 
 
-def build_config_diagnostics_counts_payload(config: Config) -> MachineDiagnosticCounts:
-    """Build a counts-only diagnostics payload for a given Config.
+def build_config_diagnostics_counts_payload(config: FrozenConfig) -> MachineDiagnosticCounts:
+    """Build a counts-only diagnostics payload for a given `FrozenConfig`.
 
     Useful when emitting aggregate diagnostic statistics without duplicating
     per-diagnostic entries. Staged config-validation logs are flattened here at
     the machine-readable output boundary.
 
     Args:
-        config: The Config instance.
+        config: The [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
 
     Returns:
         JSON-serializable mapping containing only
@@ -172,7 +174,7 @@ def build_config_diagnostics_counts_payload(config: Config) -> MachineDiagnostic
 
 def build_config_check_summary_payload(
     *,
-    config: Config,
+    config: FrozenConfig,
     cfg_diag_payload: ConfigDiagnosticsPayload | None = None,
     strict: bool,
     ok: bool,

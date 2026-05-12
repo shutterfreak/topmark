@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class _NLCounts:
     lf: int = 0
     crlf: int = 0
@@ -100,7 +100,7 @@ def _count_newlines(buf: bytes, carry_cr: bool) -> tuple[_NLCounts, bool]:
             else:
                 # If CR is the last byte of this chunk, carry it to the next chunk
                 if i + 1 == n:
-                    return _NLCounts(lf, crlf, cr), True
+                    return _NLCounts(lf=lf, crlf=crlf, cr=cr), True
                 # Otherwise, it's a standalone CR within this chunk: count it and continue
                 cr += 1
                 i += 1
@@ -109,7 +109,7 @@ def _count_newlines(buf: bytes, carry_cr: bool) -> tuple[_NLCounts, bool]:
             i += 1
         else:
             i += 1
-    return _NLCounts(lf, crlf, cr), (n > 0 and buf[-1:] == b"\r")
+    return _NLCounts(lf=lf, crlf=crlf, cr=cr), (n > 0 and buf[-1:] == b"\r")
 
 
 def inspect_bom_shebang(first_bytes: bytes) -> tuple[bool, bool, bool]:

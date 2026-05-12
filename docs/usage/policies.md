@@ -30,8 +30,9 @@ See also:
 TopMark policies control how the pipeline detects file types, classifies empty files, and decides
 whether headers may be inserted or updated.
 
-Policy settings are part of the layered configuration (\[`Config`\][topmark.config.model.Config])
-and are merged according to discovery and precedence rules. See:
+Policy settings are part of the layered configuration
+(\[`FrozenConfig`\][topmark.config.model.FrozenConfig]) and are merged according to discovery and
+precedence rules. See:
 
 - [`Configuration overview`](../configuration/index.md)
 - [`Discovery & Precedence`](../configuration/discovery.md)

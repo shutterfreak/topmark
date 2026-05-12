@@ -14,14 +14,15 @@ This module defines the per-source parse result used when reading a single
 TopMark TOML document. A parsed source may contribute three distinct semantic
 channels:
 
-- layered configuration tables that later deserialize into `MutableConfig`
+- layered configuration tables that later deserialize into
+  [`MutableConfig`][topmark.config.model.MutableConfig]
 - non-layered writer preferences from `[writer]`
 - discovery/config-loading metadata from `[config]`
 
 This module is intentionally pure and TOML-facing:
 - no file I/O
 - no merge or precedence resolution
-- no deserialization into `MutableConfig`
+- no deserialization into [`MutableConfig`][topmark.config.model.MutableConfig]
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
     from topmark.toml.validation import TomlValidationIssue
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class SourceConfigLoadingOptions:
     """Config-loading behaviour parsed from the `[config]` table.
 
@@ -55,7 +56,7 @@ class SourceConfigLoadingOptions:
     strict: bool | None = None
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class SourceTomlOptions:
     """Discovery metadata parsed from the `[config]` table.
 
@@ -71,7 +72,7 @@ class SourceTomlOptions:
     root: bool | None = None
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ParsedTopmarkToml:
     """Per-source split parse result for a TopMark TOML document.
 

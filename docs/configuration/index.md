@@ -74,7 +74,7 @@ This reflects the main distinction in TopMark's configuration model:
 - TOML sources are validated first at the **whole-source TOML layer**.
 - Only the validated **layered config fragment** contributes to config merging.
 - The merged layered result is then validated across staged config-loading diagnostics.
-- The validated layered result is frozen into one **effective config**.
+- The validated layered result is merged into one immutable **effective runtime configuration**.
 - Runtime overlays are then applied for execution-only concerns such as output mode, apply/dry-run
   behavior, or stdin handling.
 
@@ -96,8 +96,8 @@ See Also:
   used by `topmark config init` (rendered from the bundled example TOML resource
   `src/topmark/toml/topmark-example.toml`)
 - API docs:
-  - \[`resolve_toml_sources_and_build_config_draft()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_config_draft]
-  - \[`Config`\][topmark.config.model.Config],
+  - \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config]
+  - \[`FrozenConfig`\][topmark.config.model.FrozenConfig],
     \[`MutableConfig`\][topmark.config.model.MutableConfig]
 - Usage: [`config dump`](../usage/commands/config/dump.md) for inspecting the effective
   configuration and layered provenance

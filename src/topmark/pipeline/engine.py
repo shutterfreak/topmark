@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.protocols import Step
     from topmark.runtime.model import RunOptions
@@ -123,8 +123,8 @@ def exit_code_from_pipeline_results(
 def run_steps_for_files(
     *,
     run_options: RunOptions,
-    config: Config,
-    path_configs: Mapping[Path, Config] | None = None,
+    config: FrozenConfig,
+    path_configs: Mapping[Path, FrozenConfig] | None = None,
     pipeline: Sequence[Step[ProcessingContext]],
     file_list: list[Path],
 ) -> tuple[list[ProcessingContext], ExitCode | None]:
@@ -175,7 +175,9 @@ def run_steps_for_files(
     # on non-fatal errors (recording the first encountered exit code).
     for path in file_list:
         try:
-            effective_config: Config = path_configs[path] if path_configs is not None else config
+            effective_config: FrozenConfig = (
+                path_configs[path] if path_configs is not None else config
+            )
             policy_registry: PolicyRegistry | None = (
                 make_policy_registry(effective_config)
                 if path_configs is not None

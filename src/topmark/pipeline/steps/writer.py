@@ -124,7 +124,7 @@ class WriteSink(Protocol):
         ...
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True, slots=True)
 class WriteResult:
     """Structured result of a write operation."""
 

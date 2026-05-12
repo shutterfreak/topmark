@@ -13,7 +13,7 @@
 This module contains the layered-config deserialization layer for TopMark.
 
 Responsibilities:
-    - parse layered TOML fragments into `MutableConfig` drafts
+    - parse layered TOML fragments into [`MutableConfig`][topmark.config.model.MutableConfig] drafts
     - normalize config-local filesystem references against the source TOML file
     - deserialize layered config sections such as policy, files, header, and formatting
     - deserialize built-in and caller-provided layered TopMark config fragments
@@ -23,7 +23,8 @@ Design notes:
     - This module is intentionally separate from `topmark.config.model`.
       The model layer defines configuration data structures and merge behavior,
       while this module handles layered-config deserialization and normalization.
-    - The result of deserialization is a `MutableConfig`, not a frozen `Config`.
+    - The result of deserialization is a [`MutableConfig`][topmark.config.model.MutableConfig],
+      not an immutable [`FrozenConfig`][topmark.config.model.FrozenConfig].
       Callers may still merge, override, sanitize, and finally freeze the draft.
     - Execution-only runtime intent is intentionally out of scope here and is
       handled separately via [`topmark.runtime.model.RunOptions`][topmark.runtime.model.RunOptions].
@@ -80,13 +81,13 @@ logger: TopmarkLogger = get_logger(__name__)
 # ------------------ Extracted TOML table bundles  ------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ExtractedLayeredTomlTables:
     """Structured bundle of well-known layered TOML subtables.
 
     This keeps the extraction/parsing flow self-documenting and avoids fragile
     position-based tuple unpacking when deserializing a TopMark TOML table into
-    a `MutableConfig` draft.
+    a [`MutableConfig`][topmark.config.model.MutableConfig] draft.
     """
 
     field_tbl: TomlTable
@@ -132,7 +133,7 @@ def mutable_config_from_layered_toml_table(
             source marker used for provenance.
 
     Returns:
-        The resulting `MutableConfig` instance.
+        The resulting [`MutableConfig`][topmark.config.model.MutableConfig] instance.
     """
     layered_tbl: TomlTable = (
         data  # layered TopMark config fragment (already schema-validated in normal flow)
@@ -581,7 +582,8 @@ def mutable_config_from_defaults() -> MutableConfig:
     """Load the built-in default TopMark TOML table into a mutable draft.
 
     Returns:
-        A `MutableConfig` instance populated with default values.
+        A [`MutableConfig`][topmark.config.model.MutableConfig] instance
+        populated with default values.
     """
     default_toml_data: TomlTable = build_default_topmark_toml_table()
 

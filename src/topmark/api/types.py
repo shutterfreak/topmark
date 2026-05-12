@@ -108,7 +108,7 @@ class DiagnosticTotals(TypedDict):
     total: int
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProbeCandidateInfo:
     """Stable public view of one file-type resolution candidate.
 
@@ -136,7 +136,7 @@ class ProbeCandidateInfo:
     matched_by: tuple[str, ...]
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProbeFileResult:
     """Probe result for a single path.
 
@@ -167,7 +167,7 @@ class ProbeFileResult:
     candidates: Sequence[ProbeCandidateInfo]
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProbeRunResult:
     """Aggregate result of a TopMark probe run.
 
@@ -235,7 +235,7 @@ OUTCOME_ORDER: Final[tuple[Outcome, ...]] = (
 )
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FileResult:
     """Result for a single file after pipeline execution and view filtering.
 
@@ -274,7 +274,7 @@ class FileResult:
     bucket_label: str | None = None
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class RunResult:
     """Aggregate result of a TopMark run after view-level filtering.
 

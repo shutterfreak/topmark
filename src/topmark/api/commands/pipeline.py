@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicPolicy
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
@@ -107,7 +107,8 @@ def check(
             TopMark will recurse and filter internally.
         apply: If `True`, write changes in-place; otherwise perform a dry run.
         diff: If `True`, include unified diffs for changes where applicable.
-        config: Optional plain mapping or frozen `Config` to seed configuration.
+        config: Optional plain mapping or immutable
+            [`FrozenConfig`][topmark.config.model.FrozenConfig] to seed configuration.
             When `None`, project discovery and layered merge are performed.
         policy: Optional global policy overrides in the public API shape. These
             are merged after discovery using standard policy resolution.
@@ -135,7 +136,7 @@ def check(
 
     # Run the pipeline; runtime helpers handle config discovery, policy overlays,
     # file-list resolution, per-path config, and pipeline execution.
-    _cfg: Config
+    _cfg: FrozenConfig
     file_list: list[Path]
     results: list[ProcessingContext]
     encountered_error_code: ExitCode | None
@@ -149,7 +150,7 @@ def check(
         pipeline=pipeline,
         paths=paths,
         run_options=run_options,
-        base_config=config,  # None preserves discovery; mapping/Config is honored.
+        base_config=config,  # None preserves discovery; mapping/FrozenConfig is honored.
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         policy=policy,
@@ -199,7 +200,8 @@ def strip(
         paths: Files and/or directories to process. Globs are allowed.
         apply: If `True`, write changes in-place; otherwise perform a dry run.
         diff: If `True`, include unified diffs for changes where applicable.
-        config: Optional plain mapping or frozen `Config` to seed configuration.
+        config: Optional plain mapping or immutable
+            [`FrozenConfig`][topmark.config.model.FrozenConfig] to seed configuration.
             When `None`, project discovery and layered merge are performed.
         policy: Optional global policy overrides in the public API shape. Strip
             flows are currently policy-agnostic, but this is accepted for forward
@@ -227,7 +229,7 @@ def strip(
 
     # Run the pipeline; runtime helpers handle config discovery, policy overlays,
     # file-list resolution, per-path config, and pipeline execution.
-    _cfg: Config
+    _cfg: FrozenConfig
     file_list: list[Path]
     results: list[ProcessingContext]
     encountered_error_code: ExitCode | None
@@ -289,7 +291,8 @@ def probe(
     Args:
         paths: Files and/or directories to probe. Globs are allowed by the caller;
             TopMark will recurse and filter internally.
-        config: Optional plain mapping or frozen `Config` to seed configuration.
+        config: Optional plain mapping or immutable
+            [`FrozenConfig`][topmark.config.model.FrozenConfig] to seed configuration.
             When `None`, project discovery and layered merge are performed.
         policy: Optional global policy overrides. For probe, this is primarily
             useful for resolver-affecting options such as `allow_content_probe`.
@@ -315,7 +318,7 @@ def probe(
     )
     # Run the probe pipeline; runtime helpers also attach synthetic contexts for
     # missing literals and explicit inputs filtered before probing.
-    _cfg: Config
+    _cfg: FrozenConfig
     file_list: list[Path]
     results: list[ProcessingContext]
     encountered_error_code: ExitCode | None

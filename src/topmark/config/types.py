@@ -85,7 +85,7 @@ def compile_gitignore_pathspec(patterns: Iterable[str]) -> GitIgnorePathSpec:
 
 
 # ------------------ Pattern source reference ------------------
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PatternSource:
     """Reference to a pattern or file list declared in a config source.
 
@@ -103,7 +103,7 @@ class PatternSource:
     base: Path
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PatternGroup:
     """A group of gitignore-style patterns with an interpretation base directory.
 

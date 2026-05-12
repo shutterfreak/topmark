@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
 
@@ -66,7 +66,7 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
     file: Path = tmp_path / "sample.py"
     file.write_text("#!/usr/bin/env python3\n\nprint('hello')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
@@ -109,7 +109,7 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
         "print('hello')\n"
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
@@ -150,7 +150,7 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     path: Path = tmp_path / "no_header.py"
     path.write_text("#!/usr/bin/env python3\n\nprint('no header here')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
@@ -207,7 +207,7 @@ def test_pound_malformed_header_fields(
         f"# {TOPMARK_START_MARKER}\n{header_fields}# {TOPMARK_END_MARKER}\n\nprint('oops')\n"
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
@@ -242,7 +242,7 @@ def test_insert_with_shebang_adds_single_blank_line(tmp_path: Path) -> None:
     # No blank line after shebang initially
     path.write_text("#!/usr/bin/env python3\nprint('hello')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(path, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -280,7 +280,7 @@ def test_insert_with_shebang_existing_blank_not_duplicated(tmp_path: Path) -> No
     # Already has a blank line after shebang
     path.write_text("#!/usr/bin/env python3\n\nprint('hello')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(path, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -305,7 +305,7 @@ def test_insert_with_shebang_and_encoding(tmp_path: Path) -> None:
     # Shebang followed by PEP 263 encoding line, no blank line yet
     path.write_text("#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\nprint('x')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(path, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -326,7 +326,7 @@ def test_insert_without_shebang_starts_at_top_and_blank_after(tmp_path: Path) ->
     path: Path = tmp_path / "no_shebang.py"
     path.write_text("print('hello')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(path, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -357,7 +357,7 @@ def test_insert_trailing_blank_not_added_if_next_line_is_blank(tmp_path: Path) -
     # First line of content is intentionally blank
     path.write_text("\nprint('after blank')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(path, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -382,7 +382,7 @@ def test_shell_with_shebang_spacing(tmp_path: Path) -> None:
     file: Path = tmp_path / "script.sh"
     file.write_text("#!/usr/bin/env bash\necho hi\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -400,7 +400,7 @@ def test_r_with_shebang_spacing(tmp_path: Path) -> None:
     file: Path = tmp_path / "analysis.R"
     file.write_text("#!/usr/bin/env Rscript\nprint('x')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -416,7 +416,7 @@ def test_julia_with_shebang_spacing(tmp_path: Path) -> None:
     file: Path = tmp_path / "compute.jl"
     file.write_text("#!/usr/bin/env julia\nprintln(1+1)\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -432,7 +432,7 @@ def test_ruby_with_shebang_and_encoding(tmp_path: Path) -> None:
     file: Path = tmp_path / "tool.rb"
     file.write_text("#!/usr/bin/env ruby\n# encoding: utf-8\nputs 'ok'\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -448,7 +448,7 @@ def test_perl_with_shebang_spacing(tmp_path: Path) -> None:
     file: Path = tmp_path / "script.pl"
     file.write_text('#!/usr/bin/env perl\nprint "ok\\n";\n')
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -464,7 +464,7 @@ def test_dockerfile_top_and_trailing_blank(tmp_path: Path) -> None:
     file: Path = tmp_path / "Dockerfile"
     file.write_text("FROM alpine:3.19\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -481,7 +481,7 @@ def test_yaml_top_and_trailing_blank(tmp_path: Path) -> None:
     file: Path = tmp_path / "config.yaml"
     file.write_text("key: value\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -498,7 +498,7 @@ def test_toml_top_and_trailing_blank(tmp_path: Path) -> None:
     file: Path = tmp_path / "pyproject.toml"
     file.write_text("[tool.example]\nname='x'\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -515,7 +515,7 @@ def test_env_without_shebang_top_and_trailing_blank(tmp_path: Path) -> None:
     file: Path = tmp_path / ".env"
     file.write_text("FOO=bar\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -537,7 +537,7 @@ def test_pound_crlf_preserves_newlines(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("#!/usr/bin/env python3\nprint('hello')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -565,7 +565,7 @@ def test_pound_banner_at_top_header_precedes_banner(tmp_path: Path) -> None:
     file: Path = tmp_path / "banner_top.py"
     file.write_text("# existing:license banner\n# another line\n\nprint('hello')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -594,7 +594,7 @@ def test_pound_shebang_then_banner_header_between(tmp_path: Path) -> None:
         "#!/usr/bin/env python3\n# existing:license banner\n# another line\n\nprint('hello')\n"
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -630,7 +630,7 @@ def test_pound_shebang_encoding_then_banner_header_between(tmp_path: Path) -> No
         "print('ok')\n"
     )
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -657,7 +657,7 @@ def test_pound_crlf_with_banner_preserves_newlines_and_order(tmp_path: Path) -> 
     with file.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("# existing:license banner\n# another line\n\nprint('x')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -692,7 +692,7 @@ def test_pound_banner_with_leading_blanks(tmp_path: Path) -> None:
     file: Path = tmp_path / "banner_leading_blanks.py"
     file.write_text("\n\n# banner one\n# banner two\nprint('x')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -724,7 +724,7 @@ def test_pound_long_hash_rule_banner(tmp_path: Path) -> None:
     file: Path = tmp_path / "hash_rule.py"
     file.write_text("##########\n##########\n\nprint('x')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -752,7 +752,7 @@ def test_pound_shebang_then_long_hash_rule_banner(tmp_path: Path) -> None:
     file: Path = tmp_path / "shebang_hash_rule.sh"
     file.write_text("#!/usr/bin/env bash\n##########\n\necho hi\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -785,7 +785,7 @@ def test_pound_crlf_leading_blank_and_banner(tmp_path: Path) -> None:
     with file.open("w", encoding="utf-8", newline="\r\n") as fp:
         fp.write("\n# banner\nprint('x')\n")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -863,7 +863,7 @@ def test_pound_encoding_only_at_top(tmp_path: Path) -> None:
     """
     file: Path = tmp_path / "enc_only.py"
     file.write_text("# -*- coding: utf-8 -*-\nprint('x')\n")
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
     sig: BlockSignatures = expected_block_lines_for(file)
 
@@ -883,7 +883,7 @@ def test_pound_bom_preserved(tmp_path: Path) -> None:
     """
     file: Path = tmp_path / "bom.py"
     file.write_bytes(b"\xef\xbb\xbfprint('x')\n")  # UTF-8 BOM
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
     lines: list[str] = materialize_updated_lines(ctx)
 

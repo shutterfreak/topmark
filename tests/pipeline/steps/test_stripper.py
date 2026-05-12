@@ -37,7 +37,7 @@ from topmark.processors.base import HeaderProcessor
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -52,7 +52,7 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
         "code\n",
     ]
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx.views.image = ListFileImageView(lines)

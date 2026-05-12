@@ -15,8 +15,11 @@ high-level integration-style tests that exercise TopMark through its public
 Python API.
 
 The helpers here intentionally cover two distinct API-entry styles:
-    - fully materialized `Config` objects and engine-level execution helpers
-    - TOML-shaped config mappings passed directly to `api.check()` / `api.strip()`
+    - fully materialized [`FrozenConfig`][topmark.config.model.FrozenConfig] objects
+      and engine-level execution helpers
+    - TOML-shaped config mappings passed directly to
+      [`api.check()`][topmark.api.commands.pipeline.check] /
+      [`api.strip()`][topmark.api.commands.pipeline.strip]
 
 These helpers are kept outside `conftest.py` so their logic remains explicit,
 importable, and reusable without relying on pytest fixture discovery.
@@ -28,7 +31,7 @@ from typing import TYPE_CHECKING
 
 from topmark import api
 from topmark.api.runtime import select_pipeline
-from topmark.config.resolution.bridge import resolve_toml_sources_and_build_config_draft
+from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.model import RunOptions
@@ -42,7 +45,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PipelineKindLiteral
     from topmark.api.types import PublicPolicy
     from topmark.api.types import PublicReportScopeLiteral
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
@@ -57,7 +60,7 @@ def config_mapping(**overrides: TomlValue) -> dict[str, TomlValue]:
 
     This helper is intentionally narrow: it exercises the public API branch
     where callers pass a plain mapping instead of a fully constructed
-    [`Config`][topmark.config.model.Config]. The returned object mirrors the
+    [`FrozenConfig`][topmark.config.model.FrozenConfig]. The returned object mirrors the
     layered TOML/config fragment shape expected by
     [`mutable_config_from_mapping()`][topmark.config.io.deserializers.mutable_config_from_mapping].
 
@@ -204,7 +207,7 @@ def run_cli_like(
     It is useful for tests that want engine-level results while still honoring
     layered config discovery and resolution semantics.
     """
-    _resolved, draft = resolve_toml_sources_and_build_config_draft(
+    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=(anchor,),
     )
     draft.files = [str(anchor)]  # seed positional inputs
@@ -213,7 +216,7 @@ def run_cli_like(
     if exclude_file_types:
         draft.exclude_file_types = set(exclude_file_types)
 
-    cfg: Config = draft.freeze()
+    cfg: FrozenConfig = draft.freeze()
     files: list[Path] = list(resolve_file_list_with_diagnostics(cfg).selected)
     run_options: RunOptions = RunOptions(
         apply_changes=apply,

@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
     from _pytest.tmpdir import TempPathFactory
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
 
@@ -104,7 +104,7 @@ def test_insert_strip_idempotent_roundtrip(
     # Use a config that allows inserting headers into empty files (for property tests)
     mcfg: MutableConfig = mutable_config_from_defaults()
     mcfg.policy.allow_header_in_empty_files = True
-    cfg: Config = mcfg.freeze()
+    cfg: FrozenConfig = mcfg.freeze()
 
     # 1) Insert/update a header
     ctx1: ProcessingContext = run_insert(f, cfg)

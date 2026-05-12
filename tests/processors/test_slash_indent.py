@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.protocols import Step
 
 
@@ -62,7 +62,7 @@ def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     file: Path = tmp_path / "settings.jsonc"
     file.write_text('// user note\n{\n  "a": 1\n}\n', encoding="utf-8")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
 
     lines: list[str] = materialize_updated_lines(ctx)
@@ -102,7 +102,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     )
     file.write_text(seeded, encoding="utf-8")
 
-    cfg: Config = mutable_config_from_defaults().freeze()
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     run_options: RunOptions = RunOptions(apply_changes=False)
 
     # Run the full check pipeline to exercise scan + replace

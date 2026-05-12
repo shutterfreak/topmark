@@ -60,7 +60,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
 
@@ -163,7 +163,7 @@ def run_writer(ctx: ProcessingContext) -> ProcessingContext:
 # ---- Context/bootstrap helpers ----
 
 
-def make_pipeline_context(path: Path, cfg: Config) -> ProcessingContext:
+def make_pipeline_context(path: Path, cfg: FrozenConfig) -> ProcessingContext:
     """Return a ProcessingContext seeded with policy and runtime defaults.
 
     Test helpers that bootstrap contexts directly should provide both the
@@ -184,7 +184,7 @@ def make_pipeline_context(path: Path, cfg: Config) -> ProcessingContext:
 def make_context_from_text(
     text: str,
     *,
-    cfg: Config,
+    cfg: FrozenConfig,
     path: Path,
 ) -> ProcessingContext:
     r"""Bootstrap a context in a post-reader state from in-memory text.
@@ -329,7 +329,7 @@ def find_line(lines: list[str], needle: str) -> int:
 # ---- Flow helpers ----
 
 
-def run_insert(path: Path, cfg: Config) -> ProcessingContext:
+def run_insert(path: Path, cfg: FrozenConfig) -> ProcessingContext:
     """Run a minimal insert/update flow for tests using class-based steps.
 
     This helper executes the discovery stages (resolve/sniff/read/scan) and
@@ -349,7 +349,7 @@ def run_insert(path: Path, cfg: Config) -> ProcessingContext:
     return ctx
 
 
-def run_insert_diff(path: Path, cfg: Config) -> ProcessingContext:
+def run_insert_diff(path: Path, cfg: FrozenConfig) -> ProcessingContext:
     """Run a minimal insert/update flow for tests using class-based steps.
 
     This helper executes the discovery stages (resolve/sniff/read/scan) and
@@ -369,7 +369,7 @@ def run_insert_diff(path: Path, cfg: Config) -> ProcessingContext:
     return ctx
 
 
-def run_strip(path: Path, cfg: Config) -> ProcessingContext:
+def run_strip(path: Path, cfg: FrozenConfig) -> ProcessingContext:
     """Run a strip flow (resolve → sniff → read → scan → strip → update).
 
     Args:
@@ -384,7 +384,7 @@ def run_strip(path: Path, cfg: Config) -> ProcessingContext:
     return ctx
 
 
-def run_scan(path: Path, cfg: Config) -> ProcessingContext:
+def run_scan(path: Path, cfg: FrozenConfig) -> ProcessingContext:
     """Run just the discovery/scan steps to populate header and content views."""
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, SCAN_STEPS)

@@ -70,7 +70,7 @@ class DiagnosticLevel(Enum):
         }[self]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class Diagnostic:
     """Internal structured diagnostic with a severity level and message.
 
@@ -83,7 +83,7 @@ class Diagnostic:
     message: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class DiagnosticStats:
     """Aggregated counts for diagnostics by severity level."""
 
@@ -171,7 +171,7 @@ class DiagnosticStats:
         return ""
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class DiagnosticLog:
     """Mutable collection of diagnostics.
 
@@ -216,7 +216,12 @@ class DiagnosticLog:
         Args:
             message: The diagnostic message.
         """
-        self.add(Diagnostic(DiagnosticLevel.INFO, message))
+        self.add(
+            Diagnostic(
+                level=DiagnosticLevel.INFO,
+                message=message,
+            )
+        )
         logger.info(
             message,
             stacklevel=2,
@@ -228,7 +233,12 @@ class DiagnosticLog:
         Args:
             message: The diagnostic message.
         """
-        self.add(Diagnostic(DiagnosticLevel.WARNING, message))
+        self.add(
+            Diagnostic(
+                level=DiagnosticLevel.WARNING,
+                message=message,
+            )
+        )
         logger.warning(
             message,
             stacklevel=2,
@@ -242,7 +252,12 @@ class DiagnosticLog:
         Args:
             message: The diagnostic message.
         """
-        self.add(Diagnostic(DiagnosticLevel.ERROR, message))
+        self.add(
+            Diagnostic(
+                level=DiagnosticLevel.ERROR,
+                message=message,
+            )
+        )
         logger.error(
             message,
             stacklevel=2,
@@ -294,7 +309,7 @@ class DiagnosticLog:
         return len(self.items)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FrozenDiagnosticLog:
     """Immutable diagnostic container.
 

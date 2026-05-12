@@ -67,9 +67,9 @@ resolver, filtering, policy, and binding evaluation.
 
 Local identifiers are accepted only when unambiguous in the effective composed registry.
 
-`strict` is a **TOML-source-local config-loading option**, not a layered
-\[`Config`\][topmark.config.model.Config] field. It is resolved from `[config]` /
-`[tool.topmark.config]` during TOML source resolution and applied after layered config merging.
+`strict` is a **TOML-source-local config-loading option**, not a layered Config field. It is
+resolved from `[config]` / `[tool.topmark.config]` during TOML source resolution and applied after
+layered config merging.
 
 Its effective value governs staged config-loading validation across TOML-source, merged-config, and
 runtime-applicability diagnostics.

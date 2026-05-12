@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from datetime import datetime
     from pathlib import Path
 
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.config.policy import Policy
     from topmark.config.policy import PolicyRegistry
     from topmark.core.logging import TopmarkLogger
@@ -73,7 +73,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class HaltState:
     """Information about a terminal halt for a single file.
 
@@ -95,7 +95,7 @@ class HaltState:
     step_name: str = ""  # step name that requested the halt
 
 
-@dataclass(slots=True)
+@dataclass(kw_only=True, slots=True)
 class ProcessingContext:
     r"""Context for header processing in the TopMark pipeline.
 
@@ -154,7 +154,7 @@ class ProcessingContext:
             runner may prune heavy views after processing.
     """
 
-    config: Config  # Effective layered config for this file
+    config: FrozenConfig  # Effective layered config for this file
     run_options: RunOptions  # Invocation-wide runtime options for the current run
 
     path: Path  # The file path to process (absolute or relative to working directory)
@@ -221,7 +221,7 @@ class ProcessingContext:
         The effective policy is derived from the global configuration and any
         file-type-specific overrides via the shared PolicyRegistry. This method
         does not perform any merging at runtime; all policies are resolved at
-        Config.freeze() time.
+        [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze] time.
 
         Per-type policies are keyed by canonical qualified file type identifiers
         such as `topmark:python`, not local identifiers such as `python`.
@@ -452,7 +452,7 @@ class ProcessingContext:
         cls,
         *,
         path: Path,
-        config: Config,
+        config: FrozenConfig,
         run_options: RunOptions,
         policy_registry_override: PolicyRegistry | None = None,
     ) -> ProcessingContext:

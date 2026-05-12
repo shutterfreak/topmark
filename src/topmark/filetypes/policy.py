@@ -82,7 +82,7 @@ class BlankCollapseMode(str, Enum):
     NONE = "none"
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True, slots=True)
 class FileTypeHeaderPolicy:
     r"""Policy describing how headers should be inserted/removed for a file type.
 

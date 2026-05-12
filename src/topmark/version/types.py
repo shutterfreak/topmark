@@ -19,7 +19,7 @@ VersionFormatLiteral = Literal["pep440", "semver"]
 """Version identifier format."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class VersionInfo:
     """Prepared payload for `topmark version` (and the API equivalent).
 

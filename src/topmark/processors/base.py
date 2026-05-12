@@ -67,11 +67,13 @@ if TYPE_CHECKING:
 
 
 class RuntimeConfigLike(Protocol):
-    """Minimal structural subset of `Config` required by `HeaderProcessor`.
+    """Minimal structural subset of `FrozenConfig` required by `HeaderProcessor`.
 
-    This protocol keeps `topmark.processors.base` independent from the full
-    runtime config model and avoids import cycles. Only the fields actually
-    consumed by `render_header_lines()` are included here.
+    This protocol keeps [`topmark.processors.base`][topmark.processors.base]
+    independent from the full runtime [`FrozenConfig`][topmark.config.model.FrozenConfig]
+    model and avoids import cycles. Only the fields actually consumed by
+    [`render_header_lines()`][topmark.processors.base.HeaderProcessor.render_header_lines]
+    are included here.
     """
 
     @property

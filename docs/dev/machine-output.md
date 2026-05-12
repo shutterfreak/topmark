@@ -574,7 +574,7 @@ ______________________________________________________________________
 ## ConfigPayload
 
 \[`ConfigPayload`\][topmark.config.machine.schemas] is a JSON-safe representation of the effective
-\[`Config`\][topmark.config.model.Config], as produced by
+\[`FrozenConfig`\][topmark.config.model.FrozenConfig], as produced by
 \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
 
 High-level structure (keys may be extended over time):

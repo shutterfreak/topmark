@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.cli.console.protocols import ConsoleProtocol
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -70,7 +70,7 @@ def emit_probe_results_machine(
     *,
     console: ConsoleProtocol,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     fmt: OutputFormat,
@@ -80,7 +80,7 @@ def emit_probe_results_machine(
     Args:
         console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
-        config: The Config instance.
+        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
         resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of per-file probe results.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
@@ -107,7 +107,7 @@ def emit_processing_results_machine(
     *,
     console: ConsoleProtocol,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     results: list[ProcessingContext],
     fmt: OutputFormat,
@@ -118,7 +118,7 @@ def emit_processing_results_machine(
     Args:
         console: Console used to emit the already-serialized machine-readable output.
         meta: The machine metadata payload.
-        config: The Config instance.
+        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
         resolved_toml: ResolvedTopmarkTomlSources,
         results: Ordered list of per-file processing results.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
@@ -148,7 +148,7 @@ def emit_config_machine(
     *,
     console: ConsoleProtocol,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     fmt: OutputFormat,
     show_config_layers: bool = False,
@@ -206,7 +206,7 @@ def emit_config_diagnostics_machine(
     *,
     console: ConsoleProtocol,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     fmt: OutputFormat,
 ) -> None:
     """Emit Config diagnostics in a machine-readable format to ConsoleLike.
@@ -245,7 +245,7 @@ def emit_config_check_machine(
     *,
     console: ConsoleProtocol,
     meta: MetaPayload,
-    config: Config,
+    config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
     strict: bool,
     ok: bool,

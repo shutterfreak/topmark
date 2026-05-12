@@ -30,13 +30,13 @@ High-level concepts:
 
 Configuration contract:
 - Public pipeline functions (``probe()``, ``check()``, ``strip()``) accept an optional plain mapping
-  (mirroring the TOML/pyproject structure) or a frozen
-  [`Config`][topmark.config.model.Config].
+  (mirroring the TOML/pyproject structure) or an immutable
+  [`FrozenConfig`][topmark.config.model.FrozenConfig].
 - Passing ``config=None`` triggers layered discovery (defaults → user → project) using the
   same rules as the CLI.
 - The internal [`MutableConfig`][topmark.config.model.MutableConfig] builder is not part of
-  the public API; it exists to perform discovery/merging and is frozen immediately before
-  execution.
+  the public API; it exists to perform discovery/merging and is frozen immediately into an immutable
+  [`FrozenConfig`][topmark.config.model.FrozenConfig] before execution.
 
 Example:
     ```python

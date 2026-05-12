@@ -12,8 +12,9 @@
 
 This step computes the **field dictionaries** that will later be rendered into a
 TopMark header. It derives built‑in fields from the filesystem (e.g., `file`,
-`file_relpath`) and merges them with `Config.field_values`, then selects only
-those keys listed in `Config.header_fields`.
+`file_relpath`) and merges them with
+[`FrozenConfig.field_values`][topmark.config.model.FrozenConfig], then selects only
+those keys listed in [`FrozenConfig.header_fields`][topmark.config.model.FrozenConfig].
 
 Outputs:
   * `ctx.views.build.builtins`: the derived built‑in field mapping.
@@ -43,7 +44,7 @@ from topmark.pipeline.views import BuilderView
 from topmark.utils.file import compute_relpath
 
 if TYPE_CHECKING:
-    from topmark.config.model import Config
+    from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
 
@@ -77,8 +78,9 @@ class BuilderStep(BaseStep):
 
         The builder should run whenever content is available, even for empty-like
         images. Empty-file insertion policy is a *mutation* concern and is handled
-        later by planner/updater logic via `allow_insert_into_empty_like()`, not by
-        `may_proceed()`.
+        later by planner/updater logic via
+        [`allow_insert_into_empty_like()`][topmark.pipeline.context.policy.allow_insert_into_empty_like],
+        not by `may_proceed()`.
 
         Args:
             ctx: The processing context for the current file.
@@ -98,7 +100,7 @@ class BuilderStep(BaseStep):
         """Build the field dictionaries used to render a TopMark header.
 
         This step analyzes the processing context and configuration to compute:
-        * derived built‑in fields based on the file path; and
+        * derived built-in fields based on the file path; and
         * the final field mapping to be rendered (subset/overrides as per config).
 
         Args:
@@ -106,13 +108,14 @@ class BuilderStep(BaseStep):
                 configuration, and status.
 
         Mutations:
-            - `ctx.views.build.builtins`: built‑in field mapping.
+            - `ctx.views.build.builtins`: built-in field mapping.
             - `ctx.views.build.selected`: selected/merged field mapping.
             - `ctx.status.generation`: updated to `GENERATED` or `NO_FIELDS`.
 
         Notes:
             Diagnostic messages are added if unknown header fields are referenced in
-            `Config.header_fields` or when built‑ins are overridden by `Config.field_values`.
+            `FrozenConfig.header_fields` or when built-ins are overridden by
+            `FrozenConfig.field_values`.
 
         Path semantics:
             - `file_path` is `ctx.path` as provided by config resolution.
@@ -125,19 +128,19 @@ class BuilderStep(BaseStep):
               original `file_path` (not `file_path.resolve()`), so the relative
               path is derived from the discovery spelling.
             - `relative_to` defaults to `Path.cwd()` when no explicit root is configured.
-              If `Config.relative_to` is set, it is resolved to an absolute path via
+              If `FrozenConfig.relative_to` is set, it is resolved to an absolute path via
               `Path(config.relative_to).resolve()`.
             - `relpath` becomes "." at repo root.
 
             This behavior intentionally keeps `file_relpath` stable for common cases
             like running TopMark from the repository root (so `pyproject.toml` yields
             `file_relpath = "pyproject.toml"`). If you need `file_relpath` computed
-            relative to a specific root, set `Config.relative_to` (via config or CLI/API
+            relative to a specific root, set `FrozenConfig.relative_to` (via config or CLI/API
             overrides).
         """
         logger.debug("ctx: %s", ctx)
 
-        config: Config = ctx.config
+        config: FrozenConfig = ctx.config
 
         if check_permitted_by_policy(ctx) is False:
             ctx.status.generation = GenerationStatus.SKIPPED
