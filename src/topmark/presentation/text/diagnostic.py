@@ -22,9 +22,9 @@ from topmark.cli.keys import CliShortOpt
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
-from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
@@ -69,7 +69,7 @@ def render_human_diagnostics_text(
 
 def render_diagnostics_text(
     *,
-    diagnostics: FrozenDiagnosticLog | DiagnosticLog,
+    diagnostics: FrozenDiagnosticLog | MutableDiagnosticLog,
     verbosity_level: int,
     color: bool,
 ) -> str:

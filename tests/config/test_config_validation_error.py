@@ -30,8 +30,8 @@ from topmark.config.validation import ValidationLogs
 from topmark.core.errors import ConfigValidationError
 
 if TYPE_CHECKING:
-    from topmark.diagnostic.model import DiagnosticLog
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
 
 
 # --- Helpers ---
@@ -104,7 +104,9 @@ def test_config_validation_error_attaches_flattened_diagnostics_in_stage_order()
     )
 
     ctx: object = _extract_error_context(err)
-    diagnostics: DiagnosticLog | FrozenDiagnosticLog | None = getattr(ctx, "diagnostics", None)
+    diagnostics: MutableDiagnosticLog | FrozenDiagnosticLog | None = getattr(
+        ctx, "diagnostics", None
+    )
     assert diagnostics is not None
 
     items = list(getattr(diagnostics, "items", diagnostics))
@@ -125,7 +127,9 @@ def test_config_validation_error_attaches_empty_flattened_diagnostics_when_logs_
     )
 
     ctx: object = _extract_error_context(err)
-    diagnostics: DiagnosticLog | FrozenDiagnosticLog | None = getattr(ctx, "diagnostics", None)
+    diagnostics: MutableDiagnosticLog | FrozenDiagnosticLog | None = getattr(
+        ctx, "diagnostics", None
+    )
     assert diagnostics is not None
 
     items = list(getattr(diagnostics, "items", diagnostics))

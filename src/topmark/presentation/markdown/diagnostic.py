@@ -21,9 +21,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.diagnostic.model import DiagnosticLevel
-from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import FrozenDiagnosticLog
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.diagnostic.model import compute_diagnostic_stats
 
 if TYPE_CHECKING:
@@ -69,7 +69,7 @@ def render_human_diagnostics_markdown(
 
 def render_diagnostics_markdown(
     *,
-    diagnostics: FrozenDiagnosticLog | DiagnosticLog,
+    diagnostics: FrozenDiagnosticLog | MutableDiagnosticLog,
 ) -> str:
     """Render diagnostics as a Markdown fragment for human output.
 

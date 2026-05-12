@@ -34,7 +34,7 @@ from topmark.diagnostic.model import DiagnosticLevel
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
 
 
 class TomlDiagnosticCode(str, Enum):
@@ -82,13 +82,14 @@ class TomlValidationIssue:
 
 
 def add_toml_issues(
-    log: DiagnosticLog,
+    log: MutableDiagnosticLog,
     issues: Iterable[TomlValidationIssue],
 ) -> None:
     """Record TOML validation issues through the diagnostic log.
 
     This preserves the existing level-specific logging behavior by routing each
-    issue through the corresponding `DiagnosticLog` helper.
+    issue through the corresponding
+    [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog] helper.
 
     Args:
         log: Mutable diagnostic log receiving the TOML validation issues.

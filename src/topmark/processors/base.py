@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.filetypes.model import FileType
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.views import HeaderView
@@ -96,7 +96,7 @@ class ProcessingContextLike(Protocol):
     """
 
     views: Views
-    diagnostics: DiagnosticLog
+    diagnostics: MutableDiagnosticLog
 
 
 logger: TopmarkLogger = get_logger(__name__)

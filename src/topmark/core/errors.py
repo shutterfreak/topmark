@@ -40,9 +40,9 @@ if TYPE_CHECKING:
 
     from topmark.config.validation import FrozenValidationLogs
     from topmark.config.validation import ValidationLogs
-    from topmark.diagnostic.model import DiagnosticLog
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -65,7 +65,7 @@ class ErrorContext:
     path: Path | None = None
     qualified_key: str | None = None
     encoding: str | None = None
-    diagnostics: DiagnosticLog | FrozenDiagnosticLog | None = None
+    diagnostics: MutableDiagnosticLog | FrozenDiagnosticLog | None = None
     resolved: ResolvedTopmarkTomlSources | None = None
 
     details: tuple[str, ...] = ()
@@ -558,7 +558,9 @@ class ConfigValidationError(TopmarkError):
         toml_stats: DiagnosticStats = validation_logs.toml_source.stats()
         config_stats: DiagnosticStats = validation_logs.merged_config.stats()
         runtime_stats: DiagnosticStats = validation_logs.runtime_applicability.stats()
-        flattened_diagnostics: DiagnosticLog | FrozenDiagnosticLog = validation_logs.flattened()
+        flattened_diagnostics: MutableDiagnosticLog | FrozenDiagnosticLog = (
+            validation_logs.flattened()
+        )
         message: str = (
             f"Config validation failed (strict = {strict!r}), "
             f"TOML errors: {toml_stats.n_error}, warnings: {toml_stats.n_warning};"

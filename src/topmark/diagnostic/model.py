@@ -16,12 +16,16 @@ intentionally separate from the public API schemas so that internal
 diagnostics can evolve without breaking external contracts.
 
 Sections:
-    * DiagnosticLevel: severity levels with associated semantic style roles.
-    * Diagnostic: immutable structured diagnostic payload (level + message).
-    * DiagnosticStats: aggregated per-level counts.
-    * DiagnosticLog: mutable per-context collection with helpers for
-      adding and summarizing diagnostics.
-    * FrozenDiagnosticLog: immutable snapshot container for frozen contexts.
+    - [`DiagnosticLevel`][topmark.diagnostic.model.DiagnosticLevel]: severity levels
+      with associated semantic style roles.
+    - [`Diagnostic`][topmark.diagnostic.model.Diagnostic]: immutable structured
+      diagnostic payload (level + message).
+    - [`DiagnosticStats`][topmark.diagnostic.model.DiagnosticStats]: aggregated
+      per-level counts.
+    - [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog]:
+      mutable per-context collection with helpers for adding and summarizing diagnostics.
+    - [`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog]:
+      immutable snapshot container for frozen contexts.
 """
 
 from __future__ import annotations
@@ -46,10 +50,11 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class DiagnosticLevel(Enum):
+class DiagnosticLevel(str, Enum):
     """Severity levels for diagnostics collected during processing.
 
-    Levels map to semantic style roles and are ordered by importance: ERROR > WARNING > INFO.
+    Levels map to semantic style roles and are ordered by importance:
+    ERROR > WARNING > INFO.
     This enum is **internal**; the public API exposes string literals.
     """
 
@@ -109,7 +114,8 @@ class DiagnosticStats:
             The aggregated count for the requested diagnostic level.
 
         Raises:
-            ValueError: If `level` is not a supported `DiagnosticLevel`.
+            ValueError: If `level` is not a supported
+                [`DiagnosticLevel`][topmark.diagnostic.model.DiagnosticLevel].
         """
         if level == DiagnosticLevel.INFO:
             return self.n_info
@@ -137,7 +143,8 @@ class DiagnosticStats:
         - `DiagnosticLevel.INFO`: include errors, warnings, and infos
 
         Args:
-            severity_threshold: Lowest severity level that may be included; default: `INFO` (all).
+            severity_threshold: Lowest severity level that may be included;
+                default: `INFO` (all).
 
         Returns:
             Compact triage summary string. Returns an empty string when no
@@ -172,7 +179,7 @@ class DiagnosticStats:
 
 
 @dataclass(kw_only=True, slots=True)
-class DiagnosticLog:
+class MutableDiagnosticLog:
     """Mutable collection of diagnostics.
 
     It provides convenience helpers for adding diagnostics at a given level and exposes simple
@@ -182,14 +189,15 @@ class DiagnosticLog:
     items: list[Diagnostic] = field(default_factory=lambda: [])
 
     @classmethod
-    def from_iterable(cls, diagnostics: Iterable[Diagnostic]) -> DiagnosticLog:
-        """Create a DiagnosticLog from an iterable of diagnostics.
+    def from_iterable(cls, diagnostics: Iterable[Diagnostic]) -> MutableDiagnosticLog:
+        """Create a `FrozenDiagnosticLog` from an iterable of diagnostics.
 
         Args:
             diagnostics: Existing diagnostics (e.g., from a frozen snapshot).
 
         Returns:
-            A new DiagnosticLog containing the provided diagnostics.
+            A new [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog]
+            containing the provided diagnostics.
         """
         return cls(items=list(diagnostics))
 
@@ -266,21 +274,21 @@ class DiagnosticLog:
     def stats(self) -> DiagnosticStats:
         """Return per-level counts for diagnostics in this log.
 
-        The returned `DiagnosticStats` object can be used both for human
-        summaries and for machine-readable reporting via `to_dict`.
+        The returned [`DiagnosticStats`][topmark.diagnostic.model.DiagnosticStats] object
+        can be used both for human summaries and for machine-readable reporting via `to_dict`.
         """
         return compute_diagnostic_stats(self.items)
 
     def has_info(self) -> bool:
-        """Return True if the DiagnosticLog contains info diagnostics."""
+        """Return True if the `MutableDiagnosticLog` contains info diagnostics."""
         return any(d.level == DiagnosticLevel.INFO for d in self.items)
 
     def has_warning(self) -> bool:
-        """Return True if the DiagnosticLog contains warning diagnostics."""
+        """Return True if the `MutableDiagnosticLog` contains warning diagnostics."""
         return any(d.level == DiagnosticLevel.WARNING for d in self.items)
 
     def has_error(self) -> bool:
-        """Return True if the DiagnosticLog contains error diagnostics."""
+        """Return True if the `MutableDiagnosticLog` contains error diagnostics."""
         return any(d.level == DiagnosticLevel.ERROR for d in self.items)
 
     def to_dict(self) -> dict[str, int]:
@@ -313,8 +321,11 @@ class DiagnosticLog:
 class FrozenDiagnosticLog:
     """Immutable diagnostic container.
 
-    `FrozenDiagnosticLog` is the immutable counterpart to `DiagnosticLog`. It is
-    intended for storing diagnostics on frozen snapshots where mutation is not permitted.
+    [`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog] is the
+    immutable counterpart to
+    [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog].
+    It is intended for storing diagnostics on immutable snapshots where mutation
+    is not permitted.
     """
 
     items: tuple[Diagnostic, ...]
@@ -331,9 +342,9 @@ class FrozenDiagnosticLog:
         """
         return len(self.items)
 
-    def thaw(self) -> DiagnosticLog:
+    def thaw(self) -> MutableDiagnosticLog:
         """Return a mutable copy of this frozen diagnostic log."""
-        return DiagnosticLog(items=list(self.items))
+        return MutableDiagnosticLog(items=list(self.items))
 
     def stats(self) -> DiagnosticStats:
         """Return aggregated per-level counts for the contained diagnostics."""
@@ -347,8 +358,8 @@ class FrozenDiagnosticLog:
 def compute_diagnostic_stats(diagnostics: Iterable[Diagnostic]) -> DiagnosticStats:
     """Return per-level counts for a sequence of diagnostics.
 
-    The returned `DiagnosticStats` object can be used both for human
-    summaries and for machine-readable reporting via `to_dict`.
+    The returned [`DiagnosticStats`][topmark.diagnostic.model.DiagnosticStats] object
+    can be used both for human summaries and for machine-readable reporting via `to_dict`.
 
     Args:
         diagnostics: the diagnostic log.

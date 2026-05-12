@@ -21,7 +21,7 @@ from topmark.constants import EXAMPLE_TOPMARK_TOML_NAME
 from topmark.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
 
 if TYPE_CHECKING:
-    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
 
 
 def test_default_template_resolves_without_errors() -> None:
@@ -29,7 +29,7 @@ def test_default_template_resolves_without_errors() -> None:
     resolved_toml, draft_config = resolve_default_template_and_build_mutable_config()
 
     assert len(resolved_toml.sources) == 1
-    diagnostics: DiagnosticLog = draft_config.validation_logs.flattened()
+    diagnostics: MutableDiagnosticLog = draft_config.validation_logs.flattened()
     assert not diagnostics.has_error(), (
         f"An error occurred during parsing of the built-in TOML resource "
         f"in {EXAMPLE_TOPMARK_TOML_PACKAGE}/{EXAMPLE_TOPMARK_TOML_NAME}: "

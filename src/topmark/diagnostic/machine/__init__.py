@@ -17,8 +17,9 @@ Layers:
 
 - **schemas**: Typed payload schemas for JSON envelopes (for example,
   `MachineDiagnosticEntry` and `MachineDiagnosticCounts`).
-- **shapes**: NDJSON record builders that operate on internal `Diagnostic`
-  objects and yield one record per diagnostic.
+- **shapes**: NDJSON record builders that operate on internal
+  [`Diagnostic`][topmark.diagnostic.model.Diagnostic] objects and yield
+  one record per diagnostic.
 
 Notes:
     This package intentionally re-exports only the shared NDJSON shape helper

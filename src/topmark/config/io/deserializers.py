@@ -69,7 +69,7 @@ if TYPE_CHECKING:
 
     from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.toml.types import TomlTable
     from topmark.toml.types import TomlTableMap
     from topmark.toml.types import TomlValue
@@ -141,7 +141,7 @@ def mutable_config_from_layered_toml_table(
 
     # Start from a fresh draft early so we can attach diagnostics while parsing.
     draft: MutableConfig = MutableConfig()
-    merged_diagnostics: DiagnosticLog = draft.validation_logs.merged_config
+    merged_diagnostics: MutableDiagnosticLog = draft.validation_logs.merged_config
 
     # Config file's directory for relative path resolution
     cfg_dir: Path | None = config_file.parent.resolve() if isinstance(config_file, Path) else None

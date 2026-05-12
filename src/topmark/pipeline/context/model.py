@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.policy import make_policy_registry
 from topmark.core.logging import get_logger
-from topmark.diagnostic.model import DiagnosticLog
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.filetypes.model import InsertCapability
 from topmark.pipeline.context.policy import can_change
 from topmark.pipeline.context.policy import check_permitted_by_policy
@@ -207,7 +207,7 @@ class ProcessingContext:
     pre_insert_origin: str | None = None
 
     # Processing diagnostics: warnings/errors collected during processing
-    diagnostics: DiagnosticLog = field(default_factory=DiagnosticLog)
+    diagnostics: MutableDiagnosticLog = field(default_factory=MutableDiagnosticLog)
 
     # Pre-outcome hints (non-binding)
     diagnostic_hints: HintLog = field(default_factory=HintLog)

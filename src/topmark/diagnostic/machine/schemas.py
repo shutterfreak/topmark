@@ -17,8 +17,9 @@ payload layer (schemas → payloads → shapes → serializers):
 - `MachineDiagnosticEntry` represents a single diagnostic (level + message).
 - `MachineDiagnosticCounts` represents aggregated per-level counts.
 
-The NDJSON shape layer emits one record per *internal* `Diagnostic`. For JSON
-envelopes, domains typically prebuild lists of `MachineDiagnosticEntry` and a
+The NDJSON shape layer emits one record per *internal*
+[`Diagnostic`][topmark.diagnostic.model.Diagnostic]. For JSON envelopes, domains
+typically prebuild lists of `MachineDiagnosticEntry` and a
 `MachineDiagnosticCounts` instance.
 """
 

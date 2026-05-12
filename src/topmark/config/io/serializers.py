@@ -48,7 +48,7 @@ from topmark.utils.file import rebase_glob_patterns
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.toml.types import TomlTable
     from topmark.toml.types import TomlValue
 
@@ -77,7 +77,7 @@ def config_to_topmark_toml_table(
     *,
     include_files: bool = False,
     files_serialization_mode: FilesSerializationMode = FilesSerializationMode.REBASED,
-    diagnostics: DiagnosticLog | None = None,
+    diagnostics: MutableDiagnosticLog | None = None,
 ) -> TomlTable:
     """Convert an immutable `Config` into a TopMark TOML table.
 

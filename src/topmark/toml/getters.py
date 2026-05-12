@@ -15,7 +15,8 @@ This module contains small helpers for extracting values from parsed TOML tables
 Two families of getters exist:
 - *Unchecked* getters: return defaults and only emit **debug** logs.
 - *Checked* getters: validate the expected shape and record **warnings** in a
-  `DiagnosticLog` (and also log a warning).
+  [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog]
+  (and also log a warning).
 
 The checked getters are used when parsing config files so that user mistakes are
 surfaced without crashing or changing defaulting behavior.
@@ -39,7 +40,7 @@ from topmark.toml.typing_guards import is_toml_table
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.toml.types import TomlTable
     from topmark.toml.types import TomlValue
 
@@ -200,7 +201,7 @@ def get_string_value_checked(
     key: str,
     *,
     where: str,
-    diagnostics: DiagnosticLog,
+    diagnostics: MutableDiagnosticLog,
     default: str = "",
 ) -> str:
     """Return a string value, recording a warning when the type is not `str`.
@@ -224,7 +225,7 @@ def get_string_value_or_none_checked(
     key: str,
     *,
     where: str,
-    diagnostics: DiagnosticLog,
+    diagnostics: MutableDiagnosticLog,
 ) -> str | None:
     """Return an optional string value, warning when present but not `str`."""
     value: TomlValue | None = table.get(key)
@@ -243,7 +244,7 @@ def get_bool_value_checked(
     key: str,
     *,
     where: str,
-    diagnostics: DiagnosticLog,
+    diagnostics: MutableDiagnosticLog,
     default: bool = False,
 ) -> bool:
     """Return a boolean value, recording a warning when the type is not `bool`.
@@ -267,7 +268,7 @@ def get_bool_value_or_none_checked(
     key: str,
     *,
     where: str,
-    diagnostics: DiagnosticLog,
+    diagnostics: MutableDiagnosticLog,
 ) -> bool | None:
     """Return an optional boolean value, warning when present but not `bool`."""
     value: TomlValue | None = table.get(key)
@@ -286,7 +287,7 @@ def get_int_value_or_none_checked(
     key: str,
     *,
     where: str,
-    diagnostics: DiagnosticLog,
+    diagnostics: MutableDiagnosticLog,
 ) -> int | None:
     """Return an optional int value, warning when present but not `int`.
 
@@ -320,7 +321,7 @@ def get_string_list_value_checked(
     key: str,
     *,
     where: str,
-    diagnostics: DiagnosticLog,
+    diagnostics: MutableDiagnosticLog,
 ) -> list[str]:
     """Extract a list of strings from a TOML table, recording a warning when the type is incorrect.
 
@@ -338,7 +339,8 @@ def get_string_list_value_checked(
         table: TOML table to query.
         key: Key to extract.
         where: TOML location prefix (e.g. "[files]").
-        diagnostics: DiagnosticLog to record warnings.
+        diagnostics: [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog]
+            to record warnings.
 
     Returns:
         Filtered list containing only string entries.
@@ -376,7 +378,7 @@ def get_enum_value_checked(
     enum_cls: type[E],
     *,
     where: str,
-    diagnostics: DiagnosticLog,
+    diagnostics: MutableDiagnosticLog,
 ) -> E | None:
     """Parse an enum value from TOML.
 

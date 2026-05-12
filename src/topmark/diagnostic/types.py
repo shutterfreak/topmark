@@ -12,7 +12,7 @@
 
 This module defines small Protocols used to express "diagnostic-carrying"
 objects structurally. It allows code to accept either mutable or frozen
-containers (e.g., [`DiagnosticLog`][topmark.diagnostic.model.DiagnosticLog] or
+containers (e.g., [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog] or
 [`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog]) without
 depending on concrete classes.
 """

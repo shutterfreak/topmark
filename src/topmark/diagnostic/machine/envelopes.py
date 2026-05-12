@@ -21,7 +21,8 @@ Scope:
       the structural `DiagnosticsLike` protocol.
 
 Design notes:
-    - This module operates on *internal* diagnostics (`Diagnostic`) and is
+    - This module operates on *internal* diagnostics
+      ([`Diagnostic`][topmark.diagnostic.model.Diagnostic]) and is
       intentionally decoupled from JSON payload schemas such as
       `MachineDiagnosticEntry`, which are used only for JSON envelopes.
     - NDJSON records are yielded as plain mappings; serialization to strings
@@ -62,7 +63,8 @@ def iter_diagnostic_ndjson_records(
     Args:
         meta: Shared metadata payload.
         domain: Stable domain identifier (e.g. `MachineDomain.CONFIG`).
-        diagnostics: Diagnostic container yielding internal `Diagnostic` objects.
+        diagnostics: Diagnostic container yielding internal
+            [`Diagnostic`][topmark.diagnostic.model.Diagnostic] objects.
 
     Yields:
         One mapping per diagnostic. Each mapping is shaped as an NDJSON record with

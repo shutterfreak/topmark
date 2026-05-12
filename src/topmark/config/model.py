@@ -82,9 +82,9 @@ if TYPE_CHECKING:
     from topmark.config.types import PatternSource
     from topmark.config.validation import FrozenValidationLogs
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticLog
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.filetypes.model import FileType
 
 
@@ -841,7 +841,7 @@ class MutableConfig:
 
 
 def _is_diagnostic_log_valid(
-    diagnostics: DiagnosticLog | FrozenDiagnosticLog,
+    diagnostics: MutableDiagnosticLog | FrozenDiagnosticLog,
     *,
     strict: bool,
 ) -> bool:

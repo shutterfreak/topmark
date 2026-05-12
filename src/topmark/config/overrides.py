@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     from topmark.config.policy import EmptyInsertMode
     from topmark.config.policy import HeaderMutationMode
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticLog
+    from topmark.diagnostic.model import MutableDiagnosticLog
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -207,7 +207,7 @@ def apply_config_overrides(
           validation stage. Flattening is now performed only at reporting and
           output boundaries.
     """
-    merged_diagnostics: DiagnosticLog = config.validation_logs.merged_config
+    merged_diagnostics: MutableDiagnosticLog = config.validation_logs.merged_config
 
     # Record that a highest-precedence CLI/API override layer was applied.
     # This is provenance-only; explicit `--config` files are merged earlier by

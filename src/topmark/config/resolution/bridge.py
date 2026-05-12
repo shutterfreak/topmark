@@ -34,7 +34,7 @@ from topmark.config.resolution.synthetic import BUILTIN_DEFAULTS_TOML_SOURCE
 from topmark.config.resolution.synthetic import BUNDLED_TEMPLATE_TOML_SOURCE
 from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.typing_guards import as_object_dict
-from topmark.diagnostic.model import DiagnosticLog
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.defaults import load_default_topmark_template_toml_text
 from topmark.toml.loaders import load_topmark_toml_table
@@ -143,7 +143,7 @@ def _resolve_single_builtin_toml_table_and_build_mutable_config(
     *,
     table: TomlTable,
     source_path: Path | SyntheticConfigSource,
-    load_diagnostics: DiagnosticLog | None = None,
+    load_diagnostics: MutableDiagnosticLog | None = None,
 ) -> tuple[ResolvedTopmarkTomlSources, MutableConfig]:
     """Resolve one bundled TOML table and build its config draft.
 
@@ -158,7 +158,7 @@ def _resolve_single_builtin_toml_table_and_build_mutable_config(
         Tuple containing the resolved TOML-side state and merged mutable config
         draft built from the bundled source.
     """
-    diagnostics: DiagnosticLog = load_diagnostics or DiagnosticLog()
+    diagnostics: MutableDiagnosticLog = load_diagnostics or MutableDiagnosticLog()
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
         table,
         source_path=source_path if isinstance(source_path, Path) else None,
@@ -194,7 +194,7 @@ def resolve_default_template_and_build_mutable_config() -> tuple[
         Tuple containing the resolved TOML-side state and mutable config draft
         built from the bundled init template.
     """
-    diagnostics: DiagnosticLog = DiagnosticLog()
+    diagnostics: MutableDiagnosticLog = MutableDiagnosticLog()
     text, err = load_default_topmark_template_toml_text()
     if err is not None:
         diagnostics.add_error(str(err))

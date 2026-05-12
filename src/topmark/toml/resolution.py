@@ -47,7 +47,7 @@ from typing import Literal
 from typing import TypeAlias
 
 from topmark.core.logging import get_logger
-from topmark.diagnostic.model import DiagnosticLog
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.toml.loaders import load_topmark_toml_source
 
 if TYPE_CHECKING:
@@ -139,7 +139,7 @@ def _append_loaded_source(
         logger.debug(
             "Preserving unreadable or invalid TOML source during resolution: %s", resolved_path
         )
-        diagnostics = DiagnosticLog()
+        diagnostics = MutableDiagnosticLog()
         diagnostics.add_error(f"Unable to load or parse TOML source: {resolved_path}")
         dst.append(
             ResolvedTopmarkTomlSource(
@@ -158,7 +158,7 @@ def _append_loaded_source(
             parsed=parsed,
             kind=kind,
             validation_issues=parsed.validation_issues,
-            load_diagnostics=DiagnosticLog().freeze(),
+            load_diagnostics=MutableDiagnosticLog().freeze(),
         )
     )
 

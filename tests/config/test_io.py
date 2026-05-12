@@ -24,7 +24,7 @@ import tomlkit
 
 from topmark.core.errors import TomlParseError
 from topmark.core.errors import TomlSurgeryError
-from topmark.diagnostic.model import DiagnosticLog
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.toml.getters import get_string_list_value_checked
 from topmark.toml.surgery import nest_toml_under_section
 
@@ -117,7 +117,7 @@ def test_get_string_list_value_filters_and_records_warnings(
 ) -> None:
     """Non-string items are dropped and recorded as warnings with location."""
     caplog.set_level("WARNING")
-    diagnostics = DiagnosticLog()
+    diagnostics = MutableDiagnosticLog()
 
     table: TomlTable = {"k": ["a", 1, True, "b"]}
     out: list[str] = get_string_list_value_checked(
@@ -158,7 +158,7 @@ def test_get_string_list_value_wrong_type_returns_empty_and_records_warning(
 ) -> None:
     """get_string_list_value_checked wrong-type is treated as empty but warns."""
     caplog.set_level("WARNING")
-    diagnostics = DiagnosticLog()
+    diagnostics = MutableDiagnosticLog()
 
     table: TomlTable = {"k": True}  # wrong shape
     out: list[str] = get_string_list_value_checked(

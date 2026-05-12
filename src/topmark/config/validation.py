@@ -14,9 +14,11 @@ This module defines small, typed containers that group shared diagnostics by
 validation stage during TopMark's config-loading lifecycle. It complements the
 generic diagnostic substrate in
 [`topmark.diagnostic.model`][topmark.diagnostic.model] rather than replacing
-it: diagnostics remain ordinary `Diagnostic` entries collected in
-`DiagnosticLog` / `FrozenDiagnosticLog`, while this module adds stage-aware
-structure around those logs.
+it: diagnostics remain ordinary [`Diagnostic`][topmark.diagnostic.model.Diagnostic]
+entries collected in a mutable
+[`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog] or
+immutable [`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog],
+while this module adds stage-aware structure around those logs.
 
 The staged model currently distinguishes three validation stages:
 
@@ -31,7 +33,9 @@ model:
 
 - preserve stage-local diagnostics so validation boundaries remain explicit,
 - provide a flattened compatibility view in stage order for callers that still
-  consume a single `DiagnosticLog` at reporting or output boundaries.
+  consume a single
+  [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog]
+  at reporting or output boundaries.
 """
 
 from __future__ import annotations
@@ -40,8 +44,8 @@ from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
 
-from topmark.diagnostic.model import DiagnosticLog
 from topmark.diagnostic.model import FrozenDiagnosticLog
+from topmark.diagnostic.model import MutableDiagnosticLog
 
 
 class ValidationStage(str, Enum):
@@ -65,9 +69,9 @@ class ValidationLogs:
             runtime/preflight applicability checks.
     """
 
-    toml_source: DiagnosticLog = field(default_factory=DiagnosticLog)
-    merged_config: DiagnosticLog = field(default_factory=DiagnosticLog)
-    runtime_applicability: DiagnosticLog = field(default_factory=DiagnosticLog)
+    toml_source: MutableDiagnosticLog = field(default_factory=MutableDiagnosticLog)
+    merged_config: MutableDiagnosticLog = field(default_factory=MutableDiagnosticLog)
+    runtime_applicability: MutableDiagnosticLog = field(default_factory=MutableDiagnosticLog)
 
     def freeze(self) -> FrozenValidationLogs:
         """Return an immutable snapshot of the staged validation logs."""
@@ -92,19 +96,19 @@ class ValidationLogs:
             A new staged validation-log container containing the merged result.
         """
         return ValidationLogs(
-            toml_source=DiagnosticLog.from_iterable(
+            toml_source=MutableDiagnosticLog.from_iterable(
                 [
                     *self.toml_source,
                     *other.toml_source,
                 ],
             ),
-            merged_config=DiagnosticLog.from_iterable(
+            merged_config=MutableDiagnosticLog.from_iterable(
                 [
                     *self.merged_config.items,
                     *other.merged_config.items,
                 ]
             ),
-            runtime_applicability=DiagnosticLog.from_iterable(
+            runtime_applicability=MutableDiagnosticLog.from_iterable(
                 [
                     *self.runtime_applicability.items,
                     *other.runtime_applicability.items,
@@ -112,14 +116,14 @@ class ValidationLogs:
             ),
         )
 
-    def flattened(self) -> DiagnosticLog:
+    def flattened(self) -> MutableDiagnosticLog:
         """Return a flattened compatibility view in stage order.
 
         Diagnostics are concatenated without rewriting their messages so the
         flattened compatibility diagnostic view remains stable at reporting and
         output boundaries.
         """
-        return DiagnosticLog.from_iterable(
+        return MutableDiagnosticLog.from_iterable(
             list(self.toml_source) + list(self.merged_config) + list(self.runtime_applicability)
         )
 
@@ -146,6 +150,6 @@ class FrozenValidationLogs:
         This helper is intended for reporting and output boundaries that still
         consume a single immutable diagnostic log.
         """
-        return DiagnosticLog.from_iterable(
+        return MutableDiagnosticLog.from_iterable(
             list(self.toml_source) + list(self.merged_config) + list(self.runtime_applicability)
         ).freeze()

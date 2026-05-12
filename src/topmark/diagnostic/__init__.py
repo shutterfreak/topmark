@@ -14,9 +14,10 @@ This package provides internal, strongly-typed diagnostic objects used throughou
 informational messages, warnings, and errors in a consistent way.
 
 Design:
-    - Internal diagnostics are represented by immutable `Diagnostic` instances.
+    - Internal diagnostics are represented by immutable
+      [`Diagnostic`][topmark.diagnostic.model.Diagnostic] instances.
     - During processing, diagnostics are accumulated in a mutable
-      [`DiagnosticLog`][topmark.diagnostic.model.DiagnosticLog].
+      [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog].
     - Frozen snapshots (e.g. [`FrozenConfig`][topmark.config.model.FrozenConfig])
       store diagnostics as an immutable
       [`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog].
