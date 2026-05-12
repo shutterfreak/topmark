@@ -185,7 +185,7 @@ DOCS_DIR: Final[Path] = Path("docs")
 MKDOCS_CONFIG: Final[Path] = Path("mkdocs.yml")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class Diagnostic:
     """A docs-hygiene diagnostic.
 
