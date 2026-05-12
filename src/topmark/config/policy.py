@@ -18,10 +18,11 @@ Design:
       represent explicit values versus *unset*. This enables non-destructive
       merges and inheritance when composing multiple sources
       (defaults -> user -> project -> CLI).
-    * `Policy` is the fully resolved, immutable runtime view with plain values,
-      so pipeline steps do not branch on `None`.
+    * [`FrozenPolicy`][topmark.config.policy.FrozenPolicy] is the fully resolved,
+      immutable runtime view with plain values, so pipeline steps do not branch
+      on `None`.
     * `MutablePolicy.resolve(base)` fills unset fields from `base` and returns an
-      immutable [`Policy`][topmark.config.policy.Policy]; use it at
+      immutable [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]; use it at
       [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze] time.
 
 TOML mapping:
@@ -72,7 +73,7 @@ class EmptyInsertMode(str, Enum):
     """How TopMark classifies “empty” inputs for header insertion.
 
     The selected mode determines which files count as “empty” when evaluating
-    `Policy.allow_header_in_empty_files`.
+    [`Policy.allow_header_in_empty_files`][topmark.config.policy.FrozenPolicy].
 
     Attributes:
         BYTES_EMPTY: Only true 0-byte files (`FsStatus.EMPTY`).
@@ -89,7 +90,7 @@ class EmptyInsertMode(str, Enum):
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
-class Policy:
+class FrozenPolicy:
     """Immutable, runtime policy used by processing steps.
 
     Attributes:
@@ -139,25 +140,33 @@ class Policy:
             Dictionary containing primitive TOML-serializable values.
 
         Notes:
-            This is an export helper for documentation, machine payloads, and config rendering.
-            Resolved `Policy` instances always emit all fields.
+            This is an export helper for documentation, machine payloads, andconfig rendering.
+            Resolved [`FrozenPolicy`][topmark.config.policy.FrozenPolicy] instances always emit
+            all fields.
         """
         return policy_to_dict(self)
 
 
 @dataclass(kw_only=True, slots=True)
 class MutablePolicy:
-    """Mutable builder for `Policy`, suitable for config loading/merging.
+    """Mutable policy builder suitable for config loading/merging.
 
     This class is merged in a **last-wins** manner when reading multiple config files.
 
     Attributes:
-        header_mutation_mode: See `Policy`. `None` means "inherit".
-        allow_header_in_empty_files: See `Policy`. `None` means "inherit".
-        empty_insert_mode: See `Policy`. `None` means "inherit".
-        render_empty_header_when_no_fields: See `Policy`. `None` means "inherit".
-        allow_reflow: See `Policy`. `None` means "inherit".
-        allow_content_probe: See `Policy`. `None` means "inherit".
+        header_mutation_mode: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
+        allow_header_in_empty_files: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
+        empty_insert_mode: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
+        render_empty_header_when_no_fields:
+            See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
+        allow_reflow: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
+        allow_content_probe: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
     """
 
     header_mutation_mode: HeaderMutationMode | None = None
@@ -168,7 +177,7 @@ class MutablePolicy:
     allow_content_probe: bool | None = None
 
     def merge_with(self, other: MutablePolicy) -> MutablePolicy:
-        """Return a new MutablePolicy by applying ``other`` over ``self`` (last-wins).
+        """Return a new `MutablePolicy` by applying ``other`` over ``self`` (last-wins).
 
         ``None`` fields in ``other`` do not override explicit values in ``self``.
 
@@ -205,7 +214,7 @@ class MutablePolicy:
             ),
         )
 
-    def resolve(self, base: Policy) -> Policy:
+    def resolve(self, base: FrozenPolicy) -> FrozenPolicy:
         """Resolve tri-state fields against a base immutable policy.
 
         Args:
@@ -214,7 +223,7 @@ class MutablePolicy:
         Returns:
             A fully-resolved immutable policy with plain booleans.
         """
-        return Policy(
+        return FrozenPolicy(
             header_mutation_mode=(
                 base.header_mutation_mode
                 if self.header_mutation_mode is None
@@ -241,16 +250,17 @@ class MutablePolicy:
             ),
         )
 
-    def freeze(self) -> Policy:
-        """Freeze to a concrete `Policy` using the built-in policy defaults.
+    def freeze(self) -> FrozenPolicy:
+        """Freeze to a concrete `MutablePolicy` using the built-in policy defaults.
 
         Returns:
             Fully resolved immutable policy.
 
         Notes:
-            This is equivalent to resolving against `Policy()`.
+            This is equivalent to resolving against
+            [`FrozenPolicy()`][topmark.config.policy.FrozenPolicy].
         """
-        return self.resolve(Policy())
+        return self.resolve(FrozenPolicy())
 
     @classmethod
     def from_toml_table(cls, tbl: Mapping[str, object] | None) -> MutablePolicy:
@@ -297,11 +307,11 @@ class MutablePolicy:
         )
 
 
-def policy_to_dict(policy: Policy) -> dict[str, object]:
+def policy_to_dict(policy: FrozenPolicy) -> dict[str, object]:
     """Serialize a resolved or tri-state policy to a TOML-friendly dictionary.
 
     Args:
-        policy: Frozen Policy object.
+        policy: Frozen [`FrozenPolicy`][topmark.config.policy.FrozenPolicy] object.
 
     Returns:
         Dictionary containing all policy fields as TOML-friendly primitives. Enum values are
@@ -320,8 +330,9 @@ def policy_to_dict(policy: Policy) -> dict[str, object]:
 class HasPolicyConfig(Protocol):
     """Read-only view of resolved policy configuration.
 
-    This protocol captures the *minimum* surface required by helpers like `make_policy_registry`
-    and `effective_policy`.
+    This protocol captures the *minimum* surface required by helpers like
+    [`make_policy_registry`][topmark.config.policy.make_policy_registry]
+    and [`effective_frozen_policy`][topmark.config.policy.effective_frozen_policy].
 
     It intentionally avoids importing the concrete
     [`FrozenConfig`][topmark.config.model.FrozenConfig] /
@@ -329,8 +340,9 @@ class HasPolicyConfig(Protocol):
     classes to prevent type-check-time import cycles.
 
     Implementations are expected to expose *resolved* runtime policies:
-      - `policy` is a fully resolved `Policy`
-      - `policy_by_type` maps file-type identifiers to resolved per-type `Policy`
+      - `policy` is a fully resolved [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
+      - `policy_by_type` maps file-type identifiers to resolved per-type
+        [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
 
     Attributes are defined as read-only properties so both immutable
     [`FrozenConfig`][topmark.config.model.FrozenConfig] and mutable
@@ -339,12 +351,12 @@ class HasPolicyConfig(Protocol):
     """
 
     @property
-    def policy(self) -> Policy:
+    def policy(self) -> FrozenPolicy:
         """Resolved global policy."""
         ...
 
     @property
-    def policy_by_type(self) -> Mapping[str, Policy]:
+    def policy_by_type(self) -> Mapping[str, FrozenPolicy]:
         """Mapping of file-type identifiers to resolved per-type policies."""
         ...
 
@@ -355,14 +367,14 @@ class PolicyRegistry:
 
     Instances of this class are derived from a resolved
     [`FrozenConfig`][topmark.config.model.FrozenConfig] and provide constant-time
-    lookup of the effective [`Policy`][topmark.config.policy.Policy] to apply
-    for a given file type.
+    lookup of the effective [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
+    to apply for a given file type.
     """
 
-    global_policy: Policy
-    by_type: Mapping[str, Policy]
+    global_policy: FrozenPolicy
+    by_type: Mapping[str, FrozenPolicy]
 
-    def for_type(self, name: str | None) -> Policy:
+    def for_type(self, name: str | None) -> FrozenPolicy:
         """Return the effective policy for the given file-type name.
 
         Args:
@@ -377,21 +389,23 @@ class PolicyRegistry:
 
 
 def make_policy_registry(config: HasPolicyConfig) -> PolicyRegistry:
-    """Build an immutable PolicyRegistry from a resolved Config-like object."""
+    """Build an immutable `PolicyRegistry` from a resolved Config-like object."""
     return PolicyRegistry(
         global_policy=config.policy,
         by_type=config.policy_by_type,
     )
 
 
-def effective_policy(cfg: HasPolicyConfig, file_type_id: str | None) -> Policy:
+def effective_frozen_policy(cfg: HasPolicyConfig, file_type_id: str | None) -> FrozenPolicy:
     r"""Return the effective policy for a given file type.
 
-    Per-type overrides take precedence over the global policy. If `file_type_id` is `None` or
-    no per-type policy exists for that identifier, the global policy is returned.
+    Per-type overrides take precedence over the global policy. If `file_type_id`
+    is `None` or no per-type policy exists for that identifier, the global policy
+    is returned.
 
-    This helper assumes that both `cfg.policy` and entries in `cfg.policy_by_type` are already
-    fully resolved `Policy` instances (that is, no tri-state inheritance remains at runtime).
+    This helper assumes that both `cfg.policy` and entries in `cfg.policy_by_type`
+    re already fully resolved [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
+    instances (that is, no tri-state inheritance remains at runtime).
 
     Args:
         cfg: Resolved runtime configuration.
@@ -403,7 +417,7 @@ def effective_policy(cfg: HasPolicyConfig, file_type_id: str | None) -> Policy:
     if file_type_id is None:
         return cfg.policy
 
-    override: Policy | None = cfg.policy_by_type.get(file_type_id)
+    override: FrozenPolicy | None = cfg.policy_by_type.get(file_type_id)
     if override is not None:
         return override
     return cfg.policy

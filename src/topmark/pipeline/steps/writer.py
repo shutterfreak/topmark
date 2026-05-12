@@ -61,7 +61,7 @@ from topmark.pipeline.views import UpdatedView
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.policy import Policy
+    from topmark.config.policy import FrozenPolicy
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import UpdatedView
@@ -464,7 +464,7 @@ class WriterStep(BaseStep):
             return
 
         # --- Policy enforcement (centralized + FileType-specific (optional) -----
-        pol: Policy = ctx.get_effective_policy()
+        pol: FrozenPolicy = ctx.get_effective_policy()
 
         # Only gate insert/replace (check mode) — strip/removal is not governed by add/update.
         if (

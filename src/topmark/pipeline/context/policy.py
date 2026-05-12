@@ -11,7 +11,7 @@
 """Policy helpers for interpreting configuration in the pipeline context.
 
 This module centralizes helpers that interpret the effective
-[Policy][topmark.config.policy.Policy] in the context of a single file.
+[FrozenPolicy][topmark.config.policy.FrozenPolicy] in the context of a single file.
 Functions here operate on a
 [ProcessingContext][topmark.pipeline.context.model.ProcessingContext]
 instance to decide whether certain operations (for example, inserting into
@@ -24,8 +24,8 @@ from typing import TYPE_CHECKING
 from typing import Protocol
 
 from topmark.config.policy import EmptyInsertMode
+from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import HeaderMutationMode
-from topmark.config.policy import Policy
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.pipeline.status import ComparisonStatus
@@ -35,7 +35,7 @@ from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
 
 if TYPE_CHECKING:
-    from topmark.config.policy import Policy
+    from topmark.config.policy import FrozenPolicy
     from topmark.pipeline.context.status import ProcessingStatus
 
 
@@ -50,7 +50,7 @@ class PolicyContext(Protocol):
         """Current aggregated pipeline status for this file."""
         ...
 
-    def get_effective_policy(self) -> Policy:
+    def get_effective_policy(self) -> FrozenPolicy:
         """Return the effective policy for this processing context."""
         ...
 
@@ -89,7 +89,8 @@ def is_empty_for_insert(ctx: PolicyContext) -> bool:
     """Return whether this file should be treated as "empty" for *insertion* decisions.
 
     This helper interprets the effective per-type policy setting
-    ``Policy.empty_insert_mode`` and maps it onto the file's observed state.
+    [`FrozenPolicy.empty_insert_mode`][topmark.config.policy.FrozenPolicy]
+    and maps it onto the file's observed state.
 
     The distinction matters because TopMark may need to preserve stable round-trips:
 
@@ -115,7 +116,7 @@ def is_empty_for_insert(ctx: PolicyContext) -> bool:
           `allow_insert_into_empty_like` for that.
         - ``FsStatus.EMPTY`` is always treated as empty, regardless of mode.
     """
-    policy: Policy = ctx.get_effective_policy()
+    policy: FrozenPolicy = ctx.get_effective_policy()
     mode: EmptyInsertMode = policy.empty_insert_mode
     if mode == EmptyInsertMode.BYTES_EMPTY:
         return ctx.status.fs == FsStatus.EMPTY
@@ -186,7 +187,7 @@ def allow_insert_into_empty_like(ctx: PolicyContext) -> bool:
     1) whether the file is considered *empty for insert* (see
        `is_empty_for_insert`), and
     2) whether the effective policy enables insertion into empty files
-       (``Policy.allow_header_in_empty_files``).
+       (``FrozenPolicy.allow_header_in_empty_files``).
 
     Because this helper delegates classification to `is_empty_for_insert`, it
     automatically obeys the configured ``EmptyInsertMode`` (`bytes_empty`,
@@ -205,7 +206,7 @@ def allow_insert_into_empty_like(ctx: PolicyContext) -> bool:
         - Do **not** use it to skip reading/analysis steps; those should be governed by
           filesystem/content feasibility (e.g., unreadable/binary/mixed-newlines).
     """
-    policy: Policy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy | None = ctx.get_effective_policy()
 
     return is_empty_for_insert(ctx) and bool(policy.allow_header_in_empty_files)
 
@@ -224,7 +225,7 @@ def allow_empty_header(ctx: PolicyContext) -> bool:
         `True` if policy allows rendering an empty header when there are no fields,
         `False` otherwise.
     """
-    policy: Policy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy | None = ctx.get_effective_policy()
 
     return policy.render_empty_header_when_no_fields
 
@@ -242,7 +243,7 @@ def allow_content_reflow(ctx: PolicyContext) -> bool:
         bool: True if policy allows reflowing content around the header,
         False otherwise.
     """
-    policy: Policy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy | None = ctx.get_effective_policy()
 
     return policy.allow_reflow
 
@@ -255,7 +256,8 @@ def allow_mixed_line_endings(ctx: PolicyContext) -> bool:
     the project policy has opted into tolerating them.
 
     Policy fields:
-      - If the effective `Policy` defines `ignore_mixed_line_endings` and it is True,
+      - If the effective [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
+        defines `ignore_mixed_line_endings` and it is True,
         we allow proceeding on `MIXED_LINE_ENDINGS`.
 
     Notes:
@@ -275,7 +277,7 @@ def allow_mixed_line_endings(ctx: PolicyContext) -> bool:
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
         return True
 
-    policy: Policy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy | None = ctx.get_effective_policy()
 
     if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
         # Newer policies may provide this flag; default False if absent.
@@ -293,7 +295,8 @@ def allow_bom_before_shebang(ctx: PolicyContext) -> bool:
     and the project policy has opted into tolerating it.
 
     Policy fields:
-      - If the effective `Policy` defines `ignore_bom_before_shebang` and it is True,
+      - If the effective [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
+        defines `ignore_bom_before_shebang` and it is True,
         we allow proceeding on `BOM_BEFORE_SHEBANG`.
 
     Notes:
@@ -313,7 +316,7 @@ def allow_bom_before_shebang(ctx: PolicyContext) -> bool:
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
         return True
 
-    policy: Policy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy | None = ctx.get_effective_policy()
 
     if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
         # Newer policies may provide this flag; default False if absent.
@@ -337,7 +340,7 @@ def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
         - False : policy forbids it (e.g., header_mutation_mode=add_only forbids replace)
         - None  : indeterminate (no clear intent yet)
     """
-    pol: Policy | None = ctx.get_effective_policy()
+    pol: FrozenPolicy | None = ctx.get_effective_policy()
     pol_header_mutation_mode: HeaderMutationMode = pol.header_mutation_mode
 
     if ctx.status.strip != StripStatus.PENDING:

@@ -470,7 +470,8 @@ ______________________________________________________________________
     \[`load_topmark_toml_source()`\][topmark.toml.loaders.load_topmark_toml_source]
   - Mutable (draft) \[`MutableConfig`\][topmark.config.model.MutableConfig]) construction:
     \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config]
-  - Policy evaluation: \[`effective_policy()`\][topmark.config.policy.effective_policy]
+  - Policy evaluation:
+    \[`effective_frozen_policy()`\][topmark.config.policy.effective_frozen_policy]
 - [Usage configuration guide](../usage/configuration.md)
 - [Filtering recipes](../usage/filtering.md)
 - [Policy guide](../usage/policies.md)

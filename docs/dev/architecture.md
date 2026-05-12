@@ -210,8 +210,8 @@ These are represented in the processing context via:
 
 Policy evaluation for insertion now uses the configured
 \[`EmptyInsertMode`\][topmark.config.policy.EmptyInsertMode], which controls which class of "empty"
-files is eligible for insertion when \[`allow_header_in_empty_files`\][topmark.config.policy.Policy]
-is enabled.
+files is eligible for insertion when
+\[`allow_header_in_empty_files`\][topmark.config.policy.FrozenPolicy] is enabled.
 
 The canonical policy helpers live in
 \[`topmark.pipeline.context.policy`\]\[topmark.pipeline.context.policy\]:

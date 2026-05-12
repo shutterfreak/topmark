@@ -60,7 +60,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
-    from topmark.config.policy import Policy
+    from topmark.config.policy import FrozenPolicy
     from topmark.config.policy import PolicyRegistry
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
@@ -215,11 +215,12 @@ class ProcessingContext:
     # View-based properties
     views: Views = field(default_factory=Views)
 
-    def get_effective_policy(self) -> Policy:
+    def get_effective_policy(self) -> FrozenPolicy:
         """Return the effective policy for this processing context.
 
         The effective policy is derived from the global configuration and any
-        file-type-specific overrides via the shared PolicyRegistry. This method
+        file-type-specific overrides via the shared
+        [`PolicyRegistry`][topmark.config.policy.PolicyRegistry]. This method
         does not perform any merging at runtime; all policies are resolved at
         [`MutableConfig.freeze()`][topmark.config.model.MutableConfig.freeze] time.
 

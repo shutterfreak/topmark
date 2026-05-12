@@ -63,8 +63,8 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
 
+from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import MutablePolicy
-from topmark.config.policy import Policy
 from topmark.config.validation import ValidationLogs
 from topmark.core.errors import AmbiguousFileTypeIdentifierError
 from topmark.core.errors import ConfigValidationError
@@ -146,14 +146,14 @@ class FrozenConfig:
         - All entries in ``policy_by_type`` are resolved against the global ``policy`` during
             [`MutableConfig.freeze`][topmark.config.model.MutableConfig.freeze];
             at runtime the pipeline simply selects the appropriate
-            [`Policy`][topmark.config.policy.Policy] via
-            [`topmark.config.policy.effective_policy`][topmark.config.policy.effective_policy]
+            [`FrozenPolicy`][topmark.config.policy.FrozenPolicy] via
+            [`topmark.config.policy.effective_frozen_policy`][topmark.config.policy.effective_frozen_policy]
             without further merging.
     """
 
     # Policy containers
-    policy: Policy
-    policy_by_type: Mapping[str, Policy]  # e.g., {"topmark:python": Policy(...)}
+    policy: FrozenPolicy
+    policy_by_type: Mapping[str, FrozenPolicy]  # e.g., {"topmark:python": FrozenPolicy(...)}
 
     # Provenance
     config_files: tuple[Path | SyntheticConfigSource, ...]
@@ -435,12 +435,12 @@ class MutableConfig:
         self.sanitize()
 
         # Resolve global policy against an all-false base
-        global_policy_frozen: Policy = self.policy.resolve(Policy())
+        global_policy_frozen: FrozenPolicy = self.policy.resolve(FrozenPolicy())
 
         # Resolve per-type policies against the resolved global policy
-        frozen_by_type: dict[str, Policy] = {}
+        frozen_by_type: dict[str, FrozenPolicy] = {}
         for ft, mp in self.policy_by_type.items():
-            resolved: Policy = mp.resolve(global_policy_frozen)
+            resolved: FrozenPolicy = mp.resolve(global_policy_frozen)
             frozen_by_type[ft] = resolved
 
         return FrozenConfig(
