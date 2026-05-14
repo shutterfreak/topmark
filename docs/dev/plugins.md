@@ -18,9 +18,13 @@ TopMark supports extensibility via **plugins** that provide:
 1. **Header processors** (implementations that can detect/insert/update/strip headers for those file
    types).
 
-This page documents the currently supported plugin extension points. For the lower-level registry
-architecture, composed registry views, bindings, overlays, and identity semantics, see
-[Registry model](registry-model.md).
+This page documents the supported plugin extension points for TopMark 1.x.
+
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
+For the lower-level registry architecture, composed registry views, bindings, overlays, and identity
+semantics, see [Registry model](registry-model.md).
 
 See also:
 
@@ -37,14 +41,14 @@ ______________________________________________________________________
 ## Conceptual model
 
 Plugins extend TopMark by contributing file type definitions and, for advanced integrations, runtime
-processor overlays.
+processor overlay registrations.
 
 The detailed registry architecture is documented in [Registry model](registry-model.md). In short:
 
 - file type plugins are loaded through the `topmark.filetypes` entry point group;
 - built-in processors are defined by TopMark's internal binding inventory;
 - advanced processor integrations use runtime overlays;
-- CLI and API execution use the effective composed registry view.
+- CLI and API execution use the effective composed runtime registry view.
 
 Plugin authors should treat qualified file type identifiers, such as `my_plugin:my_lang`, as the
 stable reference once custom namespaces are involved.
@@ -61,10 +65,10 @@ File types are discovered through Python entry points. TopMark loads:
 - **plugin file types** from the entry point group:
   - **Entry point group:** \[`topmark.filetypes`\][topmark.filetypes]
 
-A plugin registers one or more \[`FileType`\][topmark.filetypes.model.FileType] objects via that
-entry point.
+A plugin contributes one or more \[`FileType`\][topmark.filetypes.model.FileType] objects through
+that entry point.
 
-**When loaded:** lazily, when TopMark first needs to resolve file types.
+**When loaded:** lazily, when TopMark first performs file-type resolution.
 
 ______________________________________________________________________
 
@@ -76,13 +80,14 @@ and instantiated when the base processor registry is constructed.
 Advanced integrations and tests may still register additional processor classes at runtime through
 \[`topmark.registry.registry.Registry`\][topmark.registry.registry.Registry] or
 \[`topmark.registry.processors.HeaderProcessorRegistry`\][topmark.registry.processors.HeaderProcessorRegistry].
-These registrations are applied as **overlay-only** changes on top of the internal base registry.
+These registrations are applied as overlay-only mutations layered on top of the immutable internal
+base registry.
 
 ______________________________________________________________________
 
 ## Registration order and runtime overlays
 
-TopMark now uses explicit base registries plus overlay registries:
+TopMark uses explicit base registries plus overlay registries:
 
 - base file types are loaded from built-ins and file-type entry points;
 - base processors are constructed from explicit built-in bindings;
@@ -90,7 +95,7 @@ TopMark now uses explicit base registries plus overlay registries:
   \[`topmark.registry.*`\][topmark.registry].
 
 This means plugin-defined file types must still be available before a processor class is registered
-against them, but the processor side no longer depends on module import order or decorator side
+against them, but processor registration no longer depends on module import order or decorator side
 effects. Path-based file type selection is performed by the shared scoring resolver in
 \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes]. The formal selection and ambiguity
 policy is documented in [`resolution.md`](resolution.md).
@@ -120,7 +125,7 @@ TopMark reserves the namespace `topmark` (the internal constant
 Note: `namespace` is **mandatory** for both file types and processors. The built-in namespace
 `topmark` is reserved for TopMark-provided types.
 
-Internally, TopMark normalizes file type identifiers to canonical qualified keys of the form
+TopMark normalizes file type identifiers to canonical qualified keys of the form
 `<namespace>:<name>`.
 
 TopMark accepts both:
@@ -185,8 +190,9 @@ This avoids repeating the namespace argument and ensures that all
 \[`FileType`\][topmark.filetypes.model.FileType] instances created by the plugin share the correct
 identity.
 
-The factory only **constructs** \[`FileType`\][topmark.filetypes.model.FileType] objects;
-registration still happens when TopMark loads file types through the
+The factory only constructs \[`FileType`\][topmark.filetypes.model.FileType] objects.
+
+Registration still happens when TopMark loads file types through the
 \[`topmark.filetypes`\][topmark.filetypes] entry point group.
 
 ### 2) Register the entry point
@@ -207,8 +213,8 @@ ______________________________________________________________________
 
 ## Writing a HeaderProcessor plugin (advanced)
 
-Header processor plugins are currently an **advanced runtime overlay** feature, not an entry-point
-discovery mechanism.
+Header processor plugins use advanced runtime-overlay registration semantics rather than entry-point
+discovery.
 
 A processor class must define a stable processor identity:
 
@@ -239,8 +245,8 @@ class MyLangHeaderProcessor(HeaderProcessor):
 Registry.register_processor("my_plugin:my_lang", MyLangHeaderProcessor)
 ```
 
-At registration time, TopMark resolves the file type identifier through the composed file type
-registry and then binds the processor to that resolved
+At registration time, TopMark resolves the file type identifier through the composed runtime file
+type registry and then binds the processor to that resolved
 \[`FileType`\][topmark.filetypes.model.FileType] object. Qualified identifiers are recommended
 because a local file type identifier may become ambiguous once multiple namespaces define similarly
 named file types.
@@ -248,8 +254,8 @@ named file types.
 Important:
 
 - file type registration must happen before processor registration;
-- runtime processor registrations are overlay-only and do not mutate the internal built-in base
-  registry;
+- runtime processor registrations are overlay-only and do not mutate immutable built-in base
+  registry data;
 - processor bindings should use canonical qualified file type identifiers for deterministic
   behavior.
 
@@ -270,8 +276,7 @@ A typical advanced integration flow is:
    \[`HeaderProcessorRegistry.register(...)`\][topmark.registry.processors.HeaderProcessorRegistry.register]
    during controlled initialization.
 
-This keeps built-in registry construction deterministic and avoids relying on module-import side
-effects.
+This keeps built-in registry construction deterministic and avoids module-import side effects.
 
 ______________________________________________________________________
 
@@ -279,8 +284,8 @@ ______________________________________________________________________
 
 For most integrations, providing **FileType plugins only** is sufficient.
 
-Header processor plugins are more advanced because they currently rely on runtime overlay
-registration and explicit processor bindings.
+Header processor plugins are more advanced because they rely on runtime overlay registration and
+explicit processor bindings.
 
 Unless you need custom header parsing or formatting logic, prefer defining custom file types that
 reuse existing processors.
@@ -314,7 +319,7 @@ Fix:
 
 ### Duplicate processor registration
 
-TopMark rejects duplicate overlay registrations for the same effective file type binding.
+TopMark rejects duplicate overlay registrations targeting the same effective file type binding.
 
 If you see an error indicating that a processor is already registered for a file type, decide on an
 explicit overlay strategy first, for example:
@@ -327,7 +332,7 @@ ______________________________________________________________________
 
 ## Relevant internal modules
 
-These modules are useful if you are extending TopMark deeply:
+These modules are useful for advanced TopMark integrations and registry extensions:
 
 - \[`topmark.filetypes.instances`\][topmark.filetypes.instances] – base file type discovery
 - \[`topmark.processors.instances`\][topmark.processors.instances] – base processor binding
@@ -342,8 +347,8 @@ These modules are useful if you are extending TopMark deeply:
 - \[`topmark.registry.bindings`\][topmark.registry.bindings] – composed binding registry and overlay
   mutations
 
-These composed registries provide effective views that combine base registrations with runtime
-overlays and removals.
+These composed registries provide effective runtime views that combine base registrations with
+runtime overlays and removals.
 
 ______________________________________________________________________
 
@@ -351,6 +356,8 @@ ______________________________________________________________________
 
 - [`Registry model`](./registry-model.md) — detailed registry layers, bindings, overlays, and
   identifier semantics
+- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical identifier, overlay,
+  applicability, and machine-readable terminology
 - [`Architecture`](./architecture.md) — high-level overview of registries and runtime composition
 - [`registry.md`](../usage/commands/registry.md) — CLI-facing registry inspection commands
-- [`resolution.md`](./resolution.md) — file-type scoring and ambiguity policy
+- [`Resolution model`](./resolution.md) — file-type scoring and ambiguity policy

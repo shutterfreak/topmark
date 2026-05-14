@@ -16,6 +16,20 @@ This document describes key architectural decisions in TopMark that are relevant
 plugin authors, and maintainers. It focuses on *design intent* and *invariants*, not on end-user
 usage.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
+## Canonical architecture invariants
+
+The following architectural contracts are frozen for 1.0:
+
+- CLI, API, presentation, runtime, configuration, registry, and pipeline concerns remain separated.
+- Runtime execution intent is kept separate from layered configuration state.
+- File type identity is normalized to canonical qualified keys.
+- Registry mutation is represented as explicit overlay state.
+- Pipeline execution remains independent from presentation rendering.
+- Machine-readable output remains independent from human-facing TEXT and Markdown output.
+
 ______________________________________________________________________
 
 ## High-level configuration architecture
@@ -44,20 +58,20 @@ flowchart TD
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
     D["Deserialize layered fragment into MutableConfig<br/>defensive value parsing and normalization"]
     E["Merge layered config into mutable draft<br/>apply precedence and overrides"]
-    F["Freeze final Config and validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
+    F["Freeze final FrozenConfig and validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
     G["Runtime layer<br/>apply execution-only options before pipeline"]
 
     A --> B --> C --> D --> E --> F --> G
 ```
 
-Not all TOML-defined values become layered Config fields. Source-local options such as
+Not all TOML-defined values become layered configuration fields. Source-local options such as
 `[config].root` and `strict` are resolved on the TOML side first, then applied to config discovery
-and staged config-loading/preflight validation without participating in layered config merging.
+and staged config-loading validation without participating in layered config merging.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-Whole-source TOML schema validation now happens before layered config deserialization. The staged
-config-loading validation flow is shown in the diagram above. In other words:
+Whole-source TOML schema validation happens before layered config deserialization. The staged
+config-loading validation flow is shown in the diagram above:
 
 - \[`topmark.toml`\][topmark.toml] validates the full TopMark TOML source (including `[config]`,
   `[writer]`, unknown top-level entries, malformed section shapes, and missing known sections)
@@ -76,12 +90,13 @@ The main integration point between TOML resolution and config merging is:
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
 At the architecture level, this keeps public API input shapes separate from the internal mutable
-config-draft machinery used between TOML/config resolution and runtime execution.
+configuration construction machinery used between TOML/config resolution and runtime execution.
 
 See also:
 
 - [`Discovery & Precedence`](../configuration/discovery.md)
 - [`Configuration overview`](../configuration/index.md)
+- [`Configuration schema`](configuration-schema.md)
 
 ______________________________________________________________________
 
@@ -100,7 +115,7 @@ At the architecture level, the important invariants are:
 - advanced integrations and tests may use overlay mutation helpers deliberately.
 
 Detailed registry behavior, including base/overlay composition, caching, invalidation, bindings,
-qualified vs local file type identifiers, plugin integration, and registry CLI inspection, is now
+qualified/local file type identifiers, plugin integration, and registry CLI inspection, is
 documented in [`Registry model`](registry-model.md).
 
 See also:
@@ -175,11 +190,11 @@ Practical consequences:
 
 ______________________________________________________________________
 
-## Policy Resolution (≥ 0.11.0)
+## Policy resolution
 
 TopMark constructs a \[`PolicyRegistry`\][topmark.config.policy.PolicyRegistry] at pipeline
 bootstrap time and resolves runtime policy from **global defaults + per-file-type overrides** before
-policy queries are used by pipeline steps.
+pipeline steps query policy behavior.
 
 See also:
 
@@ -208,7 +223,7 @@ These are represented in the processing context via:
 - `is_effectively_empty`
 - `is_empty_like`
 
-Policy evaluation for insertion now uses the configured
+Policy evaluation for insertion uses the configured
 \[`EmptyInsertMode`\][topmark.config.policy.EmptyInsertMode], which controls which class of "empty"
 files is eligible for insertion when
 \[`allow_header_in_empty_files`\][topmark.config.policy.FrozenPolicy] is enabled.
@@ -289,8 +304,8 @@ Human-facing presentation is split into two intentionally different formats:
 
 Machine-readable formats (`json`, `ndjson`) are separate from both human formats. They are
 schema-driven, never include ANSI styling, and are unaffected by TEXT-only verbosity controls.
-Machine projection depth is controlled by explicit machine-facing options such as `--long`, not by
-`-v`.
+Machine-readable projection depth is controlled by explicit machine-facing options such as `--long`,
+not by `-v` / `--verbose` or `-q` / `--quiet`.
 
 Machine-readable output is also intentionally decoupled from process exit codes. JSON and NDJSON
 payloads serialize structured results, diagnostics, and resolution state; they do not embed the CLI
@@ -378,13 +393,13 @@ TopMark exposes configuration state through both human-readable and machine-read
 
 For [`config check`](../usage/commands/config/check.md), machine-readable output reports effective
 strictness under the key `strict`, reflecting TOML-resolved strictness plus any CLI/API override.
-This strictness applies across staged config-loading/preflight validation: TOML-source diagnostics,
-merged-config diagnostics, and runtime-applicability diagnostics. Machine-readable output continues
-to expose the flattened compatibility diagnostics view derived from those staged validation logs.
+This strictness applies across staged config-loading validation: TOML-source diagnostics,
+merged-config diagnostics, and runtime-applicability diagnostics. Machine-readable output exposes
+the flattened compatibility diagnostics view derived from those staged validation logs.
 
-For 1.0, this flattened compatibility form is the accepted final machine contract for config/TOML
+For 1.0, this flattened compatibility form is the stable machine-readable contract for config/TOML
 validation diagnostics. Stage-local validation structure remains internal and is not serialized in
-machine-readable formats; the stable emitted diagnostic entry shape remains `{level, message}`.
+machine-readable formats; the emitted diagnostic entry shape remains `{level, message}`.
 
 In machine-readable formats, [`config defaults`](../usage/commands/config/defaults.md) and
 [`config init`](../usage/commands/config/init.md) share the same underlying configuration snapshot,
@@ -394,9 +409,9 @@ The same separation applies to pipeline and registry output: TEXT output may use
 verbosity, Markdown output remains document-oriented, and JSON/NDJSON output remains the stable
 programmatic interface.
 
-More generally, TopMark now treats staged validation logs as the sole internal representation of
-config-validation diagnostics. For 1.0, staged validation remains primarily internal, and flattening
-is performed only at exception, presentation, and machine-readable output boundaries.
+More generally, TopMark treats staged validation logs as the internal representation of
+config-validation diagnostics. For 1.0, staged validation remains internal, and flattening is
+performed only at exception, presentation, machine-readable output, and API boundaries.
 
 ______________________________________________________________________
 
@@ -410,6 +425,8 @@ machine-facing interfaces.
   step responsibilities
 - [`Pipelines (Reference)`](./pipelines-reference.md) — curated entry point into the generated
   internal API reference for pipelines and steps
+- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical definitions for stable
+  developer documentation terms
 - [`Registry model`](./registry-model.md) — registry layers, bindings, overlays, and identifier
   semantics
 - [`Header placement rules`](../usage/header-placement.md) — user-facing placement behavior and
@@ -421,6 +438,7 @@ machine-facing interfaces.
 - [`Machine-readable output schema`](./machine-output.md) — JSON / NDJSON envelope and payload
   shapes
 - [`Configuration schema`](./configuration-schema.md) — documented TOML schema and key placement
+  rules
 
 Registry design is documented in [`Registry model`](registry-model.md) because it underpins test
 isolation, plugin extensibility, file type identifier semantics, and API stability.
@@ -428,5 +446,5 @@ isolation, plugin extensibility, file type identifier semantics, and API stabili
 ______________________________________________________________________
 
 **Summary:** TopMark keeps user-facing behavior deterministic by separating configuration loading,
-registry composition, resolver decisions, policy resolution, pipeline execution, and presentation
-boundaries into explicit layers.
+registry composition, resolver decisions, policy resolution, pipeline execution, presentation, and
+machine-readable output into explicit layers.

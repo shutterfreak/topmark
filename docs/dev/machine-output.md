@@ -10,9 +10,9 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Machine-readable output schema (JSON & NDJSON)
+# Machine-readable output
 
-This document describes the **machine-stable** JSON and NDJSON formats emitted by TopMark.
+This document describes the stable machine-readable JSON and NDJSON formats emitted by TopMark.
 
 It is intended for integrators and tooling authors who consume TopMark programmatically.
 
@@ -35,6 +35,9 @@ individual commands (for example, [`check`](../usage/commands/check.md),
 [`strip`](../usage/commands/strip.md), and [`probe`](../usage/commands/probe.md)) provide
 task-oriented examples consistent with this schema.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 See also:
 
 - [CLI overview](../usage/cli.md)
@@ -43,6 +46,8 @@ See also:
 - [Configuration](../usage/configuration.md)
 - [Filtering](../usage/filtering.md)
 - [Registry model](registry-model.md)
+- [Machine-readable format conventions](machine-formats.md)
+- [Terminology and Canonical Vocabulary](../terminology.md)
 
 ## Output formats
 
@@ -55,7 +60,7 @@ TopMark exposes four `--output-format` values:
   - `json`: a single JSON document per invocation.
   - `ndjson`: a newline-delimited JSON stream.
 
-The schemas below only apply to **`json`** and **`ndjson`**.
+The schemas below apply only to **`json`** and **`ndjson`**.
 
 Notes:
 
@@ -93,7 +98,7 @@ ______________________________________________________________________
 
 ### MetaPayload
 
-All machine-readable output include a small metadata block, either:
+All machine-readable outputs include a small metadata block, either:
 
 - as the top-level `meta` key in JSON documents, or
 - as the top-level `meta` key in every NDJSON record.
@@ -150,8 +155,8 @@ Example:
 {"kind":"config","meta":{...},"config":{...}}
 ```
 
-Consumers should switch on the `kind` field rather than relying on ordering, though TopMark does
-emit a stable prefix for some command families (see below).
+Consumers should switch on the `kind` field rather than relying on ordering. Some command families
+emit a stable prefix, as documented below.
 
 Shared record construction and envelope serialization helpers live under
 \[`topmark.core.machine`\][topmark.core.machine]. Domain-specific payload builders and record kinds
@@ -188,13 +193,12 @@ The machine-readable output naming audit for 1.0 adopts the following convention
   - `detail_level` is emitted only by command families whose machine-readable output exposes a brief
     vs long projection
 
-These conventions are considered frozen for 1.0 unless a final pre-release audit identifies a
-concrete naming defect worth correcting before release.
+These conventions are frozen for 1.0 unless a final pre-release audit identifies a concrete naming
+defect worth correcting before release.
 
 ### File type identity fields
 
-Machine-readable output uses the same canonical identifier model as the runtime registry and
-resolver.
+Machine-readable output uses the same canonical identity model as the runtime registry and resolver.
 
 When a file type identity is present, payloads expose:
 
@@ -243,7 +247,8 @@ formats expose the same resolution evidence used by the human-facing probe rende
 ```
 
 - `meta`: small metadata block, including tool name and TopMark version.
-- `config`: snapshot of the effective config used for file filtering and resolution policy.
+- `config`: snapshot of the effective runtime configuration used for file filtering and resolution
+  policy.
 - `config_diagnostics`: full diagnostics payload including counts and the list of config
   diagnostics.
 - `probes`: one resolution probe payload per probed path, including explicit inputs filtered before
@@ -417,8 +422,8 @@ ______________________________________________________________________
 Processing commands produce either **detail** output (per-file results) or **summary** output
 (bucket counts), depending on whether the CLI is in `--summary` mode.
 
-Processing machine-readable output is unaffected by TEXT verbosity or quiet mode; those flags only
-influence human TEXT output.
+Processing machine-readable output is unaffected by TEXT verbosity or quiet mode; those flags affect
+only human TEXT output.
 
 ### JSON schema (detail mode)
 
@@ -436,7 +441,7 @@ Detail mode corresponds to `summary_mode = false`.
 ```
 
 - `meta`: small metadata block, including tool name and TopMark version.
-- `config`: snapshot of the effective config as emitted by
+- `config`: snapshot of the effective runtime configuration as emitted by
   \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
 - `config_diagnostics`: full diagnostics payload including counts and the list of config diagnostics
   as emitted by
@@ -574,7 +579,8 @@ ______________________________________________________________________
 ## ConfigPayload
 
 \[`ConfigPayload`\][topmark.config.machine.schemas] is a JSON-safe representation of the effective
-\[`FrozenConfig`\][topmark.config.model.FrozenConfig], as produced by
+runtime configuration snapshot, derived from \[`FrozenConfig`\][topmark.config.model.FrozenConfig]
+and produced by
 \[`topmark.config.machine.payloads.build_config_payload`\][topmark.config.machine.payloads.build_config_payload].
 
 High-level structure (keys may be extended over time):
@@ -608,8 +614,8 @@ ______________________________________________________________________
 
 ## ConfigDiagnosticsPayload
 
-\[`ConfigDiagnosticsPayload`\][topmark.config.machine.schemas.ConfigPayload] summarizes the
-flattened compatibility view derived from staged config-validation logs.
+\[`ConfigDiagnosticsPayload`\][topmark.config.machine.schemas.ConfigDiagnosticsPayload] summarizes
+the flattened compatibility view derived from staged validation logs.
 
 Diagnostics may include runtime-applicability warnings for unknown, malformed, or ambiguous file
 type identifiers encountered during configuration sanitation.
@@ -620,8 +626,9 @@ These diagnostics may originate from staged validation logs for:
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
-For 1.0, the machine contract for config-validation diagnostics is this flattened compatibility
-shape. Stage-local validation structure remains internal and is not serialized directly.
+For 1.0, the machine-readable contract for config-validation diagnostics is this flattened
+compatibility shape. Stage-local validation structure remains internal and is not serialized
+directly.
 
 JSON shape:
 
@@ -673,21 +680,21 @@ See:
 
 ______________________________________________________________________
 
-## Config snapshot commands ([`config dump`](../usage/commands/config/dump.md), [`config defaults`](../usage/commands/config/defaults.md), [`config init`](../usage/commands/config/init.md))
+## Configuration snapshot commands ([`config dump`](../usage/commands/config/dump.md), [`config defaults`](../usage/commands/config/defaults.md), [`config init`](../usage/commands/config/init.md))
 
-These commands produce a config snapshot without running the processing pipeline.
+These commands produce a runtime configuration snapshot without running the processing pipeline.
 
 Notes:
 
-- [`config dump`](../usage/commands/config/dump.md) emits the resolved config snapshot after
-  discovery and merge.
+- [`config dump`](../usage/commands/config/dump.md) emits the resolved runtime configuration
+  snapshot after discovery and merge.
 - [`config dump --show-layers`](../usage/commands/config/dump.md) additionally emits a
-  machine-readable `config_provenance` payload before the final flattened config snapshot.
-- [`config defaults`](../usage/commands/config/defaults.md) emits the built-in default configuration
-  snapshot.
-- [`config init`](../usage/commands/config/init.md) emits the same built-in default configuration
-  snapshot in machine-readable formats, even though its human-facing output is the bundled example
-  TopMark TOML resource with comments.
+  machine-readable `config_provenance` payload before the final flattened configuration snapshot.
+- [`config defaults`](../usage/commands/config/defaults.md) emits the built-in default runtime
+  configuration snapshot.
+- [`config init`](../usage/commands/config/init.md) emits the same built-in default runtime
+  configuration snapshot in machine-readable formats, even though its human-facing output is the
+  bundled example TopMark TOML resource with comments.
 
 Machine-readable output for these commands is unaffected by TEXT verbosity or quiet mode.
 
@@ -795,8 +802,8 @@ ______________________________________________________________________
 
 ## [`topmark config check`](../usage/commands/config/check.md)
 
-This command validates configuration and emits the resolved config snapshot, configuration
-diagnostics, and a `config_check` status payload.
+This command validates configuration and emits the resolved runtime configuration snapshot,
+configuration diagnostics, and a `config_check` status payload.
 
 ### JSON shape for [`config check`](../usage/commands/config/check.md)
 
@@ -814,7 +821,7 @@ diagnostics, and a `config_check` status payload.
 }
 ```
 
-- `config`: resolved configuration snapshot.
+- `config`: resolved runtime configuration snapshot.
 - `config_diagnostics`: full diagnostics payload, including counts and the list of individual config
   diagnostics.
 - `config_check`: command-status payload containing:
@@ -825,10 +832,10 @@ diagnostics, and a `config_check` status payload.
 
 The `strict` field reflects the **effective validation strictness** used for the run. It is derived
 from TOML source configuration (`[config].strict`) and may be overridden by CLI or API inputs. This
-strictness is evaluated across staged config-loading/preflight validation, while
-`config_diagnostics` remains the flattened compatibility view exposed in machine-readable output.
+strictness is evaluated across staged config-loading validation, while `config_diagnostics` remains
+the flattened compatibility view exposed in machine-readable output.
 
-For 1.0, this is the explicit contract decision: staged validation remains primarily internal, and
+For 1.0, this is the explicit contract decision: staged validation remains internal, and
 machine-readable output serializes only the flattened compatibility diagnostics surface.
 
 Machine-readable output for [`config check`](../usage/commands/config/check.md) is unaffected by
@@ -1098,8 +1105,8 @@ ______________________________________________________________________
 
 ## Backwards compatibility and evolution
 
-TopMark’s machine-readable output schema is part of its integration surface and may change between
-pre-1.0 releases.
+TopMark’s machine-readable output schema is part of its integration surface. For 1.0, documented
+JSON and NDJSON shapes are treated as stable machine-readable contracts.
 
 Consumers should:
 
@@ -1108,9 +1115,9 @@ Consumers should:
 - Rely on `kind` for NDJSON.
 - Treat unknown fields as optional/ignorable.
 - Prefer parsing and schema-tolerant logic over strict string matching.
-- Assume additive fields may appear over time.
+- Assume additive fields may appear over time within the 1.x compatibility model.
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names.
 
-Breaking changes should be signaled via Conventional Commits (using the `!` marker) and documented
-in the changelog.
+Breaking machine-readable output changes should be signaled via Conventional Commits (using the `!`
+marker) and documented in the changelog.

@@ -10,19 +10,17 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Configuration: Discovery, Precedence & Policy
+# Configuration discovery, precedence, and policy
 
-TopMark merges configuration from multiple sources with **clear precedence** and now supports
-**policy-based control** over header insertion and updates.
+TopMark merges configuration from multiple sources with clear precedence and supports policy-based
+control over header insertion and updates.
 
-TopMark now distinguishes clearly between:
+TopMark distinguishes between:
 
-- **whole-source TOML validation** (\[`topmark.toml`\][topmark.toml]), which validates unknown
-  sections/keys, malformed section shapes, and emits INFO diagnostics for missing known sections per
-  TOML source
-- **layered config deserialization and merge** (\[`topmark.config`\][topmark.config]), which
-  consumes only the validated layered fragment and performs value parsing, normalization, and merge
-  semantics
+- whole-source TOML validation, which validates unknown sections/keys, malformed section shapes, and
+  emits INFO diagnostics for missing known sections per TOML source
+- layered configuration deserialization and merge, which consumes only the validated layered
+  fragment and performs value parsing, normalization, and merge semantics
 
 ______________________________________________________________________
 
@@ -31,7 +29,7 @@ ______________________________________________________________________
 Configuration is discovered as follows (lowest → highest precedence):
 
 1. **Built-in defaults**\
-   Builtin runtime defaults.
+   Built-in runtime defaults.
 
 1. **User config**
 
@@ -72,11 +70,12 @@ and merge process is exposed as a **layered provenance view**. Each layer corres
 sources described above (defaults, user config, project configs, `--config`, CLI) and includes the
 original source-local TOML fragment.
 
-This layered view is inspection-oriented and does not change merge semantics; it simply makes the
-effective precedence and contributions of each layer explicit. The stored TOML fragments correspond
-to the source-local TOML view after TOML-layer validation. TOML-layer diagnostics may therefore
-already distinguish unknown entries, malformed-present sections, and missing known sections before
-layered config merge begins.
+This layered view is inspection-oriented and does not change merge semantics; it makes the effective
+precedence and contributions of each layer explicit.
+
+The stored TOML fragments correspond to the source-local TOML view after TOML-layer validation.
+TOML-layer diagnostics may therefore already distinguish unknown entries, malformed-present
+sections, and missing known sections before layered configuration merge begins.
 
 ### Summary table
 
@@ -107,7 +106,7 @@ ______________________________________________________________________
 ## Merge semantics overview
 
 The following tables describe how individual configuration fields behave when multiple config layers
-apply. The distinction between configuration and runtime settings is important:
+apply. The distinction between layered configuration and runtime overlays is important:
 
 - [**Layered configuration settings**](#layered-configuration-settings) participate in layered
   merging across config files.
@@ -116,20 +115,23 @@ apply. The distinction between configuration and runtime settings is important:
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
-At this configuration layer, all override intent is expressed as plain mapping data. Internal typed
-override objects are introduced later during CLI/API orchestration and are not part of the public
-configuration surface.
+At this configuration layer, all override intent is expressed as plain mapping data.
+
+Internal typed runtime override objects are introduced later during CLI/API orchestration and are
+not part of the public configuration surface.
 
 ### Layered configuration settings
 
 The following settings are defined in configuration files and participate in layered merging across
-config scopes. These fields determine how TopMark behaves for a given file and participate in
-layered config merging.
+configuration scopes.
+
+These fields determine how TopMark behaves for a given file and participate in layered configuration
+merging.
 
 | Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                                                             |
 | ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                                                           |
-| Diagnostics       | `validation_logs`                                  | Stage-aware append                                     | Preserve staged logs                 | Staged validation logs accumulate per validation stage; flattening is performed only at reporting and output boundaries.                          |
+| Diagnostics       | `validation_logs`                                  | Stage-aware append                                     | Preserve staged logs                 | Staged validation logs accumulate per validation stage; flattening is performed only at reporting, API, and machine-readable output boundaries.   |
 | Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                                                           |
 | Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                                                                    |
 | Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                                                               |
@@ -160,26 +162,24 @@ config merging. Instead, they are resolved once during TOML source discovery and
 layered merging.
 
 These TOML-source-local options are still validated as part of whole-source TOML loading, but they
-do not become layered Config fields.
+do not become layered configuration fields.
 
-In TopMark's current layered TOML → Config → Runtime model, `strict` controls staged config-loading
+In TopMark's layered TOML → FrozenConfig → runtime model, `strict` controls staged config-loading
 validation.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-TopMark evaluates configuration validity across staged config-loading/preflight diagnostics:
+TopMark evaluates configuration validity across staged config-loading diagnostics:
 
 - TOML-source diagnostics
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
-For 1.0, this staged form remains internal. Reporting and CLI, API, and machine-readable output
+For 1.0, this staged form remains internal. Reporting, API, and machine-readable output expose only
+the flattened compatibility diagnostics contract, using the stable entry shape `{level, message}`
+where applicable.
 
-expose only the flattened compatibility diagnostics contract (stable entry shape `{level, message}`
-
-where applicable).
-
-Currently, this includes:
+This includes:
 
 | Field    | Description                                                                           |
 | -------- | ------------------------------------------------------------------------------------- |
@@ -188,9 +188,9 @@ Currently, this includes:
 Key properties:
 
 - These values are resolved from TOML sources after TOML-layer validation and before building the
-  layered config draft.
-- They are **not part of \[`FrozenConfig`\][topmark.config.model.FrozenConfig] /
-  \[`MutableConfig`\][topmark.config.model.MutableConfig] merge semantics**.
+  mutable layered configuration state.
+- They are not part of \[`FrozenConfig`\][topmark.config.model.FrozenConfig] /
+  \[`MutableConfig`\][topmark.config.model.MutableConfig] merge semantics.
 - Effective validity is evaluated across the staged validation logs rather than a single
   undifferentiated diagnostic pool.
 - Effective strictness is determined as:
@@ -216,16 +216,16 @@ This distinction is also visible in layered provenance output:
 - In machine-readable output, the same validated source-local fragments are exposed under
   `config_provenance.layers[].toml`.
 
-This enables strict config validation for the current project scope, causing warnings to be treated
-as errors during config checking. In the current implementation, this strictness applies to staged
-config-loading/preflight validation as a whole, not only to TOML parsing in isolation.
+This enables strict configuration validation for the current project scope, causing warnings to be
+treated as errors during configuration checking. This strictness applies to staged config-loading
+validation as a whole, not only to TOML parsing in isolation.
 
 For the full generated reference configuration document, see
 [Example TOML document](./generated/example-config.md).
 
 File type identifiers in configuration may use either local identifiers such as `python` or
 canonical qualified identifiers such as `topmark:python`. TopMark normalizes these identifiers to
-qualified keys during configuration freeze. See
+canonical qualified keys during configuration normalization. See
 [Usage configuration](../usage/configuration.md#file-type-identifiers) for the public contract.
 
 ### Reading the tables
@@ -235,7 +235,7 @@ The tables distinguish between **current** behavior and **recommended long-term*
 - **Current merge behavior** describes how
   \[`MutableConfig.merge_with()`\][topmark.config.model.MutableConfig.merge_with] behaves today.
 - **Recommended long-term behavior** describes the more explicit layered mental model TopMark is
-  moving toward as config provenance and per-path effective configs evolve.
+  moving toward as configuration provenance and per-path effective runtime configuration evolve.
 
 In practice, this means TopMark is converging toward the following rule of thumb:
 
@@ -390,15 +390,16 @@ filesystem states, and other non-mutable conditions are not made mutable by thes
 | `allow_reflow`                       | Allow content reflow (may break idempotence)                                                                                                                                         |
 | `allow_content_probe`                | Allow resolver to inspect file contents for type detection                                                                                                                           |
 
-`header_mutation_mode` applies only to [`check`](../usage/commands/check.md). It affects dry-run
-reporting, apply behavior, API result views, and outcome bucketing. It does not apply to
-[`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety gates
-still take precedence: malformed headers, unreadable files, unsupported files, blocked filesystem
-states, and other non-mutable conditions are not made mutable by this policy.
+`header_mutation_mode` applies only to the [`check`](../usage/commands/check.md) pipeline. It
+affects dry-run reporting, apply behavior, API result views, and outcome bucketing.
+
+It does not apply to [`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md),
+and safety gates still take precedence: malformed headers, unreadable files, unsupported files,
+blocked filesystem states, and other non-mutable conditions are not made mutable by this policy.
 
 ______________________________________________________________________
 
-## Gatekeeping & Pipeline
+## Gatekeeping and pipeline
 
 Each pipeline step (\[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep],
 \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep],
@@ -432,7 +433,7 @@ ______________________________________________________________________
 Run with `-v` or `--verbose` to increase **TEXT output** detail and observe:
 
 - Discovery anchor and workspace base
-- Config chain (root → current)
+- Configuration chain (root → current)
 - Normalization of pattern-file paths
 - Active policy and per-file-type overrides
 - Canonical file type identifiers used by filters and policy lookup
@@ -458,7 +459,7 @@ Now, even an empty `__init__.py` or `placeholder.py` can receive a header.
 
 ______________________________________________________________________
 
-## See Also
+## See also
 
 - [Example TOML document](./generated/example-config.md) for the generated reference configuration
   used by `topmark config init` (rendered from the bundled example TOML resource
@@ -468,7 +469,7 @@ ______________________________________________________________________
     \[`resolve_topmark_toml_sources()`\][topmark.toml.resolution.resolve_topmark_toml_sources]
   - TOML source loading and validation:
     \[`load_topmark_toml_source()`\][topmark.toml.loaders.load_topmark_toml_source]
-  - Mutable (draft) \[`MutableConfig`\][topmark.config.model.MutableConfig]) construction:
+  - Mutable configuration construction:
     \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config]
   - Policy evaluation:
     \[`effective_frozen_policy()`\][topmark.config.policy.effective_frozen_policy]
@@ -476,4 +477,4 @@ ______________________________________________________________________
 - [Filtering recipes](../usage/filtering.md)
 - [Policy guide](../usage/policies.md)
 - [CLI overview](../usage/cli.md)
-- Related doc: `README.md`
+- [Machine-readable output](../dev/machine-output.md)

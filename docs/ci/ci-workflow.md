@@ -10,12 +10,15 @@ topmark:header:start
 topmark:header:end
 -->
 
-# CI Workflow
+# CI workflow
 
 This page documents `.github/workflows/ci.yml`.
 
 The CI workflow is TopMark's primary source-tree validation workflow. It validates pull requests,
 pushes to `main`, and version-tag pushes before release publication consumes CI-built artifacts.
+
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
 
 ## Purpose
 
@@ -25,11 +28,11 @@ behavior, and public API stability.
 
 The workflow also builds release artifacts on version-tag pushes. This is intentional: release
 artifacts are built in the unprivileged CI workflow and later consumed by the privileged release
-workflow, so the release workflow does not need to rebuild the project from repository code.
+workflow, so the release workflow does not rebuild the project from repository source code.
 
 ______________________________________________________________________
 
-## Trigger Conditions
+## Trigger conditions
 
 | Trigger         | When it runs                                                                                           | Purpose                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
@@ -46,7 +49,7 @@ release-artifact path after the required validation jobs succeed.
 
 ______________________________________________________________________
 
-## Permissions and Trust Boundary
+## Permissions and trust boundary
 
 The workflow uses read-only repository permissions by default:
 
@@ -65,16 +68,16 @@ The trust boundary is intentional:
 - The privileged release workflow later downloads, verifies, and publishes those artifacts instead
   of rebuilding them.
 
-This separation keeps artifact production and package publication in different security contexts.
+This separation keeps artifact production and package publication in separate trust boundaries.
 
 Some setup logic is shared through the local composite action
 `.github/actions/setup-python-nox/action.yml`, while other jobs keep explicit setup steps where
 their caching or environment needs differ. This limited duplication is acceptable because it keeps
-job behavior and trust boundaries visible.
+job behavior and trust boundaries explicit.
 
 ______________________________________________________________________
 
-## Jobs and Validation Scope
+## Jobs and validation scope
 
 | Job                 | Purpose                                                               | Main tools                                 |
 | ------------------- | --------------------------------------------------------------------- | ------------------------------------------ |
@@ -89,11 +92,12 @@ ______________________________________________________________________
 | `release-artifacts` | Build and upload release artifacts for version tags                   | `uv build`, `actions/upload-artifact`      |
 
 Most jobs delegate validation to nox sessions so local development and CI share the same validation
-contracts. The test matrix runs on Python 3.10 through 3.14 with `fail-fast` disabled so failures on
-one Python version do not hide failures on others.
+contracts and execution semantics. The test matrix runs on Python 3.10 through 3.14 with `fail-fast`
+disabled so failures on one Python version do not hide failures on others.
 
 The API snapshot check is pull-request-only and runs when Python-relevant files change. It is a fast
-guardrail for unexpected public API changes, not a replacement for the full test matrix.
+guardrail for unexpected stable public API surface changes, not a replacement for the full test
+matrix.
 
 Documentation integrity is validated at multiple levels:
 
@@ -101,12 +105,12 @@ Documentation integrity is validated at multiple levels:
 - the `links` job validates links in source Markdown files;
 - the `links-site` job validates links in the rendered site, including generated API pages.
 
-Generated API pages are only visible after the site is built, so source-only link checks cannot
+Generated API pages are visible only after the site is built, so source-only link checks cannot
 fully replace the built-site link check.
 
 ______________________________________________________________________
 
-## Artifact Handling
+## Artifact handling
 
 The CI workflow produces release artifacts only for tag pushes matching `v*`.
 
@@ -121,13 +125,13 @@ On a version-tag push, the `release-artifacts` job:
 The release workflow consumes those uploaded artifacts after validating the triggering CI run and
 tag context. CI does not publish the package itself.
 
-This artifact handoff is part of the release security model. Artifact creation happens where
+This artifact handoff is part of the release trust-boundary model. Artifact creation happens where
 repository code is already expected to run; publication happens later in a privileged workflow that
-does not rebuild the project.
+does not rebuild the project from repository source code.
 
 ______________________________________________________________________
 
-## Local Reproduction
+## Local reproduction
 
 The closest local equivalents are the nox sessions used by CI:
 
@@ -158,15 +162,16 @@ Build release artifacts locally with:
 uv build
 ```
 
-Local commands can reproduce the validation logic, but they do not reproduce GitHub event context,
-pull-request path filtering, artifact upload behavior, or the downstream release workflow handoff.
+Local commands can reproduce most validation behavior, but they do not reproduce GitHub event
+context, pull-request path filtering, artifact-upload behavior, or downstream release-workflow
+handoff semantics.
 
 ______________________________________________________________________
 
-## Maintenance Notes
+## Maintenance notes
 
-Keep the CI workflow explicit enough that contributors can understand which contract failed from the
-job name and log output.
+Keep the CI workflow explicit enough that contributors can determine which validation contract
+failed from the job name and log output.
 
 When editing this workflow:
 
@@ -182,6 +187,6 @@ to detect drift between workflow files and local composite actions.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 {% include-markdown "\_snippets/ci/related-pages.md" %}

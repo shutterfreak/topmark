@@ -3,7 +3,7 @@ topmark:header:start
 
   project      : TopMark
   file         : terminology.md
-  file_relpath : docs/dev/terminology.md
+  file_relpath : docs/terminology.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
@@ -13,36 +13,44 @@ topmark:header:end
 # Terminology and Canonical Vocabulary
 
 This page defines the canonical terminology used throughout the TopMark documentation,
-machine-readable output contracts, CLI help, and public API documentation.
+machine-readable compatibility contracts, CLI help, and public API surfaces.
 
-The goal is to ensure consistent wording across architecture, configuration, pipeline, registry,
-resolution, CLI, and machine-readable output documentation.
+The goal is to ensure stable and consistent terminology across architecture, configuration,
+pipelines, registry behavior, resolution, CLI semantics, runtime policy, and machine-readable
+documentation.
 
 ______________________________________________________________________
 
 ## Stability terminology
 
+### Compatibility contract
+
+The documented behavior that TopMark guarantees to preserve across compatible releases.
+
 ### Stable
 
-Supported public behavior that is expected to remain compatible across the 1.x series unless
+Supported public behavior expected to remain compatible across the 1.x release series unless
 explicitly documented otherwise.
 
 ### Frozen
 
-Behavior or terminology considered finalized for the 1.0 release cycle.
+Behavior, terminology, or compatibility contracts considered finalized for the 1.0 release cycle.
 
 “Frozen” refers to release-contract stabilization rather than long-term immutability.
 
 > [!NOTE]
 >
 > In API and runtime contexts, “frozen” may additionally refer to immutable runtime objects such as
-> frozen dataclasses or immutable snapshots.
+> frozen dataclasses, immutable snapshots, or frozen runtime state.
 
 ### Internal
 
-Implementation details that are not part of the supported public compatibility contract.
+Implementation details that are intentionally excluded from the supported public compatibility
+contract.
 
-Internal APIs, helpers, DTOs, and modules may change without notice.
+> [!NOTE]
+>
+> Internal APIs, helpers, DTOs, and modules may change without notice.
 
 ### Deferred
 
@@ -54,7 +62,7 @@ Work intentionally scoped beyond the 1.0 release.
 
 ### Experimental
 
-Behavior or APIs intentionally excluded from stability guarantees.
+Behavior or APIs intentionally excluded from compatibility guarantees.
 
 ______________________________________________________________________
 
@@ -62,22 +70,23 @@ ______________________________________________________________________
 
 ### File type
 
-A structured definition describing how TopMark recognizes and classifies a file.
+A structured definition describing how TopMark recognizes, classifies, and binds processing behavior
+to a file through a [binding](#binding).
 
-Represented by `FileType`.
+Represented by \[`FileType`\][topmark.filetypes.model.FileType].
 
 ### Header processor
 
-A component that detects, renders, inserts, updates, compares, or strips headers for one or more
-file types.
+A component responsible for detecting, rendering, inserting, updating, comparing, or stripping
+headers for one or more file types.
 
-Represented by `HeaderProcessor`.
+Represented by \[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor].
 
 ### Binding
 
 An explicit relationship between a file type and a header processor.
 
-Bindings are managed separately from file type and processor registration.
+Bindings are resolved independently from file type and processor registration.
 
 ### Qualified key
 
@@ -112,7 +121,7 @@ python
 ### Canonical identity
 
 The normalized qualified-key representation used internally for comparison, storage,
-machine-readable output, and runtime policy lookup.
+machine-readable output, filtering, runtime policy lookup, and registry resolution.
 
 ### Namespace
 
@@ -132,16 +141,17 @@ The process of selecting the most appropriate file type for a path or input.
 
 ### Probe
 
-A read-only diagnostic operation that exposes resolution candidates, scores, filtering behavior, and
+A read-only diagnostic operation exposing resolution candidates, scores, filtering behavior, and
 selected bindings.
 
 > [!NOTE]
 >
 > Probe does not perform header mutation, planning, comparison, or writing.
 
-### Resolver
+### Resolution engine
 
-The runtime component responsible for mapping inputs to file types and processors.
+The runtime component responsible for mapping inputs to file types, processor bindings, and runtime
+resolution outcomes.
 
 ### Ambiguity
 
@@ -157,12 +167,22 @@ ______________________________________________________________________
 
 ### Layered configuration
 
-The merged configuration state derived from one or more TOML configuration sources.
+The merged runtime configuration state derived from one or more TOML configuration sources.
 
 ### Runtime overlay
 
-Runtime-only execution behavior applied after layered configuration resolution without mutating the
-underlying layered configuration state.
+Runtime-only behavior applied after layered configuration resolution without mutating the underlying
+layered configuration state.
+
+### Runtime configuration
+
+The immutable resolved configuration state consumed by runtime execution, pipelines, and policy
+evaluation.
+
+### Runtime policy evaluation
+
+The process of applying layered configuration, runtime overlays, applicability rules, and
+file-type-specific policy to runtime execution behavior.
 
 ### RunOptions
 
@@ -182,7 +202,7 @@ Example:
 ### Runtime-facing TOML section
 
 A TOML section preserved in effective configuration output while resolved outside layered
-configuration merging.
+configuration merging semantics.
 
 Example:
 
@@ -192,7 +212,8 @@ Example:
 
 ### Effective configuration
 
-The fully resolved configuration applicable to a specific path or execution context.
+The fully resolved runtime configuration applicable to a specific path, command invocation, or
+execution context.
 
 ______________________________________________________________________
 
@@ -200,7 +221,7 @@ ______________________________________________________________________
 
 ### Pipeline
 
-An ordered sequence of processing steps implementing a specific TopMark execution intent.
+An ordered sequence of processing steps implementing a specific runtime execution intent.
 
 ### Step
 
@@ -208,7 +229,7 @@ A single-responsibility processing unit within a pipeline.
 
 ### Preview mode
 
-A non-mutating execution mode that reports intended changes without writing files.
+A non-mutating runtime execution mode that reports intended changes without writing files.
 
 ### Apply mode
 
@@ -224,7 +245,7 @@ ______________________________________________________________________
 
 ### Human output
 
-Console-oriented or document-oriented rendered output intended for people.
+Console-oriented or document-oriented rendered output intended for human readers.
 
 Formats:
 
@@ -237,21 +258,28 @@ Structured output intended for tooling and automation.
 
 Formats:
 
-- JSON: one single JSON object.
-- NDJSON: stream of newline-delimited JSON records.
+- JSON: one machine-readable JSON document.
+- NDJSON: a stream of newline-delimited JSON records.
 
 ### Machine-readable contract
 
-The stability guarantees governing machine-readable schemas, record kinds, field naming, and payload
-structure.
+The compatibility guarantees governing machine-readable schemas, record kinds, field naming, payload
+structure, and semantic stability.
 
 ### Payload
 
-A concrete emitted JSON object.
+A concrete emitted machine-readable JSON object.
 
 ### Record kind
 
-The stable discriminator identifying an NDJSON record type.
+The stable discriminator identifying a machine-readable NDJSON record type.
+
+### Semantic outcome
+
+A stable runtime classification describing the result of processing, filtering, mutation planning,
+or resolution behavior.
+
+Examples include changed, unchanged, filtered, unsupported, or unresolved outcomes.
 
 ### Collection key
 
@@ -260,12 +288,11 @@ JSON document.
 
 ### Detail level
 
-The machine-readable projection depth controlled by `--long` where supported.
+The machine-readable projection depth selected by `--long` where supported.
 
 ### Verbosity
 
-TEXT-only progressive-disclosure rendering behavior controlled by `-v` / `--verbose` (can be
-repeated).
+TEXT-oriented progressive-disclosure rendering behavior selected by `-v` / `--verbose` (repeatable).
 
 > [!NOTE]
 >
@@ -281,7 +308,7 @@ Whether a command or option is valid in a specific command context.
 
 ### Usage error
 
-An invalid CLI invocation rejected before execution.
+An invalid CLI invocation rejected before runtime execution begins.
 
 ### File-agnostic command
 
@@ -289,7 +316,8 @@ A command that does not operate on filesystem paths or content-processing pipeli
 
 ### Path-processing command
 
-A command that processes paths through discovery, resolution, or pipelines.
+A command that processes filesystem paths through discovery, filtering, resolution, or runtime
+pipelines.
 
 ______________________________________________________________________
 
@@ -305,7 +333,7 @@ Undocumented or explicitly internal implementation details outside the compatibi
 
 ### DTO
 
-A structured data-transfer object exposed at a public boundary.
+A structured data-transfer object exposed through a documented public boundary.
 
 ### Snapshot policy
 

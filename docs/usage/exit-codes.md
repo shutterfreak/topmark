@@ -10,37 +10,32 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Exit Codes
+# Exit codes
+
+This page defines the stable CLI exit-code contract for TopMark. These codes are intended for CI,
+automation, subprocess orchestration, and scripting.
+
+TopMark follows a small, consistent set of exit codes across commands, with a few command-specific
+semantic signals (notably for dry-run differences and probe-resolution status).
 
 Exit codes define the stable command-line contract for:
 
-- CI/CD integration
+- CI and release workflows integration
 - shell scripting
 - editor integration
 - pre-commit hooks
 - automation and orchestration
-- machine-readable command execution
+- machine-readable automation and subprocess execution
 
-See also:
-
-- [CLI overview](cli.md)
-- [Shared options](shared-options.md)
-- [Pre-commit integration](pre-commit.md)
-- [Configuration](configuration.md)
-- [Filtering](filtering.md)
-
-This page defines the **stable CLI exit-code contract** for TopMark. These codes are intended for
-use in CI/CD, scripting, and automation.
-
-TopMark follows a **small, consistent set of exit codes** across commands, with a few
-command-specific signals (notably for dry-run differences and probe resolution status).
+The canonical vocabulary used throughout the documentation is defined in
+[Terminology and Canonical Vocabulary](../terminology.md).
 
 Exit-code behavior is intentionally deterministic and stable across:
 
 - normal CLI execution
 - pre-commit execution
 - CI environments
-- API-driven subprocess orchestration
+- API-driven subprocess orchestration workflows
 
 ______________________________________________________________________
 
@@ -54,7 +49,7 @@ ______________________________________________________________________
 |   64 | USAGE_ERROR              | Invalid CLI usage (invalid options, incompatible flags).                                                                           |
 |   65 | ENCODING_ERROR           | Text decoding/encoding error (e.g., Unicode issues).                                                                               |
 |   66 | FILE_NOT_FOUND           | Explicit input path does not exist.                                                                                                |
-|   69 | UNSUPPORTED_FILE_TYPE    | Unsupported / unresolved / filtered input (primarily used by [`probe`](commands/probe.md)).                                        |
+|   69 | UNSUPPORTED_FILE_TYPE    | Unsupported, unresolved, or filtered semantic outcome (primarily used by [`probe`](commands/probe.md)).                            |
 |   70 | PIPELINE_ERROR           | Internal pipeline failure or missing required processing result.                                                                   |
 |   74 | IO_ERROR                 | Read/write failure (e.g., filesystem write error).                                                                                 |
 |   77 | PERMISSION_DENIED        | Insufficient permissions (read/write).                                                                                             |
@@ -69,7 +64,7 @@ Notes:
 - Commands may short-circuit on higher-severity errors (e.g., config errors before processing).
 - Canonical file-type identifier normalization does not affect exit-code semantics.
 - Ambiguous or malformed file-type identifiers are reported diagnostically and may contribute to
-  configuration or semantic failure outcomes depending on command behavior.
+  configuration-validation or semantic-resolution outcomes depending on command behavior.
 - Explicit missing literal paths are treated as hard input errors (66). Unmatched glob patterns are
   soft diagnostics and do not produce 66.
 
@@ -92,7 +87,7 @@ ______________________________________________________________________
 
 Notes:
 
-- `2` is a **signal**, not an error: it indicates that files would change.
+- `2` is a semantic change signal, not an execution failure: it indicates that files would change.
 - In CI, treat `2` as "diff detected".
 - Explicit missing input paths are reported as errors (66), even if no files are selected for
   processing.
@@ -133,7 +128,7 @@ ______________________________________________________________________
 
 Notes:
 
-- `69` indicates **partial or unavailable resolution**, not a crash.
+- `69` indicates partial or unavailable semantic resolution, not a runtime failure.
 - This is useful for automation that requires full resolvability.
 - Missing explicit input paths are treated as hard errors (66) and take precedence over semantic
   probe outcomes.
@@ -153,7 +148,7 @@ ______________________________________________________________________
 
 Important distinction:
 
-- Exit code `1` is **not a runtime/config loading error**.
+- Exit code `1` is not a configuration-loading or runtime failure.
 - It indicates that validation completed and found issues.
 - Errors that prevent validation entirely use `78` (not typically surfaced here).
 
@@ -191,7 +186,7 @@ ______________________________________________________________________
 
 Notes:
 
-- These commands are **purely informational**.
+- These commands are purely informational and do not perform runtime file processing.
 
 ______________________________________________________________________
 
@@ -215,10 +210,9 @@ Recommended handling:
 
 - Treat `0` as success.
 - Treat `2` as **non-error change signal** (for `check`/`strip`).
-- Treat `1` (from `config check`) as a **failing validation result**.
+- Treat `1` (from `config check`) as a validation-failure result rather than a runtime failure.
 - Treat `64`, `66`, `69`, `70`, `74`, `78`, `255` as errors.
-- Note: `66` indicates explicit user input errors (e.g., missing paths), not unmatched glob
-  patterns.
+- `66` indicates explicit literal input errors (e.g., missing paths), not unmatched glob patterns.
 
 These recommendations apply equally to:
 
@@ -232,13 +226,13 @@ ______________________________________________________________________
 
 ## Exit code priority (mixed results)
 
-When multiple issues occur in a single run, TopMark selects the exit code based on the
-highest-priority condition.
+When multiple conditions occur during a single invocation, TopMark selects the exit code based on
+the highest-priority outcome.
 
 Priority order (highest to lowest):
 
-This ordering ensures deterministic behavior even when multiple independent conditions occur during
-a single invocation.
+This ordering ensures deterministic behavior even when multiple independent runtime conditions occur
+during a single invocation.
 
 1. Permission errors (`77`) and other filesystem access failures
 1. Missing explicit inputs (`66`)
@@ -247,8 +241,8 @@ a single invocation.
 1. Semantic/availability signals (`69`)
 1. Generic failures (`1`)
 
-This ensures that hard user or environment errors take precedence over informational or semantic
-outcomes.
+This ensures that hard runtime or environment failures take precedence over informational or
+semantic outcomes.
 
 Example:
 
@@ -269,15 +263,15 @@ ______________________________________________________________________
 ## Relationship to `--quiet`
 
 - `--quiet` **does not affect exit codes**.
-- It only suppresses output.
-- Structured output modes (`json`, `ndjson`) also preserve identical exit-code behavior.
+- It only suppresses human-readable TEXT output.
+- Machine-readable JSON and NDJSON output preserve identical exit-code behavior.
 - This ensures scripts remain reliable.
 
 ______________________________________________________________________
 
 ## Stability guarantee
 
-The exit-code contract defined on this page is considered **stable for 1.0 and beyond**.
+The exit-code contract defined on this page is considered stable for 1.x releases.
 
 Future changes will:
 
@@ -287,11 +281,12 @@ Future changes will:
 
 ______________________________________________________________________
 
-## Further reading
+## See also
 
 - [CLI overview](cli.md)
 - [Shared options](shared-options.md)
 - [Filtering](filtering.md)
 - [Policies](policies.md)
 - [Pre-commit integration](pre-commit.md)
+- [Configuration](configuration.md)
 - [Configuration discovery](../configuration/discovery.md)

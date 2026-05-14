@@ -10,23 +10,27 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Dependabot
+# Dependabot workflow
 
 This page documents `.github/dependabot.yml`.
 
 TopMark uses Dependabot to keep GitHub Actions and Python dependencies current while preserving
 reproducibility, reviewability, and supply-chain safety.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 ## Purpose
 
 Dependabot helps maintain the repository's automation and dependency infrastructure by proposing
-update pull requests for:
+dependency-update pull requests for:
 
 - GitHub Actions used by CI and release workflows;
 - Python dependencies managed through the `uv`-based dependency model.
 
-Dependabot is intentionally advisory rather than autonomous. It proposes updates through normal pull
-requests, while maintainers continue to review, validate, and merge changes manually.
+Dependabot is intentionally advisory rather than autonomous or self-merging. It proposes updates
+through normal pull requests, while maintainers continue to review, validate, and merge changes
+manually.
 
 The workflow does not:
 
@@ -38,7 +42,7 @@ The workflow does not:
 
 ______________________________________________________________________
 
-## Trigger Conditions
+## Trigger conditions
 
 | Trigger    | When it runs                  | Purpose                                      |
 | ---------- | ----------------------------- | -------------------------------------------- |
@@ -57,10 +61,10 @@ avoid excessive maintenance churn.
 
 ______________________________________________________________________
 
-## Permissions and Trust Boundary
+## Permissions and trust boundary
 
-Dependabot operates through GitHub-managed automation rather than through a repository-hosted
-workflow job.
+Dependabot operates through GitHub-managed automation rather than through repository-hosted workflow
+jobs.
 
 Dependabot update pull requests:
 
@@ -76,7 +80,7 @@ uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 ```
 
 The commit SHA is the actual execution target. The trailing version comment is retained only for
-readability.
+human readability and maintenance review.
 
 This policy:
 
@@ -84,11 +88,11 @@ This policy:
 - reduces supply-chain risk from mutable tags;
 - aligns with GitHub's supply-chain hardening guidance.
 
-Dependabot still understands how to update SHA-pinned GitHub Actions.
+Dependabot correctly updates SHA-pinned GitHub Actions.
 
 ______________________________________________________________________
 
-## Jobs and Validation Scope
+## Jobs and validation scope
 
 Dependabot currently manages two update ecosystems:
 
@@ -110,26 +114,27 @@ Current labels are:
 | `github-actions` | `dependencies`, `github-actions` |
 | `uv`             | `dependencies`, `python`         |
 
-Dependabot update PRs are validated through the normal CI workflow after creation.
+Dependabot update pull requests are validated through the normal CI workflow after creation.
 
 ______________________________________________________________________
 
-## Artifact Handling
+## Artifact handling
 
 This workflow does not produce, consume, or publish build artifacts.
 
 Dependabot only proposes repository changes through pull requests.
 
 Artifact validation, release publication, and published-package validation are handled separately by
-the CI, release, and published artifact validation workflows.
+the CI, release, and published artifact validation workflows as part of TopMark's layered release
+trust-boundary model.
 
 ______________________________________________________________________
 
-## Local Reproduction
+## Local reproduction
 
 Dependabot itself cannot be run locally because it is a GitHub-hosted service.
 
-The closest local equivalents are the normal dependency-management and validation commands.
+The closest local equivalents are the standard dependency-management and validation commands.
 
 For Python dependency updates:
 
@@ -157,7 +162,7 @@ python tools/ci/audit_action_pins.py --report summary
 
 ______________________________________________________________________
 
-## Maintenance Notes
+## Maintenance notes
 
 TopMark uses a `uv`-first dependency model.
 
@@ -168,23 +173,23 @@ The roles are:
 | `pyproject.toml` | Declares supported dependency ranges |
 | `uv.lock`        | Canonical resolved dependency graph  |
 
-The committed lockfile remains the authoritative dependency-resolution source.
+The committed lockfile remains the canonical dependency-resolution source.
 
 TopMark also uses Git-based versioning through `setuptools-scm`:
 
 - package versions are derived from Git tags;
-- no manual version bumps are performed in `pyproject.toml`;
+- no manual package-version updates are performed in `pyproject.toml`;
 - dependency updates do not directly affect package versioning.
 
 When reviewing Dependabot PRs:
 
-- review GitHub Action updates like infrastructure changes;
-- review Python dependency updates like runtime/tooling changes;
+- review GitHub Action updates as infrastructure changes;
+- review Python dependency updates as runtime and tooling changes;
 - apply additional scrutiny to major-version updates;
 - inspect release and publishing actions carefully;
 - confirm CI passes before merging.
 
-Dependabot does not reliably track nested local composite-action metadata under:
+Dependabot does not reliably track nested local composite-action metadata references under:
 
 ```text
 .github/actions/**/action.yml
@@ -195,6 +200,6 @@ detect drift between workflow files and local composite actions.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 {% include-markdown "\_snippets/ci/related-pages.md" %}

@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Published Artifact Validation Workflow
+# Published artifact validation workflow
 
 This page documents `.github/workflows/published-artifact-validation.yml`.
 
@@ -18,14 +18,17 @@ The published artifact validation workflow verifies that a package already publi
 TestPyPI installs and behaves correctly in clean environments across the supported platform and
 Python-version matrix.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 ## Purpose
 
 The published artifact validation workflow validates the user-visible installation experience from
-published packages rather than from the repository source tree.
+published packages rather than from repository source trees.
 
-Unlike the normal CI workflow, this workflow does not validate repository code, editable installs,
-local builds, or unpublished artifacts. Instead, it validates exactly what end users receive from
-PyPI or TestPyPI.
+Unlike the normal CI workflow, this workflow does not validate repository source code, editable
+installs, local builds, or unpublished artifacts. Instead, it validates exactly what end users
+install from PyPI or TestPyPI.
 
 This helps detect issues such as:
 
@@ -39,18 +42,18 @@ This helps detect issues such as:
 
 ______________________________________________________________________
 
-## Trigger Conditions
+## Trigger conditions
 
 | Trigger             | When it runs          | Purpose                                                     |
 | ------------------- | --------------------- | ----------------------------------------------------------- |
 | `workflow_dispatch` | Manual maintainer run | Validate an already published package from PyPI or TestPyPI |
 
-The workflow is intentionally manual-only. Published-package validation is usually performed after a
-prerelease or final release has already been published.
+The workflow intentionally remains manual-only. Published-package validation is usually performed
+after a prerelease or final release has already been published.
 
 ______________________________________________________________________
 
-## Permissions and Trust Boundary
+## Permissions and trust boundary
 
 The workflow uses read-only repository permissions:
 
@@ -67,22 +70,23 @@ The workflow does not:
 - require OIDC Trusted Publishing;
 - consume repository build artifacts.
 
-Instead, it installs TopMark from the selected package index into clean runner environments.
+Instead, it installs TopMark from the selected package index into clean GitHub Actions runner
+environments.
 
-The workflow intentionally validates published artifacts in isolation from the repository source
-tree. No local checkout build logic or editable installation path is used.
+The workflow intentionally validates published artifacts in isolation from repository source trees.
+No local checkout build logic or editable installation path is used.
 
 ______________________________________________________________________
 
 ## Workflow Inputs
 
-| Input            | Required | Default    | Purpose                                                   |
-| ---------------- | -------- | ---------- | --------------------------------------------------------- |
-| `version`        | Yes      | None       | Published TopMark version to validate                     |
-| `index`          | Yes      | `testpypi` | Package index to install from                             |
-| `platform`       | Yes      | `all`      | Restrict validation to a specific platform subset         |
-| `python-version` | Yes      | `all`      | Restrict validation to a specific Python-version subset   |
-| `log-level`      | Yes      | `none`     | Optional runtime logging level for installed TopMark runs |
+| Input            | Required | Default    | Purpose                                                              |
+| ---------------- | -------- | ---------- | -------------------------------------------------------------------- |
+| `version`        | Yes      | None       | Published TopMark version to validate                                |
+| `index`          | Yes      | `testpypi` | Package index to install from                                        |
+| `platform`       | Yes      | `all`      | Restrict validation to a specific platform subset                    |
+| `python-version` | Yes      | `all`      | Restrict validation to a specific Python-version subset              |
+| `log-level`      | Yes      | `none`     | Optional runtime logging level for installed-package validation runs |
 
 Example manual run:
 
@@ -134,7 +138,7 @@ Supported runtime logging selections are:
 
 ______________________________________________________________________
 
-## Jobs and Validation Scope
+## Jobs and validation scope
 
 | Job                             | Purpose                                                                                                 | Main tools                             |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
@@ -167,12 +171,12 @@ fail-fast: false
 ```
 
 so failures on one platform or Python version do not prevent validation of the remaining matrix
-environments.
+combinations.
 
 The workflow also supports optional runtime diagnostic logging through the `TOPMARK_LOG_LEVEL`
-environment variable exposed via the `log-level` workflow input.
+environment variable exposed through the `log-level` workflow input.
 
-This is primarily intended for diagnosing published-package runtime failures in isolated runner
+This is primarily intended for diagnosing installed-package runtime failures in isolated runner
 environments, especially platform-specific issues such as Windows filesystem or permission behavior.
 
 For each matrix environment, the workflow:
@@ -205,7 +209,7 @@ On Windows runners, the workflow also executes additional diagnostic inspection 
 investigating platform-specific failures. These diagnostics intentionally expose workspace state,
 machine-readable command output, and runtime logging behavior from the installed package.
 
-It also validates the public Python API:
+The workflow also validates the public Python API:
 
 ```python
 from pathlib import Path
@@ -228,15 +232,15 @@ These checks validate:
 
 ______________________________________________________________________
 
-## Artifact Handling
+## Artifact handling
 
 This workflow does not produce, consume, or publish build artifacts.
 
 Instead, it validates packages already published to PyPI or TestPyPI.
 
-The workflow intentionally validates the package as an external consumer would install it from a
-package index. This complements the CI and release workflows, which validate and publish artifacts
-before publication.
+The workflow intentionally validates the package exactly as an external consumer would install it
+from a package index. This complements the CI and release workflows, which validate and publish
+release artifacts before package-index publication.
 
 For TestPyPI installs, the workflow uses:
 
@@ -247,7 +251,7 @@ python -m pip install \
   "topmark==<version>"
 ```
 
-because TestPyPI does not mirror the complete PyPI dependency ecosystem.
+because TestPyPI does not mirror the complete PyPI dependency ecosystem or package availability.
 
 This ensures:
 
@@ -256,12 +260,12 @@ This ensures:
 
 ______________________________________________________________________
 
-## Local Reproduction
+## Local reproduction
 
 The workflow cannot be fully reproduced locally because it validates packages already published to a
 package index across the GitHub Actions platform matrix.
 
-The closest local reproduction path is:
+The closest local reproduction workflow is:
 
 ```bash
 python -m pip install \
@@ -291,12 +295,12 @@ print(result)
 PY
 ```
 
-Local validation can confirm basic installability and runtime behavior, but it does not reproduce
-the full GitHub Actions platform matrix or workflow environment.
+Local validation can confirm basic installation and runtime behavior, but it does not reproduce the
+full GitHub Actions platform matrix or workflow environment.
 
 ______________________________________________________________________
 
-## Maintenance Notes
+## Maintenance notes
 
 Prefer validating prereleases on TestPyPI before final releases.
 
@@ -308,18 +312,18 @@ When using this workflow:
 - temporarily enable `DEBUG` or `TRACE` runtime logging when diagnosing installed-package runtime
   behavior;
 - confirm package metadata is visible before running validation;
-- investigate dependency-resolution failures separately from repository-source CI failures;
+- investigate dependency-resolution failures separately from repository-source validation failures;
 - remember that this workflow validates published artifacts, not local source trees.
 
 The validation workspace intentionally starts without repository-specific TopMark configuration.
 This ensures the workflow validates installed-package defaults, runtime logging behavior, and CLI
-behavior rather than repository policy configuration.
+behavior rather than repository-specific policy configuration.
 
 GitHub Actions are pinned to commit SHAs. Use the [GitHub Action pin audit](./action-pin-audit.md)
 to detect drift between workflow files and local composite actions.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 {% include-markdown "\_snippets/ci/related-pages.md" %}

@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-> [!NOTE] **CLI spelling vs config/API spelling**
+> [!NOTE] **CLI spelling vs configuration/API spelling**
 >
 > TopMark uses *hyphenated spelling* for CLI option names:
 >
@@ -25,13 +25,13 @@ topmark:header:end
 > topmark check --header-mutation-mode=add_only
 > ```
 >
-> TOML configuration, Python API values, and machine-readable output use the *canonical underscore
-> form*:
+> TOML configuration, Python API values, and machine-readable output use the canonical underscore
+> form:
 >
 > ```toml
 > [policy]
 > header_mutation_mode = "add_only"
 > ```
 >
-> CLI option names themselves do not accept underscores. For example, use `--header-mutation-mode`,
-> not `--header_mutation_mode`.
+> CLI option names themselves do not accept underscores. Use `--header-mutation-mode`, not
+> `--header_mutation_mode`.

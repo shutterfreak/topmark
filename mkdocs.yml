@@ -220,7 +220,7 @@ nav:
           - Overview: api/internals.md
           - Reference (generated): api/internals/
   - Development:
-      - Terminology: dev/terminology.md
+      - Terminology: terminology.md
       - Architecture: dev/architecture.md
       - Registry model: dev/registry-model.md
       - Plugins and extensibility: dev/plugins.md

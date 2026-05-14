@@ -10,17 +10,20 @@ topmark:header:start
 topmark:header:end
 -->
 
-# GitHub Action Pin Audit
+# GitHub Action pin audit
 
 This page documents `.github/workflows/action-pin-audit.yml` and `tools/ci/audit_action_pins.py`.
 
 TopMark includes a dedicated maintenance workflow and repository tool for auditing GitHub Action
 version pin consistency across workflow files and local composite actions.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 ## Purpose
 
-The GitHub Action pin audit validates that repeated external GitHub Actions use a single pinned ref
-across workflow files and local composite actions.
+The GitHub Action pin audit validates that repeated external GitHub Actions use a consistent pinned
+ref across workflow files and local composite actions.
 
 The audit exists because Dependabot updates workflow files under:
 
@@ -35,7 +38,7 @@ but does not reliably track nested local composite-action metadata under:
 ```
 
 Without an additional audit layer, repositories using local composite actions can drift toward
-inconsistent pinned action refs over time.
+inconsistent external action refs over time.
 
 The audit helps prevent:
 
@@ -44,11 +47,11 @@ The audit helps prevent:
 - accidental divergence after Dependabot updates;
 - hidden maintenance drift inside local actions.
 
-The workflow intentionally complements Dependabot rather than replacing it.
+The workflow intentionally complements Dependabot rather than attempting to replace it.
 
 ______________________________________________________________________
 
-## Trigger Conditions
+## Trigger conditions
 
 | Trigger             | When it runs                                                        | Purpose                                  |
 | ------------------- | ------------------------------------------------------------------- | ---------------------------------------- |
@@ -68,7 +71,7 @@ tools/ci/audit_action_pins.py
 
 ______________________________________________________________________
 
-## Permissions and Trust Boundary
+## Permissions and trust boundary
 
 The workflow uses read-only repository permissions:
 
@@ -77,7 +80,7 @@ permissions:
   contents: read
 ```
 
-The workflow intentionally remains:
+The workflow intentionally operates as:
 
 - read-only;
 - non-mutating;
@@ -96,7 +99,7 @@ The audit performs static repository analysis only.
 
 ______________________________________________________________________
 
-## Jobs and Validation Scope
+## Jobs and validation scope
 
 | Job                 | Purpose                                                                          | Main tools                                |
 | ------------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |
@@ -119,17 +122,18 @@ runner environment.
 
 ______________________________________________________________________
 
-## Artifact Handling
+## Artifact handling
 
 This workflow does not produce, consume, or publish build artifacts.
 
-The audit validates repository consistency only.
+The audit validates repository consistency only and does not participate in package publication or
+artifact validation.
 
 ______________________________________________________________________
 
-## Local Reproduction
+## Local reproduction
 
-Run the default consistency audit:
+Run the default repository consistency audit:
 
 ```bash
 python tools/ci/audit_action_pins.py
@@ -173,7 +177,7 @@ OK: all repeated external actions use consistent refs.
 
 ______________________________________________________________________
 
-## Maintenance Notes
+## Maintenance notes
 
 TopMark pins GitHub Actions to full commit SHAs for reproducibility and supply-chain hardening.
 
@@ -184,7 +188,7 @@ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 ```
 
 The SHA is the actual execution target. The trailing version comment is retained only for human
-readability.
+readability and maintenance review.
 
 When updating pinned GitHub Actions:
 
@@ -224,10 +228,11 @@ The tool intentionally does not:
 - resolve tags dynamically;
 - replace Dependabot.
 
-This keeps the audit deterministic, offline, reproducible, and fast enough for CI usage.
+This keeps the audit deterministic, offline, reproducible, and lightweight enough for routine CI
+usage.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 {% include-markdown "\_snippets/ci/related-pages.md" %}

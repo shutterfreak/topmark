@@ -10,58 +10,61 @@ topmark:header:start
 topmark:header:end
 -->
 
-# CI & Validation
+# CI and validation
 
 TopMark uses a deliberately explicit CI and validation structure. GitHub workflows provide
-orchestration, nox sessions define reusable validation contracts, pytest markers describe test
+orchestration, nox sessions define reusable validation contracts, pytest markers describe validation
 intent, and Makefile targets provide local developer shortcuts.
 
-The current design favors clarity and release safety over aggressive workflow abstraction. Some
-repetition between workflows is intentional, especially where privileged release behavior or
-artifact handoff security is involved.
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
+The current design favors clarity, deterministic behavior, and release safety over aggressive
+workflow abstraction. Some repetition between workflows is intentional, especially where privileged
+release behavior or artifact trust-boundary behavior is involved.
 
 ______________________________________________________________________
 
-## Validation Architecture
+## Validation architecture
 
-Source validation starts in the main CI workflow and is delegated to nox sessions where practical.
-The test suite is further organized with pytest markers so contributors can understand the intent
-and expected scope of each test group.
+Repository-source validation starts in the main CI workflow and is delegated to nox sessions where
+practical. The test suite is further organized with pytest markers so contributors can understand
+the intent and expected scope of each test group.
 
-- [CI workflow](./ci-workflow.md) — validates the source tree, documentation, tests, typing,
+- [CI workflow](./ci-workflow.md) — validates repository source trees, documentation, tests, typing,
   linting, API snapshots, and release artifacts produced from trusted CI runs.
 - [Test validation](./test-validation.md) — explains pytest markers, validation categories, local
   test commands, CI inclusion rules, and how nox and Makefile targets map onto the test suite.
 - [Published artifact validation](./published-artifact-validation.md) — validates installation and
-  runtime behavior from packages already published to PyPI or TestPyPI.
+  runtime behavior from packages already published to PyPI or TestPyPI in clean runner environments.
 
 ______________________________________________________________________
 
-## Release Infrastructure
+## Release infrastructure
 
-Release publishing is intentionally separated from normal source validation. The release workflow is
-privileged and consumes artifacts produced by the CI workflow instead of rebuilding them in the
-publishing context.
+Release publication is intentionally separated from normal repository-source validation. The release
+workflow is privileged and consumes artifacts produced by the CI workflow instead of rebuilding them
+in the publishing context.
 
-- [Release workflow](./release-workflow.md) — publishes previously built artifacts after
-  release-tag, artifact, and repository checks.
+- [Release workflow](./release-workflow.md) — publishes previously built release artifacts after
+  release-tag, artifact, and repository validation checks.
 - [Published artifact validation](./published-artifact-validation.md) — verifies the package as an
   end user would install it after publication.
 
 ______________________________________________________________________
 
-## Dependency Automation
+## Dependency automation
 
 Dependency automation is documented separately because it has different triggers, trust boundaries,
-and maintenance expectations than source validation or release publishing.
+and maintenance expectations than repository-source validation or release publication.
 
-- [Dependabot](./dependabot.md) — documents dependency update and security-audit behavior.
+- [Dependabot workflow](./dependabot.md) — documents dependency-update and security-audit behavior.
 - [GitHub Action pin audit](./action-pin-audit.md) — audits GitHub Action pin consistency across
   workflows and local composite actions.
 
 ______________________________________________________________________
 
-## Contributor Mental Model
+## Contributor mental model
 
 Use this family of pages as follows:
 
@@ -76,9 +79,9 @@ Use this family of pages as follows:
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 - [Contributing to TopMark](../contributing.md) — contributor workflow and dependency guidance
-- [Release process](../dev/release-process.md) — project-level release procedure
+- [Release process](../dev/release-process.md) — project-level release workflow and policy
 - [`Configuration overview`](../configuration/index.md) — configuration entry point and links to
-  discovery/merge semantics
+  discovery, precedence, and merge semantics

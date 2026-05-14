@@ -14,44 +14,43 @@ topmark:header:end
 
 Filtering controls determine:
 
-- which paths are considered during discovery
+- which paths participate in discovery
 - which file types are eligible for processing
-- how explicit inputs are classified
+- how explicit inputs are classified semantically
 - how probe diagnostics are reported
-
-See also:
-
-- [CLI overview](cli.md)
-- [Configuration](configuration.md)
-- [Shared options](shared-options.md)
 
 TopMark determines which files to process using a combination of **path-based filters** and **file
 type filters**.
 
+The canonical vocabulary used throughout the documentation is defined in
+[Terminology and Canonical Vocabulary](../terminology.md).
+
 ## Filtering overview
 
-Filtering and discovery are shared consistently across:
+Filtering and discovery semantics are shared consistently across:
 
 - [`topmark check`](commands/check.md)
 - [`topmark strip`](commands/strip.md)
 - [`topmark probe`](commands/probe.md)
 - TOML configuration
 - API overlays
-- resolver and probe filtering
+- resolution and probe filtering
 
 TopMark applies filtering in a deterministic order:
 
 1. Path-based discovery and filtering
 1. File-type filtering
-1. Eligibility and processor resolution
+1. Applicability evaluation and processor resolution
 
 Exclude rules take precedence over include rules.
 
 For canonical file-type identifier semantics, see [File-type filtering](#file-type-filtering). For
-configuration behavior, see [Configuration](configuration.md).
+layered configuration behavior, see [Configuration](configuration.md).
 
-Note: For [`topmark probe`](commands/probe.md), paths excluded during step 1 or 2 may still be
-reported as `filtered` results if they were explicitly requested.
+> [!NOTE]
+>
+> For [`topmark probe`](commands/probe.md), paths excluded during step 1 or 2 may still be reported
+> as `filtered` semantic outcomes if they were explicitly requested.
 
 ______________________________________________________________________
 
@@ -61,12 +60,12 @@ TopMark distinguishes between **explicit literal paths** and **glob patterns**:
 
 - **Explicit missing literal paths** (e.g., `fubar.py`) are treated as **hard input errors** and
   result in `FILE_NOT_FOUND (66)`.
-- **Unmatched glob patterns** (e.g., `missing/**/*.py`) are treated as **soft discovery
-  diagnostics** and do **not** cause a failure for processing commands
-  ([`check`](commands/check.md), [`strip`](commands/strip.md)) (exit `SUCCESS (0)`).
+- **Unmatched glob patterns** (e.g., `missing/**/*.py`) are treated as soft discovery diagnostics
+  and do **not** cause a failure for processing commands ([`check`](commands/check.md),
+  [`strip`](commands/strip.md)) (exit `SUCCESS (0)`).
 
 This distinction ensures that typos in explicit inputs are surfaced, while flexible patterns that
-match nothing do not break automation.
+match nothing do not cause processing-command failures.
 
 ______________________________________________________________________
 
@@ -98,7 +97,7 @@ File-processing commands support two STDIN modes when supplying file lists or co
   - `--files-from -`
   - `--include-from -`
   - `--exclude-from -`
-- **Content mode**: process a single file's content from STDIN by passing `-` as the sole PATH
+- **Content mode**: process a single virtual file from STDIN content by passing `-` as the sole PATH
   together with `--stdin-filename NAME`
 
 See [shared input modes](shared-options.md#shared-input-modes) for the full STDIN contract,
@@ -109,25 +108,25 @@ ______________________________________________________________________
 ## Interaction with [`topmark probe`](commands/probe.md)
 
 The [`topmark probe`](commands/probe.md) command uses the same filtering pipeline and discovery
-rules described above.
+semantics described above.
 
 This includes:
 
 - path filtering
 - file-type filtering
-- canonical file-type identifier normalization
+- canonical file-type identifier normalization and resolution
 - ambiguity handling
 
 However, unlike processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md)),
 [`probe`](commands/probe.md) also reports **explicit inputs that were filtered out before file-type
 probing**.
 
-Additionally, [`probe`](commands/probe.md) treats unmatched glob patterns as **filtered semantic
-outcomes** rather than silent no-ops. As a result:
+Additionally, [`probe`](commands/probe.md) treats unmatched glob patterns as filtered semantic
+outcomes rather than silent no-ops. As a result:
 
 - Unmatched glob patterns are reported as `filtered` probe results (e.g.,
   `filtered: excluded_by_discovery_filter`).
-- The command exits with `UNSUPPORTED_FILE_TYPE (69)`, reflecting incomplete resolution.
+- The command exits with `UNSUPPORTED_FILE_TYPE (69)`, reflecting incomplete semantic resolution.
 
 This differs from processing commands, which treat unmatched patterns as non-fatal diagnostics.
 
@@ -142,7 +141,7 @@ For example, when a path is excluded via `--exclude` or `exclude_patterns`,
 <path>: <filtered> - filtered: excluded_by_path_filter
 ```
 
-In machine-readable formats (JSON / NDJSON), these are represented as probe results with:
+In machine-readable JSON and NDJSON output, these are represented as probe results with:
 
 ```jsonc
 {
@@ -299,16 +298,10 @@ TopMark supports file-type include/exclude filtering via:
 
 File-type filters are evaluated after path-based filtering.
 
-Filtering accepts:
-
-- local identifiers such as `python`
-- canonical qualified identifiers such as `topmark:python`
-
-Internally, TopMark normalizes configured identifiers to canonical qualified keys before resolver,
-policy evaluation, runtime processing, diagnostics, and registry lookups.
+{% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 Plugins and integrations may declare file types in their own namespace, such as `acme:python`. This
-allows independent ecosystems to define custom file types and register different header processors
+allows independent ecosystems to define custom file types and register independent header processors
 without colliding with built-in TopMark identifiers.
 
 Local identifiers are accepted only when they are unambiguous. If more than one registered file type
@@ -337,8 +330,8 @@ ______________________________________________________________________
 
 ## Notes on configuration strictness
 
-Filtering determines *which* files are processed, while staged config-loading/preflight validation
-determines whether a run is allowed to proceed.
+Filtering determines *which* files are processed, while staged config-loading validation determines
+whether a run is allowed to proceed.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -346,14 +339,14 @@ Effective strictness is controlled by:
 
 1. CLI override (`--strict` / `--no-strict`)
 1. TOML setting (`strict`)
-1. default non-strict behaviour
+1. default non-strict behavior
 
-When strict config checking is enabled, validation warnings are treated as errors and may cause the
-command to fail before processing files.
+When strict config checking is enabled, configuration-validation warnings are treated as errors and
+may cause the command to fail before processing files.
 
 ______________________________________________________________________
 
-## Related pages
+## See also
 
 - [CLI overview](cli.md)
 - [Configuration](configuration.md)

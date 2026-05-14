@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Release Workflow
+# Release workflow
 
 This page documents `.github/workflows/release.yml`.
 
@@ -19,25 +19,28 @@ completed CI workflow run, verifies that the CI run corresponds to exactly one r
 downloads CI-built artifacts, publishes those artifacts to PyPI or TestPyPI, and creates the
 corresponding GitHub Release or prerelease.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 ## Purpose
 
 The release workflow publishes prebuilt release artifacts after CI has already validated and
-uploaded them. It is intentionally artifact-only: it does not rebuild the project from repository
-source code in the privileged publishing context.
+uploaded them. It intentionally operates as an artifact-only publishing workflow: it does not
+rebuild the project from repository source code inside the privileged publishing context.
 
-This separation keeps package publication distinct from source-tree validation. The CI workflow runs
-repository code and builds artifacts in a lower-privilege context; the release workflow verifies and
-publishes those artifacts using Trusted Publishing.
+This separation keeps package publication distinct from repository-source validation. The CI
+workflow runs repository code and builds artifacts in a lower-privilege context; the release
+workflow verifies and publishes those artifacts using Trusted Publishing through OIDC.
 
 ______________________________________________________________________
 
-## Trigger Conditions
+## Trigger conditions
 
 | Trigger        | When it runs                      | Purpose                                                                           |
 | -------------- | --------------------------------- | --------------------------------------------------------------------------------- |
 | `workflow_run` | After the `CI` workflow completes | Publish CI-built artifacts only when the completed CI run is eligible for release |
 
-The workflow starts for completed CI runs, but publishing proceeds only when all release preflight
+The workflow starts for completed CI runs, but publication proceeds only when all release preflight
 checks pass.
 
 The `preflight` job requires that:
@@ -47,28 +50,30 @@ The `preflight` job requires that:
 - the CI run originated from the base repository;
 - exactly one release-style tag points at the CI commit.
 
-If no matching release tag points at the CI commit, the workflow exits cleanly without publishing.
-If multiple matching release tags point at the same commit, preflight fails rather than choosing a
+If no matching release tag points at the CI commit, the workflow exits cleanly without attempting
+publication.
+
+If multiple matching release tags point at the same commit, preflight fails rather than selecting a
 tag implicitly.
 
 Supported release tags include final and prerelease forms such as:
 
-| Tag          | Channel  | Notes                                |
-| ------------ | -------- | ------------------------------------ |
-| `v1.0.0`     | PyPI     | Final release                        |
-| `v1.0.0rc1`  | TestPyPI | Release candidate                    |
-| `v1.0.0-rc1` | TestPyPI | Release candidate compatibility form |
-| `v1.0.0a1`   | TestPyPI | Alpha release                        |
-| `v1.0.0-a1`  | TestPyPI | Alpha compatibility form             |
-| `v1.0.0b1`   | TestPyPI | Beta release                         |
-| `v1.0.0-b1`  | TestPyPI | Beta compatibility form              |
+| Tag          | Channel  | Notes                                   |
+| ------------ | -------- | --------------------------------------- |
+| `v1.0.0`     | PyPI     | Final release                           |
+| `v1.0.0rc1`  | TestPyPI | Release candidate                       |
+| `v1.0.0-rc1` | TestPyPI | Legacy compatibility form (with hyphen) |
+| `v1.0.0a1`   | TestPyPI | Alpha release                           |
+| `v1.0.0-a1`  | TestPyPI | Alpha compatibility form                |
+| `v1.0.0b1`   | TestPyPI | Beta release                            |
+| `v1.0.0-b1`  | TestPyPI | Beta compatibility form                 |
 
-Tags are normalized with `packaging.version.Version` so prerelease routing follows PEP 440
+Tags are normalized through `packaging.version.Version`, so prerelease routing follows PEP 440
 semantics.
 
 ______________________________________________________________________
 
-## Permissions and Trust Boundary
+## Permissions and trust boundary
 
 The workflow-level permissions are:
 
@@ -91,7 +96,7 @@ permissions:
 That write permission is used only to create the GitHub Release object. Prerelease tags create
 GitHub prereleases; final tags create normal GitHub releases.
 
-The release trust boundary is intentionally strict:
+The release trust boundary is intentionally strict, explicit, and deterministic:
 
 - release artifacts are built by the CI workflow;
 - the release workflow downloads artifacts from the triggering CI run;
@@ -101,11 +106,11 @@ The release trust boundary is intentionally strict:
 - repository build logic is not executed in the publishing jobs.
 
 The workflow uses concurrency keyed by the CI run commit SHA so repeated release attempts for the
-same commit do not run concurrently.
+same commit cannot run concurrently.
 
 ______________________________________________________________________
 
-## Jobs and Validation Scope
+## Jobs and validation scope
 
 | Job               | Purpose                                                                         | Main tools                                           |
 | ----------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -121,19 +126,20 @@ The `details` job downloads the `topmark-dist` and `topmark-release-meta` artifa
 that triggered the workflow. It verifies that the artifact metadata matches the resolved release tag
 and that the wheel and source distribution versions match the normalized tag version.
 
-The `publish-package` job repeats critical metadata checks before publication, verifies checksums,
-confirms that the target version does not already exist on the selected package index, and publishes
-with Trusted Publishing.
+The `publish-package` job repeats critical artifact and metadata checks before publication, verifies
+checksums, confirms that the target version does not already exist on the selected package index,
+and publishes with Trusted Publishing.
 
 Final releases also check that the new version is newer than the latest final version on PyPI.
-Prereleases publish to TestPyPI and create GitHub prereleases; final releases publish to PyPI and
-create normal GitHub releases.
+Prereleases skip that final-version ordering check, publish to TestPyPI, and create GitHub
+prereleases; final releases publish to PyPI and create normal GitHub releases.
 
 ______________________________________________________________________
 
-## Artifact Handling
+## Artifact handling
 
-The release workflow consumes artifacts produced by the CI workflow. It does not build artifacts.
+The release workflow consumes release artifacts produced by the CI workflow. It does not build
+artifacts.
 
 Required CI artifacts are:
 
@@ -164,7 +170,7 @@ This artifact-only design is a core part of the release security model.
 
 ______________________________________________________________________
 
-## Local Reproduction
+## Local reproduction
 
 The release workflow cannot be fully reproduced locally because it depends on GitHub `workflow_run`
 context, CI-uploaded artifacts, package-index state, OIDC Trusted Publishing, and GitHub Release
@@ -192,13 +198,13 @@ uv build
 ls -l dist
 ```
 
-Local validation can confirm that the source tree builds and passes project checks, but it cannot
-exercise the Trusted Publishing, artifact-download, package-index, or GitHub Release portions of the
-workflow.
+Local validation can confirm that the repository source tree builds and passes project checks, but
+it cannot exercise the Trusted Publishing, artifact-download, package-index, or GitHub Release
+portions of the workflow.
 
 ______________________________________________________________________
 
-## Maintenance Notes
+## Maintenance notes
 
 Release tags must follow the expected PEP 440-compatible scheme, such as `v1.0.0`, `v1.0.0rc1`, or
 `v1.0.0-a1`.
@@ -209,23 +215,23 @@ When preparing a release:
 - prefer compact PEP 440 tag forms such as `v1.0.0rc1` for new prereleases;
 - keep dashed prerelease forms only as compatibility forms;
 - run local verification before pushing tags;
-- let CI build artifacts and let the release workflow publish them and create the matching GitHub
-  Release or prerelease.
+- let CI build release artifacts and let the release workflow publish them and create the matching
+  GitHub Release or prerelease.
 
 Do not move artifact building into the release workflow without deliberately revisiting the release
 trust boundary. The workflow is intentionally designed so package publication does not rebuild from
 repository source code.
 
-Do not suppress GitHub prerelease creation for beta or release-candidate tags unless the release
-visibility policy is deliberately revisited. GitHub prereleases provide the public release-note and
-traceability surface for prerelease milestones, while package publication continues to route
-prerelease artifacts to TestPyPI.
+Do not suppress GitHub prerelease creation for alpha, beta, or release-candidate tags unless the
+release visibility policy is deliberately revisited. GitHub prereleases provide the public
+release-note and traceability surface for prerelease milestones, while package publication continues
+to route prerelease artifacts to TestPyPI.
 
 GitHub Actions are pinned to commit SHAs. Use the [GitHub Action pin audit](./action-pin-audit.md)
 to detect drift between workflow files and local composite actions.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 {% include-markdown "\_snippets/ci/related-pages.md" %}

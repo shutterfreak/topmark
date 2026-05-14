@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Configuration
+# User configuration
 
 TopMark configuration may be provided through:
 
@@ -19,14 +19,18 @@ TopMark configuration may be provided through:
 - CLI overrides
 - API overlays
 
-Configuration is resolved using layered discovery. Higher-precedence layers override lower layers.
+Configuration is resolved through layered discovery and precedence rules. Higher-precedence layers
+override lower-precedence layers.
+
+The canonical vocabulary used throughout the documentation is defined in
+[Terminology and Canonical Vocabulary](../terminology.md).
 
 ______________________________________________________________________
 
 ## CLI, configuration, and API value spelling
 
-Configuration keys use the same names across the CLI, API, and TOML configuration. Some options
-accept predefined multi-word values such as `add_only` or `whitespace_empty`.
+Configuration keys use consistent naming across the CLI, API, and TOML configuration surfaces. Some
+options accept predefined multi-word values such as `add_only` or `whitespace_empty`.
 
 TopMark uses different spelling conventions depending on the interface: CLI examples prefer
 *hyphenated forms* for readability, while TOML configuration, Python API values, and
@@ -35,7 +39,7 @@ machine-readable output use *canonical underscore forms*.
 {% include-markdown "\_snippets/option-spelling.md" %}
 
 Unless otherwise noted, configuration and policy values shown throughout this page use the canonical
-TOML/API/machine-readable spelling.
+TOML/API/machine-readable underscore spelling.
 
 ______________________________________________________________________
 
@@ -45,7 +49,7 @@ ______________________________________________________________________
 
 See [file-type filtering](filtering.md#file-type-filtering) for the full identifier contract.
 
-File type identifiers are used by:
+File type identifiers participate in:
 
 - `include_file_types`
 - `exclude_file_types`
@@ -66,7 +70,7 @@ Example using local identifiers:
 include_file_types = ["python", "markdown"]
 ```
 
-Equivalent configuration using canonical qualified identifiers:
+Equivalent configuration using canonical qualified keys:
 
 ```toml
 [files]
@@ -80,13 +84,14 @@ Exclude filters work the same way:
 exclude_file_types = ["topmark:yaml"]
 ```
 
-Internally, TopMark normalizes all configured file type identifiers to canonical qualified keys.
+Internally, TopMark normalizes configured file type identifiers to canonical qualified keys before
+filtering, resolution, policy evaluation, diagnostics, and registry lookup.
 
 ______________________________________________________________________
 
 ## Per-file-type policy
 
-`policy_by_type` allows overriding policy settings for selected file types.
+`policy_by_type` allows file-type-specific policy overrides for selected file types.
 
 Example using a local identifier:
 
@@ -95,7 +100,7 @@ Example using a local identifier:
 header_mutation_mode = "update_only"
 ```
 
-Equivalent configuration using a canonical qualified identifier:
+Equivalent configuration using canonical qualified keys:
 
 ```toml
 [policy_by_type."topmark:python"]
@@ -104,7 +109,7 @@ header_mutation_mode = "update_only"
 
 Both forms are accepted when the local identifier is unambiguous.
 
-Internally, TopMark stores and resolves per-type policies using canonical qualified file type
+Internally, TopMark stores and resolves per-file-type policies using canonical qualified file type
 identifiers.
 
 ### Example: Different policy per file type
@@ -154,15 +159,16 @@ include_file_types = ["topmark:python"]
 
 instead.
 
-Ambiguous identifiers are ignored diagnostically during configuration sanitization and validation.
+Ambiguous identifiers are ignored diagnostically during configuration normalization and validation.
 
 ______________________________________________________________________
 
 ## Unknown and malformed identifiers
 
-Unknown identifiers are ignored diagnostically.
+Unknown identifiers are ignored diagnostically during configuration normalization and validation.
 
-Malformed qualified identifiers are also ignored diagnostically.
+Malformed qualified identifiers are also ignored diagnostically during configuration normalization
+and validation.
 
 Examples of malformed identifiers:
 
@@ -176,8 +182,8 @@ ______________________________________________________________________
 
 ## CLI and API parity
 
-CLI options, TOML configuration, and API overlays all support the same file type identifier
-semantics.
+CLI options, TOML configuration, API overlays, and runtime policy evaluation all share the same file
+type identifier semantics.
 
 Examples:
 
@@ -201,5 +207,5 @@ ______________________________________________________________________
 ## See also
 
 - [Filtering recipes and behavior](filtering.md)
-- [Configuration reference](../configuration/index.md)
-- [Configuration discovery and precedence](../configuration/discovery.md)
+- [Configuration overview](../configuration/index.md)
+- [Configuration discovery, precedence, and policy](../configuration/discovery.md)

@@ -10,11 +10,14 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Test & Validation Architecture
+# Test and validation architecture
 
-TopMark groups validation by intent rather than by a single monolithic test command. GitHub
+TopMark groups validation by intent rather than through a single monolithic test command. GitHub
 workflows orchestrate validation, nox sessions provide stable reusable commands, pytest markers
-describe test purpose, and Makefile targets offer local convenience wrappers.
+describe test purpose, and Makefile targets provide local convenience wrappers.
+
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
 
 This page explains how those layers fit together and how contributors should choose the right
 validation path.
@@ -23,7 +26,7 @@ validation path.
 
 | Layer            | Role                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------ |
-| GitHub workflows | Repository, release, dependency, and published-artifact orchestration.                     |
+| GitHub workflows | Repository, release, dependency, and published-artifact validation orchestration.          |
 | nox sessions     | Reusable validation contracts for linting, typing, tests, docs, links, and release checks. |
 | pytest markers   | Semantic grouping of tests by behavior, scope, or runtime expectations.                    |
 | Makefile targets | Local shortcuts for common contributor workflows.                                          |
@@ -31,7 +34,7 @@ validation path.
 The preferred mental model is:
 
 ```text
-GitHub workflow -> nox session -> pytest selection / tool command
+GitHub workflow → nox session → pytest selection or tool command
 ```
 
 Some workflows intentionally duplicate setup steps instead of sharing a local composite action. This
@@ -48,7 +51,7 @@ TopMark validation favors:
 - stable nox sessions over ad-hoc shell commands;
 - focused pytest markers over broad naming conventions;
 - dry-run and source-tree validation before mutation or publication;
-- redundant checks where they validate different contracts.
+- intentionally redundant checks where they validate different compatibility contracts.
 
 For example, CI artifact generation and published artifact validation may look related, but they
 validate different things. CI validates artifacts built from the repository source tree. Published
@@ -95,9 +98,8 @@ def test_registered_processors_map_to_existing_filetypes() -> None:
     ...
 ```
 
-These tests are part of the normal test suite. Earlier versions used a dedicated
-developer-validation CI job, but this was folded into the general test path to keep the workflow
-simpler.
+These tests are part of the normal test suite. Developer-validation checks are part of the normal
+test path and do not require a dedicated CI job.
 
 ______________________________________________________________________
 
@@ -131,7 +133,7 @@ ______________________________________________________________________
 
 ## Runtime Validation Hooks
 
-Some internal validation can also be enabled at runtime with `TOPMARK_VALIDATE=1`.
+Some internal validation checks can also be enabled at runtime with `TOPMARK_VALIDATE=1`.
 
 ```bash
 TOPMARK_VALIDATE=1 pytest -q
@@ -143,16 +145,17 @@ pytest -m dev_validation
 nox -s qa -p 3.13 -- -m dev_validation
 ```
 
-Runtime validation is intended for development and debugging. It should remain lightweight and
-should not introduce end-user overhead unless explicitly enabled.
+Runtime validation is intended for development and debugging. It should remain lightweight and must
+not introduce end-user overhead unless explicitly enabled.
 
 ______________________________________________________________________
 
 ## What Developer Validation Checks
 
-Current developer-validation checks include:
+Developer-validation checks include:
 
-- **Registry integrity**: every registered header processor maps to an existing `FileType` name.
+- **Registry integrity**: every registered header processor maps to an existing canonical `FileType`
+  identity.
 - **Placement strategy for XML/HTML**: processors based on `XmlHeaderProcessor` must signal the
   character-offset strategy by returning `NO_LINE_ANCHOR` from `get_header_insertion_index()`.
 
@@ -176,7 +179,8 @@ Common mappings are:
 | Validate documentation links      | `nox -s links`                     |
 | Run release checks                | `nox -s release_check`             |
 
-If a Makefile target wraps one of these commands, the nox session remains the canonical contract.
+If a Makefile target wraps one of these commands, the nox session remains the canonical validation
+contract.
 
 ______________________________________________________________________
 
@@ -189,7 +193,7 @@ Slow and environment-dependent tests should be marked explicitly.
   environment-specific assumptions.
 
 These markers make CI exclusions visible and intentional instead of relying on hidden filename or
-directory conventions.
+directory-selection conventions.
 
 ______________________________________________________________________
 
@@ -202,10 +206,11 @@ Release validation and published-artifact validation are related but distinct.
 - Published artifact validation checks whether an already published package can be installed and
   used from a clean consumer-like environment.
 
-This distinction is intentional and should remain documented even when commands appear redundant.
+This distinction is intentional and should remain explicit even when commands or workflows appear
+similar.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 {% include-markdown "\_snippets/ci/related-pages.md" %}

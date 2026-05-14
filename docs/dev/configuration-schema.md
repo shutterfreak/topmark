@@ -12,8 +12,8 @@ topmark:header:end
 
 # Configuration schema summary
 
-This page is a **machine-readable summary** of TopMark’s external configuration schema as consumed
-from `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
+This page is a machine-readable summary of TopMark’s external configuration schema as consumed from
+`topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 
 > [!NOTE]
 >
@@ -47,7 +47,7 @@ See also:
 - [Registry model](registry-model.md)
 - [Resolution](resolution.md)
 
-See [Terminology and Canonical Vocabulary](terminology.md) for the normative definitions of
+See [Terminology and Canonical Vocabulary](../terminology.md) for the normative definitions of
 machine-readable output, canonical identity, applicability, and staged diagnostics terminology.
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
@@ -62,14 +62,14 @@ File type identifiers in TOML configuration may use either:
 - local identifiers such as `python`
 - canonical qualified identifiers such as `topmark:python`
 
-TopMark normalizes identifiers to canonical qualified keys during configuration freeze before
+TopMark normalizes identifiers to canonical qualified keys during configuration normalization before
 resolver, filtering, policy, and binding evaluation.
 
 Local identifiers are accepted only when unambiguous in the effective composed registry.
 
-`strict` is a **TOML-source-local config-loading option**, not a layered Config field. It is
+`strict` is a TOML-source-local config-loading option, not a layered configuration field. It is
 resolved from `[config]` / `[tool.topmark.config]` during TOML source resolution and applied after
-layered config merging.
+layered configuration merging.
 
 Its effective value governs staged config-loading validation across TOML-source, merged-config, and
 runtime-applicability diagnostics.
@@ -94,8 +94,8 @@ deserialized:
 - unknown keys within known sections (e.g. `[config].bogus`) are also reported
 - validation is source-local and happens per TOML file during loading
 
-After this step, only the **layered config fragment** is passed to
-(\[`MutableConfig`\][topmark.config.model.MutableConfig]) for parsing and normalization before
+After this step, only the layered configuration fragment is passed to
+\[`MutableConfig`\][topmark.config.model.MutableConfig] for parsing and normalization before
 freezing into the immutable layered configuration snapshot.
 
 At this boundary, diagnostics remain **staged**; flattening into the public compatibility view is
@@ -105,8 +105,8 @@ This reporting boundary is independent of human presentation controls: TEXT verb
 quiet mode (`--quiet`) only influence how diagnostics are rendered in console output, not how they
 are produced, staged, or exposed through machine/API interfaces.
 
-For 1.0, staged validation remains primarily internal, while public reporting and machine/API
-surfaces expose only the flattened compatibility diagnostics contract.
+For 1.0, staged validation remains internal, while public reporting and machine/API surfaces expose
+only the flattened compatibility diagnostics contract.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics.
@@ -120,9 +120,9 @@ diagnostics during staged config-loading validation.
 > [!NOTE]
 >
 > - TOML schema validation is handled in \[`topmark.toml`\][topmark.toml]
-> - file type identifier normalization and ambiguity evaluation are performed during config freeze
->   and runtime applicability validation
-> - config value/type validation is handled in \[`topmark.config`\][topmark.config] as staged
+> - file type identifier normalization and ambiguity evaluation are performed during configuration
+>   normalization and runtime-applicability validation
+> - configuration value/type validation is handled in \[`topmark.config`\][topmark.config] as staged
 >   validation logs (merged-config and runtime-applicability stages)
 > - layered config deserialization
 >   (\[`mutable_config_from_layered_toml_table`\][topmark.config.io.deserializers.mutable_config_from_layered_toml_table])
@@ -139,7 +139,8 @@ topmark:
   # collapsing everything into the final flattened Config payload.
   config:
     type: table
-    description: TOML-source-local options resolved during TOML loading, not part of layered Config merging.
+    description: TOML-source-local options resolved during TOML loading, not part of layered
+      configuration merging.
     root:
       type: bool
       default: false
@@ -147,7 +148,9 @@ topmark:
     strict:
       type: bool
       default: false
-      description: Source-local strictness preference applied to staged config-loading/preflight validation; warnings become failures when effective strict config checking is enabled across TOML-source, merged-config, and runtime-applicability diagnostics.
+      description: Source-local strictness preference applied to staged config-loading validation;
+        warnings become failures when effective strict config checking is enabled across TOML-source,
+        merged-config, and runtime-applicability diagnostics.
 
   header:
     fields:
@@ -173,7 +176,7 @@ topmark:
 
   writer:
     type: table
-    description: TOML-source-local writer options (not part of layered Config).
+    description: TOML-source-local writer options (not part of layered configuration state).
     strategy:
       type: str
       default: "atomic"
@@ -223,7 +226,7 @@ topmark:
       # [policy_by_type.python]
       # [policy_by_type."topmark:python"]
       #
-      # Internally, identifiers normalize to canonical qualified keys.
+      # Identifiers normalize to canonical qualified keys.
 
       header_mutation_mode:
         type: str
@@ -294,7 +297,7 @@ topmark:
       description: Input paths (files/directories) to scan; commonly provided via CLI.
 ```
 
-At runtime, file type identifiers are normalized to canonical qualified keys before:
+At runtime, file type identifiers normalize to canonical qualified keys before:
 
 - resolver filtering
 - policy lookup
@@ -302,7 +305,7 @@ At runtime, file type identifiers are normalized to canonical qualified keys bef
 - probe evaluation
 - API overlay application
 
-This normalization is shared consistently across:
+This normalization behavior is shared consistently across:
 
 - TOML configuration
 - CLI options
@@ -331,7 +334,7 @@ topmark:python
 acme:python
 ```
 
-Malformed identifiers are handled diagnostically during staged config-loading validation.
+Malformed identifiers participate in staged config-loading validation diagnostics.
 
 ______________________________________________________________________
 
@@ -347,12 +350,13 @@ ______________________________________________________________________
 
 The equivalent CLI values use hyphens for the non-default modes: `add-only` and `update-only`.
 
-This policy affects only the [`check`](../usage/commands/check.md) command.
+This policy affects only the [`check`](../usage/commands/check.md) pipeline.
 
-It affects dry-run reporting, apply behavior, API result views, and outcome bucketing. It does not
-apply to [`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md), and safety
-gates still take precedence: malformed headers, unreadable files, unsupported files, blocked
-filesystem states, and other non-mutable conditions are not made mutable by this policy.
+It affects dry-run reporting, apply behavior, API result views, and outcome bucketing.
+
+It does not apply to [`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md),
+and safety gates still take precedence: malformed headers, unreadable files, unsupported files,
+blocked filesystem states, and other non-mutable conditions are not made mutable by this policy.
 
 ______________________________________________________________________
 
@@ -366,4 +370,4 @@ The configuration schema intentionally does not support:
 - silent ambiguity resolution
 - plugin-specific schema mutation during config loading
 
-Identifier handling remains explicit and deterministic.
+Identifier handling remains explicit, deterministic, and ambiguity-aware.

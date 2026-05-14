@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Documentation Conventions
+# Documentation conventions
 
 This document defines TopMark's documentation structure, terminology, reuse rules, page templates,
 and validation expectations.
@@ -32,8 +32,8 @@ They intentionally favor:
 - small, meaningful reuse over heavy content composition.
 
 This page documents authoring and structure conventions. It does not redefine public CLI,
-machine-readable output, configuration schema, or API contracts. Those contracts belong in their
-dedicated reference pages.
+machine-readable output, configuration schema, terminology, or API contracts. Those contracts belong
+in their dedicated reference pages.
 
 ______________________________________________________________________
 
@@ -42,14 +42,14 @@ ______________________________________________________________________
 TopMark documentation is split across repository-facing files, generated user documentation,
 development documentation, generated reference pages, and reusable snippets.
 
-| Surface                  | Location                                                     | Primary audience             | Role                                                          |
-| ------------------------ | ------------------------------------------------------------ | ---------------------------- | ------------------------------------------------------------- |
-| Repository landing pages | `README.md`, `INSTALL.md`, `CONTRIBUTING.md`, `CHANGELOG.md` | GitHub and PyPI readers      | Onboarding, release notes, contribution entry points          |
-| User documentation       | `docs/usage/`, `docs/configuration/`                         | CLI users                    | Task-oriented usage, configuration, policies, troubleshooting |
-| CI and validation docs   | `docs/ci/`                                                   | contributors and maintainers | Workflow responsibilities, triggers, validation paths         |
-| Development docs         | `docs/dev/`                                                  | contributors and maintainers | Architecture, conventions, tooling, release process           |
-| Generated reference      | generated under `docs/api/` and generated reference pages    | API and advanced users       | Discoverable API and registry reference                       |
-| Snippets                 | `docs/_snippets/`                                            | documentation maintainers    | Short reusable contract text                                  |
+| Surface                  | Location                                                     | Primary audience             | Role                                                             |
+| ------------------------ | ------------------------------------------------------------ | ---------------------------- | ---------------------------------------------------------------- |
+| Repository landing pages | `README.md`, `INSTALL.md`, `CONTRIBUTING.md`, `CHANGELOG.md` | GitHub and PyPI readers      | Onboarding, release notes, contribution entry points             |
+| User documentation       | `docs/usage/`, `docs/configuration/`                         | CLI users                    | Task-oriented usage, configuration, policies, troubleshooting    |
+| CI and validation docs   | `docs/ci/`                                                   | contributors and maintainers | Workflow responsibilities, triggers, validation paths            |
+| Development docs         | `docs/dev/`                                                  | contributors and maintainers | Architecture, terminology, conventions, tooling, release process |
+| Generated reference      | generated under `docs/api/` and generated reference pages    | API and advanced users       | Discoverable API and registry reference                          |
+| Snippets                 | `docs/_snippets/`                                            | documentation maintainers    | Short reusable contract text                                     |
 
 Repository-level documentation may intentionally summarize information that also appears in the
 generated documentation site because these files are often read directly on GitHub or PyPI.
@@ -127,6 +127,7 @@ Preferred labels include:
 - `Exit codes`
 - `Registry reference`
 - `Documentation pipeline`
+- `Terminology and Canonical Vocabulary`
 - `Test and validation architecture`
 
 Avoid unnecessary variants such as:
@@ -134,6 +135,7 @@ Avoid unnecessary variants such as:
 - `Machine Output`
 - `JSON Output`
 - `Output Formats`
+- `Glossary`
 
 Navigation groups may evolve, but conceptual grouping should remain stable once established.
 
@@ -183,15 +185,80 @@ related-links sections.
 Preferred terms include:
 
 - machine-readable output;
+- machine-readable formats;
 - exit codes;
 - shared options;
 - command-specific options;
 - generated reference;
 - configuration discovery;
 - file type identifiers;
+- canonical identity;
+- runtime configuration;
+- staged config-loading validation;
+- flattened compatibility view;
+- public API boundary;
+- internal API boundary;
 - test and validation architecture.
 
 Avoid synonym drift unless the distinction is meaningful.
+
+### Canonical terminology
+
+Canonical terminology belongs in [Terminology and Canonical Vocabulary](../terminology.md).
+
+Use that page as the normative reference for stable project-wide terminology such as:
+
+- qualified and local identifiers;
+- canonical identity;
+- applicability;
+- runtime overlays;
+- machine-readable output;
+- public and internal API boundaries;
+- stable, frozen, internal, deferred, and post-1.0 scope language.
+
+Other pages should prefer concise local summaries with cross-references instead of duplicating
+long-form terminology explanations.
+
+Contextual interpretation should remain local. A page may briefly explain how a canonical concept
+applies to its workflow, command, API surface, or validation path without duplicating the canonical
+definition itself.
+
+### Canonical explanations
+
+Major architectural concepts should have one canonical explanation page.
+
+Other documentation should prefer concise summaries with cross-references instead of duplicating
+long-form explanations.
+
+Examples:
+
+- registry layering and bindings belong in [Registry model](registry-model.md);
+- resolution scoring and ambiguity policy belong in [Resolution](resolution.md);
+- machine-readable JSON and NDJSON schemas belong in [Machine-readable output](machine-output.md);
+- output-format conventions belong in [Machine-readable format conventions](machine-formats.md);
+- public/internal API boundaries belong in [API stability and snapshot policy](api-stability.md).
+
+### Frozen terminology
+
+The term “frozen” is used in two distinct contexts throughout the TopMark documentation:
+
+- release and contract stabilization;
+- immutable runtime objects or snapshots.
+
+When referring to release stabilization, prefer explicit wording such as:
+
+- “frozen for 1.0”;
+- “contract frozen for 1.0”;
+- “stabilized for the 1.x series”.
+
+When referring to runtime mutability, prefer “immutable” in prose unless discussing concrete types
+or APIs whose names explicitly use `Frozen`.
+
+When TopMark exposes both mutable and immutable variants of the same runtime object, use the
+`MutableX` / `FrozenX` naming pair. Use `MutableX` for construction or editing state and `FrozenX`
+for immutable snapshots returned from `freeze()`.
+
+Plain `X` names are preferred for immutable value objects that do not have a mutable counterpart.
 
 ### Repository links vs hosted documentation links
 
@@ -380,7 +447,7 @@ internally consistent.
 | `Command-specific policy options` | Document policy controls that affect the command.                                          |
 | `Behavior details`                | Explain command-specific runtime behavior not covered elsewhere.                           |
 | `Output behavior`                 | Describe human output, verbosity, quiet mode, color, and preview behavior.                 |
-| `Machine-readable output`         | Explain supported output formats and command-specific machine-output semantics.            |
+| `Machine-readable output`         | Explain supported output formats and command-specific machine-readable output semantics.   |
 | `Command-specific options`        | Document options unique to the command without repeating shared-option semantics.          |
 | `Exit codes`                      | Explain command-specific exit behavior and link to centralized exit-code docs.             |
 | `Typical workflows`               | Present common workflows from simple to advanced.                                          |
@@ -486,6 +553,7 @@ Public module, class, and function docstrings should:
 - use plain Markdown cross-references rather than Sphinx roles;
 - remain import-safe and avoid runtime side effects;
 - document caller-facing behavior rather than implementation mechanics;
+- use `MutableX` / `FrozenX` naming consistently when documenting mutable/immutable runtime pairs;
 - keep exception documentation aligned with the public API contract.
 
 ### Exception documentation
@@ -528,7 +596,7 @@ ______________________________________________________________________
 ## Snippet Conventions
 
 Documentation snippets exist to reduce duplication of stable contract language. They should not be
-used merely to reduce ordinary prose repetition.
+used merely to reduce ordinary prose repetition or replace links to canonical reference pages.
 
 Snippets are appropriate when shared wording represents a stable semantic contract, warning,
 compatibility note, or short navigation block that would be risky or noisy to maintain independently
@@ -538,16 +606,16 @@ across multiple pages.
 
 Reusable snippets live in `docs/_snippets/`.
 
-| Snippet                       | Purpose                                                                                                         | Status           |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------- |
-| `api-internal-overrides.md`   | Explains the API-only internal override boundary for configuration behavior.                                    | Keep             |
-| `config-strictness.md`        | Defines shared strictness semantics and warning behavior.                                                       | Keep             |
-| `file-type-identifiers.md`    | Summarizes local vs qualified file type identifiers and links to the filtering contract.                        | Keep             |
-| `option-spelling.md`          | Explains CLI, TOML, and API option spelling conventions.                                                        | Keep             |
-| `output-contract.md`          | Defines shared output, quiet-mode, and machine-readable output guarantees for commands that support quiet mode. | Keep             |
-| `output-contract-no-quiet.md` | Defines shared output guarantees for informational commands that do not support quiet mode.                     | Keep             |
-| `report-scope.md`             | Defines shared report-scope behavior for sibling mutation commands.                                             | Keep but monitor |
-| `ci/related-pages.md`         | Defines the shared related-pages block for CI workflow documentation pages.                                     | Keep             |
+| Snippet                       | Purpose                                                                                                                          | Status           |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `api-internal-overrides.md`   | Explains the API-only internal override boundary for configuration behavior.                                                     | Keep             |
+| `config-strictness.md`        | Defines the short reusable staged config-loading strictness contract.                                                            | Keep             |
+| `file-type-identifiers.md`    | Defines the short reusable local/qualified file type identifier contract.                                                        | Keep             |
+| `option-spelling.md`          | Explains CLI, TOML, and API option spelling conventions.                                                                         | Keep             |
+| `output-contract.md`          | Defines shared TEXT, quiet-mode, Markdown, and machine-readable output guarantees for commands that support quiet mode.          | Keep             |
+| `output-contract-no-quiet.md` | Defines shared TEXT, Markdown, and machine-readable output guarantees for informational commands that do not support quiet mode. | Keep             |
+| `report-scope.md`             | Defines shared report-scope behavior for sibling mutation commands.                                                              | Keep but monitor |
+| `ci/related-pages.md`         | Defines the shared related-pages block for CI workflow documentation pages.                                                      | Keep             |
 
 `docs/_snippets/.markdownlint.jsonc` configures Markdown linting for snippet files and is not a
 reusable content snippet.
@@ -556,28 +624,58 @@ reusable content snippet.
 
 Good snippet candidates include:
 
+- normative contracts reused across several pages;
+- canonical short-form semantics whose wording must remain identical;
 - shared output guarantees;
 - shared strictness or compatibility warnings;
-- compact CLI semantics reused across several pages;
-- terminology contracts that must remain consistent;
+- compact CLI/API/configuration equivalence wording;
 - short applicability notes shared by sibling commands;
 - exact related-page navigation blocks shared by a small documentation family.
 
 A snippet is usually justified when it is used in three or more pages, or when two closely related
 sibling pages share an exact behavioral contract.
 
+For 1.0, the following semantic areas are appropriate snippet candidates when repeated verbatim:
+
+- file type identifier semantics;
+- machine-readable output guarantees;
+- TEXT verbosity and quiet-mode behavior;
+- staged config-loading strictness behavior;
+- CLI/API/configuration spelling equivalence;
+- exact report-scope behavior shared by sibling mutation commands.
+
 Avoid snippets for:
 
 - page summaries;
 - page skeletons;
 - workflow-specific examples;
+- contextual interpretation of canonical concepts;
 - command-specific behavior;
 - large conceptual sections;
 - machine-readable schemas;
+- canonical terminology pages;
+- page-specific applicability notes;
+- operational rationale;
+- troubleshooting guidance;
 - long reference documentation;
 - prose that benefits from local adaptation.
 
-Broad lifecycle semantics should live in canonical reference pages, not snippets.
+Broad lifecycle semantics and long-form canonical definitions should live in canonical reference
+pages, not snippets.
+
+### Snippet centralization strategy
+
+Use snippets only for wording that represents a stable, repeated contract.
+
+Keep prose local when it explains how a contract applies to a specific workflow, command, API
+surface, CI path, or troubleshooting scenario. Local context is usually more readable than excessive
+content composition.
+
+Prefer this balance:
+
+- snippets centralize normative wording;
+- canonical reference pages centralize long-form definitions and architectural explanations;
+- local pages explain operational context, examples, rationale, and applicability.
 
 ### Snippet naming and structure
 
@@ -699,6 +797,7 @@ Prefer:
 - explicit local structure;
 - predictable page layout;
 - links to canonical reference pages;
+- local contextual summaries that explain page-specific applicability;
 - concise summaries in repository-facing documents.
 
 Avoid abstraction layers that make pages difficult to follow.
@@ -718,8 +817,12 @@ Avoid duplicating:
 - full command contracts;
 - large configuration lifecycle explanations;
 - machine-readable schemas;
+- canonical terminology definitions;
 - release architecture details;
 - implementation rationale already covered by a canonical development page.
+
+Do not treat every repeated concept as a snippet candidate. Repetition is acceptable when it gives a
+page-specific explanation, workflow rationale, troubleshooting advice, or command-specific context.
 
 ______________________________________________________________________
 
@@ -731,6 +834,7 @@ However:
 
 - navigation structure should remain relatively stable;
 - public terminology should remain stable;
+- canonical terminology definitions should remain centralized in `docs/terminology.md`;
 - command-page and workflow-page structures should remain stable once standardized;
 - generated reference URLs should avoid unnecessary churn;
 - snippet semantics should remain stable across consuming pages.
@@ -740,10 +844,11 @@ discoverability or maintainability benefits.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
-- [Documentation Pipeline & Reference Hygiene](documentation-pipeline.md)
-- [API Stability & Snapshot Policy](api-stability.md)
+- [Documentation pipeline and reference hygiene](documentation-pipeline.md)
+- [Terminology and Canonical Vocabulary](../terminology.md)
+- [API stability and snapshot policy](api-stability.md)
 - [Machine-readable output](machine-output.md)
 - [Test and validation architecture](../ci/test-validation.md)
 - [Contributing](../contributing.md)

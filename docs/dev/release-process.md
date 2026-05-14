@@ -10,29 +10,32 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Release Process
+# Release process
 
 This page documents TopMark's maintainer release process, versioning model, release workflow, and
 post-publication validation expectations.
+
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
 
 TopMark releases are Git-tag-driven and published through GitHub Actions. The release pipeline is
 intentionally split between source-tree validation, artifact creation, privileged publishing, and
 published-package validation.
 
-## Release Philosophy
+## Release philosophy
 
 TopMark's release process is designed around four principles:
 
-- Git tags are the single source of truth for package versions.
+- Git tags are the canonical source of truth for package versions.
 - CI validates the source tree and builds release artifacts in an unprivileged context.
 - The release workflow publishes only CI-built artifacts and does not rebuild the project.
 - Published artifacts are validated separately after publication.
 
-This keeps release automation explicit, reproducible, and easier to audit.
+This keeps release automation explicit, deterministic, reproducible, and easier to audit.
 
 ______________________________________________________________________
 
-## Versioning Model
+## Versioning model
 
 TopMark uses Semantic Versioning to describe compatibility intent:
 
@@ -42,19 +45,20 @@ TopMark uses Semantic Versioning to describe compatibility intent:
 | `feat:`                        | Minor release  |
 | `feat!:` or `BREAKING CHANGE:` | Major release  |
 
-Stable API compatibility applies to:
+Stable compatibility guarantees apply to:
 
 - `topmark.api`
 - `topmark.registry.registry.Registry`
+- documented machine-readable JSON and NDJSON contracts
 
-Advanced and internal APIs may change between minor versions.
+Advanced and internal APIs may evolve between minor versions.
 
 TopMark uses PEP 440 package versions and derives package versions from Git tags through
 `setuptools-scm`. Versions are not maintained manually in `pyproject.toml`.
 
 ______________________________________________________________________
 
-## Release Tag Forms
+## Release tag forms
 
 Release tags use a leading `v` and a PEP 440-compatible version identifier.
 
@@ -67,7 +71,7 @@ Preferred tag forms are:
 | Release candidate | `vX.Y.ZrcN` | `v1.0.0rc1` |
 | Final             | `vX.Y.Z`    | `v1.0.0`    |
 
-Legacy dashed prerelease tags remain supported for compatibility:
+Legacy dashed prerelease tags remain supported for backward compatibility:
 
 - `vX.Y.Z-aN`
 - `vX.Y.Z-bN`
@@ -82,9 +86,9 @@ Between tags, development builds may report SCM-derived development versions suc
 
 ______________________________________________________________________
 
-## Release Channels
+## Release channels
 
-TopMark routes releases by normalized PEP 440 version semantics.
+TopMark routes releases through normalized PEP 440 version semantics.
 
 | Tag         | Channel  | Purpose                      |
 | ----------- | -------- | ---------------------------- |
@@ -93,28 +97,32 @@ TopMark routes releases by normalized PEP 440 version semantics.
 | `v1.0.0rc1` | TestPyPI | Release-candidate validation |
 | `v1.0.0`    | PyPI     | Final publication            |
 
-Prereleases publish to TestPyPI. Final releases publish to PyPI and create a GitHub Release.
+Prereleases publish to TestPyPI and create GitHub prereleases. Final releases publish to PyPI and
+create normal GitHub releases.
 
 ______________________________________________________________________
 
-## Release Pipeline Architecture
+## Release pipeline architecture
 
 The release pipeline is split across multiple workflows:
 
-| Stage                        | Workflow                                              | Responsibility                                                             |
-| ---------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------- |
-| Source validation            | `.github/workflows/ci.yml`                            | Validate source, tests, docs, links, typing, and API snapshot expectations |
-| Artifact build               | `.github/workflows/ci.yml`                            | Build `sdist` and wheel on version-tag pushes                              |
-| Package publication          | `.github/workflows/release.yml`                       | Verify CI-built artifacts and publish to TestPyPI or PyPI                  |
-| Published package validation | `.github/workflows/published-artifact-validation.yml` | Validate installability and runtime behavior from package indexes          |
+| Stage                        | Workflow                                              | Responsibility                                                                       |
+| ---------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Source validation            | `.github/workflows/ci.yml`                            | Validate source, tests, documentation, links, typing, and API snapshot expectations  |
+| Artifact build               | `.github/workflows/ci.yml`                            | Build `sdist` and wheel on version-tag pushes                                        |
+| Package publication          | `.github/workflows/release.yml`                       | Verify CI-built artifacts and publish to TestPyPI or PyPI through Trusted Publishing |
+| Published package validation | `.github/workflows/published-artifact-validation.yml` | Validate installability and runtime behavior from TestPyPI or PyPI                   |
 
 This split is intentional. CI is allowed to run repository code and build artifacts in an
-unprivileged context. The release workflow runs with publishing privileges but does not rebuild the
-project from repository source code.
+unprivileged environment. The release workflow runs with publishing privileges but does not rebuild
+the project from repository source code.
+
+The release workflow also creates the corresponding GitHub Release object: prerelease tags create
+GitHub prereleases, while final tags create normal GitHub releases.
 
 ______________________________________________________________________
 
-## Artifact Trust Boundary
+## Artifact trust boundary
 
 On version-tag pushes, CI builds and uploads release artifacts:
 
@@ -132,15 +140,17 @@ exact CI run that triggered publication and verifies:
 - artifact versions match the normalized tag version;
 - checksums match `release-meta/SHA256SUMS`;
 - the target version does not already exist on the selected package index.
+- the package is published with PyPI/TestPyPI Trusted Publishing through OIDC.
 
 Final releases also verify that the new version is newer than the latest final version on PyPI.
+Prereleases skip that final-version ordering check and publish to TestPyPI.
 
-This artifact-only publishing model avoids executing repository build logic in the privileged
+This artifact-only publishing model avoids executing repository build logic inside the privileged
 release workflow.
 
 ______________________________________________________________________
 
-## Maintainer Release Checklist
+## Maintainer release checklist
 
 Before tagging a release:
 
@@ -148,7 +158,7 @@ Before tagging a release:
 
 1. Update `CHANGELOG.md`.
 
-1. Ensure release notes match the intended SemVer impact.
+1. Ensure release notes match the intended semantic-versioning impact.
 
 1. Run local verification:
 
@@ -173,12 +183,12 @@ Before tagging a release:
    git push origin vX.Y.Z
    ```
 
-CI must succeed on the tag push, including release-artifact upload, before the release workflow can
-publish the package.
+CI must succeed on the tag push, including release-artifact upload, before the release workflow is
+allowed to publish the package.
 
 ______________________________________________________________________
 
-## Prerelease Flow
+## Prerelease flow
 
 Use prereleases to validate packaging and installation behavior before final publication.
 
@@ -187,7 +197,7 @@ Recommended sequence:
 1. Create a prerelease tag, such as `v1.0.0b1` or `v1.0.0rc1`.
 1. Push the tag.
 1. Let CI build and upload artifacts.
-1. Let the release workflow publish to TestPyPI.
+1. Let the release workflow publish to TestPyPI and create the GitHub prerelease.
 1. Run published artifact validation against TestPyPI.
 1. Fix issues and repeat with a new prerelease tag if needed.
 
@@ -199,13 +209,13 @@ index: testpypi
 ```
 
 TestPyPI validation confirms the package can be installed and exercised from a consumer-like clean
-environment, but TestPyPI is not a complete mirror of PyPI dependencies.
+environment, but TestPyPI is not a complete mirror of PyPI dependency behavior.
 
 ______________________________________________________________________
 
-## Final Release Flow
+## Final release flow
 
-Use a final release tag only after the release candidate has been validated.
+Use a final release tag only after release-candidate validation has succeeded.
 
 Recommended sequence:
 
@@ -237,9 +247,9 @@ index: pypi
 
 ______________________________________________________________________
 
-## Published Artifact Validation
+## Published artifact validation
 
-Published artifact validation is separate from CI and release publishing.
+Published artifact validation is intentionally separate from CI and release publishing.
 
 Use `.github/workflows/published-artifact-validation.yml` after publishing a prerelease or final
 release. It validates the package as users install it from TestPyPI or PyPI across supported
@@ -254,24 +264,25 @@ The workflow checks:
 - public API importability;
 - basic runtime behavior.
 
-This validation complements CI. CI validates the source tree and release artifacts before
-publication; published artifact validation checks the package index result after publication.
+This validation complements CI.
+
+CI validates the source tree and release artifacts before publication; published artifact validation
+checks the package-index result after publication.
 
 ______________________________________________________________________
 
-## Recovery Notes
+## Recovery notes
 
 If CI fails on the tag push:
 
 - do not publish manually;
 - fix the issue on a new commit;
-- move or recreate the release tag only if the project policy allows it and no package was
-  published;
+- move or recreate the release tag only if project policy allows it and no package was published;
 - prefer a new prerelease tag when validating fixes.
 
 If the release workflow fails before publication:
 
-- inspect the failed preflight, metadata, checksum, or index validation step;
+- inspect the failed metadata, checksum, publication, or package-index validation step;
 - avoid rebuilding artifacts manually in the release workflow;
 - prefer fixing the source or workflow issue and creating a new release attempt.
 
@@ -283,9 +294,9 @@ If a package was already published to PyPI:
 
 ______________________________________________________________________
 
-## Relationship to Contributor Documentation
+## Relationship to contributor documentation
 
-`CONTRIBUTING.md` should remain a concise contributor-facing guide. It may summarize release
+`CONTRIBUTING.md` should remain a concise contributor-facing entry point. It may summarize release
 expectations and tag conventions, but detailed release architecture belongs on this page.
 
 The generated documentation page `docs/contributing.md` should link here for hosted documentation
@@ -293,9 +304,10 @@ readers.
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 - [CI & Validation](../ci/index.md) — overview of the CI documentation family
+- [Terminology and Canonical Vocabulary](../terminology.md)
 - GitHub workflows:
   - [CI workflow](../ci/ci-workflow.md) — source-tree validation and release artifact creation
   - [Release workflow](../ci/release-workflow.md) — artifact-only package publication
@@ -303,4 +315,21 @@ ______________________________________________________________________
     install validation
   - [Dependabot workflow](../ci/dependabot.md) — dependency and GitHub Actions update policy
   - [GitHub Action pin audit](../ci/action-pin-audit.md) — action pin consistency audit
-- [Contributing](../contributing.md) — hosted contributor guide summary
+- [Contributing](../contributing.md) — hosted contributor guide
+
+______________________________________________________________________
+
+## Summary
+
+TopMark’s release model separates:
+
+- source-tree validation;
+- release artifact creation;
+- privileged package publication;
+- published-package validation.
+
+Git tags are the canonical source of truth for package versions, while CI-built artifacts are the
+only artifacts eligible for publication.
+
+This separation keeps release behavior deterministic, auditable, and aligned with TopMark’s stable
+1.x compatibility model.

@@ -13,11 +13,12 @@ topmark:header:end
 # Pipelines (Concepts)
 
 TopMark processes files through **explicit, immutable pipelines** composed of small,
-single-responsibility steps. Each pipeline represents a supported user intent (scan, check, strip,
-apply, patch) and defines **exactly which steps run and in which order**. A dedicated **probe
-pipeline** exists for resolution diagnostics ([`topmark probe`](../usage/commands/probe.md)). Probe
-orchestration also reports explicit inputs filtered before file-type probing via synthetic probe
-contexts.
+single-responsibility steps. Each pipeline represents a supported execution intent (scan, check,
+strip, apply, patch) and defines **exactly which steps run and in which order**.
+
+A dedicated **probe pipeline** exists for resolution diagnostics
+([`topmark probe`](../usage/commands/probe.md)). Probe orchestration also reports explicit inputs
+filtered before file-type probing via synthetic probe contexts.
 
 Pipelines do not make high-level decisions themselves. Instead:
 
@@ -28,14 +29,16 @@ Pipelines do not make high-level decisions themselves. Instead:
 
 This design guarantees predictability, debuggability, and idempotence.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 Pipeline execution consumes an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] plus
-runtime options assembled from the TOML → Config → Runtime flow documented in
-[`architecture.md`](architecture.md) and
-[`../configuration/discovery.md`](../configuration/discovery.md).
+runtime options assembled from the TOML → FrozenConfig → runtime flow documented in
+[`Architecture`](architecture.md) and [`Configuration discovery`](../configuration/discovery.md).
 
 Source-local TOML options such as `[config].root` and `strict` are resolved before pipeline
-execution. They influence configuration discovery and validation behaviour, but do not become normal
-layered Config fields.
+execution. They influence configuration discovery and staged config-loading validation behavior, but
+do not become layered configuration fields.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -44,14 +47,14 @@ layered Config fields.
 This page explains **how the pipelines work** and how the CLI composes them. For the canonical,
 API-backed definitions of pipelines, steps, and enums, see:
 
-- **Pipelines (Reference hub):** [`dev/pipelines-reference.md`](./pipelines-reference.md)
+- **Pipelines reference hub:** [`Pipelines (Reference)`](./pipelines-reference.md)
 - **Internals (generated):**
   [`api/internals/topmark/pipeline/pipelines.md`](../api/internals/topmark/pipeline/pipelines.md)
-- **Architecture overview:** [`dev/architecture.md`](./architecture.md)
+- **Architecture overview:** [`Architecture`](./architecture.md)
 
-Tip: step names and enum names on this page are written as MkDocStrings/AutoRefs links (e.g.
-\[`topmark.pipeline.steps.resolver.ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep]).
-Once the reference page is present, MkDocs will turn those into clickable links.
+Step names and enum names on this page are written as MkDocStrings/AutoRefs links, for example
+\[`topmark.pipeline.steps.resolver.ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep].
+MkDocs resolves these references through the generated API documentation.
 
 ______________________________________________________________________
 
@@ -120,6 +123,21 @@ Not all pipelines traverse all phases. Each variant selects a **strict subset** 
 
 ______________________________________________________________________
 
+## Pipeline guarantees
+
+TopMark pipelines are:
+
+- deterministic
+- step-ordered
+- side-effect constrained
+- idempotent
+- presentation-independent
+
+Pipeline steps mutate processing context state. CLI views, API DTOs, and machine-readable output
+classify final outcomes from accumulated statuses and hints.
+
+______________________________________________________________________
+
 ## Available Pipelines
 
 Pipelines are defined in `src/topmark/pipeline/pipelines.py` and exposed via
@@ -156,9 +174,11 @@ O[<tt>ProberStep</tt>]
 
 This pipeline powers [`topmark probe`](../usage/commands/probe.md) and
 \[`topmark.api.probe()`\][topmark.api.commands.pipeline.probe] and is intentionally
-**resolution-only**. It halts immediately after probing and does not perform inspection, comparison,
-or mutation. Discovery-level filtering is reported by orchestration via synthetic probe results for
-explicitly requested paths that did not reach probing.
+**resolution-only**.
+
+It halts immediately after probing and does not perform inspection, comparison, or mutation.
+Discovery-level filtering is reported by orchestration via synthetic probe results for explicitly
+requested paths that did not reach probing.
 
 ### SCAN
 
@@ -419,7 +439,7 @@ Each step implements the \[`Step`\][topmark.pipeline.protocols.Step] protocol an
 | Step                                                             | Responsibility                                                                      |
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, and processor binding |
-| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`resolution.md`](resolution.md))     |
+| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`Resolution`](resolution.md))        |
 | \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                      |
 | \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                            |
 | \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                       |
@@ -437,9 +457,9 @@ ______________________________________________________________________
 
 Some pipelines may terminate early due to **policy or safety constraints**:
 
-Config validation happens before these pipeline steps run. Under effective strict config checking,
-configuration warnings are treated as validation failures and may prevent pipeline execution from
-starting.
+Configuration validation happens before these pipeline steps run. Under effective strict config
+checking, configuration warnings are treated as validation failures and may prevent pipeline
+execution from starting.
 
 - Binary files
 - Mixed line endings
@@ -467,22 +487,24 @@ ______________________________________________________________________
 - **Determinism:** Same input → same outcome
 - **Dry-run safety:** No writes without `--apply`
 - **Separation of concerns:** Steps mutate context, views classify outcomes
-- **Runtime/config separation:** pipeline execution consumes resolved config and runtime options
-  rather than re-running TOML discovery during step execution
+- **Runtime/configuration separation:** pipeline execution consumes resolved runtime configuration
+  and runtime options rather than re-running TOML discovery during step execution
 
 ______________________________________________________________________
 
 ## See also
 
-- [`Architecture`](./architecture.md) — TOML → Config → Runtime overview
+- [`Architecture`](./architecture.md) — TOML → FrozenConfig → runtime overview
 - [`Pipelines (Reference)`](./pipelines-reference.md) — generated API-backed reference entry points
-- [`Machine-readable output schema`](./machine-output.md) — how pipeline results are exposed in JSON
-  / NDJSON
+- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical definitions for pipeline,
+  status, hint, runtime, and machine-readable terminology
+- [`Machine-readable output`](./machine-output.md) — how pipeline results are exposed in JSON and
+  NDJSON outputs
 - [`Configuration discovery`](../configuration/discovery.md) — source-local TOML options and
   precedence
 
-This pipeline model is the backbone of TopMark’s reliability and extensibility. New behaviors are
-introduced by adding steps or composing new pipelines—never by special-casing control flow.
+This pipeline model is the backbone of TopMark’s reliability and extensibility. New behavior is
+introduced by adding steps or composing new pipelines, not by special-casing control flow.
 
 ______________________________________________________________________
 
@@ -699,4 +721,5 @@ flowchart TD
 
 Filtered or missing explicit inputs are not produced by
 \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] itself. They are represented by synthetic
-contexts created by probe orchestration before final presentation/API packaging.
+contexts created by probe orchestration before final presentation, API, and machine-readable output
+packaging.

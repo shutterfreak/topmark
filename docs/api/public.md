@@ -10,10 +10,10 @@ topmark:header:start
 topmark:header:end
 -->
 
-# API Reference (%%TOPMARK_VERSION%%)
+# Public API reference (%%TOPMARK_VERSION%%)
 
-These pages are auto‑generated using [mkdocstrings](https://mkdocstrings.github.io/), pulling
-docstrings directly from the TopMark source code.
+These pages are generated using [mkdocstrings](https://mkdocstrings.github.io/) from the TopMark
+source code.
 
 The API reference complements the higher‑level usage guides:
 
@@ -25,6 +25,9 @@ The API reference complements the higher‑level usage guides:
 
 Use this section if you need details on functions, classes, or constants available in TopMark.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 {% include-markdown "\_snippets/output-contract.md" %}
 
 > [!NOTE]
@@ -32,18 +35,19 @@ Use this section if you need details on functions, classes, or constants availab
 > For programmatic use, prefer the Python API or JSON/NDJSON output rather than parsing
 > TEXT/Markdown.
 
-## Public API (stable)
+## Stable public API
 
-### Configuration via mappings (immutable at runtime)
+### Configuration via mappings
 
-Public API functions accept either a plain **mapping** (that mirrors the TOML structure) or an
-immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Internally, TopMark merges your
-input into a **mutable builder** and immediately
-\[`freeze()`s\][topmark.config.model.MutableConfig.freeze] it into an immutable snapshot before
-running, which prevents accidental mutation and keeps results deterministic.
+Public API functions accept either a plain mapping (mirroring the TOML structure) or an immutable
+\[`FrozenConfig`\][topmark.config.model.FrozenConfig].
 
-The mapping mirrors the **layered TopMark config fragment** plus TOML-source-local sections such as
-`[config]` and `[writer]`. Source-local options such as `[config].root` and `strict` can also be
+Internally, TopMark merges mapping input into mutable runtime configuration state and immediately
+\[`freeze()`s\][topmark.config.model.MutableConfig.freeze] it into an immutable runtime snapshot
+before execution. This prevents accidental mutation and keeps results deterministic.
+
+The mapping mirrors the layered TopMark configuration fragment plus TOML-source-local sections such
+as `[config]` and `[writer]`. Source-local options such as `[config].root` and `strict` can also be
 provided via the `config` key in the mapping, for example:
 
 ```python
@@ -58,12 +62,12 @@ config = {
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-Note that `strict` is not a layered Config field. It is resolved from `[config]` /
-`[tool.topmark.config]`-shaped input during configuration loading and influences validation
-behavior. API helpers such as
+Note that `strict` is not a layered configuration field. It is resolved from `[config]` /
+`[tool.topmark.config]`-shaped input during configuration loading and influences staged
+config-loading validation behavior. API helpers such as
 \[`ensure_config_valid(...)`\][topmark.api.runtime.ensure_config_valid] apply this effective
-strictness (including optional overrides) when validating a config across staged
-config-loading/preflight validation:
+strictness (including optional overrides) when validating a config across staged config-loading
+validation:
 
 - TOML-source diagnostics
 - merged-config diagnostics
@@ -71,22 +75,22 @@ config-loading/preflight validation:
 
 These options are resolved separately from layered
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig] values and do not participate in layered
-config merging.
+configuration merging.
 
 Internally, TopMark first performs whole-source TOML-style validation of these sections (unknown
-keys, malformed section shapes, etc.), then deserializes only the layered fragment into the final
-immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] snapshot, and finally evaluates
-effective validity across staged config-loading/preflight validation. A flattened compatibility
+keys, malformed section shapes, etc.), then deserializes only the layered configuration fragment
+into the final immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] snapshot, and finally
+evaluates effective validity across staged config-loading validation. A flattened compatibility
 diagnostics view remains available for reporting and exception payloads, derived from the staged
-validation logs. This is why sections like `[config]` and `[writer]` can influence loading/runtime
-behavior without becoming layered Config fields.
+validation logs. This is why sections like `[config]` and `[writer]` can influence loading and
+runtime behavior without becoming layered configuration fields.
 
 This distinction is also visible when inspecting configuration via
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md): source-local TOML fragments
 are preserved per layer (for example under `[[layers]].toml.*` in human output or
 `config_provenance.layers[].toml` in machine-readable output), while the final immutable
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig] represents only the flattened effective
-configuration used at runtime.
+runtime configuration used during execution.
 
 ```python
 from topmark import api
@@ -129,10 +133,10 @@ run: api.RunResult = api.check(
 )
 ```
 
-API overlays, TOML configuration, CLI filters, and effective runtime policy resolution all share the
-same file-type identifier semantics. Local identifiers such as `"python"` are also accepted when
-unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
-`"topmark:python"`.
+API overlays, TOML configuration, CLI filters, and effective runtime policy resolution all share
+identical file-type identifier semantics. Local identifiers such as `"python"` are also accepted
+when unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
+`"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
 
 For the public API, the returned view is controlled via
 `report="all" | "actionable" | "noncompliant"`. This replaces the older `skip_compliant` /
@@ -146,7 +150,7 @@ See also:
 - [Filtering](../usage/filtering.md)
 - [Policies](../usage/policies.md)
 
-### Resolution diagnostics (probe API)
+### Resolution diagnostics and probe API
 
 For programmatic inspection of file-type and processor resolution, use the high-level probe API:
 
@@ -163,7 +167,7 @@ for fr in result.files:
         print(" -", c.file_type, c.rank, c.selected, c.matched_by)
 ```
 
-The probe API is **read-only** and returns stable, JSON-friendly DTOs:
+The probe API is read-only and returns stable JSON-friendly DTOs:
 
 - \[`ProbeRunResult`\][topmark.api.types.ProbeRunResult] → aggregate results and summary
 - \[`ProbeFileResult`\][topmark.api.types.ProbeFileResult] → one entry per input path (including
@@ -174,14 +178,14 @@ Candidates are returned in resolver order (best match first).
 
 Unlike \[`check()`\][topmark.api.commands.pipeline.check] and
 \[`strip()`\][topmark.api.commands.pipeline.strip],
-\[`probe()`\][topmark.api.commands.pipeline.probe] does not perform any content processing or
-mutation planning. It only explains how inputs resolve to file types and processors.
+\[`probe()`\][topmark.api.commands.pipeline.probe] does not perform content processing or mutation
+planning. It only explains how inputs resolve to file types and processors.
 
 Design guarantees:
 
 - No exposure of internal enums, pipeline contexts, or registry objects
-- `status` and `reason` are **plain strings** (stable across 1.x)
-- `score` is **explanatory only** and not part of the stability contract; use `selected`, `rank`,
+- `status` and `reason` are plain strings stable across the 1.x series
+- `score` is explanatory only and not part of the compatibility contract; use `selected`, `rank`,
   and `matched_by`
 - Explicit input paths are always returned, even if they are filtered or missing
 
@@ -198,7 +202,7 @@ The probe API explains inputs across the full discovery lifecycle:
 This mirrors [`topmark probe`](../usage/commands/probe.md) (CLI) behavior and provides full
 explainability without exposing resolver internals.
 
-#### Low-level probe helper (advanced)
+#### Low-level probe helper
 
 For direct path-based resolution (without discovery context), you may still use:
 
@@ -208,15 +212,16 @@ from topmark.resolution.filetypes import probe_resolution_for_path
 probe = probe_resolution_for_path("README.md")
 ```
 
-This returns a \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult] with
-internal enums and full resolution evidence. It is **not part of the stable public API surface** and
-should only be used for advanced debugging or internal integrations.
+This returns a \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult] exposing
+candidate file types, scores, match signals, and the selected processor. It is the canonical
+path-based resolution surface for advanced integrations.
 
 Prefer \[`topmark.api.probe()`\][topmark.api.probe] for all public, semver-stable integrations.
 
-The probe API is part of the stable 1.x public API surface.
+The probe API is part of the stable 1.x public API surface and machine-readable compatibility
+contract.
 
-### Configuration resolution and provenance
+### Configuration resolution and provenance model
 
 Internally, TopMark resolves TOML sources into a layered configuration model before producing the
 final immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] snapshot used by the public
@@ -225,23 +230,23 @@ API.
 This process follows:
 
 1. TOML sources (defaults, user, project, `--config`)
-1. Layered config (merged by precedence)
-1. Staged config-loading/preflight validation
-1. Freeze into effective immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig]
+1. Layered configuration merging by precedence
+1. Staged config-loading validation
+1. Freeze into immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig]
 1. Runtime overlays (API call arguments such as `diff`, `report`, etc.)
 
-The public API only operates on the flattened immutable
+The public API operates only on the flattened immutable
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Staged validation logs are not exposed
 directly; only their flattened compatibility view is used at reporting and API boundaries.
 
-Internally, TopMark resolves TOML sources, validates each whole-source TOML fragment, builds a
-merged mutable config draft, and evaluates effective validity across staged config-loading/preflight
+Internally, TopMark resolves TOML sources, validates each whole-source TOML fragment, builds merged
+mutable runtime configuration state, and evaluates effective validity across staged config-loading
 validation before freezing into or validating against an immutable
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Advanced users can inspect the
 TOML-resolution and draft-building portion of this process via
 \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config].
 
-### Recognized vs supported file types
+### Recognized and supported file types
 
 - File types are identified by their **file type identifier**.
 - A file type is **recognized** if its *file type identifier* exists in
@@ -257,8 +262,8 @@ TOML-resolution and draft-building portion of this process via
 File type identifiers may be provided either as a local identifier (`"python"`) or as a qualified
 identifier (`"topmark:python"`).
 
-Internally, TopMark normalizes identifiers to canonical qualified keys before resolver, filtering,
-and policy evaluation.
+Internally, TopMark normalizes identifiers to canonical qualified keys before filtering, resolution,
+policy evaluation, and binding lookup.
 
 Registry-facing APIs resolve identifiers using
 \[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],
@@ -276,15 +281,15 @@ For resolution diagnostics, use
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] (see
 \[`topmark.resolution.filetypes.probe_resolution_for_path`\][topmark.resolution.filetypes.probe_resolution_for_path]).
 This function returns a \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]
-exposing candidate file types, scores, match signals, and the selected processor, and is the
+exposing candidate file types, scores, match signals, and the selected processor. It is the
 canonical path-based resolution surface for 1.0.
 
-### Registries, bindings, and extensibility
+### Registries, bindings, and runtime extensibility
 
 TopMark exposes read-only registry inspection through the stable
 \[`Registry`\][topmark.registry.registry.Registry] facade.
 
-The facade represents the effective composed runtime view of:
+The facade represents the effective composed runtime registry view of:
 
 - registered file types
 - registered header processors
@@ -307,10 +312,10 @@ for binding in Registry.bindings():
 ```
 
 Most public integrations should treat the registry facade as introspection-only and prefer the
-high-level \[`topmark.api`\][topmark.api] functions for execution.
+high-level \[`topmark.api`\][topmark.api] execution helpers.
 
-Advanced registry concepts, including registry layers, overlay mutation helpers, bindings,
-qualified/local identity semantics, and runtime extension examples, are documented in
+Advanced registry concepts, including registry layers, runtime overlays, bindings, qualified/local
+identity semantics, and runtime extension examples, are documented in
 [Registry model](../dev/registry-model.md).
 
 Registry state can also be inspected from the CLI:
@@ -327,5 +332,5 @@ For resolution diagnostics, prefer:
 
 ______________________________________________________________________
 
-**Stability note:** See [API Stability](../dev/api-stability.md) for how we guard the public surface
-with a JSON snapshot across supported Python versions.
+**Stability note:** See [API stability and snapshot policy](../dev/api-stability.md) for how TopMark
+protects the stable public API surface across supported Python versions.

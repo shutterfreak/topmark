@@ -10,69 +10,76 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Internals (advanced) (%%TOPMARK_VERSION%%)
+# Internal API reference (advanced) (%%TOPMARK_VERSION%%)
 
 > [!WARNING]
 >
-> The modules listed under *Internals* are intended for contributors and advanced users. They are
-> **subject to change** and are **not** covered by the semver stability guarantees. Prefer the
-> stable public API documented in **API → Public API**.
+> The modules listed under *Internals* are intended for contributors and advanced integrations. They
+> are not covered by the stable public API compatibility contract and may evolve between minor
+> releases.
+>
+> Prefer the [stable public API](./public.md) whenever possible.
 
-Internals complement the stable public API documented in **API → Public API**.
+Internals complement the stable public API.
 
-Where possible, prefer using:
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
+Whenever possible, prefer using:
 
 - `topmark.api`
-- documented machine-readable output contracts
-- the stable `Registry` facade
+- documented machine-readable JSON and NDJSON contracts
+- the stable `Registry` facade APIs
 
-Internal modules should only be relied on when building advanced integrations, debugging, testing,
-or contributing to TopMark itself.
+Internal modules should generally be used only for advanced integrations, debugging, testing, or
+TopMark development.
 
 For details on how these pages are generated and validated, see
-[Development → Documentation Pipeline & Reference Hygiene](../dev/documentation-pipeline.md).
+[Development → Documentation pipeline and reference hygiene](../dev/documentation-pipeline.md).
 
 See also:
 
-- [Architecture overview](../dev/architecture.md)
+- [Architecture](../dev/architecture.md)
 - [Registry model](../dev/registry-model.md)
-- [Resolution model](../dev/resolution.md)
+- [Resolution](../dev/resolution.md)
 - [Plugins and extensibility](../dev/plugins.md)
-- [API stability](../dev/api-stability.md)
+- [API stability and snapshot policy](../dev/api-stability.md)
 - [Machine-readable output](../dev/machine-output.md)
+- [Terminology and Canonical Vocabulary](../terminology.md)
 
 This section provides generated per-module reference pages (see `tools/docs/gen_api_pages.py`). They
-are not added individually to the navigation to keep the sidebar compact. Use the search box to find
-symbols, or browse the generated paths under `/api/internals/topmark/...`.
+are not added individually to the navigation in order to keep the sidebar compact. Use the search
+box to find symbols, or browse the generated paths under `/api/internals/topmark/...`.
 
-Internals span multiple architectural layers:
+The generated internals span multiple architectural layers:
 
 - TOML layer ([`topmark.toml`](internals/topmark/toml/index.md))
-- Config layer ([`topmark.config`](internals/topmark/config/index.md))
+- Configuration layer ([`topmark.config`](internals/topmark/config/index.md))
 - Runtime layer ([`topmark.runtime`](internals/topmark/runtime/index.md))
-- Pipeline ([`topmark.pipeline`](internals/topmark/pipeline/index.md)) subsystem
+- Pipeline subsystem ([`topmark.pipeline`](internals/topmark/pipeline/index.md))
 - Registry and overlay subsystems ([`topmark.registry`](internals/topmark/registry/index.md))
 
-See [`Architecture`](../dev/architecture.md) for a high-level overview.
+See [`Architecture`](../dev/architecture.md) for the conceptual overview.
 
-Canonical qualified file type identifier semantics are documented in
-[Registry model](../dev/registry-model.md#qualified-vs-local-identifiers).
+Canonical file type identifier semantics are documented in
+[Registry model](../dev/registry-model.md#qualified-vs-local-identifiers) and
+[Terminology and Canonical Vocabulary](../terminology.md).
 
 These pages are generated automatically during the MkDocs build and should not be edited manually.
 
-The generated reference pages reflect internal implementation structure and may change more
-frequently than the stable public API or machine-readable output contracts.
+The generated reference pages reflect internal implementation structure and may evolve more
+frequently than the stable public API surface or documented machine-readable contracts.
 
 Any changes should be made in the corresponding Python source files under `src/`.
 
 Browse the generated internals index: [`topmark` internals](internals/topmark/index.md)
 
-Internal modules are documented for maintainers and advanced integrations, but they are
-intentionally versioned more flexibly than:
+Internal modules are documented for maintainers and advanced integrations, but they intentionally
+evolve more flexibly than:
 
 - `topmark.api`
 - CLI contracts
-- machine-readable output schemas
+- machine-readable JSON and NDJSON contracts
 - canonical identifier semantics
 
 You can also browse the full generated tree from the sidebar under **API → Internals → Reference

@@ -17,22 +17,17 @@ Pre-commit integration allows TopMark to participate in:
 - local Git workflows
 - CI validation
 - staged-file checks
-- repository-wide remediation
-- policy enforcement during commits and pushes
+- repository-wide mutation workflows
+- runtime policy enforcement during commits and pushes
 
-See also:
-
-- [CLI overview](cli.md)
-- [Configuration](configuration.md)
-- [Filtering](filtering.md)
-- [Policies](policies.md)
-- [Exit codes](exit-codes.md)
+The canonical vocabulary used throughout the documentation is defined in
+[Terminology and Canonical Vocabulary](../terminology.md).
 
 TopMark ships a hook manifest so you can run header checks in Git workflows and CI. This page covers
 setup, recommended patterns, and troubleshooting.
 
-Hook execution uses the same resolver, filtering, policy, and configuration semantics as normal CLI
-execution.
+Hook execution uses the same resolution, filtering, policy, and configuration semantics as normal
+CLI execution.
 
 ______________________________________________________________________
 
@@ -89,18 +84,19 @@ By default:
   It is diagnostic-only and read-only, but its output is primarily useful when investigating file
   discovery, filtering, file-type selection, or processor resolution.
 
-This policy ensures safety in CI and everyday workflows.\
-Teams that want formatter-like behavior (similar to Black or Prettier) may choose to enable
-`topmark-apply` at `pre-commit` once the repository is clean.
+This policy ensures safety in CI and everyday workflows. Teams that want formatter-like behavior
+(similar to Black or Prettier) may choose to enable `topmark-apply` at `pre-commit` once the
+repository is clean. (similar to Black or Prettier) may choose to enable `topmark-apply` at
+`pre-commit` once the repository is clean.
 
 TopMark intentionally defaults to non-destructive behavior unless `--apply` is explicitly enabled.
 
-The hook manifest intentionally uses minimal defaults. All behavioral flags (such as `--summary`,
-`--report`, policy options, probe verbosity, file-type filters, or output mode) should be supplied
-by consuming repositories via the hook’s `args:` configuration.
+The hook manifest intentionally exposes minimal behavioral defaults. All runtime behavioral flags
+(such as `--summary`, `--report`, policy options, probe verbosity, file-type filters, or output
+modes) should be supplied by consuming repositories via the hook’s `args:` configuration.
 
-TopMark performs whole-source TOML schema validation during hook execution; any TOML-source
-diagnostics are included in the reported config diagnostics.
+TopMark performs whole-source TOML validation during hook execution; TOML-source diagnostics are
+included in the reported configuration diagnostics.
 
 Consumers can control configuration validation strictness using `--strict` / `--no-strict`. This
 overrides the effective `strict` setting resolved from TOML sources for the duration of the hook
@@ -108,18 +104,18 @@ run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-In the current implementation, this strictness is applied across staged config-loading/preflight
+In the current implementation, this strictness is applied across staged configuration-loading
 validation (TOML-source, merged-config, and runtime-applicability diagnostics), while the reported
 diagnostics remain the flattened compatibility view derived from staged validation logs. For 1.0,
 this boundary is intentional: staged validation remains primarily internal, while hook output
-exposes only the flattened compatibility diagnostics contract.
+exposes only the flattened compatibility diagnostics surface.
 
 For the `topmark-check` hook (which runs [`topmark check`](commands/check.md)), consumers may also
 pass policy options such as `--header-mutation-mode`, `--allow-header-in-empty-files`, or
 `--empty-insert-mode` when they need command-specific behavior on top of the resolved config.
 
-These options follow the same policy-resolution and file-type identifier rules as normal CLI
-execution.
+These options follow the same runtime policy-resolution and file-type identifier semantics as normal
+CLI execution.
 
 Invoke the manual hook locally:
 
@@ -145,13 +141,13 @@ TopMark applies the same filtering pipeline during hook execution:
 
 1. path filtering
 1. file-type filtering
-1. resolver and probe evaluation
+1. resolution and probe evaluation
 1. policy resolution
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-**Run once per repo** by setting `pass_filenames: false` in the hook manifest and letting TopMark
-perform its own file discovery from config:
+**Run once per repository** by setting `pass_filenames: false` in the hook manifest and letting
+TopMark perform its own file discovery from config:
 
 ```yaml
 - id: topmark-check
@@ -165,7 +161,7 @@ Arguments passed through `args:` behave exactly like normal CLI arguments.
 
 Pre-commit supports an `args:` list **in consumer repos** (in `.pre-commit-config.yaml`). Because
 TopMark’s hook manifest uses minimal defaults, consumer `args:` are the primary mechanism for
-configuring TopMark’s behavior when run under pre-commit.
+configuring TopMark runtime behavior when run under pre-commit.
 
 Example (consumer repo):
 
@@ -209,8 +205,8 @@ Notes:
 - If you need TopMark to run once per repo (self-discovery), combine `pass_filenames: false` with
   `args:` as needed.
 
-- TEXT-only controls such as `-v` / `--verbose` and `-q` / `--quiet` affect only human TEXT output;
-  Markdown and machine-readable formats ignore these flags.
+- TEXT-oriented human-readable controls such as `-v` / `--verbose` and `-q` / `--quiet` affect only
+  human TEXT output; Markdown and machine-readable JSON/NDJSON output ignore these flags.
 
 ### File-type identifier behavior
 
@@ -227,7 +223,7 @@ ______________________________________________________________________
 
 ### CI-friendly checks
 
-These patterns are especially useful for repository-wide validation in CI.
+These patterns are especially useful for repository-wide validation workflows in CI.
 
 ```bash
 # Focus output on files that would change
@@ -239,8 +235,8 @@ topmark check --report actionable
 topmark check --report actionable --quiet
 ```
 
-During these runs, configuration loading includes per-source TOML validation before layered config
-merging, so schema issues are surfaced alongside normal check diagnostics.
+During these runs, configuration loading includes per-source TOML validation before layered
+configuration merging, so schema issues are surfaced alongside normal check diagnostics.
 
 ```bash
 # Enforce strict config validation in CI
@@ -248,7 +244,7 @@ merging, so schema issues are surfaced alongside normal check diagnostics.
 topmark check --report actionable --strict
 ```
 
-You can also pass `--summary` to only receive a summary instead of per-file diagnostics.
+You can also pass `--summary` to receive only a summary instead of per-file diagnostics.
 
 ### Narrow file scope in consuming repos
 
@@ -276,16 +272,17 @@ TopMark hooks rely on the CLI exit-code contract to signal success or failure to
 - **`topmark-probe` (manual, read-only diagnostic)**:
 
   - Exits with `SUCCESS (0)` when all explicit inputs resolve successfully.
-  - Exits with `UNSUPPORTED_FILE_TYPE (69)` when one or more inputs are unsupported, filtered, or
-    unresolved.
+  - Exits with `UNSUPPORTED_FILE_TYPE (69)` when one or more inputs produce unsupported, filtered,
+    or unresolved semantic outcomes.
   - May exit with other non-zero codes for hard input, filesystem, usage, or configuration errors.
 
 Notes:
 
 - Pre-commit treats any non-zero exit code as a failure; this is expected for `topmark-check` when
   changes are needed (`WOULD_CHANGE (2)`).
-- Use `--quiet` in CI to suppress TEXT output and rely solely on exit status.
-- Use `topmark-probe` when a hook appears to skip, include, or classify files unexpectedly.
+- Use `--quiet` in CI to suppress human-readable TEXT output and rely solely on exit status.
+- Use `topmark-probe` when a hook appears to skip, include, or classify files with unexpected
+  semantic outcomes.
 - For full details and edge cases (mixed-result runs, precedence), see:
   - [`Exit codes`](./exit-codes.md)
   - [`check` command](./commands/check.md)
@@ -308,8 +305,8 @@ Use modern names in the manifest: `pre-commit` and `pre-push`.
 
 ### `FileNotFoundError` when loading `topmark-example.toml`
 
-Ensure the bundled example TopMark TOML resource is loaded via **package resources** (TopMark
-already does) and that the file is included as package data. In `pyproject.toml`:
+Ensure the bundled example TOML resource is loaded through package resources (TopMark already does)
+and that the file is included as package data. In `pyproject.toml`:
 
 ```toml
 [tool.setuptools.package-data]
@@ -327,14 +324,14 @@ pre-commit try-repo . topmark-check --all-files --verbose
 
 ______________________________________________________________________
 
-## Related pages
+## See also
 
 - [CLI overview](cli.md)
   - [`topmark check`](commands/check.md)
   - [`topmark probe`](commands/probe.md)
   - [`topmark strip`](commands/strip.md)
 - [Configuration](configuration.md)
-- [Configuration discovery](../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../configuration/discovery.md)
 - [Filtering](filtering.md)
 - [Policies](policies.md)
 - [Shared options](shared-options.md)

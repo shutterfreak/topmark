@@ -14,25 +14,29 @@ topmark:header:end
 
 This page documents TopMark’s **machine-readable output conventions** across commands.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 See also:
 
-- [Machine-readable output schema (JSON & NDJSON)](machine-output.md)
+- [Machine-readable output](machine-output.md)
 - [CLI overview](../usage/cli.md)
 - [Shared options](../usage/shared-options.md)
 - [Exit codes](../usage/exit-codes.md)
 - [Configuration](../usage/configuration.md)
 - [Filtering](../usage/filtering.md)
 - [Registry model](registry-model.md)
+- [Terminology and Canonical Vocabulary](../terminology.md)
 
 ______________________________________________________________________
 
 ## Exit codes vs machine-readable output
 
-Machine-readable formats (`json`, `ndjson`) intentionally **do not encode CLI exit codes inside the
-payload**.
+Machine-readable formats (`json`, `ndjson`) intentionally **do not encode CLI exit codes inside
+payloads**.
 
 - Exit status is communicated exclusively via the process exit code.
-- Machine payloads represent **structured results and diagnostics**, not process-level
+- Machine-readable payloads represent **structured results and diagnostics**, not process-level
   success/failure.
 
 Implications for consumers:
@@ -43,7 +47,7 @@ Implications for consumers:
 
 This separation ensures that:
 
-- machine payloads remain stable and composable,
+- machine-readable payloads remain stable and composable,
 - exit-code semantics can evolve independently,
 - CI tooling can rely on standard process semantics.
 
@@ -68,10 +72,19 @@ Notes:
 - Markdown output is also independent from machine-readable formats and follows its own
   document-oriented contract.
 
-This page describes the **conventions** shared across machine-readable formats. For the canonical
-field-level schema reference, see:
+This page describes the conventions shared across machine-readable formats.
 
-- [Machine-readable output schema (JSON & NDJSON)](machine-output.md)
+For the canonical field-level schema reference, see [Machine-readable output](machine-output.md).
+
+______________________________________________________________________
+
+## Terminology
+
+- **Format:** the encoding style, such as JSON or NDJSON.
+- **Schema:** the structure of a payload or record.
+- **Payload:** a concrete emitted JSON object or scalar value.
+- **Record kind:** the stable NDJSON discriminator stored in `kind`.
+- **Collection key:** a top-level JSON key containing a collection of domain objects.
 
 ______________________________________________________________________
 
@@ -81,7 +94,7 @@ The `json` and `ndjson` formats are designed for CI and programmatic use.
 
 Stability guarantees:
 
-- Machine payloads contain no ANSI color codes.
+- Machine-readable payloads contain no ANSI color codes.
 - Payload shapes are JSON-safe (no Python-specific objects).
 - New fields may be added over time (additive evolution).
 - Existing fields are not removed or renamed without a breaking-change signal.
@@ -89,8 +102,8 @@ Stability guarantees:
 
 Consumers should:
 
-- Treat machine-readable output as the authoritative contract; do not rely on TEXT or Markdown
-  output for programmatic use.
+- Treat machine-readable output as the authoritative machine-readable contract; do not rely on TEXT
+  or Markdown output for programmatic use.
 
 - Switch on `kind` (NDJSON) rather than relying on ordering.
 
@@ -105,8 +118,7 @@ ______________________________________________________________________
 
 ## File type identifiers in machine-readable output
 
-Machine-readable formats use the same canonical identifier model as the runtime registry and
-resolver.
+Machine-readable formats use the same canonical identity model as the runtime registry and resolver.
 
 Public inputs may use local identifiers such as `python` when unambiguous, or qualified identifiers
 such as `topmark:python`. Machine-readable output emits resolved canonical identities when a file
@@ -140,8 +152,10 @@ All machine-readable output includes a `meta` object:
 - `platform`: short runtime identifier (e.g. `sys.platform`)
 - `detail_level`: optional machine-facing projection level for some commands:
   - `"brief"` for default machine-readable output
-  - `"long"` when `--long` / detailed projection is requested Registry commands include
-    `detail_level` in both JSON and NDJSON. Other command families may omit this field.
+  - `"long"` when `--long` / detailed projection is requested
+
+Registry commands include `detail_level` in both JSON and NDJSON. Other command families may omit
+this field.
 
 In JSON, `meta` appears once at the top level.
 
@@ -171,7 +185,7 @@ Each NDJSON line is a JSON object with a stable envelope:
 {"kind": "<kind>", "meta": { ... }, "<kind>": { ... } }
 ```
 
-- `kind` determines the payload container key (by default, container key == kind).
+- `kind` determines the payload container key; by default, the container key matches `kind`.
 - `meta` appears in every record.
 - the payload object is stored under a container key that matches `kind`.
 
@@ -215,7 +229,7 @@ Examples:
 }
 ```
 
-- Processing commands (summary mode):
+- Processing commands, summary mode:
 
 ```jsonc
 {
@@ -305,7 +319,7 @@ NDJSON record kinds are owned by the schema module of the corresponding machine-
 domain (for example
 \[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind] or
 \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind]).
-The list below reflects commonly emitted kinds across commands.
+The list below reflects commonly emitted record kinds across commands.
 
 Common NDJSON kinds include:
 
@@ -337,9 +351,9 @@ Diagnostics emitted in machine-readable output represent the flattened compatibi
 from staged config-validation logs. Internally, these diagnostics may originate from TOML-source,
 merged-config, or runtime-applicability validation.
 
-For 1.0, this flattened compatibility form is the accepted final machine contract for config/TOML
+For 1.0, this flattened compatibility form is the stable machine-readable contract for config/TOML
 validation diagnostics. Machine-readable output does **not** serialize stage-local validation
-structure; the stable emitted diagnostic entry shape remains `{level, message}`.
+structure; the emitted diagnostic entry shape remains `{level, message}`.
 
 Diagnostics may include warnings for unknown, malformed, or ambiguous file type identifiers detected
 during configuration sanitation and runtime applicability checks.
@@ -373,8 +387,8 @@ share conventions:
   - then either per-file `result` records (detail mode) or per-outcome **reason-preserving**
     `summary` records (summary mode)
 
-These diagnostics correspond to the flattened compatibility view derived from staged
-config-validation logs.
+These diagnostics correspond to the flattened compatibility view derived from staged validation
+logs.
 
 Machine-readable output for processing commands is unaffected by TEXT verbosity or quiet mode; these
 flags only influence human TEXT output.
@@ -465,7 +479,7 @@ These include:
 
 Refer to the machine schema reference for the per-path probe payload:
 
-- [Machine-readable output schema (JSON & NDJSON)](machine-output.md)
+- [Machine-readable output](machine-output.md)
 
 Note:
 
@@ -480,15 +494,15 @@ ______________________________________________________________________
 
 Config commands are file-agnostic and emit config-centric payloads:
 
-- [`config dump`](../usage/commands/config/dump.md): resolved config snapshot (no diagnostics); when
-  `--show-layers` is used in machine-readable formats, it also emits layered `config_provenance`
-  before the final flattened config snapshot
+- [`config dump`](../usage/commands/config/dump.md): resolved runtime configuration snapshot (no
+  diagnostics); when `--show-layers` is used in machine-readable formats, it also emits layered
+  `config_provenance` before the final flattened configuration snapshot
 - [`config defaults`](../usage/commands/config/defaults.md): built-in default TopMark TOML snapshot
   (no diagnostics)
 - [`config init`](../usage/commands/config/init.md): bundled starter template snapshot in
   machine-readable formats (no diagnostics)
-- [`config check`](../usage/commands/config/check.md): resolved config snapshot plus diagnostics and
-  a config-check status payload
+- [`config check`](../usage/commands/config/check.md): resolved runtime configuration snapshot plus
+  diagnostics and a config-check status payload
 
 In human-facing formats, [`config defaults`](../usage/commands/config/defaults.md) and
 [`config init`](../usage/commands/config/init.md) differ noticeably:
@@ -497,15 +511,15 @@ built-in defaults, while [`config init`](../usage/commands/config/init.md) rende
 example TopMark TOML resource with extensive comments. In machine-readable formats, both emit the
 same underlying default configuration snapshot shape.
 
-For [`config check`](../usage/commands/config/check.md), the machine payload uses `strict` to report
-the effective config-validation strictness after applying CLI override precedence over resolved TOML
-strictness. This strictness is evaluated across staged config-loading/preflight validation
+For [`config check`](../usage/commands/config/check.md), the machine-readable payload uses `strict`
+to report the effective config-validation strictness after applying CLI override precedence over
+resolved TOML strictness. This strictness is evaluated across staged config-loading validation
 (TOML-source, merged-config, and runtime-applicability diagnostics), while machine-readable output
-continues to expose the flattened compatibility diagnostics view.
+exposes the flattened compatibility diagnostics view.
 
-Resolved config snapshots emit normalized file type identifiers. In particular,
+Resolved runtime configuration snapshots emit normalized file type identifiers. In particular,
 `files.include_file_types`, `files.exclude_file_types`, and `policy_by_type` use canonical qualified
-keys such as `topmark:python` after configuration freeze.
+keys such as `topmark:python` after configuration normalization.
 
 Example [`config check`](../usage/commands/config/check.md) NDJSON prefix:
 
@@ -528,7 +542,7 @@ Example [`config check`](../usage/commands/config/check.md) NDJSON prefix:
 ```
 
 For 1.0, this boundary is intentional: staged validation remains an internal representation, while
-machine-readable output exposes only the flattened compatibility diagnostics contract.
+machine-readable output exposes the flattened compatibility diagnostics contract.
 
 For [`config dump --show-layers`](../usage/commands/config/dump.md), machine-readable output
 preserves the same logical ordering as the human-facing layered export:
@@ -570,6 +584,6 @@ See:
 - [`topmark registry bindings`](../usage/commands/registry/bindings.md)
 - [Registry model](registry-model.md)
 
-Refer to each command’s documentation for its emitted keys and shapes. Registry commands are
-documented in the schema reference and now include the separate
+Refer to each command’s documentation for its emitted keys and shapes. Registry commands are also
+documented in the schema reference and include the separate
 [`registry bindings`](../usage/commands/registry/bindings.md) machine-readable format.

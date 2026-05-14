@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# API Stability & Snapshot Policy
+# API stability and snapshot policy
 
 TopMark enforces a stable public Python API across all supported Python versions (3.10–3.14) using a
 JSON-based snapshot test.
@@ -19,10 +19,14 @@ The snapshot system protects the documented public execution surface exposed thr
 helping downstream users rely on stable symbols, signatures, and machine-readable behavior contracts
 across releases.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 See also:
 
 - [Public API](../api/public.md)
 - [Registry model](registry-model.md)
+- [Terminology and Canonical Vocabulary](../terminology.md)
 - [Machine-readable output](machine-output.md)
 - [Machine-readable formats](machine-formats.md)
 - [Configuration](../configuration/index.md)
@@ -37,7 +41,7 @@ This page documents:
 
 - the stable public API boundary;
 - API snapshot generation and validation;
-- compatibility expectations across Python versions;
+- compatibility expectations across supported Python versions;
 - relationships between API stability, machine-readable output, configuration behavior, and
   release/versioning policy.
 
@@ -66,6 +70,7 @@ This boundary intentionally separates:
 
 - stable user-facing execution APIs;
 - stable machine-readable output contracts;
+- stable configuration and identifier semantics;
 - evolving registry internals and overlay helpers.
 
 ______________________________________________________________________
@@ -96,8 +101,8 @@ the public façade defined by `topmark.api.__all__` is considered part of the st
 Overlay state and internal registries are intentionally excluded from the snapshot; only symbols and
 signatures exported via \[`topmark.api`\][topmark.api] are tracked.
 
-Configuration layering and TOML source resolution are also internal implementation details and are
-not part of the public API contract.
+Configuration layering and TOML source resolution are internal implementation details and are not
+part of the public API contract.
 
 However, canonical file type identifier semantics are part of the stable public behavior contract
 shared across:
@@ -119,7 +124,7 @@ TopMark intentionally separates:
 
 - stable execution APIs;
 - stable machine-readable output contracts;
-- configuration and filtering behavior contracts;
+- stable configuration and filtering behavior contracts;
 - evolving internal orchestration and registry internals.
 
 The snapshot protects the stable public surface exposed through `topmark.api`, while allowing
@@ -145,8 +150,8 @@ This runs the API snapshot test once using your active Python interpreter.
 make api-snapshot
 ```
 
-This executes the snapshot tests for all Python versions defined in the `nox` matrix (3.10–3.14). It
-corresponds to running:
+This executes the snapshot tests for all supported Python versions defined in the `nox` matrix
+(3.10–3.14). It corresponds to running:
 
 ```bash
 nox -s api_snapshot
@@ -158,8 +163,8 @@ nox -s api_snapshot
 make api-snapshot-update
 ```
 
-This regenerates the file `tests/api/public_api_snapshot.json` via `tools/api_snapshot.py`, showing
-the diff and instructing you to commit and update the version if the API changed.
+This regenerates the file `tests/api/public_api_snapshot.json` via `tools/api_snapshot.py`, shows
+the diff, and instructs you to commit the updated snapshot if the public API changed.
 
 ### Ensure snapshot is clean (CI gate)
 
@@ -180,9 +185,10 @@ ______________________________________________________________________
 ## Relationship to machine-readable output
 
 The API snapshot protects importable Python symbols and signatures exposed through `topmark.api`.
-Machine-readable output stability is tracked separately.
+Machine-readable output stability is tracked separately through documented JSON and NDJSON
+contracts.
 
-Stable JSON and NDJSON contracts include canonical identifiers such as:
+Stable machine-readable contracts include canonical identifiers such as:
 
 - `qualified_key`
 - `file_type_key`
@@ -230,8 +236,8 @@ evolve independently as long as:
 
 - canonical identifier semantics remain stable.
 
-- **Supported Python range:** 3.10–3.14 (`nox` matrix).\
-  Future minor Python releases will be added once supported by CI.
+- **Supported Python range:** 3.10–3.14 (`nox` matrix). Future minor Python releases will be added
+  once supported by CI.
 
 - **File under version control:**\
   `tests/api/public_api_snapshot.json` must always be checked in and tracked.
@@ -263,9 +269,10 @@ Intentional public API changes should:
 1. update `CHANGELOG.md`;
 1. align with the intended release-version semantics.
 
-TopMark derives package versions from Git tags through `setuptools-scm`. Public API evolution,
-snapshot updates, changelog entries, and release tags together form the historical record of API
-evolution.
+TopMark derives package versions from Git tags through `setuptools-scm`.
+
+Public API evolution, snapshot updates, changelog entries, and release tags together form the
+historical record of API evolution.
 
 See also:
 
@@ -280,7 +287,7 @@ The snapshot contract intentionally does not guarantee stability for:
 
 - internal registry composition details;
 - overlay mutation helpers;
-- internal config-freeze implementation structure;
+- internal runtime-configuration construction structure;
 - internal resolver scoring heuristics;
 - private helper modules outside \[`topmark.api`\][topmark.api].
 
@@ -290,7 +297,7 @@ ______________________________________________________________________
 
 ## Practical workflow
 
-1. Modify or extend the TopMark public API.
+1. Modify or extend the TopMark public API surface.
 
 1. Run:
 
@@ -315,18 +322,20 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Related Pages
+## Related pages
 
 - [Public API](../api/public.md)
+- [Registry model](registry-model.md)
+- [Terminology and Canonical Vocabulary](../terminology.md)
 - [Machine-readable output](machine-output.md)
 - [Machine-readable formats](machine-formats.md)
-- [Registry model](registry-model.md)
 - [Release Process](release-process.md)
 - [Test and validation architecture](../ci/test-validation.md)
 
 **Summary:**
 
-TopMark separates stable public execution APIs and machine-readable output contracts from more
-flexible internal registry and orchestration details. The snapshot system protects the documented
-public surface while still allowing controlled internal evolution under the project's Git-tag-driven
-release and versioning model.
+TopMark separates stable public execution APIs, machine-readable output contracts, and canonical
+identifier semantics from more flexible internal registry and orchestration details.
+
+The snapshot system protects the documented public surface while still allowing controlled internal
+evolution under the project's Git-tag-driven release and versioning model.

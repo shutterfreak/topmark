@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# File Type Resolution and Ambiguity Policy
+# File type resolution and ambiguity policy
 
 This page documents how TopMark resolves a concrete filesystem path to the most specific matching
 \[`FileType`\][topmark.filetypes.model.FileType], and then to the bound
@@ -19,25 +19,29 @@ This page documents how TopMark resolves a concrete filesystem path to the most 
 Resolver behavior is deterministic and operates on canonical qualified file type identifiers such as
 `topmark:python`.
 
+The canonical vocabulary used by this page is defined in
+[`Terminology and Canonical Vocabulary`](../terminology.md).
+
 It complements the registry architecture described in [`registry-model.md`](registry-model.md):
 
 - registries define **what exists**
 - the resolver defines **what wins for a concrete path**
 
-This resolver operates within the broader TOML → Config → Runtime architecture (see
+This resolver operates within the broader TOML →
+\[`FrozenConfig`\][topmark.config.model.FrozenConfig] → runtime architecture (see
 [`architecture.md`](architecture.md)). It consumes the effective registry state and does not perform
-configuration discovery, layered config provenance export, or staged config-loading/preflight
+configuration discovery, layered configuration provenance export, or staged config-loading
 validation strictness resolution itself.
 
 In particular, source-local TOML options such as `[config].root` and `strict` are resolved before
-runtime file-type resolution begins. They influence discovery and staged config-loading/preflight
-validation behaviour, but are not part of the resolver's matching or tie-break logic.
+runtime file-type resolution begins. They influence discovery and staged config-loading validation
+behavior, but are not part of the resolver's matching or tie-break logic.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 This distinction is also visible in
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md): layered provenance exports
-are produced earlier from resolved TOML sources and flattened config state, while file-type
+are produced earlier from resolved TOML sources and flattened configuration state, while file-type
 resolution happens later against the already-validated effective runtime configuration.
 
 ______________________________________________________________________
@@ -58,7 +62,9 @@ Before path-based resolution runs, TopMark performs file discovery and filtering
 that stage do not participate in candidate generation or scoring.
 
 File-type filters accept both local identifiers such as `python` and canonical qualified identifiers
-such as `topmark:python`. Internally, resolver filtering operates on canonical qualified keys.
+such as `topmark:python`.
+
+Resolver filtering operates on canonical qualified keys.
 
 Path-based resolution is implemented in
 \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] and consumed by
@@ -66,20 +72,21 @@ Path-based resolution is implemented in
 
 The main public entry points are:
 
-- \[\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]\][topmark.resolution.filetypes.probe_resolution_for_path]
+- \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
 
 These entry points participate only in **path-based runtime resolution**. They do not surface or
 consume layered config provenance payloads such as the human-facing `[[layers]]` export or the
 machine-readable `config_provenance` payload used by `topmark config dump --show-layers`.
 
-They operate after staged config-loading/preflight validation has completed and the effective
+They operate after staged config-loading validation has completed and the effective runtime
 configuration is finalized.
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
-At this layer, path-based resolution consumes the already-finalized effective configuration. Public
-API callers provide mapping-based inputs; internal typed override objects are introduced earlier by
-CLI/API orchestration and are not part of the resolver contract.
+At this layer, path-based resolution consumes the already-finalized effective runtime configuration.
+
+Public API callers provide mapping-based inputs; internal typed runtime override objects are
+introduced earlier by CLI/API orchestration and are not part of the resolver contract.
 
 See also:
 
@@ -97,14 +104,14 @@ ______________________________________________________________________
 
 ## Probe-based resolution (1.0 contract)
 
-TopMark 1.0 introduces a probe-first resolution model exposed via
-\[\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]\][topmark.resolution.filetypes.probe_resolution_for_path].
+TopMark 1.0 exposes a probe-first resolution model via
+\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path].
 
 Probe-based resolution operates only after discovery filtering and configuration normalization have
 completed.
 
-This function returns a
-**\[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]** containing:
+This function returns a \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]
+containing:
 
 - selected file type and processor (if any)
 - probe status and reason
@@ -112,7 +119,7 @@ This function returns a
 - match signals used during resolution
 - filtered explicit inputs that did not reach file-type probing
 
-The probe result is the **single source of truth** for resolution decisions once a path reaches
+The probe result is the canonical source of truth for resolution decisions once a path reaches
 file-type probing. Explicit inputs may be filtered earlier during discovery; those cases are
 represented as synthetic probe results with `status="filtered"` and one of:
 
@@ -140,11 +147,12 @@ Callers should use
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] when they
 need path-based resolution details.
 
-For stable integrations, prefer \[`topmark.api.probe()`\][topmark.api.probe] which returns
+For stable integrations, prefer \[`topmark.api.probe()`\][topmark.api.probe], which returns
 normalized public DTOs.
+
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] is an
 advanced helper that exposes internal probe structures and is not part of the
-\[`topmark.api`\][topmark.api] stability contract.
+\[`topmark.api`\][topmark.api] compatibility contract.
 
 Note that \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
 only applies to paths that passed discovery filtering. The
@@ -266,8 +274,7 @@ In practice, this means:
 This policy guarantees that the same path, content, and effective registry state always produce the
 same winning \[`FileType`\][topmark.filetypes.model.FileType].
 
-TopMark currently uses a deterministic winner-selection policy rather than an ambiguity error
-policy.
+TopMark uses a deterministic winner-selection policy rather than an ambiguity-error policy.
 
 ______________________________________________________________________
 
@@ -293,7 +300,7 @@ TopMark's ambiguity policy is therefore:
 - multiple candidates are allowed during candidate generation
 - the resolver must return **at most one** effective winner
 - the winner is selected deterministically using the documented precedence and tie-break policy
-- ambiguity does **not** raise an exception in the current model
+- ambiguity does **not** raise an exception in the 1.0 resolution model
 
 This keeps resolution stable and practical while still allowing rich, overlapping file type
 ecosystems.
@@ -303,8 +310,8 @@ ______________________________________________________________________
 ## Logging and observability
 
 When multiple candidates share the top score,
-\[\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]\][topmark.resolution.filetypes.probe_resolution_for_path]
-records the tie-break outcome in the returned
+\[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] records
+the tie-break outcome in the returned
 \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult].
 
 The probe result surfaces the full candidate set, scores, match signals, selected candidate, and
@@ -329,10 +336,6 @@ The log includes:
 - the qualified keys of the tied top candidates
 
 This helps explain why a particular file type won when multiple strong candidates existed.
-
-In addition, probe-based resolution surfaces the full candidate set, scores, and match signals
-through \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]. This makes
-resolution decisions fully observable without relying on debug logging alone.
 
 ______________________________________________________________________
 
@@ -370,7 +373,7 @@ The current resolver deliberately does **not** provide:
 - fuzzy matching or implicit namespace fallback for identifier resolution
 - pluggable custom precedence strategies
 
-These may be introduced later if there is a strong use case, but they are not part of the current
+These may be introduced post-1.0 if there is a strong use case, but they are not part of the current
 TopMark resolution contract.
 
 ______________________________________________________________________
@@ -385,7 +388,7 @@ Possible future improvements include:
 - plugin-defined precedence policies layered on top of the default scoring model
 - richer probe diagnostics and scoring transparency in machine-readable output
 
-Until then, the documented deterministic policy on this page is the source of truth.
+For 1.0, the documented deterministic policy on this page is the source of truth.
 
 ______________________________________________________________________
 
@@ -394,8 +397,11 @@ ______________________________________________________________________
 - [`Architecture`](architecture.md) — registry design and system overview
 - [`Registry model`](registry-model.md) — registry layers, bindings, overlays, and identifier
   semantics
+- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical definitions for
+  identifiers, applicability, ambiguity, and machine-readable terminology
 - [`Plugins`](plugins.md) — how file types and processors are registered
-- [`Machine-readable output schema`](machine-output.md) — how resolution results surface in outputs
+- [`Machine-readable output`](machine-output.md) — how resolution results surface in JSON and NDJSON
+  outputs
 - [`Configuration`](../usage/configuration.md) — canonical file-type identifier semantics
 - [`Filtering`](../usage/filtering.md) — discovery and file-type filter behavior
 - [`CLI overview`](../usage/cli.md) — resolver-related CLI commands and filtering options

@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# Configuration Overview
+# Configuration overview
 
 TopMark supports layered configuration with explicit precedence:
 
@@ -23,36 +23,39 @@ TopMark supports layered configuration with explicit precedence:
   **declaring config file** (or CWD for CLI-provided values).
 - **Merge semantics vary by field**: behavioral settings usually use nearest-wins semantics, mapping
   fields usually overlay keys, and discovery inputs usually accumulate across applicable layers.
-- **Config-loading behaviour (e.g. `strict`) is resolved from TOML sources** (`[config]` /
+- **Config-loading behavior (e.g. `strict`) is resolved from TOML sources** (`[config]` /
   `[tool.topmark.config]`) during TOML loading and applied after layered merging; it is not a
-  regular layered configuration field. In the current implementation, effective strictness applies
-  across staged config-loading validation logs (see
-  [Config-loading behaviour](./discovery.md#config-loading-behaviour-toml-level)).
+  regular layered configuration field. Effective strictness applies across staged config-loading
+  validation logs (see
+  [Config-loading behavior](./discovery.md#config-loading-behaviour-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 - **File type identifiers** may be written in local form such as `python` or qualified form such as
   `topmark:python`. TopMark normalizes identifiers to canonical qualified keys during configuration
-  freeze. For the user-facing contract, see
+  normalization. For the user-facing contract, see
   [Configuration](../usage/configuration.md#file-type-identifiers).
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 TopMark also provides an inspection mode via
-[`topmark config dump --show-layers`](../usage/commands/config/dump.md) that exposes **layered
-configuration provenance**. This shows how the final configuration is constructed from individual
-TOML sources and CLI overrides, including their original TOML fragments.
+[`topmark config dump --show-layers`](../usage/commands/config/dump.md) that exposes layered
+configuration provenance. This shows how the effective runtime configuration is constructed from
+individual TOML sources and CLI overrides, including their original TOML fragments.
 
 During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
-keys, malformed section shapes, missing known sections, etc.). Only the validated layered config
-fragment is then passed into layered config merging.
+keys, malformed section shapes, missing known sections, etc.). Only the validated layered
+configuration fragment is then passed into layered configuration merging.
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before staged config-validation semantics are applied. These TOML-source
-diagnostics are then evaluated together with merged-config and runtime-applicability diagnostics
-during staged config-loading/preflight validation.
+malformed-present sections before staged configuration-validation semantics are applied.
+
+These TOML-source diagnostics are then evaluated together with merged-config and
+runtime-applicability diagnostics during staged config-loading validation.
 
 For the full discovery, precedence, path-resolution, and staged validation contract, see
-[Configuration: Discovery, Precedence & Policy](./discovery.md).
+[Configuration discovery, precedence, and policy](./discovery.md).
+
+______________________________________________________________________
 
 ## Configuration flow at a glance
 
@@ -61,9 +64,9 @@ flowchart LR
     A["Resolve TOML sources<br/>(defaults, user, project, --config)"]
     B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
-    D["Merge layered config by precedence<br/>effective MutableConfig draft"]
+    D["Merge layered configuration by precedence<br/>effective MutableConfig state"]
     E["Validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
-    F["Freeze effective Config<br/>final config snapshot"]
+    F["Freeze effective FrozenConfig<br/>final runtime configuration snapshot"]
     G["Apply runtime overlays<br/>CLI or API execution intent"]
 
     A --> B --> C --> D --> E --> F --> G
@@ -72,15 +75,17 @@ flowchart LR
 This reflects the main distinction in TopMark's configuration model:
 
 - TOML sources are validated first at the **whole-source TOML layer**.
-- Only the validated **layered config fragment** contributes to config merging.
+- Only the validated layered configuration fragment contributes to layered configuration merging.
 - The merged layered result is then validated across staged config-loading diagnostics.
-- The validated layered result is merged into one immutable **effective runtime configuration**.
+- The validated layered result becomes one immutable effective runtime configuration.
 - Runtime overlays are then applied for execution-only concerns such as output mode, apply/dry-run
   behavior, or stdin handling.
 
-Start here:
+______________________________________________________________________
 
-- [`Discovery & Precedence`](./discovery.md)
+## Start here
+
+- [`Configuration discovery, precedence, and policy`](./discovery.md)
 - [`Merge semantics by field`](./discovery.md#merge-semantics-overview)
 - [`Root semantics`](./discovery.md#root-semantics) for how discovery stops at
   `[config].root = true`
@@ -90,12 +95,14 @@ Start here:
   identifier contract.
 - [CLI overview](../usage/cli.md) for command-line execution and shared command options.
 
-See Also:
+______________________________________________________________________
+
+## See also
 
 - [Example TOML document](./generated/example-config.md) for the generated reference configuration
   used by `topmark config init` (rendered from the bundled example TOML resource
   `src/topmark/toml/topmark-example.toml`)
-- API docs:
+- API documentation:
   - \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config]
   - \[`FrozenConfig`\][topmark.config.model.FrozenConfig],
     \[`MutableConfig`\][topmark.config.model.MutableConfig]
@@ -105,3 +112,5 @@ See Also:
 - [Filtering recipes](../usage/filtering.md)
 - [Policy guide](../usage/policies.md)
 - [CLI overview](../usage/cli.md)
+- [Machine-readable output](../dev/machine-output.md)
+- [Terminology and Canonical Vocabulary](../terminology.md)

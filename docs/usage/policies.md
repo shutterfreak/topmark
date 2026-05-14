@@ -10,15 +10,15 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark Policy Guide
+# TopMark policy guide
 
 Policies control:
 
 - whether headers may be inserted or updated
 - how empty files are classified
 - whether file-content probing is allowed
-- how resolver behavior interacts with safety gates
-- how specific file types override global behavior
+- how resolution behavior interacts with safety gates
+- how file-type-specific policy overrides interact with global policy
 
 See also:
 
@@ -27,12 +27,12 @@ See also:
 - [CLI overview](cli.md)
 - [Shared options](shared-options.md)
 
-TopMark policies control how the pipeline detects file types, classifies empty files, and decides
-whether headers may be inserted or updated.
+TopMark policies control how the runtime pipeline detects file types, classifies empty files, and
+determines whether headers may be inserted or updated.
 
 Policy settings are part of the layered configuration
 (\[`FrozenConfig`\][topmark.config.model.FrozenConfig]) and are merged according to discovery and
-precedence rules. See:
+precedence and layering rules. See:
 
 - [`Configuration overview`](../configuration/index.md)
 - [`Discovery & Precedence`](../configuration/discovery.md)
@@ -43,13 +43,13 @@ Policy semantics are shared consistently across:
 - TOML configuration overlays
 - command-specific CLI options
 - API overlays
-- effective runtime policy resolution
+- effective runtime policy evaluation and resolution
 
 Policy values shown here are part of the public configuration surface.
 
 > [!NOTE]
 >
-> Internal implementation helpers such as
+> Internal runtime helper types such as
 > \[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
 > \[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing
 > CLI or Python API contract. Public callers should use plain mapping-based inputs via `config=...`,
@@ -63,8 +63,8 @@ For canonical file-type identifier semantics, see
 [Configuration](configuration.md#file-type-identifiers).
 
 During configuration loading, TopMark first validates each whole-source TOML fragment (unknown
-sections, unknown keys, malformed section shapes, etc.). Only the validated layered config fragment
-contributes to policy resolution.
+sections, unknown keys, malformed section shapes, etc.). Only validated layered configuration
+fragments contribute to runtime policy resolution.
 
 Command-line policy options override resolved config for the current run only.
 
@@ -79,10 +79,10 @@ TopMark resolves policy in this order:
 1. explicit config overlays
 1. CLI or API overrides
 
-These layers are built after TOML-layer validation. Source-local TOML sections (e.g. `[config]`) do
-not participate in policy layering.
+These runtime policy layers are constructed after TOML-layer validation. Source-local TOML sections
+(e.g. `[config]`) do not participate in policy layering.
 
-Per-file-type policy in `policy_by_type` is resolved on top of the global `policy` section.
+Per-file-type policy in `policy_by_type` is evaluated on top of the global `policy` section.
 
 ______________________________________________________________________
 
@@ -93,7 +93,7 @@ policy options accept predefined multi-word values such as `add_only` or `whites
 
 TopMark uses different spelling conventions depending on the interface: CLI examples prefer
 *hyphenated forms* for readability, while TOML configuration, Python API values, and
-machine-readable output use *canonical underscore forms*.
+machine-readable output use canonical underscore forms.
 
 {% include-markdown "\_snippets/option-spelling.md" %}
 
@@ -106,7 +106,7 @@ ______________________________________________________________________
 
 ### `header_mutation_mode`
 
-Controls the mutation intent for [`topmark check`](commands/check.md).
+Controls mutation behavior for [`topmark check`](commands/check.md).
 
 Allowed TOML/API values:
 
@@ -114,12 +114,13 @@ Allowed TOML/API values:
 - `add_only`: insert missing headers only; existing headers are not updated
 - `update_only`: update existing headers only; missing headers are not inserted
 
-This policy affects dry-run reporting, apply behavior, API result views, and outcome bucketing. It
-applies only to [`check`](commands/check.md); [`strip`](commands/strip.md) and
+This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic outcome
+bucketing. It applies only to [`check`](commands/check.md); [`strip`](commands/strip.md) and
 [`probe`](commands/probe.md) reject generated-header mutation controls.
 
 Safety gates still take precedence. Malformed headers, unreadable files, unsupported files, blocked
-filesystem states, and other non-mutable conditions are not made mutable by `header_mutation_mode`.
+filesystem states, and other non-mutable runtime conditions are not made mutable by
+`header_mutation_mode`.
 
 Example:
 
@@ -147,7 +148,7 @@ This policy affects dry-run reporting, `--apply` behavior, API result views, and
 This setting is evaluated together with `allow_header_in_empty_files`:
 
 - If `allow_header_in_empty_files = false` (default), files classified as empty for insertion are
-  treated as unchanged/compliant by default.
+  treated as unchanged and compliant by default.
 - If `allow_header_in_empty_files = true`, files classified as empty for insertion may receive
   generated headers, subject to normal safety gates.
 
@@ -183,7 +184,7 @@ render_empty_header_when_no_fields = true
 
 Controls whether TopMark may reflow content while inserting or updating a header.
 
-This can reduce strict idempotence in some cases.
+This can reduce strict idempotent rendering behavior in some cases.
 
 ```toml
 [policy]
@@ -192,7 +193,7 @@ allow_reflow = true
 
 ### `allow_content_probe`
 
-Controls whether file-type detection may consult file contents when needed.
+Controls whether file-type detection may inspect file contents when needed.
 
 This policy applies to both [`check`](commands/check.md) and [`strip`](commands/strip.md).
 
@@ -205,7 +206,7 @@ ______________________________________________________________________
 
 ## Line-ending handling (not a policy)
 
-TopMark’s line-ending behavior is fixed for 1.0 and is **not configurable via policy**.
+TopMark's line-ending behavior is fixed for 1.x releases and is not configurable through policy.
 
 - Only LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are recognized as physical line-ending styles.
 - These styles are preserved across rendering, planning, patching, and writing.
@@ -278,7 +279,7 @@ ______________________________________________________________________
 
 ## Ambiguous, unknown, and malformed identifiers
 
-Per-file-type policy identifiers follow the same rules as filtering and resolver configuration.
+Per-file-type policy identifiers follow the same rules as filtering and runtime resolution.
 
 Ambiguous local identifiers require the canonical qualified form.
 
@@ -289,7 +290,7 @@ python                # accepted when unambiguous
 topmark:python        # canonical qualified form
 ```
 
-Malformed identifiers are ignored diagnostically.
+Malformed identifiers are ignored diagnostically during configuration normalization and validation.
 
 Examples:
 
@@ -321,7 +322,7 @@ Shared policy options:
 
 ### [`topmark strip`](commands/strip.md)
 
-[`strip`](commands/strip.md) supports only shared policy options:
+[`strip`](commands/strip.md) supports only shared runtime policy options:
 
 - `--allow-content-probe / --no-allow-content-probe`
 
@@ -332,11 +333,12 @@ ______________________________________________________________________
 
 ## Reporting vs policy
 
-Reporting controls what the CLI prints. Policy controls what the pipeline is allowed to do.
+Reporting controls human-readable CLI output. Policy controls what the runtime pipeline is allowed
+to do.
 
 Reporting examples:
 
-- `--report actionable`: show human per-file entries that would change, changed, failed, or
+- `--report actionable`: show human-readable per-file entries that would change, changed, failed, or
   otherwise need attention
 - `--report noncompliant`: include actionable files plus unsupported file types in human per-file
   output
