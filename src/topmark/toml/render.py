@@ -54,7 +54,7 @@ def _tomlkit_dumps(data: TomlTable) -> str:
     # A targeted Pyright suppression is appropriate here because the third-party
     # `tomlkit` stub exposes `dumps()` with partially unknown mapping parameter
     # types.
-    rendered: str = tomlkit.dumps(cleaned_mapping)  # pyright: ignore[reportUnknownMemberType]
+    rendered: str = tomlkit.dumps(cleaned_mapping)
     return rendered
 
 
