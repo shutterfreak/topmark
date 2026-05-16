@@ -21,7 +21,9 @@ These conventions apply to:
 - generated MkDocs documentation under `docs/`;
 - reusable documentation snippets;
 - generated command and API documentation;
-- documentation validation tooling.
+- documentation validation tooling;
+- Python comments, docstrings, and prose-oriented string literals where they feed generated
+  documentation, CLI output, or developer-facing diagnostics.
 
 They intentionally favor:
 
@@ -624,6 +626,28 @@ Use this suppression sparingly and only when all of the following are true:
 This keeps implementations clean while preserving accurate and stable exception documentation for
 callers.
 
+### Code prose hygiene
+
+Python comments, docstrings, and prose-oriented string literals should use ASCII punctuation for
+terminal safety, copy/paste stability, generated documentation consistency, and predictable CLI
+output.
+
+Avoid smart punctuation in code-facing prose, including:
+
+- Unicode dashes and hyphens such as en dash and em dash;
+- curly single and double quotes;
+- Unicode ellipses.
+
+Use plain ASCII equivalents instead:
+
+- `-` or `--` instead of Unicode dashes;
+- `'` instead of curly apostrophes;
+- `"` instead of curly double quotes;
+- `...` instead of Unicode ellipses.
+
+`tools/docs/check_code_hygiene.py` enforces this rule for Python files under `src/topmark/`,
+`tests/`, and `tools/` by scanning tokenized comments and strings.
+
 ______________________________________________________________________
 
 ## Snippet Conventions
@@ -799,9 +823,12 @@ Automated validation includes:
 - command-page structure validation;
 - snippet include validation;
 - generated-page existence validation;
-- CLI/help synchronization validation.
+- CLI/help synchronization validation;
+- Python code-prose hygiene validation.
 
 `make docs-hygiene` runs deterministic repository-hygiene checks for Markdown and snippets.
+`make code-hygiene` runs deterministic prose-hygiene checks for Python comments, docstrings, and
+prose-oriented string literals.
 
 The validation fails on objective problems such as:
 
@@ -818,11 +845,16 @@ It reports maintainability warnings for:
 
 - orphaned snippets;
 - snippets containing headings;
+- smart punctuation in Markdown prose;
 - relative links inside snippets when they appear incompatible with include-markdown link rewriting;
 - snippet include paths that do not use the formatter-stable `\_snippets/` prefix.
 
 Warnings are intentionally non-fatal by default. They document possible maintainability issues
 without turning every documentation-governance preference into a release blocker.
+
+Code prose hygiene is intentionally separate from Markdown documentation hygiene. It uses Python
+tokenization so it can inspect comments and string/docstring tokens without scanning identifiers,
+operators, or ordinary Python syntax.
 
 Human review remains important for onboarding ergonomics, discoverability, wording quality, example
 usefulness, and navigation clarity.
@@ -861,6 +893,7 @@ Avoid duplicating:
 - machine-readable schemas;
 - canonical terminology definitions;
 - repeated terminology cross-reference notes already provided by `_snippets/terminology.md`;
+- code-prose hygiene rules already covered by this page and enforced by `check_code_hygiene.py`;
 - release architecture details;
 - implementation rationale already covered by a canonical development page.
 

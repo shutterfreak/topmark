@@ -25,6 +25,7 @@ Sessions:
   - `links_site`: Lychee link checks for the built MkDocs site (includes generated pages).
   - `docstring_links`: Enforce docstring link style (custom tool).
   - `docs_hygiene`: Enforce lightweight Markdown snippet/include hygiene (custom tool).
+  - `code_hygiene`: Enforce lightweight Python prose hygiene (custom tool).
   - `qa`: Per-Python session that runs pytest and pyright.
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
   - `api_snapshot`: Public API snapshot test (per Python).
@@ -208,8 +209,8 @@ SOURCE_PATTERNS = (":(glob)src/topmark/**/*.py",)
 
 
 # Tools and scripts
-CHECK_DOCSTRING_LINKS_SCRIPT = "tools/docs/check_docs_hygiene.py"
 CHECK_DOCS_HYGIENE_SCRIPT = "tools/docs/check_docs_hygiene.py"
+CHECK_CODE_HYGIENE_SCRIPT = "tools/docs/check_code_hygiene.py"
 
 TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
 
@@ -665,7 +666,7 @@ def docstring_links(session: nox.Session) -> None:
 
     session.run(
         "python",
-        CHECK_DOCSTRING_LINKS_SCRIPT,
+        CHECK_DOCS_HYGIENE_SCRIPT,
         "--stats",
     )
 
@@ -680,6 +681,17 @@ def docs_hygiene(session: nox.Session) -> None:
         CHECK_DOCS_HYGIENE_SCRIPT,
         "--docs-hygiene",
         "--stats",
+    )
+
+
+@nox.session
+def code_hygiene(session: nox.Session) -> None:
+    """Enforce lightweight code hygiene (docstrings, inlines)."""
+    session.install(DEPS_DEV)
+
+    session.run(
+        "python",
+        CHECK_CODE_HYGIENE_SCRIPT,
     )
 
 
@@ -721,8 +733,9 @@ def release_check(session: nox.Session) -> None:
     It runs:
       - Formatting checks (ruff, mdformat, taplo, mbake)
       - Lint checks (ruff, pydoclint)
-      - Docstring link style checks (CHECK_DOCSTRING_LINKS_SCRIPT)
-      - Markdown snippet/include hygiene checks (CHECK_DOCS_HYGIENE_SCRIPT)
+      - Docstring link style checks (`tools/docs/check_docs_hygiene.py`)
+      - Markdown snippet/include hygiene checks (`tools/docs/check_docs_hygiene.py --docs-hygiene`)
+      - Code prose hygiene checks (`tools/docs/check_code_hygiene.py`)
       - Docs build in strict mode (mkdocs)
       - Packaging build + metadata checks (build, twine)
       - Tests + pyright for the session Python
@@ -788,7 +801,7 @@ def release_check(session: nox.Session) -> None:
     # Docstring link style (custom tool)
     session.run(
         "python",
-        CHECK_DOCSTRING_LINKS_SCRIPT,
+        CHECK_DOCS_HYGIENE_SCRIPT,
         "--stats",
     )
 
@@ -798,6 +811,12 @@ def release_check(session: nox.Session) -> None:
         CHECK_DOCS_HYGIENE_SCRIPT,
         "--docs-hygiene",
         "--stats",
+    )
+
+    # Code hygiene (custom tool)
+    session.run(
+        "python",
+        CHECK_CODE_HYGIENE_SCRIPT,
     )
 
     # Docs build (strict)
@@ -886,6 +905,12 @@ def release_full(session: nox.Session) -> None:
         "nox",
         "-s",
         "docs_hygiene",
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "code_hygiene",
         external=True,
     )
     session.run(

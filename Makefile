@@ -10,12 +10,12 @@
 
 .PHONY: \
 	api-snapshot api-snapshot-dev api-snapshot-ensure-clean api-snapshot-update \
-	check-lychee check-uv check-venv \
+	check-lychee check-uv check-venv code-hygiene \
 	coverage coverage-erase \
 	docstring-links \
 	docs-build docs-clean docs-hygiene docs-serve \
 	format format-check format-docstrings \
-	help \
+	help hygiene \
 	links links-all links-site links-src \
 	lint lint-fixall \
 	package-check \
@@ -58,8 +58,10 @@ help:
 	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
 	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
 	@echo "  format-docstrings  Auto-format docstrings using pydocstringformatter"
-	@echo "  docstring-links Enforce docstring link style (tools/docs/check_docs_hygiene.py)"
-	@echo "  docs-hygiene    Enforce lightweight Markdown snippet/include hygiene"
+	@echo "  docstring-links Enforce Python docstring link style"
+	@echo "  docs-hygiene    Check Markdown/MkDocs documentation hygiene"
+	@echo "  code-hygiene    Check Python comments/docstrings/string prose hygiene"
+	@echo "  hygiene         Run all prose/documentation hygiene checks"
 	@echo "Tests:"
 	@echo "  test            Run the test suite (nox: qa)"
 	@echo "  pytest          Run tests with current interpreter (no nox), skipping slow tests; supports PYTEST_PAR=-n auto"
@@ -114,7 +116,7 @@ coverage-erase:
 
 verify: check-venv
 	@echo "Running non-destructive checks via nox..."
-	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s links -s docs
+	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s code_hygiene -s links -s docs
 	@echo "All quality checks passed!"
 
 release-check: check-venv
@@ -136,7 +138,7 @@ RELEASE_PYTHONS := $(shell $(NOX) -l | awk '{print $$1}' | grep '^qa_api-' | cut
 release-full: check-venv check-lychee
 	@echo "Running full release gate for versions: $(RELEASE_PYTHONS) (serial gates + parallel Python matrix)..."
 	# Serial, non-matrix gates first:
-	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s docs -s links_all -s package_check
+	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s code_hygiene -s docs -s links_all -s package_check
 	# Parallelize the per-Python QA+snapshot+typecheck gate across versions:
 	$(MAKE) -j $(JOBS) $(addprefix release-qa-api-,$(RELEASE_PYTHONS))
 
@@ -166,6 +168,11 @@ docstring-links: check-venv
 
 docs-hygiene: check-venv
 	$(NOX) $(NOX_FLAGS) -s docs_hygiene
+
+code-hygiene:
+	$(NOX) $(NOX_FLAGS) -s code_hygiene
+
+hygiene: docs-hygiene code-hygiene
 
 # Run pytest directly (no nox) with the current interpreter
 pytest:

@@ -92,7 +92,7 @@ ______________________________________________________________________
 Documentation validation is intentionally layered and deterministic:
 
 - MkDocs performs rendering-time validation;
-- `tools/docs/` performs deterministic repository hygiene checks;
+- `tools/docs/` performs deterministic repository hygiene and prose-hygiene checks;
 - `make verify` and `nox` integrate documentation validation into contributor workflows;
 - GitHub Actions enforce documentation validation in CI.
 
@@ -339,7 +339,7 @@ are:
 - explicitly excluded via `exclude_docs` in `mkdocs.yml`;
 - intended only for stable reusable documentation fragments.
 
-Snippet include and inventory hygiene is validated through:
+Markdown documentation hygiene is validated through:
 
 ```bash
 make docs-hygiene
@@ -351,7 +351,13 @@ which runs:
 python tools/docs/check_docs_hygiene.py --docs-hygiene --stats
 ```
 
-The validation performs deterministic repository-hygiene checks for:
+Python code-prose hygiene is validated separately through:
+
+```bash
+python tools/docs/check_code_hygiene.py
+```
+
+The Markdown hygiene validation performs deterministic repository-hygiene checks for:
 
 - broken include paths;
 - malformed docs-root-relative include paths;
@@ -366,11 +372,17 @@ The checker also reports maintainability warnings for:
 
 - orphaned snippets;
 - headings inside snippets;
-- relative links inside reusable snippets;
+- smart punctuation in Markdown prose;
+- relative links inside reusable snippets unless include-markdown link rewriting is intentional;
 - snippet include paths that do not use the formatter-stable `\_snippets/` prefix.
 
 Shared navigation snippets such as `related-pages*.md` are intentionally allowed to contain relative
 links because they centralize reusable documentation navigation behavior.
+
+`check_code_hygiene.py` complements the Markdown-focused checks by scanning Python comments,
+docstrings, and prose-oriented string literals under `src/topmark/`, `tests/`, and `tools/`. It
+currently enforces ASCII-oriented punctuation hygiene for terminal-safe, deterministic, and
+copy/paste-friendly generated documentation and CLI output.
 
 These checks intentionally remain lightweight and deterministic. They reinforce repository-wide
 documentation consistency without turning every style preference into a hard release blocker.
@@ -385,8 +397,8 @@ The documentation tooling follows a few strict principles:
 
 - **Fail-late, report-all** - especially in strict mode.
 
-- **Shared logic, single source of truth** - no duplicated regexes, include semantics, or hygiene
-  heuristics.
+- **Shared logic, single source of truth** - no duplicated include semantics, prose-hygiene rules,
+  or validation heuristics.
 
 - **Documentation is code** - docstrings and Markdown are held to the same standard.
 
@@ -396,8 +408,8 @@ ______________________________________________________________________
 
 - documentation is generated, validated, and enforced as part of the build;
 - `tools/docs/` is the authoritative location for documentation tooling;
-- reference hygiene and snippet/include hygiene are enforced consistently across Markdown and
-  docstrings;
+- reference hygiene, Markdown hygiene, and Python prose hygiene are enforced consistently across
+  documentation sources, comments, and docstrings;
 - debug and strict modes provide both flexibility and CI-grade guarantees.
 
 If you change how TopMark is structured, update the documentation pipeline accordingly - it is a
