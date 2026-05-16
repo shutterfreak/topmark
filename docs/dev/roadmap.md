@@ -14,26 +14,34 @@ topmark:header:end
 
 ## Motivation / Why this matters
 
-TopMark increasingly operates on data that is not naturally file-backed: generated code, editor
-buffers, CI-provided snippets, or API-driven integrations. Today, almost all of TopMark's processing
-pipeline assumes filesystem I/O, which makes testing heavier, limits reuse, and complicates future
-integrations.
+TopMark 1.0 is now primarily a contract-stabilization effort. The major architecture refactors are
+complete, and the remaining work is focused on preserving stable behavior across CLI usage,
+configuration loading, machine-readable output, documentation, and release validation.
 
-Supporting an in-memory pipeline enables:
+A key deferred post-1.0 opportunity remains support for data that is not naturally file-backed:
+generated code, editor buffers, CI-provided snippets, or API-driven integrations. Today, almost all
+of TopMark's processing pipeline assumes filesystem I/O, which makes testing heavier, limits reuse,
+and complicates future integrations.
+
+Future in-memory pipeline support would enable:
 
 - Faster, more isolated tests without filesystem setup/teardown
 - Cleaner API boundaries (pipeline as a pure transformation)
 - Future integrations (editors, LSPs, CI bots) without temporary files
 - Clearer separation between what TopMark does and how input is obtained
 
+For 1.0 itself, the priority is to keep the already-refactored system stable, predictable, and
+well-documented while deferring new integration scope until after the final release.
+
 ______________________________________________________________________
 
 ## Done so far
 
-This section tracks work completed during the 0.12 development series that directly supports the 1.0
-goals. The focus has been on **architectural separation, deterministic behavior, strict typing, and
-removal of legacy implicit behavior**. The system is now largely aligned with a clean *TOML → Config
-→ Runtime → Pipeline → Presentation* model.
+This section tracks work completed during the 0.12 development series and the 1.0 alpha/beta
+stabilization line. The focus has been on **architectural separation, deterministic behavior, strict
+typing, documentation governance, validation hygiene, and removal of legacy implicit behavior**. The
+system is now largely aligned with a clean *TOML → Config → Runtime → Pipeline → Presentation* model
+and is in late beta stabilization.
 
 ### Registry architecture (completed)
 
@@ -55,10 +63,10 @@ model**:
   - ambiguous local identifiers require the qualified form
   - fuzzy matching, aliases, and implicit namespace fallback are intentionally unsupported
 - Implemented **ambiguity-aware resolution** with explicit error types.
-- Moved resolution logic into `topmark.resolution.*` and removed legacy resolver paths.
+- Moved resolution logic into `topmark.resolution.*` and removed legacy resolution paths.
 - Established **canonical identity semantics** across machine output, CLI, and API.
 - Introduced probe-based resolution via `ResolutionProbeResult` as the shared evidence model for
-  resolver diagnostics and effective pipeline resolution.
+  runtime-resolution diagnostics and effective pipeline resolution.
 - Added the read-only `topmark probe` command and matching `topmark.api.probe()` public API to
   expose file-type candidates, selected file type, selected processor, scores, match signals, and
   explicit inputs filtered before probing through stable DTOs at the API boundary.
@@ -98,9 +106,9 @@ Key improvements:
   - TEXT output is console-oriented and may use `-v` / `-vv` for progressive disclosure.
   - `-q` / `--quiet` suppresses TEXT output only where the command still has a useful status,
     inspection, or mutation signal.
-  - Markdown output is document-oriented and ignores TEXT-only verbosity, quiet, and styling
+  - Markdown output is document-oriented and ignores TEXT-oriented verbosity, quiet, and styling
     controls.
-  - JSON/NDJSON output is machine-readable and ignores TEXT-only presentation controls.
+  - JSON/NDJSON output is machine-readable and ignores TEXT-oriented presentation controls.
   - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
     registry commands) intentionally do not support `--quiet`.
 - Added Click-free shared human report models across config, registry, version, diagnostics, and
@@ -111,6 +119,8 @@ Key improvements:
 - Documented the public spelling contract for CLI option names, CLI value aliases, and canonical
   TOML/API/machine-readable values.
 - Completed a final help/epilog reflow and wording pass for command groups and subcommands.
+- Aligned config command help, source docstrings, and examples with the finalized “effective runtime
+  configuration” terminology.
 - Expanded focused human-output tests for version, diagnostics, config, registry, and pipeline
   commands.
 - Documented and enforced the stable CLI exit-code contract across implementation, tests, the
@@ -131,13 +141,13 @@ Result: output is now **fully deterministic, testable, and reusable outside CLI 
 A strict separation between **configuration and execution intent** is now in place:
 
 - Introduced `RunOptions` for runtime-only behavior (apply, stdin, etc.)
-- Removed runtime concerns from `Config`
+- Removed runtime concerns from layered configuration
 - Ensured CLI and API both follow:
-  - TOML → Config → Runtime overlay
-- Kept TOML-authored runtime sections such as `[writer]` outside layered `Config` while preserving
-  them in config dumps, config checks, and machine-readable config snapshots.
+  - TOML → layered configuration → runtime overlay
+- Kept TOML-authored runtime sections such as `[writer]` outside layered configuration while
+  preserving them in config dumps, config checks, and machine-readable configuration snapshots.
 - Aligned `config defaults` and `config init` so machine-readable output is generated through TOML
-  parsing/resolution rather than by shortcutting directly to `Config` defaults.
+  parsing/resolution rather than by shortcutting directly to configuration defaults.
 
 Result: config is now **pure, layered, and reproducible**, while runtime behavior is explicit.
 
@@ -147,14 +157,14 @@ The configuration system has been fully restructured:
 
 - Clear split:
   - `topmark.toml` → parsing + validation
-  - `topmark.config` → layered merge + resolution
+  - `topmark.config` → layered configuration merge + resolution
   - `topmark.runtime` → execution behavior
-- Implemented **layered config with provenance**
+- Implemented **layered configuration with provenance**
 - Introduced typed synthetic config provenance for built-in defaults, bundled templates, CLI/API
   overrides, and other non-filesystem config sources.
-- Added **per-path effective config resolution**
+- Added **per-path effective runtime configuration resolution**
 - Introduced **strict validation model** with diagnostics + strict mode
-- Introduced **staged config-loading validation logs**:
+- Introduced **staged configuration-loading validation logs**:
   - TOML-source diagnostics
   - merged-config diagnostics
   - runtime-applicability diagnostics
@@ -165,7 +175,8 @@ The configuration system has been fully restructured:
     boundaries
 - Removed legacy helpers and compatibility layers
 - Standardized API inputs via `ConfigMapping`
-- Normalized file type identifier handling across config freeze and runtime policy lookup:
+- Normalized file type identifier handling across configuration normalization and runtime policy
+  lookup:
   - `include_file_types` and `exclude_file_types` normalize to canonical qualified keys
   - `policy_by_type` accepts both qualified identifiers and unambiguous local identifiers
   - frozen `policy_by_type` maps are keyed by canonical qualified file type identifiers
@@ -173,7 +184,8 @@ The configuration system has been fully restructured:
 - Classified `PolicyOverrides` and `ConfigOverrides` as internal CLI/API orchestration bridge types,
   with public callers using plain mapping-based `config`, `policy`, and `policy_by_type` inputs.
 
-Result: configuration is now **typed, layered, validated, and consistent across CLI/API**.
+Result: configuration is now **typed, layered, validated, normalized, and consistent across
+CLI/API**.
 
 ### Pipeline semantics & policy model (completed)
 
@@ -205,7 +217,7 @@ The pipeline has been stabilized with clearer semantics:
   tests with the frozen newline contract.
 - Centralized pipeline-result-to-exit-code derivation with explicit priority ordering for mixed
   result runs.
-- Added resolver-level synthetic pipeline contexts for explicit missing literal inputs so missing
+- Added resolution-level synthetic pipeline contexts for explicit missing literal inputs so missing
   files appear in human output, machine output, summaries, and exit-code selection.
 
 Result: pipeline behavior is now **explicit, consistent, and predictable**.
@@ -241,7 +253,7 @@ Machine formats are now:
     pipeline.
 
 Result: machine output is now **schema-driven, documented, and separated from human presentation**.
-Remaining work is limited to final schema-freeze review, not architecture.
+Remaining work is limited to beta feedback and targeted hardening, not architecture.
 
 ### Human output system (completed)
 
@@ -249,7 +261,7 @@ Remaining work is limited to final schema-freeze review, not architecture.
 - Introduced `topmark.presentation` as canonical rendering layer.
 - Established the final presentation contract:
   - TEXT is console-oriented and owns verbosity/quiet semantics.
-  - Markdown is document-oriented and ignores TEXT-only verbosity/quiet controls.
+  - Markdown is document-oriented and ignores TEXT-oriented verbosity/quiet controls.
   - Machine formats are not part of the human-output layer.
 - Ensured all renderers are:
   - pure (no I/O)
@@ -278,7 +290,7 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   missing-vs-unmatched input behavior and mixed-result priority.
 - Documented probe-based resolution and filtered explicit-input reporting in the resolution,
   pipeline, filtering, machine-output, machine-format, and `topmark probe` usage pages.
-- Documented `topmark.api.probe()` as the stable public probe surface, with internal resolver
+- Documented `topmark.api.probe()` as the stable public probe surface, with internal resolution
   objects, synthetic contexts, and low-level probe helpers kept outside the 1.0 public API contract.
 - Updated policy, command, configuration discovery, schema, and roadmap documentation to reflect the
   frozen `--report`, `header_mutation_mode`, and `empty_insert_mode` contracts.
@@ -310,6 +322,19 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   template for `config defaults` and `config init`.
 - Reviewed and reduced the `docs/_snippets/` inventory to stable reusable contracts, retiring
   over-abstracted snippets and centralizing conceptual semantics into canonical reference pages.
+- Promoted the canonical terminology glossary from `docs/dev/terminology.md` to
+  `docs/terminology.md` as a project-wide vocabulary reference.
+- Added `_snippets/terminology.md` as the shared terminology cross-reference note and reused it
+  across command, usage, API, CI, configuration, and developer documentation.
+- Completed the command documentation consistency pass across pipeline, config, registry, and
+  version commands, including user-facing/runtime terminology, related links, machine-readable
+  wording, and troubleshooting sections.
+- Updated documentation conventions to clarify user-facing implementation boundaries for command
+  pages, including avoiding internal dataclass names, `freeze()` / `thaw()` mechanics, and internal
+  DTO names in usage documentation.
+- Harmonized the bundled `topmark-example.toml` template into a calmer reference-style starter
+  configuration with normalized runtime-policy, configuration-discovery, and TOML-source-local
+  wording.
 - Added lightweight documentation hygiene validation through `tools/docs/check_docs_hygiene.py`,
   exposed as `nox -s docs_hygiene` and `make docs-hygiene`.
 - Integrated documentation hygiene validation into local verification and release gates, including
@@ -317,6 +342,11 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 - Enforced objective documentation hygiene checks for broken snippet includes, malformed
   docs-root-relative include paths, include targets outside `docs/`, nested snippet includes,
   accidental macOS `._*` files, and level-2 section separators.
+- Added smart-punctuation hygiene for Markdown prose and normalized documentation prose to ASCII
+  punctuation where appropriate.
+- Added `tools/docs/check_code_hygiene.py` to validate Python comments, docstrings, and
+  prose-oriented string literals for ASCII-oriented punctuation hygiene.
+- Wired Python prose hygiene into nox, Makefile, verification, and release validation paths.
 
 ### CI / release / dependency model (completed)
 
@@ -341,6 +371,8 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   pre-commit/isolated-environment usage revealed it is required at runtime.
 - Added `deptry` configuration in `pyproject.toml` so optional dependency groups used for
   development and documentation are modeled explicitly during dependency-audit checks.
+- Refreshed dependencies and pre-commit hooks during beta stabilization, including removal of an
+  obsolete Pyright ignore after improved `tomlkit` typing.
 - Hardened CI with:
   - link checks
   - documentation hygiene checks
@@ -361,28 +393,32 @@ At this point:
 - Machine-output contract coverage is now strong for config, pipeline, version, registry, and probe
   commands
 - The public probe API is now aligned with the CLI probe command while preserving the
-  public/internal boundary around resolver internals
+  public/internal boundary around resolution internals
 - Qualified-vs-local file type identifier semantics are now frozen, implemented, tested, and
   documented across CLI, TOML configuration, API overlays, resolution and filtering, policy lookup,
   registry-facing APIs, diagnostics, and machine output
-- Final documentation, generated-site, CLI/help, warning/error wording, beta-semantics, and
-  machine-readable output terminology reviews have been completed through the `v1.0.0b3`
-  stabilization releases
+- Final documentation, generated-site, CLI/help, warning/error wording, beta-semantics,
+  command-page, terminology, and machine-readable output terminology reviews have been completed
+  through the beta stabilization releases
 - Documentation UX, command-page structure, cross-reference conventions, snippet governance, and
   generated-site navigation are now convention-driven and validated through the documentation
   hygiene tooling
+- Project-wide terminology, reusable terminology notes, command documentation, TOML template prose,
+  Markdown prose hygiene, and Python code-prose hygiene are now aligned with the 1.0 documentation
+  governance model
 
 The project is now in a **late beta stabilization phase**, with broad architecture complete,
-in-memory pipeline support explicitly deferred, documentation governance established, and the
-remaining work focused primarily on real-world beta feedback, downstream ecosystem validation, and
-final targeted hardening before `1.0.0`.
+in-memory pipeline support explicitly deferred, documentation governance and prose hygiene
+established, and the remaining work focused primarily on real-world beta feedback, downstream
+ecosystem validation, and final targeted hardening before `1.0.0`.
 
 ______________________________________________________________________
 
 ## Breaking changes introduced so far
 
 This section summarizes the **externally relevant breaking changes** already introduced during the
-0.12 refactor series. The emphasis is on **contract changes**, not internal implementation details.
+0.12 refactor series and the 1.0 alpha/beta stabilization line. The emphasis is on **contract
+changes**, not internal implementation details.
 
 ### Registry / resolution model
 
@@ -416,21 +452,23 @@ consumers must update to the canonical identity and explicit binding model.
 
 - Configuration is no longer treated as a single mixed layer.
   - `topmark.toml` handles TOML parsing and whole-source schema validation
-  - `topmark.config` handles layered merge / effective config resolution
+  - `topmark.config` handles layered configuration merge and effective runtime configuration
+    resolution
   - `topmark.runtime` handles execution-time behavior
 - Several older config/TOML helper entry points were removed or relocated.
   - Callers using older helper locations must migrate to the new module layout.
 - Generic config/API mapping input is now represented as `ConfigMapping`.
   - The legacy `ArgsLike` alias was removed.
-- Config-loading entry points were consolidated around TOML-first resolution.
-  - Callers needing provenance must explicitly handle `(resolved_sources, draft_config)`.
+- Configuration-loading entry points were consolidated around TOML-first resolution.
+  - Callers needing provenance must explicitly handle resolved sources and mutable configuration
+    state.
 - Source-local TOML options such as `[config].root` and `[config].strict` now live outside layered
-  `Config` merging.
-- Runtime-facing TOML sections such as `[writer]` are resolved outside layered `Config` but remain
-  part of the effective TOML surface shown by config output commands and machine-readable config
-  snapshots.
-- Runtime-facing TOML options such as `[writer].strategy` remain outside layered `Config` but are
-  resolved from TOML and preserved in human and machine-readable config output.
+  configuration merging.
+- Runtime-facing TOML sections such as `[writer]` are resolved outside layered configuration but
+  remain part of the effective TOML surface shown by config output commands and machine-readable
+  configuration snapshots.
+- Runtime-facing TOML options such as `[writer].strategy` remain outside layered configuration but
+  are resolved from TOML and preserved in human-readable and machine-readable configuration output.
 - TOML validation is now stricter and happens earlier:
   - unknown top-level sections/keys, malformed known sections, and malformed nested policy sections
     are reported during whole-source TOML loading
@@ -438,16 +476,17 @@ consumers must update to the canonical identity and explicit binding model.
 - Policy/config surface changed:
   - `add_only` / `update_only` → replaced by `header_mutation_mode`
   - `skip_compliant` / `skip_unsupported` → replaced by `report`
-- Frozen `Config.policy_by_type` keys are now canonical qualified file type identifiers.
-  - Consumers that inspect frozen config or call low-level effective-policy helpers must use keys
-    such as `topmark:python` instead of assuming local-only keys such as `python`.
+- Immutable runtime configuration `policy_by_type` keys are now canonical qualified file type
+  identifiers.
+  - Consumers that inspect resolved runtime configuration or call low-level effective-policy helpers
+    must use keys such as `topmark:python` instead of assuming local-only keys such as `python`.
 - `policy_by_type`, `include_file_types`, and `exclude_file_types` now share the same identifier
   contract: qualified identifiers are accepted explicitly, and local identifiers are accepted only
   when unambiguous.
-- Config merge semantics are no longer uniformly "last-wins":
+- Configuration merge semantics are no longer uniformly "last-wins":
   - some fields accumulate
   - some fields merge key-wise
-  - effective config is now resolved per path rather than as a single flat snapshot
+  - effective runtime configuration is now resolved per path rather than as a single flat snapshot
 
 Result: configuration behavior is clearer and more powerful, but callers relying on older helpers,
 older policy tokens, or older TOML layout/validation assumptions must update.
@@ -465,11 +504,11 @@ older policy tokens, or older TOML layout/validation assumptions must update.
   - `-v` / `--verbose` applies only to TEXT output.
   - `-q` / `--quiet` applies only to TEXT output on commands that explicitly support output
     suppression.
-  - Markdown output is document-oriented and ignores TEXT-only verbosity/quiet controls.
-  - JSON/NDJSON output is machine-readable and ignores TEXT-only presentation controls.
+  - Markdown output is document-oriented and ignores TEXT-oriented verbosity/quiet controls.
+  - JSON/NDJSON output is machine-readable and ignores TEXT-oriented presentation controls.
   - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
     registry commands) no longer expose `--quiet`.
-- Runtime-only execution intent is now modeled separately from layered config.
+- Runtime-only execution intent is now modeled separately from layered configuration.
   - `RunOptions` now carries runtime behavior such as apply/preview and stdin handling.
 - Dry-run / apply semantics are now explicit:
   - preview runs report preview statuses
@@ -510,10 +549,10 @@ snapshots, and downstream automation may need adjustment.
 - `config check` machine output now uses the explicit `config_check` payload/record kind rather than
   a generic summary wrapper.
 - `config dump --show-layers` now adds layered provenance output (`config_provenance`) before the
-  final flattened config payload.
-- Config machine-readable payloads include TOML-authored runtime sections such as `[writer]` when
-  present in the effective TOML source, even though those values are resolved outside the layered
-  `Config` model.
+  final flattened runtime configuration payload.
+- Configuration machine-readable payloads include TOML-authored runtime sections such as `[writer]`
+  when present in the effective TOML source, even though those values are resolved outside the
+  layered configuration model.
 - `detail_level` is now part of the machine-readable output contract for command families that emit
   projection metadata (notably registry machine output).
 - Registry JSON machine output was flattened for 1.0 contract stability:
@@ -525,8 +564,8 @@ snapshots, and downstream automation may need adjustment.
   - plural/domain-specific JSON collection keys
   - singular NDJSON record kinds
   - `qualified_key`, `namespace` + `local_key`, and `*_key` reference naming
-- Machine-readable config, registry, resolver, and probe payloads emit canonical qualified file type
-  identifiers when a resolved identity is available.
+- Machine-readable configuration, registry, resolution, and probe payloads emit canonical qualified
+  file type identifiers when a resolved identity is available.
 - Probe machine output now treats probe records as per-path results and includes filtered explicit
   inputs via `status="filtered"` with path-filter, file-type-filter, or generic discovery-filter
   reasons.
@@ -538,7 +577,8 @@ relied on older payload naming or outcome-keyed summaries must update.
 
 ### Documentation / docs build behavior
 
-- Documentation now assumes the TOML → Config → Runtime architecture and the new CLI/output model.
+- Documentation now assumes the TOML → layered configuration → runtime overlay architecture and the
+  new CLI/output model.
 - Generated API/reference pages are part of the docs build contract.
   - missing or stale generated pages can now fail `mkdocs build --strict`
 - Documentation/tooling now relies on dedicated formatter config files:
@@ -546,20 +586,27 @@ relied on older payload naming or outcome-keyed summaries must update.
   - `.taplo.toml`
 - Built-site link checking (`links-site`) is now part of the CI path that gates release-artifact
   creation on tag pushes.
-- Documentation hygiene validation is now part of local verification and release validation.
+- Documentation hygiene and Python prose hygiene validation are now part of local verification and
+  release validation.
   - broken snippet includes, malformed include paths, nested snippet includes, accidental macOS
-    `._*` files, and missing level-2 section separators can now fail docs/tooling gates
+    `._*` files, missing level-2 section separators, and smart punctuation in Markdown prose can now
+    fail docs/tooling gates when warning-failure mode is enabled
   - snippet-related maintainability issues may be reported as non-fatal warnings
-- The documentation hygiene checker has been renamed to `tools/docs/check_docs_hygiene.py`.
-  - contributors or automation invoking the former docstring-link checker for Markdown hygiene must
-    update to the renamed script or to the stable `make docs-hygiene` / `nox -s docs_hygiene`
-    wrappers
+- Documentation and code-prose hygiene are now split across dedicated tooling:
+  - Markdown/MkDocs/snippet hygiene uses `tools/docs/check_docs_hygiene.py`, exposed through
+    `make docs-hygiene` and `nox -s docs_hygiene`
+  - Python comments, docstrings, and prose-oriented strings use `tools/docs/check_code_hygiene.py`,
+    exposed through `make code-hygiene` and `nox -s code_hygiene`
 - User and developer documentation now treats qualified file type identifiers as the canonical
   internal representation and documents local identifiers as an unambiguous public-input
   convenience.
+- The canonical terminology glossary moved from `docs/dev/terminology.md` to `docs/terminology.md`.
+  - Internal links and external references to the old developer-only glossary location must be
+    updated.
+- Repeated terminology cross-reference notes now use `_snippets/terminology.md`.
 
-Result: documentation is more accurate and better validated, but docs generation/validation is now
-stricter than before.
+Result: documentation is more accurate and better validated, but docs generation, documentation
+hygiene, and code-prose hygiene are now stricter than before.
 
 ### Developer tooling / CI / release workflow
 
@@ -577,13 +624,16 @@ stricter than before.
   - it now validates SCM-derived artifact versions against the resolved release tag
 - Release/contributor workflow no longer includes a manual version-bump step.
 - Compact PEP 440 prerelease tags are now preferred (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`).
+- Dependencies and pre-commit hook revisions are refreshed as part of beta stabilization, and type
+  expectations may tighten as dependency metadata improves.
 - `typing-extensions` is now treated as a runtime dependency rather than an implicitly available
   development-only/transitive dependency; packaging and isolated-environment installs now reflect
   the actual runtime import surface.
-- Documentation hygiene validation is exposed as a first-class local/tooling gate through
-  `make docs-hygiene` and `nox -s docs_hygiene`.
-  - `make verify`, `make release-check`, and `make release-full` now include documentation hygiene
-    validation
+- Documentation hygiene and Python code-prose hygiene are exposed as first-class local/tooling gates
+  through `make docs-hygiene`, `make code-hygiene`, `nox -s docs_hygiene`, and
+  `nox -s code_hygiene`.
+  - `make verify`, `make release-check`, and `make release-full` now include documentation and
+    code-prose hygiene validation
 - GitHub Actions behavior is more aggressively gated by changed-file buckets on pull requests, so
   some jobs may now be skipped unless relevant files changed.
 
@@ -597,11 +647,12 @@ The major breaking changes are no longer about isolated helper removals; they ar
 system shape**:
 
 - explicit registry/binding model
-- layered TOML/config/runtime boundaries
+- layered TOML/configuration/runtime boundaries
 - explicit preview/apply runtime model
 - schema-driven machine output with domain-specific JSON envelopes and stable NDJSON record kinds
 - uv/nox-based tooling and artifact-based release automation
-- stricter documentation governance with convention-backed docs hygiene validation
+- stricter documentation governance with convention-backed documentation and code-prose hygiene
+  validation
 
 The 1.0 task is therefore not large-scale redesign anymore, but **contract freeze and final
 stabilization** on top of these already-landed changes.
@@ -611,9 +662,10 @@ ______________________________________________________________________
 ## Still undecided / still to do
 
 This section captures the **remaining post-beta validation and targeted hardening work**. The large
-structural refactors, contract-freeze decisions, beta validation gate, and documentation-governance
-work are complete. What remains is mostly about **real-world beta feedback, ecosystem validation,
-and explicitly deferred post-1.0 scope**.
+structural refactors, contract-freeze decisions, beta validation gates, documentation-governance
+work, command-page freeze review, and prose-hygiene tooling work are complete. What remains is
+mostly about **real-world beta feedback, ecosystem validation, and explicitly deferred post-1.0
+scope**.
 
 ### Registry / resolution freeze
 
@@ -626,14 +678,14 @@ Completed decisions:
 - Ambiguous local identifiers require the qualified form.
 - `include_file_types`, `exclude_file_types`, and `policy_by_type` all share the same identifier
   semantics.
-- Frozen config and runtime policy lookup use canonical qualified keys.
+- Effective runtime configuration and runtime policy lookup use canonical qualified keys.
 - `topmark probe` and `topmark.api.probe()` are the accepted 1.0 resolution explainability surfaces.
 - Low-level helpers such as `probe_resolution_for_path()` remain advanced/internal debugging
   surfaces outside the `topmark.api` stability contract.
 - Registry discovery/query commands remain deferred beyond 1.0.
 
-Remaining work is limited to real-world beta validation and ensuring generated API references
-continue reflecting the public/internal boundary as the code evolves.
+Remaining work is limited to real-world beta validation, targeted hardening, and ensuring generated
+API references continue reflecting the public/internal boundary as the code evolves.
 
 ### In-memory pipeline: implement or defer
 
@@ -684,7 +736,7 @@ boundary redesign:
 - Keep `topmark.config.overrides.PolicyOverrides` and `topmark.config.overrides.ConfigOverrides`
   internal; public callers use mapping-based API inputs instead.
 - Confirm that provenance inspection (`config dump --show-layers`) remains an inspection concern and
-  does not leak into validation-oriented commands or public API contracts.
+  does not leak into validation-oriented commands or stable public API contracts.
 - Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
   public Python API surfaces.
 
@@ -703,13 +755,13 @@ Frozen decisions:
   - public inputs may use qualified identifiers or unambiguous local identifiers
   - config freeze normalizes file type filters and `policy_by_type` keys to canonical qualified keys
   - runtime policy lookup uses canonical qualified keys
-- Freeze and document the staged validation model now implemented internally:
+- Freeze and document the staged configuration-validation model now implemented internally:
   - TOML-source diagnostics
   - merged-config diagnostics
   - runtime-applicability diagnostics
 - Keep staged validation primarily internal for 1.0, with only the flattened compatibility
   diagnostics contract exposed at exception, presentation, and machine-readable output boundaries.
-- `[config].strict` is now the frozen public config-loading strictness knob for 1.0.
+- `[config].strict` is now the frozen public configuration-loading strictness knob for 1.0.
 - Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
   `[config].strict` gate for 1.0.
 - TOML validation, config validation, runtime overlay, and typed layered provenance remain clearly
@@ -720,11 +772,11 @@ Frozen decisions:
 
 Recommended direction:
 
-- keep the current TOML → Config → Runtime split,
+- keep the current TOML → layered configuration → runtime overlay split,
 - keep canonical qualified file type identifiers as the internal frozen representation,
-- keep `[config].strict` as the public config-loading strictness knob for 1.0,
-- keep runtime-facing TOML sections such as `[writer]` outside layered `Config` while preserving
-  them in config output snapshots,
+- keep `[config].strict` as the public configuration-loading strictness knob for 1.0,
+- keep runtime-facing TOML sections such as `[writer]` outside layered configuration while
+  preserving them in configuration output snapshots,
 - freeze the staged validation semantics now implemented internally,
 - keep flattened diagnostics as a derived compatibility/reporting surface only at exception,
   presentation, and machine-readable output boundaries,
@@ -736,8 +788,8 @@ Recommended direction:
 ### Output contract freeze
 
 Output architecture work is complete. Machine-readable implementation, human-output rendering,
-tests, reference documentation, CLI/help wording, warning/error wording, and alpha-semantics reviews
-are frozen for the beta line; remaining work is limited to beta feedback and targeted hardening.
+tests, reference documentation, CLI/help wording, warning/error wording, command-page wording, and
+beta-semantics reviews are frozen for the beta line;
 
 Machine-readable output decisions:
 
@@ -753,20 +805,20 @@ Machine-readable output decisions:
   - TEXT verbosity remains independent and presentation-only
 - Field naming consistency audited across domains and documented in the machine-readable output
   reference.
-- Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the reference
-  machine-format documentation.
+- Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the canonical
+  machine-readable output reference documentation.
 
 Human output decisions:
 
 - TEXT and Markdown output contracts reviewed across command groups.
   - TEXT remains compact/console-oriented and may use `-v` / `-vv` for progressive disclosure and
     `--quiet` only where the command exposes meaningful status, inspection, or mutation semantics.
-  - Markdown is explicitly document-oriented and ignores TEXT-only verbosity/quiet controls.
+  - Markdown is explicitly document-oriented and ignores TEXT-oriented verbosity/quiet controls.
   - `--long` remains the data/detail-depth control where supported.
-- Verbosity semantics (`default`, `-v`, `-vv`, `--quiet`) frozen for 1.0.
-  - `-v` / `-vv` are TEXT-only progressive-disclosure controls.
-  - `--quiet` is TEXT-only and only exposed where suppressing output still leaves a useful status,
-    inspection, or mutation signal.
+- Verbosity semantics (`default`, `-v`, `-vv`, `--quiet`) are frozen for 1.0.
+  - `-v` / `-vv` are TEXT-oriented progressive-disclosure controls.
+  - `--quiet` is TEXT-oriented and only exposed where suppressing output still leaves a useful
+    status, inspection, or mutation signal.
   - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
     registry commands) intentionally do not support `--quiet`.
 - Focused human-output tests added for version, diagnostics, config, registry, and pipeline command
@@ -778,8 +830,8 @@ Human output decisions:
 - Hint-ordering strategy is frozen for 1.0.
   - Continue keeping presentation logic fully out of CLI command functions.
 
-CLI exit-code work is now complete for the 1.0 freeze: `docs/usage/exit-codes.md` is the canonical
-contract, implementation is centralized around pipeline/result prioritization, focused
+CLI exit-code work is now complete for the 1.0 contract freeze: `docs/usage/exit-codes.md` is the
+canonical contract, implementation is centralized around pipeline/result prioritization, focused
 `pytest.mark.exit_code` coverage enforces the contract, and README, docs index, shared options,
 filtering, pre-commit, command-group pages, command pages, API docs, architecture docs, and
 machine-readable output docs link or summarize the same behavior. The CLI command-applicability,
@@ -788,8 +840,9 @@ work is now limited to any last warning/error wording cleanup discovered during 
 
 ### Tooling / CI / release follow-up
 
-The security, workflow, release, tooling-parity, and documentation-hygiene work is functionally
-complete. What remains is mostly follow-up validation and post-1.0 ecosystem decisions.
+The security, workflow, release, tooling-parity, documentation-hygiene, and Python prose-hygiene
+work is functionally complete. What remains is mostly follow-up validation and post-1.0 ecosystem
+decisions.
 
 Remaining follow-up:
 
@@ -807,11 +860,13 @@ Remaining follow-up:
   artifact-based release workflow all consume the same formatter/tool configuration.
 - Keep documentation hygiene validation integrated in local and release gates as the documentation
   conventions evolve.
-  - Keep MkDocs 1.x as the accepted documentation generator through the `v1.0.0b3` stabilization
-    releases because the current strict docs build, link checks, generated API pages, release
-    validation, and cross-platform packaging/install validation are green. Evaluate ProperDocs as a
-    post-beta / post-1.0 tooling follow-up unless MkDocs becomes a concrete release blocker before
-    final `1.0.0`.
+- Keep Python code-prose hygiene validation integrated in local and release gates as comments,
+  docstrings, tooling prose, and generated documentation conventions evolve.
+- Keep MkDocs 1.x as the accepted documentation generator through the `v1.0.0` beta stabilization
+  releases because the current strict docs build, link checks, generated API pages, release
+  validation, and cross-platform packaging/install validation are green. Evaluate ProperDocs as a
+  post-beta / post-1.0 tooling follow-up unless MkDocs becomes a concrete release blocker before
+  final `1.0.0`.
 
 ### Human-facing policy / behavior questions
 
@@ -824,12 +879,12 @@ real-world beta feedback and keeping documentation aligned:
   public enum may be revisited later.
 - Summary reason strings remain presentation-facing labels rather than a separate stable integration
   contract.
-- Keep confirming that API and CLI docs consistently use the `report` model and no longer reference
-  legacy `skip_*` filters.
+- Keep confirming that API, CLI, and generated documentation consistently use the `report` model and
+  no longer reference legacy `skip_*` filters.
 - Keep CLI help examples aligned with canonical option/command constants to avoid drift between
   documentation and implementation.
 - Keep Markdown documentation and examples aligned with the document-oriented output contract rather
-  than treating Markdown as layout-equivalent TEXT.
+  than treating Markdown as layout-equivalent TEXT output.
 - File-recognition / resolution explainability is now accepted for 1.0 via the read-only
   `topmark probe` command and `topmark.api.probe()`.
   - explicit inputs filtered during discovery are reported as `filtered` probe results with broad
@@ -857,11 +912,12 @@ What is left is mainly:
 - **ecosystem compatibility validation**
 - **downstream machine-readable output consumer validation**
 - **targeted hardening from concrete beta findings**
+- **ongoing documentation/prose-governance validation**
 - **explicit post-1.0 follow-up for deferred scope**
 
 That means TopMark is now in the post-beta stabilization stage of the 1.0 effort: validating the
-frozen contracts in realistic environments, preserving compatibility, and avoiding new scope unless
-a concrete release blocker appears.
+frozen contracts in realistic environments, preserving compatibility, maintaining documentation and
+prose-governance quality, and avoiding new scope unless a concrete release blocker appears.
 
 ______________________________________________________________________
 
@@ -871,9 +927,9 @@ TopMark 1.0 follows a **contract-first** release strategy: all externally observ
 surface, configuration semantics, machine-readable formats, CLI behavior, documentation behavior,
 and release workflow expectations) must be stable, documented, and well-tested.
 
-The large refactors, beta gate, documentation freeze review, documentation-governance work, and
-release-validation passes are complete. This checklist now records the frozen 1.0 contract state and
-remaining post-beta validation posture:
+The large refactors, beta gates, documentation freeze review, documentation-governance work,
+command-page consistency review, prose-hygiene tooling, and release-validation passes are complete.
+This checklist now records the frozen 1.0 contract state and remaining post-beta validation posture:
 
 - what is already stable for `1.0.0`
 - what has been explicitly deferred with rationale
@@ -886,17 +942,19 @@ These are release blockers unless explicitly deferred with a documented rational
 #### [Must] Architecture & boundaries
 
 - [x] Clear separation between CLI, presentation, API, and core/domain layers
-- [x] Runtime behavior separated cleanly from layered config
+- [x] Runtime behavior separated cleanly from layered configuration
 - [x] No CLI-specific concerns (verbosity, color, formatting) in core logic
 - [x] Remaining public-vs-internal boundaries frozen and documented for:
   - [x] `topmark.api.probe()` accepted as the stable public probe API
   - [x] `topmark.api.runtime` documented as internal API orchestration infrastructure
-  - [x] low-level resolver/probe objects documented as advanced/internal rather than stable public
+  - [x] low-level resolution/probe objects documented as advanced/internal rather than stable public
     DTOs
   - [x] typed override surfaces (`PolicyOverrides`, `ConfigOverrides`) classified as internal
     CLI/API orchestration bridge types
 - [x] Documentation governance and generated-site structure documented as part of the maintained
   developer/tooling boundary
+- [x] User-facing command documentation avoids internal runtime implementation details such as
+  concrete mutable/frozen dataclass names, `freeze()` / `thaw()` mechanics, and internal DTO names
 
 #### [Must] Machine output contracts
 
@@ -938,11 +996,11 @@ These are release blockers unless explicitly deferred with a documented rational
   usage-error boundaries, and policy/report semantics
 - [x] Verbosity semantics (default, `-v`, `-vv`, `--quiet`) documented and considered stable
   - [x] CLI plumbing normalized around typed `TopmarkCliState`
-  - [x] `-v` / `-vv` treated as TEXT-only progressive-disclosure controls
-  - [x] `-q` / `--quiet` treated as TEXT-only output suppression only where the command exposes a
-    useful status, inspection, or mutation signal
-  - [x] Markdown output ignores TEXT-only verbosity/quiet controls
-  - [x] machine-readable formats ignore TEXT-only presentation controls
+  - [x] `-v` / `-vv` treated as TEXT-oriented progressive-disclosure controls
+  - [x] `-q` / `--quiet` treated as TEXT-oriented output suppression only where the command exposes
+    a useful status, inspection, or mutation signal
+  - [x] Markdown output ignores TEXT-oriented verbosity/quiet controls
+  - [x] machine-readable formats ignore TEXT-oriented presentation controls
   - [x] pure informational content-producing commands (`version`, `config defaults`, `config init`,
     and registry commands) intentionally do not support `--quiet`
   - [x] final user-facing documentation reviewed and aligned
@@ -973,7 +1031,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] file-agnostic commands reject positional paths and file-processing STDIN modes
   - [x] strict config-checking behavior documented at command level where applicable
   - [x] command help/epilog wording aligned for main CLI entry point, command groups and commands
-  - [x] TEXT-only verbosity/quiet applicability documented and enforced by command
+  - [x] TEXT-oriented verbosity/quiet applicability documented and enforced by command
   - [x] pure informational content-producing commands reject `--quiet` (`version`,
     `config defaults`, `config init`, and registry commands)
 - [x] Final review of user-facing policy/report flags completed
@@ -997,10 +1055,10 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] local identifiers are accepted at public boundaries only when unambiguous
   - [x] `include_file_types`, `exclude_file_types`, and `policy_by_type` share the same identifier
     semantics
-  - [x] frozen config and runtime policy lookup use canonical qualified keys
+  - [x] effective runtime configuration and runtime policy lookup use canonical qualified keys
 - [x] `config init`, `config defaults`, `config check`, and `config dump` outputs aligned and frozen
-- [x] Runtime-facing TOML sections such as `[writer]` are preserved in config output snapshots
-  without reintroducing runtime state into layered `Config`
+- [x] Runtime-facing TOML sections such as `[writer]` are preserved in configuration output
+  snapshots without reintroducing runtime state into layered configuration
 - [x] Synthetic config provenance is typed and preserved until presentation or serialization
   boundaries
 - [x] Decision made and documented on the final public override model
@@ -1014,10 +1072,10 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] privileged release jobs consume CI-built artifacts
   - [x] no manual version-bump step remains
 - [x] Preferred release-tag conventions documented and stable
-- [x] `[config].strict` documented and stable as a TOML-source-local config-loading option
+- [x] `[config].strict` documented and stable as a TOML-source-local configuration-loading option
 - [x] Whole-source TOML schema validation rules documented and considered stable
 - [x] TOML/config/runtime split documented and implemented
-- [x] Per-path effective config resolution implemented
+- [x] Per-path effective runtime configuration resolution implemented
 - [x] Validation semantics frozen for 1.0:
   - [x] validation always runs
   - [x] strictness controls raise vs report behavior
@@ -1025,7 +1083,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] staged validation logs implemented internally
   - [x] effective validity now evaluates TOML-source, merged-config, and runtime-applicability
     diagnostics together
-  - [x] `[config].strict` remains the public config-loading strictness knob
+  - [x] `[config].strict` remains the public configuration-loading strictness knob
   - [x] `ConfigValidationError` now has focused coverage for staged-count summaries and
     exception-boundary flattening
   - [x] final decision made on 1.0 exposure: keep staged validation primarily internal with
@@ -1053,10 +1111,10 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] Namespace-aware registry lookup and deterministic ambiguity behavior covered by tests
   - [x] registry identity tests cover local, qualified, default-namespace, ambiguous, malformed, and
     unknown identifier cases
-  - [x] config, TOML, resolver, CLI, and API tests cover normalized file type filters and
+  - [x] config, TOML, resolution, CLI, and API tests cover normalized file type filters and
     `policy_by_type` behavior
 - [x] Probe command and public probe API resolution-candidate and filtered explicit-input reporting
-  are covered by focused resolver, discovery, pipeline-step, CLI human-output, CLI exit-code,
+  are covered by focused resolution, discovery, pipeline-step, CLI human-output, CLI exit-code,
   machine-output, and API tests, including path-filter, file-type-filter, fallback discovery-filter,
   missing-input, and candidate-shape cases, without weakening the existing check/strip output
   contract
@@ -1117,12 +1175,21 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] `make docs-hygiene` exposes the check through the Makefile
   - [x] `make verify`, `make release-check`, and `make release-full` include documentation hygiene
     validation
+- [x] Python code-prose hygiene tooling integrated into the local and release validation ecosystem
+  - [x] `tools/docs/check_code_hygiene.py` validates Python comments, docstrings, and prose-oriented
+    string literals for ASCII-oriented punctuation hygiene
+  - [x] `nox -s code_hygiene` exposes the check in nox
+  - [x] `make code-hygiene` exposes the check through the Makefile
+  - [x] `make verify`, `make release-check`, and `make release-full` include code-prose hygiene
+    validation
+- [x] Dependency and pre-commit hook refresh completed during beta stabilization
+  - [x] obsolete Pyright ignore removed after improved `tomlkit` typing
 
-#### [Must] Beta stabilization and validation gates through `v1.0.0b3`
+#### [Must] Beta stabilization and validation gates
 
 Before cutting the final `1.0.0` release, maintain and record positive validation passes across the
-beta stabilization series through `v1.0.0b3`. Packaging validation is intentionally handled through
-nox sessions, GitHub workflows, and release workflow checks rather than dedicated pytest tests.
+beta stabilization series. Packaging validation is intentionally handled through nox sessions,
+GitHub workflows, and release workflow checks rather than dedicated pytest tests.
 
 - [x] Packaging validation completed
   - [x] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
@@ -1150,6 +1217,8 @@ nox sessions, GitHub workflows, and release workflow checks rather than dedicate
   - [x] `make docs-build`
   - [x] `make links-site`
   - [x] `make docs-hygiene`
+  - [x] `make code-hygiene`
+  - [x] Markdown prose and Python code-prose hygiene pass validation
   - [x] generated API reference pages are current
   - [x] strict MkDocs build passes in a clean environment
   - [x] snippet/include hygiene and level-2 section-separator conventions pass validation
@@ -1168,14 +1237,15 @@ nox sessions, GitHub workflows, and release workflow checks rather than dedicate
   - [x] no alpha-only semantics remain exposed in CLI help, docs, or machine-readable output
   - [x] warning and error wording remains consistent with the frozen command-applicability and
     exit-code contracts
+  - [x] command-page wording, terminology cross-references, TOML template prose, and user-facing
+    implementation-boundary guidance are aligned with the 1.0 documentation conventions
   - [x] accepted imperfections are recorded explicitly as post-1.0 follow-up or non-blocking beta
     notes
-    - [x] MkDocs 1.x remains accepted through the `v1.0.0b3` stabilization releases; ProperDocs
-      evaluation is deferred unless the current documentation toolchain becomes a concrete release
-      blocker
+    - [x] MkDocs 1.x remains accepted through the beta stabilization releases; ProperDocs evaluation
+      is deferred unless the current documentation toolchain becomes a concrete release blocker
     - [x] Documentation UX, command-page structure, cross-reference conventions, snippet governance,
-      and generated-site navigation are accepted for the beta line and enforced through lightweight
-      documentation hygiene validation
+      generated-site navigation, Markdown prose hygiene, and Python code-prose hygiene are accepted
+      for the beta line and enforced through lightweight validation tooling
 
 ### Strongly recommended (but not blockers)
 
@@ -1244,6 +1314,12 @@ as a record of recommended freeze work that has now been closed.
 - [x] Over-abstracted snippets retired in favor of canonical reference pages
 - [x] Documentation hygiene validation added and integrated into local and release validation gates
 - [x] Generated-site navigation and TOC density reviewed and improved
+- [x] Project-wide terminology glossary promoted to `docs/terminology.md`
+- [x] Shared terminology note centralized in `_snippets/terminology.md`
+- [x] Command-page user-facing implementation-boundary guidance documented
+- [x] Bundled `topmark-example.toml` template prose harmonized with the finalized documentation
+  terminology and reference-template style
+- [x] Markdown prose and Python code-prose hygiene validation added and integrated
 
 ### Post-1.0 follow-up (nice-to-have)
 
@@ -1278,8 +1354,8 @@ beta feedback identifies a release blocker.
 - [ ] Revisit long-term CLI framework choice (Click vs alternative)
 - [ ] Evaluate ProperDocs as a potential successor to MkDocs for documentation generation once the
   current beta gate has closed
-- [ ] Consider splitting or renaming documentation hygiene tooling further if future checks make the
-  current script structure too broad
+- [ ] Consider splitting, renaming, or further consolidating documentation/code-prose hygiene
+  tooling if future checks make the current script structure too broad
 - [ ] Consider richer documentation-structure validation only if repeated drift appears despite the
   current lightweight hygiene checks
 - [ ] Further refactor GitHub workflow structure into reusable workflow/release-infra patterns if
@@ -1289,8 +1365,8 @@ ______________________________________________________________________
 
 Only when all items in the "Must finish before 1.0" section are completed or explicitly deferred
 with rationale should `1.0.0` final be cut. The 1.0 alpha series served as the
-contract-stabilization and release-path rehearsal phase, while the beta stabilization series through
-`v1.0.0b3` validated the frozen contracts, release pipeline, and cross-platform installation
-behavior. The remaining path to final `1.0.0` is now focused on preserving compatibility, collecting
-final real-world beta feedback, and avoiding new scope unless concrete release-blocking issues are
-identified.
+contract-stabilization and release-path rehearsal phase, while the beta stabilization series
+validated the frozen contracts, release pipeline, documentation governance, prose hygiene, and
+cross-platform installation behavior. The remaining path to final `1.0.0` is now focused on
+preserving compatibility, collecting final real-world beta feedback, and avoiding new scope unless
+concrete release-blocking issues are identified.
