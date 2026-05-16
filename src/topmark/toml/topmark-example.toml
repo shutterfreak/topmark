@@ -8,38 +8,52 @@
 #
 # topmark:header:end
 
-#########################
-# TopMark configuration #
-#########################
-# This file is used to define the default configuration for TopMark.
+# ============================================================================
+# TopMark configuration
+# ============================================================================
 
-# ------------------------------
+# Canonical example configuration for TopMark.
+#
+# This file documents the supported configuration surface, layered
+# configuration semantics, runtime policies, and common customization points.
+# It is intended both as a starter template and as a reference example.
+
+# ----------------------------------------------------------------------------
 # Config discovery & precedence
-# ------------------------------
-# TopMark discovers configuration from (lowest → highest precedence):
+# ----------------------------------------------------------------------------
+# TopMark resolves configuration using the following precedence order
+# (lowest to highest):
 #   1. Built-in defaults (this file bundled with TopMark)
-#   2. User config (~/.config/topmark/topmark.toml or ~/.topmark.toml)
-#   3. Project configs discovered upward from the *discovery anchor* to the root
-#      * The discovery anchor is the first input path (its parent if it's a file);
-#        if no inputs are provided, the anchor is the current working directory.
+#   2. User configuration files (~/.config/topmark/topmark.toml or
+#      ~/.topmark.toml)
+#   3. Project configuration files discovered upward from the discovery anchor
+#      to the root:
+#      * The discovery anchor is the first input path (its parent if it's a
+#        file); if no inputs are provided, the anchor is the current working
+#        directory.
 #      * In each directory, TopMark considers both:
 #          - pyproject.toml  (table: [tool.topmark])
 #          - topmark.toml    (tool-specific file)
 #        Same-directory precedence: pyproject.toml is merged first,
 #        then topmark.toml overrides it.
 #      * Directories are merged root → current (nearest wins).
-#      * Set `[config].root = true` in a discovered config to stop further upward traversal.
-#   4. Extra config files passed explicitly via --config (merged in the order provided)
+#      * Set `[config].root = true` in a discovered config to stop further
+#        upward traversal.
+#   4. Extra configuration files passed explicitly via --config
+#      (merged in the order provided)
 #   5. CLI overrides (highest precedence)
 #
 # Path resolution rules:
-#   * Globs declared in config files are resolved relative to the directory that contains
-#     that config file. Globs declared via CLI are resolved relative to the current working
+#   * Globs declared in configuration files are resolved relative to the
+#     directory that contains the configuration file.
+#   * Globs declared via CLI are resolved relative to the current working
 #     directory (invocation site).
-#   * Path-to-file settings (e.g., include_from/exclude_from/files_from) are resolved relative
-#     to the declaring source (config file directory, or CWD for CLI options). The referenced
-#     files’ own patterns are evaluated relative to each file’s own directory.
-#   * `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
+#   * Path-to-file settings (e.g., include_from/exclude_from/files_from) are
+#     resolved relative to the declaring source (configuration file directory,
+#     or CWD for CLI options). The referenced files' own patterns are evaluated
+#     relative to each file's own directory.
+#   * `relative_to` affects only header metadata (e.g., `file_relpath`), not
+#     discovery.
 #
 # To mark a directory boundary for discovery, set:
 #   [config]
@@ -48,22 +62,25 @@
 # The default is `root = false` (continue traversing parents).
 #
 # Special flags:
-#   * --no-config disables user+project discovery (only defaults → --config → CLI).
+#   * --no-config disables user+project discovery (only defaults → --config
+#     → CLI).
 
 
-# =====================
+# ----------------------------------------------------------------------------
 # Config source options
-# =====================
+# ----------------------------------------------------------------------------
 
 [config]
-# Options that affect config discovery and config-loading behavior.
+# Options that affect configuration discovery and configuration-loading
+# behavior.
 #
-# These settings are TOML-source-local metadata. They do not participate in
-# layered Config merging; instead, they are resolved separately while TopMark
-# discovers and loads TOML sources.
+# These settings are TOML-source-local metadata.
+#
+# They do not participate in layered configuration merging. Instead, they are
+# resolved separately while TopMark discovers and loads TOML sources.
 
-# Stop further upward config discovery above the directory containing this TOML
-# source.
+# Stop further upward configuration discovery above the directory containing
+# this TOML source.
 #
 # Discovery semantics:
 #   - In `topmark.toml`, this lives under `[config]`.
@@ -75,22 +92,22 @@
 # Source-local strictness preference for staged configuration and
 # runtime-applicability diagnostics.
 #
-# Semantics (current implementation):
-#   - Applies to staged config-loading/preflight validation
+# Runtime semantics:
+#   - Applies to staged configuration-loading validation
 #     (TOML-source, merged-config, and runtime-applicability diagnostics).
-#   - Not limited to TOML parsing or layered-config merge validation.
+#   - Not limited to TOML parsing or layered configuration merge validation.
 #
 # Resolution:
-#   - Resolved separately from layered Config values.
+#   - Resolved separately from layered configuration values.
 #   - Highest-precedence non-null value wins across discovered TOML sources.
 #   - CLI/API overrides take final precedence for the current run.
 #
 # strict = false
 
 
-# ==========================
+# ----------------------------------------------------------------------------
 # Header field configuration
-# ==========================
+# ----------------------------------------------------------------------------
 
 [header]
 # Configuration for header fields and metadata to include in generated headers
@@ -98,112 +115,121 @@
 # Ordered list of field names to render in the TopMark header.
 #
 # A field name may refer to:
-#   1) a **built-in** field (computed from the filesystem), or
-#   2) a **custom** field defined under the `[fields]` table below.
+#   1. A built-in field computed from the filesystem.
+#   2. A custom field defined under the [fields] table below.
 #
-# Built-in field names (computed in `topmark.pipeline.steps.builder.BuilderStep`):
+# Built-in field names:
 #   - file         : base file name (no path)
-#   - file_relpath : file path relative to `header.relative_to` (or CWD if `header.relative_to` is unset)
+#   - file_relpath : file path relative to `header.relative_to`
+#                    (or CWD if `header.relative_to` is unset)
 #   - file_abspath : absolute file path
 #   - relpath      : parent directory of `file_relpath`
 #   - abspath      : parent directory of `file_abspath`
 #
-# Notes:
-#   - The `[fields]` table may contain additional key/value pairs that are *not* listed here.
-#     Only the names in `header.fields` are rendered in the header.
-#   - If a custom field name overlaps with a built-in field name, TopMark will warn and the
-#     custom value will override the built-in value *for rendering*.
+# Additional notes:
+#   - The `[fields]` table may contain additional key/value pairs that are not
+#     listed here. Only the names in `header.fields` are rendered in the header.
+#   - If a custom field name overlaps with a built-in field name, TopMark will
+#     warn and the custom value will override the built-in value for rendering.
 fields = ["file", "file_relpath"]
 
 # Affects header metadata (e.g., file_relpath) only, not discovery.
 # relative_to = "."
 
 
-# ========================
-# TopMark field definition
-# ========================
+# ----------------------------------------------------------------------------
+# Field definitions
+# ----------------------------------------------------------------------------
 
 [fields]
-# Definition of field names (keys) and values
+# Definitions of field names (keys) and values
 #
-# Note: keys defined here do not have to be rendered. Only keys listed in `header.fields`
-# are included in generated headers.
+# Note: keys defined here do not have to be rendered. Only keys listed in
+# `header.fields` are included in generated headers.
 
-# Project name to include in the header
+# Project name included in generated headers.
 # project = "TopMark"
 
-# License to include in the header. Example values: 'MIT', 'GPL-3.0', 'Apache-2.0'
+# License identifier included in generated headers. Example values: 'MIT',
+# 'GPL-3.0', 'Apache-2.0'
 # license = "MIT"
 
-# Copyright statement to include in the header.
+# Copyright statement included in generated headers.
 # copyright = "(c) 2025 Your Name" # Update according to your needs
 
 
-# ========================
+# ----------------------------------------------------------------------------
 # Formatting configuration
-# ========================
+# ----------------------------------------------------------------------------
 
 [formatting]
-# Formatting options for header rendering.
+# Formatting options used while rendering headers.
 
-# Align the fields (colons) in the header for better readability. Values: true or false.
+# Align the fields (colons) in the header for better readability.
+# Values: true or false.
 align_fields = true
 
 
-# ====================
+# ----------------------------------------------------------------------------
 # Writer configuration
-# ====================
+# ----------------------------------------------------------------------------
 #
-# Writer options are non-layered preferences persisted in TOML.
-# They do not participate in Config merging and are resolved separately
-# from the layered config model.
+# Writer options are non-layered runtime preferences persisted in TOML.
+#
+# They do not participate in layered configuration merging and are resolved
+# separately from the layered configuration model.
 
 [writer]
 
 # Strategy used when writing to files (ignored when writing to STDOUT):
-#   "atomic"  → write to a temporary file and replace the original (safe, default)
-#   "inplace" → overwrite the original file in place (faster, less safe)
-#
-# CLI equivalent:
-#   --write-mode atomic
-#   --write-mode inplace
+#   "atomic"  -> write to a temporary file and replace the original
+#                  file (safe, default)
+#               CLI equivalent: --write-mode atomic
+
+#   "inplace" -> overwrite the original file in place
+#                  (faster, less safe)
+#               CLI equivalent: --write-mode inplace
 strategy = "atomic"
 
-# ======================
+# ----------------------------------------------------------------------------
 # Policy configuration
-# ======================
+# ----------------------------------------------------------------------------
 
 [policy]
-# Global policy that governs whether TopMark may add or update headers.
+# Runtime policy configuration governing header insertion and update behavior.
 #
 # header_mutation_mode:
 #   Controls whether TopMark processes all files, only files missing a header,
 #   or only files that already contain a header.
 #
-#   Allowed values:
-#     "all"         → allow both insert and update (default)
-#     "add_only"    → only insert missing headers; do not update existing headers
-#     "update_only" → only update existing headers; do not insert missing headers
+#   Supported values:
+#     "all"         -> allow both insert and update
+#                      (default)
+#     "add_only"    -> only insert missing headers
+#                      (do not update existing headers)
+#     "update_only" -> only update existing headers
+#                      (do not insert missing headers)
 header_mutation_mode = "all"
 
 # allow_header_in_empty_files:
-#   Permit inserting a header into an otherwise empty file (e.g., `__init__.py`).
-#   This is disabled by default to avoid surprising diffs in empty placeholders.
+#   Permit inserting a header into an otherwise empty file (e.g.,
+# `__init__.py`).
+# Disabled by default to avoid surprising diffs in placeholder files.
 allow_header_in_empty_files = false
 
 # empty_insert_mode:
 #   Controls which files count as "empty" when
 #   `allow_header_in_empty_files = true`.
 #
-#   Allowed values:
-#     "bytes_empty"      → only true 0-byte files
-#     "logical_empty"    → 0-byte files plus placeholder inputs such as
-#                            BOM-only, newline-only, or optional horizontal
-#                            whitespace with at most one trailing newline
-#     "whitespace_empty" → any decoded text containing no non-whitespace
-#                            characters
+#   Supported values:
+#     "bytes_empty"      -> only true 0-byte files
+#     "logical_empty"    -> 0-byte files plus placeholder inputs such as
+#                           BOM-only, newline-only, or optional horizontal
+#                           whitespace with at most one trailing newline
+#     "whitespace_empty" -> any decoded text containing no non-whitespace
+#                           characters
 #
-#   Recommended default:
+#   Recommended value:
 #     "logical_empty"
 empty_insert_mode = "logical_empty"
 
@@ -213,19 +239,20 @@ empty_insert_mode = "logical_empty"
 render_empty_header_when_no_fields = false
 
 # allow_reflow:
-#   Permit reflowing file content while inserting a header. This may break
+#   Permit reflowing file content while inserting a header block. This may break
 #   strict insert → strip → insert idempotence and is therefore disabled by
 #   default.
 allow_reflow = false
 
 # allow_content_probe:
-#   Allow resolver-side content-based file-type detection when names/extensions
+#   Allow runtime content-based file-type detection when names/extensions
 #   are insufficient. Disable this to force name/extension-only resolution.
 allow_content_probe = true
 
-# Per‑file‑type policy overrides.
+# Per-file-type policy overrides.
 # These inherit from `[policy]` and override only the keys specified here.
-# Define sub‑tables under `[policy_by_type.<file_type_id>]` to fine‑tune behavior.
+# Define sub-tables under `[policy_by_type.<file_type_id>]` to fine-tune
+# behavior.
 #
 # Example (uncomment to allow headers in empty Python files only):
 #
@@ -235,37 +262,42 @@ allow_content_probe = true
 # empty_insert_mode = "logical_empty"
 
 
-# ===================
+# ----------------------------------------------------------------------------
 # Files configuration
-# ===================
+# ----------------------------------------------------------------------------
 
 [files]
 
-# File discovery and filtering.
+# File discovery, filtering, and runtime selection behavior.
 #
-# Filtering order:
+# Filtering pipeline:
 #   1. Path-based include/exclude (patterns, *_from, files_from)
 #   2. File type include/exclude (include_file_types / exclude_file_types)
 #   3. Per-file eligibility (supported vs unsupported)
 #
 # Include/exclude glob patterns.
-# Patterns in config files are evaluated relative to the config file's directory.
+# Patterns in configuration files are evaluated relative to the configuration
+# file's directory.
 # include_patterns = ["src/**", "tests/**"]
 # exclude_patterns = [".venv/**", "**/__pycache__/**"]
 
-# Load include/exclude patterns from files (one pattern per line; supports comments).
-# These paths are resolved relative to the config file's directory.
+# Load include/exclude patterns from files (one pattern per line; supports
+# comments).
+# These paths are resolved relative to the configuration file's directory.
 # include_from = ["include.txt"]
 # exclude_from = ["exclude.txt"]
 
-# Provide the explicit file list from files (one path per line; supports comments).
-# These paths are resolved relative to the config file's directory.
+# Provide the explicit file list from files (one path per line; supports
+# comments).
+# These paths are resolved relative to the configuration file's directory.
 # files_from = ["files.txt"]
 
-# Optional whitelist of file type identifiers to process (after include/exclude patterns):
+# Optional allowlist of file type identifiers to process (after include/exclude
+# patterns):
 # include_file_types = ["python", "markdown"]
 
-# Optional blacklist of file type identifiers to exclude (after include/exclude patterns):
+# Optional denylist of file type identifiers to exclude (after include/exclude
+# patterns):
 # exclude_file_types = ["html"]
 
 # Optional list of input paths (files/directories) to scan.
@@ -273,6 +305,6 @@ allow_content_probe = true
 # files = ["src", "tests", "README.md"]
 
 
-# ============================
-# END of TopMark Configuration
-# ============================
+# ============================================================================
+# End of TopMark configuration
+# ============================================================================
