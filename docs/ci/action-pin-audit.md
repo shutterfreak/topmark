@@ -17,8 +17,7 @@ This page documents `.github/workflows/action-pin-audit.yml` and `tools/ci/audit
 TopMark includes a dedicated maintenance workflow and repository tool for auditing GitHub Action
 version pin consistency across workflow files and local composite actions.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Purpose
 

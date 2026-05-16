@@ -13,10 +13,9 @@ topmark:header:end
 # TopMark documentation (%%TOPMARK_VERSION%%)
 
 TopMark inspects and manages per-file headers (project/license/copyright) across codebases. It is
-comment‑aware, file‑type‑aware, and **dry‑run by default** for safe CI usage.
+comment-aware, file-type-aware, and **dry-run by default** for safe CI usage.
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](./terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 TopMark provides consistent behavior and terminology across:
 
@@ -29,15 +28,15 @@ TopMark provides consistent behavior and terminology across:
 
 ## Common workflows
 
-| Goal                                    | Command                                                 | More info                                                                                                                                                                    |
-| --------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Check headers safely                    | `topmark check src/`                                    | [`topmark check`](usage/commands/check.md), [Shared options](usage/shared-options.md), [Exit codes](usage/exit-codes.md)                                                     |
-| Apply header updates                    | `topmark check --apply src/`                            | [`topmark check`](usage/commands/check.md), [Policies](usage/policies.md)                                                                                                    |
-| Remove TopMark headers                  | `topmark strip src/`, then `topmark strip --apply src/` | [`topmark strip`](usage/commands/strip.md), [Header placement](usage/header-placement.md)                                                                                    |
-| Understand file type resolution         | `topmark probe README.md`                               | [`topmark probe`](usage/commands/probe.md), [Filtering](usage/filtering.md), [Policies](usage/policies.md)                                                                   |
-| Inspect effective runtime configuration | `topmark config dump --show-layers`                     | [`topmark config dump`](usage/commands/config/dump.md), [Configuration](usage/configuration.md), [Configuration discovery](configuration/discovery.md)                       |
-| Generate a starter TOML configuration   | `topmark config init > topmark.toml`                    | [`topmark config init`](usage/commands/config/init.md), [Configuration](usage/configuration.md), [Configuration discovery](configuration/discovery.md)                       |
-| Inspect the built-in defaults           | `topmark config defaults`                               | [`topmark config defaults`](usage/commands/config/defaults.md), [Default TOML settings](configuration/generated/config-defaults.md), [Configuration](usage/configuration.md) |
+| Goal                                    | Command                                                 | More info                                                                                                                                                                      |
+| --------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Check headers safely                    | `topmark check src/`                                    | [`topmark check`](usage/commands/check.md), [Shared options](usage/shared-options.md), [Exit codes](usage/exit-codes.md)                                                       |
+| Apply header updates                    | `topmark check --apply src/`                            | [`topmark check`](usage/commands/check.md), [Policies](usage/policies.md)                                                                                                      |
+| Remove TopMark headers                  | `topmark strip src/`, then `topmark strip --apply src/` | [`topmark strip`](usage/commands/strip.md), [Header placement](usage/header-placement.md)                                                                                      |
+| Understand file type resolution         | `topmark probe README.md`                               | [`topmark probe`](usage/commands/probe.md), [Filtering](usage/filtering.md), [Policies](usage/policies.md)                                                                     |
+| Inspect effective runtime configuration | `topmark config dump --show-layers`                     | [`topmark config dump`](usage/commands/config/dump.md), [Configuration](usage/configuration.md), [Configuration discovery, precedence, and policy](configuration/discovery.md) |
+| Generate a starter TOML configuration   | `topmark config init > topmark.toml`                    | [`topmark config init`](usage/commands/config/init.md), [Configuration](usage/configuration.md), [Configuration discovery, precedence, and policy](configuration/discovery.md) |
+| Inspect the built-in defaults           | `topmark config defaults`                               | [`topmark config defaults`](usage/commands/config/defaults.md), [Default TOML settings](configuration/generated/config-defaults.md), [Configuration](usage/configuration.md)   |
 
 ______________________________________________________________________
 
@@ -81,11 +80,11 @@ ______________________________________________________________________
 
 ## What it does
 
-- Detects, inserts, and updates per‑file headers
+- Detects, inserts, and updates per-file headers
 - Honors shebangs, XML declarations, and native comment styles
 - Preserves newline style (LF/CRLF/CR) and BOM
-- Provides [`strip`](usage/commands/strip.md) to remove headers (also dry‑run by default)
-- Works well in CI and with pre‑commit hooks
+- Provides [`strip`](usage/commands/strip.md) to remove headers (also dry-run by default)
+- Works well in CI and with pre-commit hooks
 - Explains file-type and processor resolution via [`topmark probe`](usage/commands/probe.md),
   including why explicit inputs may be filtered before probing
 - Inspects **layered configuration provenance** via `topmark config dump --show-layers`
@@ -98,7 +97,7 @@ ______________________________________________________________________
 
 ## Example headers
 
-Here’s how TopMark headers appear in different file types (truncated for brevity):
+Here's how TopMark headers appear in different file types (truncated for brevity):
 
 ```bash
 #!/bin/bash
@@ -152,11 +151,11 @@ them as CLI usage errors before runtime processing begins.
 
 TopMark uses a small, stable set of exit codes suitable for CI and scripting:
 
-- `SUCCESS (0)` — success (no changes needed or changes applied)
-- `WOULD_CHANGE (2)` — dry-run indicates changes would be made ([`check`](usage/commands/check.md),
+- `SUCCESS (0)` - success (no changes needed or changes applied)
+- `WOULD_CHANGE (2)` - dry-run indicates changes would be made ([`check`](usage/commands/check.md),
   [`strip`](usage/commands/strip.md))
-- `FAILURE (1)` — validation failed ([`config check`](usage/commands/config/check.md))
-- `USAGE_ERROR (64)` — CLI usage error (invalid options, unsupported STDIN modes, or positional
+- `FAILURE (1)` - validation failed ([`config check`](usage/commands/config/check.md))
+- `USAGE_ERROR (64)` - CLI usage error (invalid options, unsupported STDIN modes, or positional
   paths on file-agnostic commands)
 
 Additional codes are used for configuration-loading errors and runtime conditions (for example
@@ -193,7 +192,7 @@ TopMark supports two STDIN modes:
 
 - **List mode**: read newline-delimited paths or patterns via `--files-from -` (or
   `--include-from -` / `--exclude-from -`)
-- **Content mode**: process one file’s content by passing `-` as the sole PATH together with
+- **Content mode**: process one file's content by passing `-` as the sole PATH together with
   `--stdin-filename NAME`
 
 See [shared input modes](usage/shared-options.md#shared-input-modes) for the full STDIN contract,
@@ -203,9 +202,9 @@ ______________________________________________________________________
 
 ## Header placement (short version)
 
-- **Pound‑style** (Python, Shell, Makefile, YAML, TOML, …): after shebang and optional encoding
+- **Pound-style** (Python, Shell, Makefile, YAML, TOML, ...): after shebang and optional encoding
   line; else at top. Ensure a single blank line separation and a trailing blank line when needed.
-- **XML/HTML‑style**: after XML declaration/DOCTYPE when present; otherwise at top. Uses native
+- **XML/HTML-style**: after XML declaration/DOCTYPE when present; otherwise at top. Uses native
   comment wrapper.
 
 > For full rules, supported file types, JSON vs JSONC handling, and resolver specifics, see the
@@ -257,7 +256,7 @@ rather than becoming a normal layered configuration field.
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 For the full discovery, precedence, path-resolution, and staged validation contract, see
-[Configuration: Discovery, Precedence & Policy](configuration/discovery.md).
+[Configuration discovery, precedence, and policy](configuration/discovery.md).
 
 At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
 known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
@@ -316,7 +315,7 @@ ______________________________________________________________________
     - [`version`](usage/commands/version.md)
     - [`config` commands](usage/commands/config.md)
     - [`registry` commands](usage/commands/registry.md)
-  - [Pre‑commit integration](usage/pre-commit.md)
+  - [Pre-commit integration](usage/pre-commit.md)
 - **CI/CD:** Release workflow ([ci/release-workflow.md](ci/release-workflow.md))
 - **Policies:** Guide ([usage/policies.md](usage/policies.md))
 - **Public API:** Reference ([api/public.md](api/public.md))

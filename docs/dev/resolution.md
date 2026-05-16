@@ -19,8 +19,7 @@ This page documents how TopMark resolves a concrete filesystem path to the most 
 Resolver behavior is deterministic and operates on canonical qualified file type identifiers such as
 `topmark:python`.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 It complements the registry architecture described in [`registry-model.md`](registry-model.md):
 
@@ -394,14 +393,14 @@ ______________________________________________________________________
 
 ## See also
 
-- [`Architecture`](architecture.md) — registry design and system overview
-- [`Registry model`](registry-model.md) — registry layers, bindings, overlays, and identifier
+- [`Architecture`](architecture.md) - registry design and system overview
+- [`Registry model`](registry-model.md) - registry layers, bindings, overlays, and identifier
   semantics
-- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical definitions for
+- [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical definitions for
   identifiers, applicability, ambiguity, and machine-readable terminology
-- [`Plugins`](plugins.md) — how file types and processors are registered
-- [`Machine-readable output`](machine-output.md) — how resolution results surface in JSON and NDJSON
+- [`Plugins`](plugins.md) - how file types and processors are registered
+- [`Machine-readable output`](machine-output.md) - how resolution results surface in JSON and NDJSON
   outputs
-- [`Configuration`](../usage/configuration.md) — canonical file-type identifier semantics
-- [`Filtering`](../usage/filtering.md) — discovery and file-type filter behavior
-- [`CLI overview`](../usage/cli.md) — resolver-related CLI commands and filtering options
+- [`Configuration`](../usage/configuration.md) - canonical file-type identifier semantics
+- [`Filtering`](../usage/filtering.md) - discovery and file-type filter behavior
+- [`CLI overview`](../usage/cli.md) - resolver-related CLI commands and filtering options

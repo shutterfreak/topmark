@@ -29,8 +29,7 @@ The CLI is intentionally conservative:
 - repeated runs converge to stable results
 - command help is available via `--help` / `-h`
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -246,7 +245,7 @@ ______________________________________________________________________
 - [Policies](policies.md)
 - [Exit codes](exit-codes.md)
 - [Pre-commit integration](pre-commit.md)
-- [Configuration discovery](../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../configuration/discovery.md)
 
 ______________________________________________________________________
 

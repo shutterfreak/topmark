@@ -10,29 +10,30 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `registry` Command Family
+# `topmark registry`
 
 TopMark exposes a `registry` command group to inspect the three core registry domains:
 
+{% include-markdown "\_snippets/terminology.md" %}
+
 ## Subcommands
 
-| Command                                                 | Purpose                                                            |
-| ------------------------------------------------------- | ------------------------------------------------------------------ |
-| [`topmark registry filetypes`](registry/filetypes.md)   | Inspect file type identities, matching rules, and policies.        |
-| [`topmark registry processors`](registry/processors.md) | Inspect registered header processor identities and capabilities.   |
-| [`topmark registry bindings`](registry/bindings.md)     | Inspect effective relationships between file types and processors. |
+| Command                                                 | Purpose                                                          |
+| ------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`topmark registry filetypes`](registry/filetypes.md)   | Inspect file type identities, matching rules, and policies.      |
+| [`topmark registry processors`](registry/processors.md) | Inspect registered header processor identities and capabilities. |
+| [`topmark registry bindings`](registry/bindings.md)     | Inspect effective bindings between file types and processors.    |
 
-These commands reflect the internal split between identities (file types and processors) and
-relationships (bindings), which together define how TopMark resolves file types and selects
-processors.
+These commands reflect the registry split between identities (file types and processors) and
+bindings, which together define how TopMark performs runtime resolution and processor dispatch.
 
 ______________________________________________________________________
 
 ## Input applicability
 
-The `registry` command family is **informational and file-agnostic**. These commands inspect
-TopMark's effective composed registry state and do not process project files or perform
-configuration discovery.
+The `registry` command family is informational and file-agnostic. These commands inspect TopMark's
+effective composed registry state and do not process project files or perform configuration
+discovery.
 
 Across all `registry` subcommands:
 
@@ -42,7 +43,7 @@ Across all `registry` subcommands:
 - file-list STDIN modes (for example, `--files-from -`) do not apply
 - `--quiet` is not supported; use output-format options for machine-readable output
 
-Config discovery does not apply to registry commands.
+Configuration discovery does not apply to registry commands.
 
 Runtime overlays and plugin-discovered entries are still reflected in the effective registry view
 exposed by these commands.
@@ -77,7 +78,7 @@ for deterministic identity handling.
 See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
 
 Registry commands expose the effective runtime registry view after registry composition and
-configuration freeze.
+configuration normalization.
 
 ______________________________________________________________________
 
@@ -103,8 +104,8 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart LR
-    FT["FileType<br/>(identity)"]
-    PR["Processor<br/>(identity)"]
+    FT["File type<br/>(identity)"]
+    PR["Header processor<br/>(identity)"]
     BD["Binding<br/>(relationship)"]
     RES[Resolution]
     
@@ -115,8 +116,8 @@ flowchart LR
     FT -. defined independently .- PR
 ```
 
-This diagram illustrates how file types and processors are independent identities, while bindings
-define the effective relationship used during resolution.
+This diagram illustrates how file types and header processors are independent identities, while
+bindings define the effective relationship used during runtime resolution and processor dispatch.
 
 The effective runtime registry view is composed from built-in registry data plus runtime overlays.
 
@@ -136,8 +137,8 @@ These keys are intended for stable joins, comparisons, and tooling integration.
 
 See also:
 
-- [Machine-readable output schema](../../dev/machine-output.md)
-- [Machine-readable formats](../../dev/machine-formats.md)
+- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable format conventions](../../dev/machine-formats.md)
 
 ______________________________________________________________________
 
@@ -150,8 +151,9 @@ ______________________________________________________________________
 - [Plugins and extensibility](../../dev/plugins.md)
 - [Resolution model](../../dev/resolution.md)
 - [Machine-readable output](../../dev/machine-output.md)
-- [Machine-readable formats](../../dev/machine-formats.md)
+- [Machine-readable format conventions](../../dev/machine-formats.md)
 - [Exit codes](../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../terminology.md)
 
 ______________________________________________________________________
 

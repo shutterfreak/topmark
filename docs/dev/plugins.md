@@ -20,8 +20,7 @@ TopMark supports extensibility via **plugins** that provide:
 
 This page documents the supported plugin extension points for TopMark 1.x.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 For the lower-level registry architecture, composed registry views, bindings, overlays, and identity
 semantics, see [Registry model](registry-model.md).
@@ -334,17 +333,17 @@ ______________________________________________________________________
 
 These modules are useful for advanced TopMark integrations and registry extensions:
 
-- \[`topmark.filetypes.instances`\][topmark.filetypes.instances] – base file type discovery
-- \[`topmark.processors.instances`\][topmark.processors.instances] – base processor binding
+- \[`topmark.filetypes.instances`\][topmark.filetypes.instances] - base file type discovery
+- \[`topmark.processors.instances`\][topmark.processors.instances] - base processor binding
   inventory and registry construction
-- \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] – shared scoring-based path
+- \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] - shared scoring-based path
   resolver
-- \[`topmark.registry.filetypes`\][topmark.registry.filetypes] – composed file type registry view
+- \[`topmark.registry.filetypes`\][topmark.registry.filetypes] - composed file type registry view
   and identifier resolution
-- \[`topmark.registry.processors`\][topmark.registry.processors] – composed processor registry view
+- \[`topmark.registry.processors`\][topmark.registry.processors] - composed processor registry view
   and overlay mutations
-- \[`topmark.registry.registry`\][topmark.registry.registry] – stable higher-level registry facade
-- \[`topmark.registry.bindings`\][topmark.registry.bindings] – composed binding registry and overlay
+- \[`topmark.registry.registry`\][topmark.registry.registry] - stable higher-level registry facade
+- \[`topmark.registry.bindings`\][topmark.registry.bindings] - composed binding registry and overlay
   mutations
 
 These composed registries provide effective runtime views that combine base registrations with
@@ -354,10 +353,10 @@ ______________________________________________________________________
 
 ## See also
 
-- [`Registry model`](./registry-model.md) — detailed registry layers, bindings, overlays, and
+- [`Registry model`](./registry-model.md) - detailed registry layers, bindings, overlays, and
   identifier semantics
-- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical identifier, overlay,
+- [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical identifier, overlay,
   applicability, and machine-readable terminology
-- [`Architecture`](./architecture.md) — high-level overview of registries and runtime composition
-- [`registry.md`](../usage/commands/registry.md) — CLI-facing registry inspection commands
-- [`Resolution model`](./resolution.md) — file-type scoring and ambiguity policy
+- [`Architecture`](./architecture.md) - high-level overview of registries and runtime composition
+- [`registry.md`](../usage/commands/registry.md) - CLI-facing registry inspection commands
+- [`Resolution model`](./resolution.md) - file-type scoring and ambiguity policy

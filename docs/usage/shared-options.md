@@ -21,11 +21,10 @@ Shared options control:
 - color behavior
 - command applicability semantics and input modes
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 For CLI/configuration/API spelling conventions for multi-word option values, see
-[Configuration](configuration.md#cli-configuration-and-api-value-spelling).
+[Configuration discovery, precedence, and policy](configuration.md#cli-configuration-and-api-value-spelling).
 
 ## Output format
 

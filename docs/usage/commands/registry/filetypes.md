@@ -10,13 +10,15 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `registry filetypes` Command Guide
+# `topmark registry filetypes`
 
 **Purpose:** Display registered file type identities.
 
-The `registry filetypes` subcommand lists TopMark’s known **file types**, including their matching
-rules and header policies. Use it to understand how TopMark classifies files and what behavior is
+The `registry filetypes` subcommand lists TopMark's known file types, including their matching rules
+and header policies. Use it to understand how TopMark classifies files and what behavior is
 associated with each type.
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -44,7 +46,7 @@ topmark registry filetypes
 # List all supported file types in Markdown (detailed mode)
 topmark registry filetypes --long --output-format markdown
 
-# Machine‑readable
+# Machine-readable
 topmark registry filetypes --output-format json | jq
 ```
 
@@ -75,7 +77,7 @@ introspection.
 See [file-type filtering](../../filtering.md#file-type-filtering) for the full identifier contract.
 
 This command exposes the effective runtime file type view after registry composition and
-configuration freeze.
+configuration normalization.
 
 ______________________________________________________________________
 
@@ -83,14 +85,14 @@ ______________________________________________________________________
 
 Use `--output-format` to pick the output format:
 
-- `text` — human‑readable (brief or detailed)
-- `json` — a single JSON document with `meta` and `filetypes` keys
-- `ndjson` — one JSON object per line (stream‑friendly, record-oriented)
-- `markdown` — a beautified Markdown table (great for docs)
+- `text` - human-readable (brief or detailed)
+- `json` - a single machine-readable JSON document with `meta` and `filetypes` keys
+- `ndjson` - one machine-readable NDJSON record per line (stream-friendly, record-oriented)
+- `markdown` - a document-oriented Markdown table
 
-The `--long` flag controls the level of detail for **all** formats.
+The `--long` flag controls the level of detail for all formats.
 
-This flag controls the data/detail depth across all formats. TEXT-only verbosity (`-v`) affects
+This flag controls the data/detail depth across all formats. TEXT-oriented verbosity (`-v`) affects
 presentation (e.g., headings) and does not change the data fields emitted.
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
@@ -101,37 +103,37 @@ ______________________________________________________________________
 
 ### Brief output (default)
 
-- **Local key** — the namespace-local identifier (e.g., `python`, `markdown`, `env`)
-- **Description** — a short description
+- Local key - the namespace-local identifier (for example, `python`, `markdown`, `env`)
+- Description - a short description
 
 ### Detailed output (`--long`)
 
 Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
-- **Canonical qualified key**
-- **Namespace / local key**
-- **Extensions** (comma‑separated)
-- **Filenames** (comma‑separated)
-- **Patterns** (comma‑separated)
-- **skip_processing** (`true`/`false`)
-- **has_content_matcher** (`true`/`false`)
-- **header_policy** (structured policy fields)
-- **Bound** (`true`/`false`)
-- **Description**
+- Canonical qualified key
+- Namespace / local key
+- Extensions (comma-separated)
+- Filenames (comma-separated)
+- Patterns (comma-separated)
+- `skip_processing` (`true`/`false`)
+- `has_content_matcher` (`true`/`false`)
+- `header_policy` (structured policy fields)
+- Bound (`true`/`false`)
+- Description
 
 ______________________________________________________________________
 
 ## Shared output controls
 
-In human-readable formats, TopMark renders a **numbered list** of file types with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional details are
-shown alongside each identifier. TEXT verbosity (`-v`) affects presentation only.
+In human-readable formats, TopMark renders a numbered list of file types with right-aligned indices
+(e.g., `1.`, `2.`, ...) to keep long lists scannable. With `--long`, additional details are shown
+alongside each identifier. TEXT verbosity (`-v`) affects presentation only.
 
 ______________________________________________________________________
 
 ## Machine-readable output
 
-JSON output emits one document with shared metadata and a `filetypes` array:
+JSON output emits one machine-readable document with shared metadata and a `filetypes` array:
 
 ```jsonc
 {
@@ -148,7 +150,7 @@ JSON output emits one document with shared metadata and a `filetypes` array:
   `filenames`, `patterns`, `skip_processing`, `has_content_matcher`, `has_insert_checker`, and
   `policy`.
 
-NDJSON output emits one record per file type:
+NDJSON output emits one machine-readable record per file type:
 
 ```jsonc
 {
@@ -216,7 +218,7 @@ ______________________________________________________________________
 
 ## Notes
 
-- File types define **how files are matched and classified**.
+- File types define how files are matched and classified.
 - The output is independent of project configuration discovery.
 - Processor-dispatch behavior is determined by bindings (see [`registry bindings`](bindings.md)).
 - The effective runtime file type view is composed from built-in definitions plus runtime overlays.
@@ -228,10 +230,10 @@ ______________________________________________________________________
 
 ## How TopMark resolves file types
 
-Registry file types may overlap intentionally. Resolver behavior may depend on extension matching,
+Registry file types may overlap intentionally. Runtime resolution may depend on extension matching,
 content probing, insertability checks, and processing policy.
 
-TopMark may have multiple matching file type candidates for a given path. The resolver evaluates all
+TopMark may have multiple matching file type candidates for a given path. TopMark evaluates all
 matching candidates and deterministically selects the most specific effective file type.
 
 In practice, specificity follows this order:
@@ -240,7 +242,7 @@ In practice, specificity follows this order:
 1. **Regex patterns** (e.g., `Dockerfile(\..+)?`, `requirements.*\.(in|txt)$`)
 1. **Extensions** (e.g., `.py`, `.md`, `.json`)
 
-If multiple candidates remain tied, TopMark prefers the more “headerable” choice (that is, file
+If multiple candidates remain tied, TopMark prefers the more "headerable" choice (that is, file
 types not marked `skip_processing = true`).
 
 ### Path-suffix matching
@@ -280,20 +282,21 @@ without relying solely on filename extensions.
 
 ### Unsupported but recognized types
 
-Some file types are recognized but intentionally left unmodified (reported as “unsupported”):
+Some file types are recognized but intentionally left unmodified (reported as "unsupported"):
 
 - `license_text` (keep verbatim)
 - `python-typed-marker` (`py.typed` is a single-token marker)
 
-These are hidden by default; use `--report=noncompliant` or `--report=all` to show these in reports.
+These are hidden by default in processing-command reports; use `--report=noncompliant` or
+`--report=all` to show them.
 
 ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark registry processors`](processors.md) — inspect canonical processor identities and
+- [`topmark registry processors`](processors.md) - inspect canonical processor identities and
   capabilities.
-- [`topmark registry bindings`](bindings.md) — inspect effective processor-dispatch relationships
+- [`topmark registry bindings`](bindings.md) - inspect effective processor-dispatch relationships
   between file types and processors.
 
 ______________________________________________________________________
@@ -304,10 +307,11 @@ ______________________________________________________________________
 - [Registry model](../../../dev/registry-model.md)
 - [Plugins and extensibility](../../../dev/plugins.md)
 - [Resolution model](../../../dev/resolution.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Supported file types](../../generated/filetypes.md)
 - [Exit codes](../../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../../terminology.md)
 
 ______________________________________________________________________
 
@@ -317,5 +321,5 @@ ______________________________________________________________________
   identifiers such as `topmark:python`.
 - **Unexpected processor behavior**: inspect [`registry bindings`](bindings.md) to view effective
   processor-dispatch relationships.
-- **Unexpected file type selection**: use [`topmark probe`](../probe.md) to inspect resolver
-  candidate evaluation.
+- **Unexpected file type selection**: use [`topmark probe`](../probe.md) to inspect runtime
+  resolution candidate evaluation.

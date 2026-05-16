@@ -155,7 +155,7 @@ TopMark uses **`uv` as the canonical dependency manager**. `pyproject.toml` decl
 ranges, `uv.lock` is the committed lock source of truth, and a project-local `.venv` is used as the
 standard environment for editor integration and interactive development.
 
-TopMark’s package version is no longer maintained manually in `pyproject.toml`; installed versions
+TopMark's package version is no longer maintained manually in `pyproject.toml`; installed versions
 are derived from Git tags via `setuptools-scm`.
 
 Run checks to confirm setup:
@@ -272,13 +272,13 @@ content rather than physical line endings.
 
 TopMark uses a small, stable set of exit codes for automation:
 
-- `SUCCESS (0)` — success (no changes needed or changes applied)
-- `WOULD_CHANGE (2)` — dry-run indicates changes would be made (`check`, `strip`)
-- `FAILURE (1)` — validation failed (`config check`)
-- `USAGE_ERROR (64)` — CLI usage error
+- `SUCCESS (0)` - success (no changes needed or changes applied)
+- `WOULD_CHANGE (2)` - dry-run indicates changes would be made (`check`, `strip`)
+- `FAILURE (1)` - validation failed (`config check`)
+- `USAGE_ERROR (64)` - CLI usage error
 - invalid command/option combinations, positional paths on file-agnostic commands, and unsupported
   STDIN modes are reported as usage errors
-- `CONFIG_ERROR (78)` — configuration error
+- `CONFIG_ERROR (78)` - configuration error
 
 Other codes (for example `UNSUPPORTED_FILE_TYPE (69)`, `PIPELINE_ERROR (70)`, `IO_ERROR (74)`,
 `PERMISSION_DENIED (77)`) are used for more specific runtime conditions after CLI usage has been
@@ -527,4 +527,4 @@ MIT License © 2025 Olivier Biot
 
 ______________________________________________________________________
 
-**TopMark** — consistent headers for consistent projects.
+**TopMark** - consistent headers for consistent projects.

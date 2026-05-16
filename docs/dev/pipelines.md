@@ -24,13 +24,12 @@ Pipelines do not make high-level decisions themselves. Instead:
 
 - Each step mutates a **strictly defined set of status axes**
 - Steps may **halt execution** when required by policy or safety rules
-- Final outcomes (changed, unchanged, skipped, unsupported, error, …) are **derived centrally** by
+- Final outcomes (changed, unchanged, skipped, unsupported, error, ...) are **derived centrally** by
   the CLI and views from accumulated statuses and hints
 
 This design guarantees predictability, debuggability, and idempotence.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 Pipeline execution consumes an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] plus
 runtime options assembled from the TOML → FrozenConfig → runtime flow documented in
@@ -62,10 +61,10 @@ ______________________________________________________________________
 
 All pipelines are built from the same core phases:
 
-1. **Discovery** – identify file type and viability
-1. **Inspection** – read content and detect existing headers
-1. **Evaluation** – generate and compare expected headers
-1. **Mutation (optional)** – plan, patch, and/or write changes
+1. **Discovery** - identify file type and viability
+1. **Inspection** - read content and detect existing headers
+1. **Evaluation** - generate and compare expected headers
+1. **Mutation (optional)** - plan, patch, and/or write changes
 
 The `probe` pipeline is an exception: it only executes the resolution phase and stops immediately
 after producing probe results.
@@ -254,9 +253,9 @@ CR --> C
 
 **End states:**
 
-- `UNCHANGED` – rendered header matches existing header
-- `CHANGED` – header would be updated or inserted
-- `SKIPPED` / `UNSUPPORTED` – policy or file constraints
+- `UNCHANGED` - rendered header matches existing header
+- `CHANGED` - header would be updated or inserted
+- `SKIPPED` / `UNSUPPORTED` - policy or file constraints
 
 This is the default pipeline behind [`topmark check`](../usage/commands/check.md).
 
@@ -494,16 +493,16 @@ ______________________________________________________________________
 
 ## See also
 
-- [`Architecture`](./architecture.md) — TOML → FrozenConfig → runtime overview
-- [`Pipelines (Reference)`](./pipelines-reference.md) — generated API-backed reference entry points
-- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical definitions for pipeline,
+- [`Architecture`](./architecture.md) - TOML → FrozenConfig → runtime overview
+- [`Pipelines (Reference)`](./pipelines-reference.md) - generated API-backed reference entry points
+- [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical definitions for pipeline,
   status, hint, runtime, and machine-readable terminology
-- [`Machine-readable output`](./machine-output.md) — how pipeline results are exposed in JSON and
+- [`Machine-readable output`](./machine-output.md) - how pipeline results are exposed in JSON and
   NDJSON outputs
-- [`Configuration discovery`](../configuration/discovery.md) — source-local TOML options and
+- [`Configuration discovery`](../configuration/discovery.md) - source-local TOML options and
   precedence
 
-This pipeline model is the backbone of TopMark’s reliability and extensibility. New behavior is
+This pipeline model is the backbone of TopMark's reliability and extensibility. New behavior is
 introduced by adding steps or composing new pipelines, not by special-casing control flow.
 
 ______________________________________________________________________

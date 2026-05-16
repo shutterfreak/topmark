@@ -23,8 +23,7 @@ resolution. File-type-specific policy overrides configured through `policy_by_ty
 runtime mutation eligibility and insertion behavior, but the selected header processor controls the
 concrete comment syntax and placement behavior.
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 > [!NOTE]
 >

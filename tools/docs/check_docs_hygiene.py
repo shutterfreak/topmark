@@ -165,6 +165,33 @@ def has_decorative_symbol(text: str) -> bool:
     )
 
 
+SMART_PUNCTUATION_RE: Final[re.Pattern[str]] = re.compile(
+    r"[\u2010\u2011\u2012\u2013\u2014\u2015\u2018\u2019\u201A\u201B\u201C\u201D\u201E\u201F\u2026]"
+)
+
+
+def describe_smart_punctuation(char: str) -> str:
+    """Return a short replacement hint for a smart-punctuation character."""
+    replacements: dict[str, str] = {
+        "\u2010": "hyphen '-'",
+        "\u2011": "hyphen '-'",
+        "\u2012": "hyphen '-'",
+        "\u2013": "hyphen '-' or '--'",
+        "\u2014": "hyphen '-' or '--'",
+        "\u2015": "hyphen '-' or '--'",
+        "\u2018": 'apostrophe "\'"',
+        "\u2019": 'apostrophe "\'"',
+        "\u201a": 'apostrophe "\'"',
+        "\u201b": 'apostrophe "\'"',
+        "\u201c": "quote '\"'",
+        "\u201d": "quote '\"'",
+        "\u201e": "quote '\"'",
+        "\u201f": "quote '\"'",
+        "\u2026": "three periods '...'",
+    }
+    return replacements.get(char, "ASCII punctuation")
+
+
 LEVEL2_HEADING_RE: Final[re.Pattern[str]] = re.compile(
     r"^##\s+",
     re.MULTILINE,
@@ -330,9 +357,9 @@ def _is_nav_exempt(path: Path) -> bool:
 def _allows_relative_links(path: Path) -> bool:
     """Return True when a snippet intentionally allows relative links.
 
-    Relative links are normally discouraged inside reusable snippets because links should resolve
-    relative to the consuming page. However, shared navigation snippets intentionally centralize
-    relative documentation links.
+    Relative links in snippets are allowed when they are intended to be rewritten relative to the
+    consuming page by mkdocs-include-markdown-plugin. Shared navigation snippets and shared note
+    snippets may centralize such links safely.
 
     Args:
         path: Candidate Markdown snippet.
@@ -340,7 +367,9 @@ def _allows_relative_links(path: Path) -> bool:
     Returns:
         True when the snippet intentionally permits relative links.
     """
-    return _is_snippet(path) and path.name.startswith("related-pages")
+    return _is_snippet(path) and (
+        path.name.startswith("related-pages") or path.name == "terminology.md"
+    )
 
 
 def _extract_mkdocs_nav_block(text: str) -> str:
@@ -627,7 +656,8 @@ def check_docs_hygiene(
     Warnings cover maintainability concerns:
     - orphaned snippets;
     - headings inside snippets;
-    - relative links inside snippets that are not explicit navigation snippets;
+    - smart punctuation in Markdown prose;
+    - relative links inside snippets that appear incompatible with include-markdown link rewriting;
     - snippet include paths missing the mdformat-stable escaped underscore convention.
 
     Args:
@@ -699,6 +729,21 @@ def check_docs_hygiene(
                     )
             if path == CHANGELOG_PATH:
                 diagnostics.extend(_check_changelog_hygiene(path, text))
+
+            prose_text: str = _mask_code_regions(text)
+            for smart_punctuation in SMART_PUNCTUATION_RE.finditer(prose_text):
+                char: str = smart_punctuation.group(0)
+                diagnostics.append(
+                    Diagnostic(
+                        severity="warning",
+                        path=path,
+                        line=_line_for_offset(text, smart_punctuation.start()),
+                        message=(
+                            "replace smart punctuation "
+                            f"{char!r} with {describe_smart_punctuation(char)}"
+                        ),
+                    )
+                )
 
             level2_matches: list[re.Match[str]] = list(LEVEL2_HEADING_RE.finditer(text))
             for heading_match in level2_matches[1:]:
@@ -817,6 +862,21 @@ def check_docs_hygiene(
                 )
             )
 
+        prose_text = _mask_code_regions(text)
+        for smart_punctuation in SMART_PUNCTUATION_RE.finditer(prose_text):
+            char = smart_punctuation.group(0)
+            diagnostics.append(
+                Diagnostic(
+                    severity="warning",
+                    path=snippet,
+                    line=_line_for_offset(text, smart_punctuation.start()),
+                    message=(
+                        "replace smart punctuation "
+                        f"{char!r} with {describe_smart_punctuation(char)}"
+                    ),
+                )
+            )
+
         if _allows_relative_links(snippet):
             continue
         for rel_link in RELATIVE_LINK_RE.finditer(text):
@@ -825,8 +885,8 @@ def check_docs_hygiene(
                     severity="warning",
                     path=snippet,
                     line=_line_for_offset(text, rel_link.start()),
-                    message="avoid relative links inside reusable snippets; "
-                    "keep links local to consuming pages",
+                    message="avoid relative links inside reusable snippets unless include-markdown "
+                    "link rewriting is intentional",
                 )
             )
 

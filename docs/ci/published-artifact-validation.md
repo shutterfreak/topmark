@@ -18,8 +18,7 @@ The published artifact validation workflow verifies that a package already publi
 TestPyPI installs and behaves correctly in clean environments across the supported platform and
 Python-version matrix.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Purpose
 

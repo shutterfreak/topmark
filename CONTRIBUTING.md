@@ -20,7 +20,7 @@ ______________________________________________________________________
 
 ## Prerequisites
 
-- **Python 3.10–3.14**
+- **Python 3.10-3.14**
 - **Git**
 - **make** (for convenience targets)
 - **uv** (install and keep it on your `PATH`)
@@ -87,11 +87,11 @@ make property-test
 
 TopMark separates configuration into three layers:
 
-- TOML layer (`topmark.toml`) — discovery, parsing, and whole-source TOML schema validation (unknown
+- TOML layer (`topmark.toml`) - discovery, parsing, and whole-source TOML schema validation (unknown
   sections/keys, malformed shapes), plus source-local options (e.g. `[config].root`, `strict`)
-- Config layer (`topmark.config`) — deserialization of validated layered config fragments and
+- Config layer (`topmark.config`) - deserialization of validated layered config fragments and
   layered merge into a mutable config draft
-- Runtime layer (`topmark.runtime`) — execution-time options and overrides
+- Runtime layer (`topmark.runtime`) - execution-time options and overrides
 
 Configuration loading follows a staged config-loading model:
 
@@ -99,12 +99,12 @@ Configuration loading follows a staged config-loading model:
 1. validate each whole-source TOML fragment
 1. extract the layered config fragment
 1. deserialize and merge into a mutable config draft
-1. evaluate effective config validity across staged config-loading/preflight validation
+1. evaluate effective config validity across staged config-loading validation
 1. freeze into the final `FrozenConfig`
 
 Source-local options such as `strict` are resolved during configuration loading and influence
 validation behaviour, but do not become layered Config fields. In the current implementation,
-effective strictness is applied across staged config-loading/preflight validation:
+effective strictness is applied across staged config-loading validation:
 
 - TOML-source diagnostics
 - merged-config diagnostics
@@ -145,10 +145,10 @@ ______________________________________________________________________
 
 TopMark enforces strict linting and consistent formatting:
 
-- **Ruff** — linting & formatting
-- **pydoclint** — docstring checks
-- **mdformat** — Markdown formatting
-- **Taplo** — TOML formatting
+- **Ruff** - linting & formatting
+- **pydoclint** - docstring checks
+- **mdformat** - Markdown formatting
+- **Taplo** - TOML formatting
 
 Commands:
 
@@ -287,7 +287,7 @@ ______________________________________________________________________
 
 ## API Stability
 
-TopMark enforces a **stable public API** across Python 3.10–3.14.
+TopMark enforces a **stable public API** across Python 3.10-3.14.
 
 ```bash
 make api-snapshot-dev         # quick local check
@@ -349,8 +349,8 @@ pre-commit autoupdate
 
 Common hooks include:
 
-- `topmark-check` — validates headers (non-destructive)
-- `topmark-apply` — updates headers (manual only)
+- `topmark-check` - validates headers (non-destructive)
+- `topmark-apply` - updates headers (manual only)
 - Ruff (format/lint), Taplo, mdformat, Pyright, and hygiene checks
 
 Run the TopMark fixer manually (`--hook-stage manual`):

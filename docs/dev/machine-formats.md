@@ -12,10 +12,9 @@ topmark:header:end
 
 # Machine-readable formats
 
-This page documents TopMark’s **machine-readable output conventions** across commands.
+This page documents TopMark's **machine-readable output conventions** across commands.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 See also:
 
@@ -402,9 +401,9 @@ collapsing all reasons under a single outcome bucket.
 
 Each summary entry therefore contains:
 
-- `outcome` — the pipeline outcome (for example `inserted`, `replaced`, `unchanged`)
-- `reason` — the short lowercase reason string used for bucketing
-- `count` — the number of files that produced this `(outcome, reason)` pair
+- `outcome` - the pipeline outcome (for example `inserted`, `replaced`, `unchanged`)
+- `reason` - the short lowercase reason string used for bucketing
+- `count` - the number of files that produced this `(outcome, reason)` pair
 
 This guarantees that machine consumers can distinguish between different causes that lead to the
 same high-level outcome.
@@ -472,10 +471,10 @@ filtering.
 Filtered probe results use machine-friendly reasons to explain why a path did not reach probing.
 These include:
 
-- `excluded_by_path_filter` — excluded by path-based include/exclude rules
-- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules after identifier
+- `excluded_by_path_filter` - excluded by path-based include/exclude rules
+- `excluded_by_file_type_filter` - excluded by file-type include/exclude rules after identifier
   normalization to canonical qualified keys
-- `excluded_by_discovery_filter` — excluded before probing, but exact category not identified
+- `excluded_by_discovery_filter` - excluded before probing, but exact category not identified
 
 Refer to the machine schema reference for the per-path probe payload:
 
@@ -584,6 +583,6 @@ See:
 - [`topmark registry bindings`](../usage/commands/registry/bindings.md)
 - [Registry model](registry-model.md)
 
-Refer to each command’s documentation for its emitted keys and shapes. Registry commands are also
+Refer to each command's documentation for its emitted keys and shapes. Registry commands are also
 documented in the schema reference and include the separate
 [`registry bindings`](../usage/commands/registry/bindings.md) machine-readable format.

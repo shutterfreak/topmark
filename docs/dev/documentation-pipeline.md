@@ -15,8 +15,7 @@ topmark:header:end
 This page documents how TopMark's documentation is generated, validated, and kept consistent using
 the tooling under `tools/docs/`.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 It is intended for contributors working on:
 
@@ -56,7 +55,7 @@ This pipeline supports both:
 - the stable public API documentation (`topmark.api`)
 - internal module documentation (`topmark.*`)
 
-and is aligned with TopMark’s layered architecture:
+and is aligned with TopMark's layered architecture:
 
 - TOML → FrozenConfig → runtime → pipeline
 
@@ -163,7 +162,7 @@ usage/generated-processors.md
 via:
 
 ```bash
-python -m topmark … --output-format markdown
+python -m topmark ... --output-format markdown
 ```
 
 This guarantees version-accurate CLI reference documentation.
@@ -229,7 +228,7 @@ A candidate is enforced when it:
 
 - looks like a dotted Python path;
 - starts with `topmark.`;
-- is **not** a filename (`.toml`, `.yaml`, …);
+- is **not** a filename (`.toml`, `.yaml`, ...);
 - is **not** explicitly whitelisted.
 
 This logic lives in:
@@ -382,14 +381,14 @@ ______________________________________________________________________
 
 The documentation tooling follows a few strict principles:
 
-- **Deterministic** — no hidden state and no reliance on import order.
+- **Deterministic** - no hidden state and no reliance on import order.
 
-- **Fail-late, report-all** — especially in strict mode.
+- **Fail-late, report-all** - especially in strict mode.
 
-- **Shared logic, single source of truth** — no duplicated regexes, include semantics, or hygiene
+- **Shared logic, single source of truth** - no duplicated regexes, include semantics, or hygiene
   heuristics.
 
-- **Documentation is code** — docstrings and Markdown are held to the same standard.
+- **Documentation is code** - docstrings and Markdown are held to the same standard.
 
 ______________________________________________________________________
 
@@ -401,7 +400,7 @@ ______________________________________________________________________
   docstrings;
 - debug and strict modes provide both flexibility and CI-grade guarantees.
 
-If you change how TopMark is structured, update the documentation pipeline accordingly — it is a
+If you change how TopMark is structured, update the documentation pipeline accordingly - it is a
 first-class part of the project.
 
 ______________________________________________________________________

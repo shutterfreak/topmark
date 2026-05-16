@@ -10,21 +10,21 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `config dump` Command Guide
+# `topmark config dump`
 
 **Purpose:** Dump the *effective* runtime configuration used by TopMark.
 
-The `config dump` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
-the *effective runtime TopMark configuration* as TOML after applying built-in defaults, discovered
-project/user config, and CLI overrides.
+The `config dump` subcommand (part of [`topmark config`](../config.md)) prints the effective runtime
+configuration as TOML after applying built-in defaults, discovered project/user configuration files,
+and CLI overrides.
 
-During loading, TopMark first performs whole-source TOML schema validation for all
-discovered/configured TOML sources. Only the validated layered config fragment contributes to the
-final runtime output. Validation is evaluated across staged config-loading/preflight diagnostics,
-which remain internal; reporting and CLI, API, and machine-readable output expose only the flattened
-compatibility diagnostics contract for 1.0.
+During loading, TopMark first performs whole-source TOML validation before layered configuration
+merging and runtime-applicability evaluation. Only validated layered configuration fragments
+contribute to the final runtime output.
 
-It is **file-agnostic**: it does not resolve or process any files.
+It is file-agnostic: it does not resolve or process any files.
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -61,27 +61,27 @@ ______________________________________________________________________
 
 ## Behavior details
 
-- Shows the effective runtime configuration (defaults ⟶ discovered config ⟶ `--config` files ⟶ CLI
-  flags), after per-source TOML schema validation.
+- Shows the effective runtime configuration (defaults ⟶ discovered configuration ⟶ `--config` files
+  ⟶ CLI flags), after per-source TOML validation.
 
 - With `--show-layers`, also shows the **layered configuration provenance** before the flattened
-  configuration.
+  effective runtime configuration.
 
-- **File-agnostic**:
+- File-agnostic:
 
-  - Positional PATHS are **not accepted** (the command fails if provided).
+  - Positional PATHS are not accepted (the command fails if provided).
   - `--files-from` is accepted for compatibility, but listed paths do not affect the dumped
     configuration.
 
-- **Filters are config**:
+- Filters are configuration:
 
   - `--include`, `--exclude` are honored.
   - `--include-from` / `--exclude-from` are honored.
   - `--include-from -` / `--exclude-from -` read patterns from STDIN.
 
-- Output is **plain TOML**. In TEXT output, when run with higher verbosity (e.g., `-v`), the TOML is
+- Output is plain TOML. In TEXT output, when run with higher verbosity (e.g., `-v`), the TOML is
   wrapped between BEGIN/END markers for easy parsing. Markdown output is document-oriented and
-  ignores TEXT-only verbosity and quiet controls:
+  ignores TEXT-oriented verbosity and quiet controls:
 
   ```text
   \# === BEGIN[TOML] ===
@@ -95,8 +95,8 @@ ______________________________________________________________________
 
 When `--show-layers` is used, `config dump` emits two TOML documents in sequence:
 
-1. A **layered provenance export** describing how configuration was constructed.
-1. The final **flattened effective configuration** (unchanged default behaviour).
+1. A layered provenance export describing how configuration was constructed.
+1. The final flattened effective runtime configuration (unchanged default behavior).
 
 The layered provenance export is inspection-oriented and uses an array-of-tables structure:
 
@@ -112,24 +112,22 @@ strict = false
 
 Each layer includes:
 
-- `origin` — where the configuration came from (e.g. `<defaults>`, file path)
-- `kind` — layer type (e.g. `default`, `discovered`)
-- `precedence` — merge order
-- `scope_root` — optional root for discovered configs
-- `toml` — the source-local TopMark TOML fragment after TOML-layer validation
+- `origin` - where the configuration came from (e.g. `<defaults>`, file path)
+- `kind` - layer type (e.g. `default`, `discovered`)
+- `precedence` - merge order
+- `scope_root` - optional root for discovered configs
+- `toml` - the source-local TopMark TOML fragment after TOML-layer validation
 
 The second TOML document is identical to the standard flattened runtime configuration output.
 
 TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation freezes the effective runtime configuration. See
-[Configuration: Discovery, Precedence & Policy](../../../configuration/discovery.md) for the full
-resolution and validation contract.
+files, and CLI overrides before staged validation produces the effective runtime configuration. See
+[Configuration discovery, precedence, and policy](../../../configuration/discovery.md) for the full
+configuration-loading and validation contract.
 
 Configuration and policy override values shown by this command are part of the stable public
-configuration surface. Internal implementation helpers such as
-\[`PolicyOverrides`\][topmark.config.overrides.PolicyOverrides] and
-\[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing CLI
-or Python API contract.
+configuration surface. Internal implementation details are not part of the user-facing CLI or Python
+API compatibility contract.
 
 ______________________________________________________________________
 
@@ -141,7 +139,8 @@ ______________________________________________________________________
   for file-processing commands (for example, [`check`](../check.md), [`strip`](../strip.md), and
   [`probe`](../probe.md)). `--stdin-filename` does not apply.
 - **`--files-from`** is accepted for compatibility, but listed paths do not affect the dumped
-  configuration. File lists are inputs for processing commands, not configuration state.
+  configuration. File lists are inputs for file-processing commands, not runtime configuration
+  state.
 
 Positional PATH arguments are rejected as invalid CLI usage. `config dump` explains configuration
 state; it does not process source files.
@@ -150,20 +149,20 @@ ______________________________________________________________________
 
 ## Command-specific options
 
-| Option            | Description                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| `--config`        | Merge an explicit TOML config file (can be repeated).                                            |
-| `--no-config`     | Do not discover local project/user config.                                                       |
-| `--include`       | Add include patterns (can be repeated).                                                          |
-| `--exclude`       | Add exclude patterns (can be repeated).                                                          |
-| `--include-from`  | Read include patterns from file (one per line, `#` comments allowed).                            |
-| `--exclude-from`  | Read exclude patterns from file (one per line, `#` comments allowed).                            |
-| `--files-from`    | Accept a file-list input for compatibility; listed paths do not affect the dumped configuration. |
-| `--file-type`     | Restrict to local or qualified TopMark file type identifiers (affects config state).             |
-| `--relative-to`   | Base directory for relative path handling in config.                                             |
-| `--align-fields`  | Whether to align header fields (captured in config).                                             |
-| `--header-format` | Header rendering format override (captured in config).                                           |
-| `-q`, `--quiet`   | Suppress TEXT output while preserving the command's exit status.                                 |
+| Option            | Description                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `--config`        | Merge an explicit TOML configuration file (can be repeated).                                        |
+| `--no-config`     | Do not discover local project/user configuration file.                                              |
+| `--include`       | Add include patterns (can be repeated).                                                             |
+| `--exclude`       | Add exclude patterns (can be repeated).                                                             |
+| `--include-from`  | Read include patterns from file (one per line, `#` comments allowed).                               |
+| `--exclude-from`  | Read exclude patterns from file (one per line, `#` comments allowed).                               |
+| `--files-from`    | Accept a file-list input for compatibility; listed paths do not affect the dumped configuration.    |
+| `--file-type`     | Restrict to local or qualified TopMark file type identifiers (affects runtime configuration state). |
+| `--relative-to`   | Base directory for relative path handling in configuration.                                         |
+| `--align-fields`  | Whether to align header fields (captured in configuration).                                         |
+| `--header-format` | Header rendering format override (captured in configuration).                                       |
+| `-q`, `--quiet`   | Suppress TEXT output while preserving the command's exit status.                                    |
 
 > Run `topmark config dump -h` for the full list of options and help text.
 
@@ -175,27 +174,27 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine-readable output schema (JSON & NDJSON)](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
-configuration freeze.
+Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+after configuration normalization.
 
 Notes:
 
-- `config dump` is **file-agnostic** and emits the effective configuration after applying defaults →
-  discovered config → `--config` files → CLI overrides, with whole-source TOML validation performed
-  per source before layered config merging. Identifier normalization and runtime applicability
-  evaluation occur before the effective runtime configuration snapshot is emitted.
+- `config dump` is file-agnostic and emits the effective runtime configuration after applying
+  defaults → discovered configuratin → `--config` files → CLI overrides, with whole-source TOML
+  validation performed per source before layered configuration merging.
 - With `--show-layers`, machine-readable output also includes a `config_provenance` payload before
-  the flattened config.
-- Diagnostics are not emitted for this command; it is an inspection view of the effective config.
+  the flattened runtime configuration snapshot.
+- Diagnostics are not emitted for this command; it is an inspection view of the effective runtime
+  configuration.
 
 ### JSON schema
 
-A single JSON document is emitted:
+A single machine-readable JSON document is emitted:
 
 ```jsonc
 {
@@ -216,11 +215,11 @@ With `--show-layers`, the JSON envelope becomes:
 
 ### NDJSON schema
 
-NDJSON is a stream where each line is a JSON object. Every record includes `kind` and `meta`.
+NDJSON is a stream where each line is a machine-readable JSON record.
 
 Default mode:
 
-1. `kind="config"` (effective runtime config snapshot)
+1. `kind="config"` (effective runtime configuration snapshot)
 
 Example:
 
@@ -231,7 +230,7 @@ Example:
 With `--show-layers`:
 
 1. `kind="config_provenance"` (layered provenance export snapshot)
-1. `kind="config"` (effective runtime config snapshot)
+1. `kind="config"` (effective runtime configuration snapshot)
 
 Example:
 
@@ -244,16 +243,16 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark config dump` is an informational/inspection command and exits with `SUCCESS (0)` when the
-effective configuration is rendered successfully.
+`topmark config dump` is an informational inspection command and exits with `SUCCESS (0)` when the
+effective runtime configuration is rendered successfully.
 
 Common `config dump` exit codes:
 
-| Scenario                                   | Exit code           |
-| ------------------------------------------ | ------------------- |
-| Effective config rendered successfully     | `SUCCESS (0)`       |
-| Invalid CLI usage                          | `USAGE_ERROR (64)`  |
-| Configuration cannot be loaded for command | `CONFIG_ERROR (78)` |
+| Scenario                                              | Exit code           |
+| ----------------------------------------------------- | ------------------- |
+| Effective runtime configuration rendered successfully | `SUCCESS (0)`       |
+| Invalid CLI usage                                     | `USAGE_ERROR (64)`  |
+| Configuration cannot be loaded for command            | `CONFIG_ERROR (78)` |
 
 Notes:
 
@@ -262,7 +261,8 @@ Notes:
 - Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is supported for TEXT output and suppresses the rendered TOML while preserving the exit
   status.
-- Markdown and machine-readable formats ignore TEXT-only quiet and verbosity controls.
+- Markdown and machine-readable JSON/NDJSON output ignore TEXT-oriented quiet and verbosity
+  controls.
 
 See [`Exit codes`](../../exit-codes.md) for the complete CLI-wide exit-code contract.
 
@@ -274,17 +274,17 @@ ______________________________________________________________________
 
 - In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
 - `--quiet` suppresses TEXT output while preserving the exit status.
-- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
-- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity and quiet controls.
+- Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls.
+- Machine-readable JSON and NDJSON output ignore TEXT-oriented verbosity and quiet controls.
 
 ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config check`](./check.md) — validate the effective runtime configuration and staged
-  config-loading diagnostics.
-- [`topmark config defaults`](./defaults.md) — show the canonical built-in default TOML document.
-- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+- [`topmark config check`](./check.md) - validate the effective runtime configuration and staged
+  configuration-loading diagnostics.
+- [`topmark config defaults`](./defaults.md) - show the canonical built-in default TOML document.
+- [`topmark config init`](./init.md) - print the bundled example TopMark TOML template.
 
 ______________________________________________________________________
 
@@ -294,22 +294,23 @@ ______________________________________________________________________
 - [Configuration](../../configuration.md)
 - [Filtering](../../filtering.md)
 - [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../../../configuration/discovery.md)
 - [Configuration schema](../../../dev/configuration-schema.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Exit codes](../../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../../terminology.md)
 
 ______________________________________________________________________
 
 ## Notes
 
-- The output reflects the effective runtime configuration TopMark would use if you ran processing
-  commands ([`check`](../check.md), [`strip`](../strip.md), or [`probe`](../probe.md)) with the same
-  configuration-related flags in the current working directory, after TOML-layer validation and
-  layered config merging.
+- The output reflects the effective runtime configuration TopMark would use if you ran
+  file-processing commands ([`check`](../check.md), [`strip`](../strip.md), or
+  [`probe`](../probe.md)) with the same configuration-related flags in the current working
+  directory, after TOML-layer validation and layered configuration merging.
 - For per-file configuration (e.g., overrides that may depend on path), consider a future option
-  like `--for FILE` (not currently implemented), similar to ESLint’s `--print-config`.
+  like `--for FILE` (not currently implemented), similar to ESLint's `--print-config`.
 
 ______________________________________________________________________
 
@@ -319,5 +320,5 @@ ______________________________________________________________________
   when local identifiers may be ambiguous.
 - **Unexpected policy application**: inspect normalized identifiers in the dumped runtime
   configuration.
-- **Unexpected config layering**: use `--show-layers` to inspect layered provenance and validated
-  TOML fragments.
+- **Unexpected configuration layering**: use `--show-layers` to inspect layered provenance and
+  validated TOML fragments.

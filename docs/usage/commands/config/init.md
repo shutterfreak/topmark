@@ -10,18 +10,20 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `config init` Command Guide
+# `topmark config init`
 
-**Purpose:** Render the bundled example TopMark TOML resource.
+**Purpose:** Render the bundled example TopMark TOML template.
 
-The `config init` subcommand (part of the TopMark [`config` Command Family](../config.md)) prints
-the **bundled example TopMark TOML resource**. This resource is heavily commented and is intended as
-a starting point for a new configuration file.
+The `config init` subcommand (part of [`topmark config`](../config.md)) prints the bundled example
+TopMark TOML template. This resource is heavily commented and is intended as a starting point for a
+new configuration file.
 
-The example includes both layered-config sections (such as `[header]`, `[fields]`, `[formatting]`,
-and `[files]`) and TOML-source-local sections such as `[config]`. During normal loading, TopMark
-validates the whole source first and then deserializes only the layered fragment into the effective
-runtime configuration.
+The example includes both layered configuration sections (such as `[header]`, `[fields]`,
+`[formatting]`, and `[files]`) and TOML-source-local sections such as `[config]`. During normal
+loading, TopMark validates the whole source first and then deserializes only the layered fragment
+into the effective runtime configuration.
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -53,13 +55,13 @@ ______________________________________________________________________
 
 ## Behavior details
 
-- `[config]` – source-local options such as `root` and strictness behavior
-- `[fields]` – default header fields (`project`, `license`, …)
-- `[header]` – order of fields to render in the header
-- `[formatting]` – layout options (e.g., `align_fields`)
-- `[files]` – file discovery knobs (e.g., `include_file_types`, `exclude_file_types`)
+- `[config]` - source-local options such as `root` and strictness behavior
+- `[fields]` - default header fields (`project`, `license`, ...)
+- `[header]` - order of fields to render in the header
+- `[formatting]` - layout options (e.g., `align_fields`)
+- `[files]` - file discovery knobs (e.g., `include_file_types`, `exclude_file_types`)
 
-You can safely edit the generated file to match your project’s needs.
+You can safely edit the generated file to match your project's needs.
 
 ______________________________________________________________________
 
@@ -79,10 +81,10 @@ ______________________________________________________________________
 
 ## When to use
 
-- **File‑agnostic**: does not inspect any files. Positional paths are rejected as invalid CLI usage.
+- File-agnostic: does not inspect any files. Positional paths are rejected as invalid CLI usage.
   STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
-- **Non‑destructive**: writes nothing; you control redirection.
-- **Self-documenting**: comments explain layered config fields, TOML-source-local options, and
+- Non-destructive: writes nothing; you control redirection.
+- Self-documenting: comments explain layered configuration fields, TOML-source-local options, and
   reasonable defaults.
 
 ______________________________________________________________________
@@ -92,7 +94,7 @@ ______________________________________________________________________
 Output formats:
 
 - `text` / `markdown`: full commented template from the bundled resource. Markdown is
-  document-oriented and ignores TEXT-only verbosity controls.
+  document-oriented and ignores TEXT-oriented verbosity controls.
 - `json` / `ndjson`: a machine-readable config snapshot produced by parsing and resolving the
   bundled starter template, without comments or diagnostics.
 
@@ -109,7 +111,7 @@ Notes:
 
 - Markdown output is document-oriented and ignores TEXT-only verbosity controls.
 
-- JSON/NDJSON output is machine-readable and ignores TEXT-only verbosity controls.
+- Machine-readable JSON/NDJSON output ignores TEXT-oriented verbosity controls.
 
 ______________________________________________________________________
 
@@ -120,7 +122,7 @@ ______________________________________________________________________
 help.
 
 Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
-support `--quiet`. Markdown and machine-readable formats ignore TEXT-only verbosity controls.
+support `--quiet`. Markdown and machine-readable formats ignore TEXT-oriented verbosity controls.
 
 ______________________________________________________________________
 
@@ -130,22 +132,22 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
 Notes:
 
-- In machine-readable formats, `config init` emits a config snapshot produced by parsing and
-  resolving the bundled starter template.
+- In machine-readable JSON/NDJSON output, `config init` emits a configuration snapshot produced by
+  parsing and resolving the bundled starter template.
 - The machine-readable output represents the bundled template view, not a discovered or merged
   project configuration.
 - The snapshot includes TOML-authored runtime sections such as `[writer]` when they are present in
-  the bundled template, even though those sections are resolved outside the layered Config model at
-  runtime.
-- Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
-  configuration freeze.
+  the bundled template, even though those sections are resolved outside the layered configuration
+  model at runtime.
+- Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+  after configuration normalization.
 - No diagnostics are emitted for this command.
 
 ### JSON schema
@@ -200,11 +202,11 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config check`](./check.md) — validate the effective runtime configuration and staged
-  config-loading diagnostics.
-- [`topmark config dump`](./dump.md) — show the effective runtime configuration, including
+- [`topmark config check`](./check.md) - validate the effective runtime configuration and staged
+  configuration-loading diagnostics.
+- [`topmark config dump`](./dump.md) - show the effective runtime configuration, including
   normalized canonical file type identifiers.
-- [`topmark config defaults`](./defaults.md) — show TopMark’s canonical built-in default TOML
+- [`topmark config defaults`](./defaults.md) - show TopMark's canonical built-in default TOML
   document.
 
 ______________________________________________________________________
@@ -215,11 +217,12 @@ ______________________________________________________________________
 - [Configuration](../../configuration.md)
 - [Filtering](../../filtering.md)
 - [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../../../configuration/discovery.md)
 - [Configuration schema](../../../dev/configuration-schema.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Exit codes](../../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../../terminology.md)
 
 ______________________________________________________________________
 
@@ -227,5 +230,5 @@ ______________________________________________________________________
 
 - **Unexpected identifier formatting**: machine-readable output may emit normalized canonical
   qualified identifiers such as `topmark:python`.
-- **Need the real effective config**: use [`topmark config dump`](./dump.md).
+- **Need the real effective runtime configuration**: use [`topmark config dump`](./dump.md).
 - **Need built-in defaults only**: use [`topmark config defaults`](./defaults.md).

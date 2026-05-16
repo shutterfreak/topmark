@@ -22,8 +22,7 @@ TopMark configuration may be provided through:
 Configuration is resolved through layered discovery and precedence rules. Higher-precedence layers
 override lower-precedence layers.
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 

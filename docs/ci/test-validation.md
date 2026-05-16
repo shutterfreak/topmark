@@ -16,8 +16,7 @@ TopMark groups validation by intent rather than through a single monolithic test
 workflows orchestrate validation, nox sessions provide stable reusable commands, pytest markers
 describe test purpose, and Makefile targets provide local convenience wrappers.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 This page explains how those layers fit together and how contributors should choose the right
 validation path.

@@ -10,30 +10,29 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `config` Command Family
+# `topmark config`
 
-TopMark exposes a `config` command group to inspect and scaffold configuration:
+TopMark exposes a `config` command group to inspect and scaffold configuration.
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Subcommands
 
-| Command                                         | Purpose                                                                        |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| [`topmark config check`](config/check.md)       | Validate the effective merged configuration and report diagnostics.            |
-| [`topmark config dump`](config/dump.md)         | Display the effective merged configuration and layered provenance information. |
-| [`topmark config defaults`](config/defaults.md) | Show the built-in default TopMark TOML document.                               |
-| [`topmark config init`](config/init.md)         | Render the bundled starter TopMark TOML configuration template.                |
+| Command                                         | Purpose                                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`topmark config check`](config/check.md)       | Validate the effective runtime configuration and report diagnostics.            |
+| [`topmark config dump`](config/dump.md)         | Display the effective runtime configuration and layered provenance information. |
+| [`topmark config defaults`](config/defaults.md) | Show the built-in default TopMark TOML document.                                |
+| [`topmark config init`](config/init.md)         | Render the bundled starter TopMark TOML configuration template.                 |
 
 Source-local options under `[config]` / `[tool.topmark.config]` (such as `root` and `strict`) are
-resolved during configuration loading. They do not participate in layered config merging, but
-influence discovery and validation behaviour.
+resolved during configuration loading. They do not participate in layered configuration merging, but
+influence discovery and validation behavior.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-In the current implementation, effective strictness applies across staged config-loading/preflight
-validation.
-
 For the full discovery, precedence, path-resolution, and staged validation contract, see
-[Configuration: Discovery, Precedence & Policy](../../configuration/discovery.md).
+[Configuration discovery, precedence, and policy](../../configuration/discovery.md).
 
 Configuration and policy values handled by these commands are part of the stable **public
 configuration surface**. Internal helper types such as
@@ -42,14 +41,14 @@ configuration surface**. Internal helper types such as
 internally by CLI/API orchestration. When using the Python API, provide plain mapping-based inputs
 via `config=...`, `policy=...`, and `policy_by_type=...`.
 
-API overlays follow the same identifier normalization and policy-resolution semantics as TOML
-configuration and CLI filtering.
+API overlays follow the same identifier normalization and runtime policy-resolution semantics as
+TOML configuration and CLI filtering.
 
-TopMark performs whole-source TOML schema validation during loading before layered config merging
-and runtime applicability evaluation. Unknown sections or keys, malformed section shapes, and
+TopMark performs whole-source TOML validation during loading before layered configuration merging
+and runtime-applicability evaluation. Unknown sections or keys, malformed section shapes, and
 missing known sections are reported as configuration diagnostics before staged config-validation
-semantics are applied. Only the validated layered fragment is passed to the config layer for
-merging.
+semantics are applied. Only validated layered configuration fragments are passed to the
+configuration layer for merging.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
@@ -81,7 +80,7 @@ The `config` command family reflects the same stable configuration contract used
 
 - CLI processing commands
 - API overlays
-- resolver filtering
+- resolution and filtering
 - machine-readable output
 - policy lookup
 
@@ -121,14 +120,14 @@ Note on output controls:
   commands ([`config defaults`](config/defaults.md), [`config init`](config/init.md)) do not support
   `--quiet`.
 
-When using [`topmark config dump --show-layers`](config/dump.md), the command also exposes **layered
-configuration provenance** in addition to the flattened effective configuration. This layered
+When using [`topmark config dump --show-layers`](config/dump.md), the command also exposes layered
+configuration provenance in addition to the flattened effective runtime configuration. This layered
 provenance view reflects how configuration was built from individual TOML sources (defaults,
 discovered config, CLI overrides) and includes source-local TOML fragments. This includes the
 original TOML fragments (after schema validation) that contributed to each layer.
 
-Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
-configuration freeze.
+Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+after configuration normalization.
 
 ### Strictness and provenance
 
@@ -136,17 +135,17 @@ When running [`config check`](config/check.md), effective validation strictness 
 
 1. CLI override (`--strict` / `--no-strict`)
 1. TOML value (`strict`)
-1. default non-strict behaviour
+1. default non-strict behavior
 
 Warnings are treated as errors only when strict config checking is enabled. Identifier ambiguity,
 malformed identifiers, and runtime applicability diagnostics participate in this staged validation
-flow. In the current implementation, this applies to staged config-loading/preflight validation as a
-whole. For 1.0, this evaluation occurs over staged validation, while only the flattened
-compatibility diagnostics contract is exposed at CLI/API/machine boundaries.
+flow. For 1.0, this evaluation occurs over staged config-loading validation, while only the
+flattened compatibility diagnostics surface is exposed at CLI, API, and machine-readable output
+boundaries.
 
 Note that `strict` is a **source-local TOML option**, not a layered configuration field. It
-influences validation behaviour but is not part of the final merged config; however, it is visible
-in layered provenance output ([`config dump --show-layers`](config/dump.md)).
+influences validation behavior but is not part of the final merged configuration; however, it is
+visible in layered provenance output ([`config dump --show-layers`](config/dump.md)).
 
 ______________________________________________________________________
 
@@ -156,9 +155,12 @@ ______________________________________________________________________
 - [Configuration](../configuration.md)
 - [Filtering](../filtering.md)
 - [Policies](../policies.md)
-- [Configuration discovery](../../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../../configuration/discovery.md)
 - [Configuration schema](../../dev/configuration-schema.md)
+- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable format conventions](../../dev/machine-formats.md)
 - [Exit codes](../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../terminology.md)
 
 ______________________________________________________________________
 

@@ -36,11 +36,11 @@ explicitly documented otherwise.
 
 Behavior, terminology, or compatibility contracts considered finalized for the 1.0 release cycle.
 
-“Frozen” refers to release-contract stabilization rather than long-term immutability.
+"Frozen" refers to release-contract stabilization rather than long-term immutability.
 
 > [!NOTE]
 >
-> In API and runtime contexts, “frozen” may additionally refer to immutable runtime objects such as
+> In API and runtime contexts, "frozen" may additionally refer to immutable runtime objects such as
 > frozen dataclasses, immutable snapshots, or frozen runtime state.
 
 ### Internal
@@ -325,7 +325,7 @@ ______________________________________________________________________
 
 ### Public API
 
-Documented interfaces covered by TopMark’s compatibility guarantees.
+Documented interfaces covered by TopMark's compatibility guarantees.
 
 ### Internal API
 

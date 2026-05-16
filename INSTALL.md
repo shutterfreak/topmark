@@ -20,7 +20,7 @@ ______________________________________________________________________
 
 ## Requirements
 
-- Python **3.10 – 3.14**
+- Python **3.10 - 3.14**
 - Git (for cloning and contributing)
 - macOS, Linux, or Windows
 
@@ -116,7 +116,7 @@ Run Pyright directly (example, from `.venv`):
 pyright --pythonversion 3.13
 ```
 
-In practice you’ll usually run Pyright via `nox` sessions:
+In practice you'll usually run Pyright via `nox` sessions:
 
 - `qa`: runs tests (`pytest`) and type checks (`pyright`)
 - `qa_api`: runs tests, the API snapshot check, and type checks (`pyright`)
@@ -295,7 +295,7 @@ ______________________________________________________________________
   ```
 
 - **Multiple Python versions**: if running `nox` across versions locally, install interpreters with
-  `pyenv` (e.g., `3.10–3.14`). `nox` will skip sessions whose interpreter is missing (unless
+  `pyenv` (e.g., `3.10-3.14`). `nox` will skip sessions whose interpreter is missing (unless
   configured to error).
 
 - **Windows PowerShell activation**: allow script execution:

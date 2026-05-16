@@ -16,8 +16,7 @@ TopMark uses a deliberately explicit CI and validation structure. GitHub workflo
 orchestration, nox sessions define reusable validation contracts, pytest markers describe validation
 intent, and Makefile targets provide local developer shortcuts.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 The current design favors clarity, deterministic behavior, and release safety over aggressive
 workflow abstraction. Some repetition between workflows is intentional, especially where privileged
@@ -31,11 +30,11 @@ Repository-source validation starts in the main CI workflow and is delegated to 
 practical. The test suite is further organized with pytest markers so contributors can understand
 the intent and expected scope of each test group.
 
-- [CI workflow](./ci-workflow.md) — validates repository source trees, documentation, tests, typing,
+- [CI workflow](./ci-workflow.md) - validates repository source trees, documentation, tests, typing,
   linting, API snapshots, and release artifacts produced from trusted CI runs.
-- [Test validation](./test-validation.md) — explains pytest markers, validation categories, local
+- [Test validation](./test-validation.md) - explains pytest markers, validation categories, local
   test commands, CI inclusion rules, and how nox and Makefile targets map onto the test suite.
-- [Published artifact validation](./published-artifact-validation.md) — validates installation and
+- [Published artifact validation](./published-artifact-validation.md) - validates installation and
   runtime behavior from packages already published to PyPI or TestPyPI in clean runner environments.
 
 ______________________________________________________________________
@@ -46,9 +45,9 @@ Release publication is intentionally separated from normal repository-source val
 workflow is privileged and consumes artifacts produced by the CI workflow instead of rebuilding them
 in the publishing context.
 
-- [Release workflow](./release-workflow.md) — publishes previously built release artifacts after
+- [Release workflow](./release-workflow.md) - publishes previously built release artifacts after
   release-tag, artifact, and repository validation checks.
-- [Published artifact validation](./published-artifact-validation.md) — verifies the package as an
+- [Published artifact validation](./published-artifact-validation.md) - verifies the package as an
   end user would install it after publication.
 
 ______________________________________________________________________
@@ -58,8 +57,8 @@ ______________________________________________________________________
 Dependency automation is documented separately because it has different triggers, trust boundaries,
 and maintenance expectations than repository-source validation or release publication.
 
-- [Dependabot workflow](./dependabot.md) — documents dependency-update and security-audit behavior.
-- [GitHub Action pin audit](./action-pin-audit.md) — audits GitHub Action pin consistency across
+- [Dependabot workflow](./dependabot.md) - documents dependency-update and security-audit behavior.
+- [GitHub Action pin audit](./action-pin-audit.md) - audits GitHub Action pin consistency across
   workflows and local composite actions.
 
 ______________________________________________________________________
@@ -81,7 +80,7 @@ ______________________________________________________________________
 
 ## Related pages
 
-- [Contributing to TopMark](../contributing.md) — contributor workflow and dependency guidance
-- [Release process](../dev/release-process.md) — project-level release workflow and policy
-- [`Configuration overview`](../configuration/index.md) — configuration entry point and links to
+- [Contributing to TopMark](../contributing.md) - contributor workflow and dependency guidance
+- [Release process](../dev/release-process.md) - project-level release workflow and policy
+- [`Configuration overview`](../configuration/index.md) - configuration entry point and links to
   discovery, precedence, and merge semantics

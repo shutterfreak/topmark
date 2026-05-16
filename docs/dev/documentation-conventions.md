@@ -240,18 +240,18 @@ Examples:
 
 ### Frozen terminology
 
-The term “frozen” is used in two distinct contexts throughout the TopMark documentation:
+The term "frozen" is used in two distinct contexts throughout the TopMark documentation:
 
 - release and contract stabilization;
 - immutable runtime objects or snapshots.
 
 When referring to release stabilization, prefer explicit wording such as:
 
-- “frozen for 1.0”;
-- “contract frozen for 1.0”;
-- “stabilized for the 1.x series”.
+- "frozen for 1.0";
+- "contract frozen for 1.0";
+- "stabilized for the 1.x series".
 
-When referring to runtime mutability, prefer “immutable” in prose unless discussing concrete types
+When referring to runtime mutability, prefer "immutable" in prose unless discussing concrete types
 or APIs whose names explicitly use `Frozen`.
 
 When TopMark exposes both mutable and immutable variants of the same runtime object, use the
@@ -435,26 +435,55 @@ Sections may be omitted only when genuinely not applicable. Command families may
 when their behavior differs from file-processing pipeline commands, but related pages should remain
 internally consistent.
 
+### User-facing implementation boundaries
+
+Command usage pages should describe observable behavior, stable semantics, compatibility contracts,
+and user-facing outcomes.
+
+Avoid exposing implementation details such as:
+
+- internal dataclass names;
+- mutable/frozen runtime object pairs;
+- `freeze()` / `thaw()` mechanics;
+- internal DTO names;
+- bridge or helper function names;
+- internal runtime object graphs.
+
+For example, prefer user-facing lifecycle wording such as:
+
+- "finalize validated runtime configuration";
+- "produce the effective runtime configuration";
+- "normalized runtime configuration snapshot".
+
+Avoid wording such as:
+
+- "freeze into final `FrozenConfig`";
+- "build a `MutableConfig` draft";
+- "call `freeze()` before execution".
+
+Concrete implementation types may be referenced from API, architecture, or internals documentation
+when they are part of the page purpose, but command usage pages should generally avoid them.
+
 ### Command section expectations
 
-| Section                           | Purpose                                                                                    |
-| --------------------------------- | ------------------------------------------------------------------------------------------ |
-| `Summary`                         | Explain what the command does, when to use it, and the key user-facing contract.           |
-| `Quick start`                     | Show canonical invocation syntax and short examples matching actual CLI behavior.          |
-| `Input applicability`             | Explain paths, stdin support, recursion, mutation behavior, and dry-run vs apply behavior. |
-| `Configuration and validation`    | Explain command-specific configuration behavior and link to canonical configuration docs.  |
-| `Filtering and file discovery`    | Summarize command-specific filtering and link to the filtering contract.                   |
-| `Command-specific policy options` | Document policy controls that affect the command.                                          |
-| `Behavior details`                | Explain command-specific runtime behavior not covered elsewhere.                           |
-| `Output behavior`                 | Describe human output, verbosity, quiet mode, color, and preview behavior.                 |
-| `Machine-readable output`         | Explain supported output formats and command-specific machine-readable output semantics.   |
-| `Command-specific options`        | Document options unique to the command without repeating shared-option semantics.          |
-| `Exit codes`                      | Explain command-specific exit behavior and link to centralized exit-code docs.             |
-| `Typical workflows`               | Present common workflows from simple to advanced.                                          |
-| `Pre-commit integration`          | Document hook usage when relevant.                                                         |
-| `Related commands`                | Link only to operationally adjacent CLI commands.                                          |
-| `Related docs`                    | Link to conceptual, configuration, reference, and architecture pages.                      |
-| `Troubleshooting`                 | Document common failure modes and corrective actions.                                      |
+| Section                           | Purpose                                                                                                                                       |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Summary`                         | Explain what the command does, when to use it, and the key user-facing contract.                                                              |
+| `Quick start`                     | Show canonical invocation syntax and short examples matching actual CLI behavior.                                                             |
+| `Input applicability`             | Explain paths, stdin support, recursion, mutation behavior, and dry-run vs apply behavior.                                                    |
+| `Configuration and validation`    | Explain command-specific configuration behavior using user-facing runtime terminology and link to canonical configuration docs.               |
+| `Filtering and file discovery`    | Summarize command-specific filtering and link to the filtering contract.                                                                      |
+| `Command-specific policy options` | Document policy controls that affect the command.                                                                                             |
+| `Behavior details`                | Explain command-specific runtime behavior not covered elsewhere.                                                                              |
+| `Output behavior`                 | Describe human output, verbosity, quiet mode, color, and preview behavior.                                                                    |
+| `Machine-readable output`         | Explain supported output formats and command-specific machine-readable output semantics without exposing internal DTO implementation details. |
+| `Command-specific options`        | Document options unique to the command without repeating shared-option semantics.                                                             |
+| `Exit codes`                      | Explain command-specific exit behavior and link to centralized exit-code docs.                                                                |
+| `Typical workflows`               | Present common workflows from simple to advanced.                                                                                             |
+| `Pre-commit integration`          | Document hook usage when relevant.                                                                                                            |
+| `Related commands`                | Link only to operationally adjacent CLI commands.                                                                                             |
+| `Related docs`                    | Link to conceptual, configuration, reference, and architecture pages.                                                                         |
+| `Troubleshooting`                 | Document common failure modes and corrective actions.                                                                                         |
 
 Parent command groups such as `topmark config` and `topmark registry` may use a simplified
 structure:
@@ -476,6 +505,10 @@ Commands should always be referenced using the fully qualified CLI form:
 ```
 
 Avoid shorthand such as `check` or `dump` unless the surrounding context is already unambiguous.
+
+When diagrams are useful, diagram labels should also follow user-facing terminology. Prefer labels
+such as "Finalize runtime configuration" or "Emit machine-readable diagnostics" over labels that
+name internal implementation classes or helper methods.
 
 ______________________________________________________________________
 
@@ -615,6 +648,7 @@ Reusable snippets live in `docs/_snippets/`.
 | `output-contract.md`          | Defines shared TEXT, quiet-mode, Markdown, and machine-readable output guarantees for commands that support quiet mode.          | Keep             |
 | `output-contract-no-quiet.md` | Defines shared TEXT, Markdown, and machine-readable output guarantees for informational commands that do not support quiet mode. | Keep             |
 | `report-scope.md`             | Defines shared report-scope behavior for sibling mutation commands.                                                              | Keep but monitor |
+| `terminology.md`              | Defines the shared terminology note that links to the project-wide canonical vocabulary page.                                    | Keep             |
 | `ci/related-pages.md`         | Defines the shared related-pages block for CI workflow documentation pages.                                                      | Keep             |
 
 `docs/_snippets/.markdownlint.jsonc` configures Markdown linting for snippet files and is not a
@@ -642,7 +676,8 @@ For 1.0, the following semantic areas are appropriate snippet candidates when re
 - TEXT verbosity and quiet-mode behavior;
 - staged config-loading strictness behavior;
 - CLI/API/configuration spelling equivalence;
-- exact report-scope behavior shared by sibling mutation commands.
+- exact report-scope behavior shared by sibling mutation commands;
+- shared canonical terminology cross-reference notes.
 
 Avoid snippets for:
 
@@ -653,7 +688,7 @@ Avoid snippets for:
 - command-specific behavior;
 - large conceptual sections;
 - machine-readable schemas;
-- canonical terminology pages;
+- canonical terminology pages themselves;
 - page-specific applicability notes;
 - operational rationale;
 - troubleshooting guidance;
@@ -687,7 +722,7 @@ Snippet names should:
 - avoid vague names such as `common.md`, `shared.md`, or `notes.md`.
 
 Snippets should generally be context-independent. They should not assume a specific heading level,
-preceding paragraph, relative link depth, or command page.
+preceding paragraph, or command page.
 
 Snippets should avoid headings. If reusable content needs its own heading, it usually belongs in a
 canonical reference page with local cross-references.
@@ -696,11 +731,18 @@ Snippets must not include other snippets.
 
 ### Snippet links
 
-Snippets should avoid relative links unless the link is valid from every include location.
+Snippets may contain relative Markdown links when those links are intended to resolve from the
+including page.
 
-Shared navigation snippets named `related-pages*.md` are a deliberate exception. They may contain
-relative links because their purpose is to centralize navigation for a tightly scoped documentation
-family.
+TopMark uses `mkdocs-include-markdown-plugin`; during MkDocs rendering, relative links inside
+included snippets are resolved against the including page context. Depth-specific snippet variants
+are therefore usually unnecessary.
+
+This makes shared note snippets such as `_snippets/terminology.md` safe to include from pages at
+different directory depths, while still rendering links relative to each consuming page.
+
+Shared navigation snippets named `related-pages*.md` are also allowed to contain relative links when
+they centralize navigation for a tightly scoped documentation family.
 
 ### Include path conventions
 
@@ -776,7 +818,7 @@ It reports maintainability warnings for:
 
 - orphaned snippets;
 - snippets containing headings;
-- relative links inside non-navigation snippets;
+- relative links inside snippets when they appear incompatible with include-markdown link rewriting;
 - snippet include paths that do not use the formatter-stable `\_snippets/` prefix.
 
 Warnings are intentionally non-fatal by default. They document possible maintainability issues
@@ -818,6 +860,7 @@ Avoid duplicating:
 - large configuration lifecycle explanations;
 - machine-readable schemas;
 - canonical terminology definitions;
+- repeated terminology cross-reference notes already provided by `_snippets/terminology.md`;
 - release architecture details;
 - implementation rationale already covered by a canonical development page.
 

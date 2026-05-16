@@ -12,15 +12,14 @@ topmark:header:end
 
 # API stability and snapshot policy
 
-TopMark enforces a stable public Python API across all supported Python versions (3.10–3.14) using a
+TopMark enforces a stable public Python API across all supported Python versions (3.10-3.14) using a
 JSON-based snapshot test.
 
 The snapshot system protects the documented public execution surface exposed through `topmark.api`,
 helping downstream users rely on stable symbols, signatures, and machine-readable behavior contracts
 across releases.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 See also:
 
@@ -28,8 +27,8 @@ See also:
 - [Registry model](registry-model.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
 - [Machine-readable output](machine-output.md)
-- [Machine-readable formats](machine-formats.md)
-- [Configuration](../configuration/index.md)
+- [Machine-readable format conventions](machine-formats.md)
+- [Configuration discovery, precedence, and policy](../configuration/index.md)
 - [Release Process](release-process.md)
 - [Test and validation architecture](../ci/test-validation.md)
 
@@ -110,7 +109,7 @@ shared across:
 - CLI filtering;
 - TOML configuration;
 - API overlays;
-- resolver filtering;
+- resolution and filtering;
 - machine-readable output.
 
 The comparison is deterministic across Python versions by normalizing class representations and
@@ -151,7 +150,7 @@ make api-snapshot
 ```
 
 This executes the snapshot tests for all supported Python versions defined in the `nox` matrix
-(3.10–3.14). It corresponds to running:
+(3.10-3.14). It corresponds to running:
 
 ```bash
 nox -s api_snapshot
@@ -172,7 +171,7 @@ the diff, and instructs you to commit the updated snapshot if the public API cha
 make api-snapshot-ensure-clean
 ```
 
-Fails if the current working tree differs from the committed snapshot — useful in CI to detect
+Fails if the current working tree differs from the committed snapshot - useful in CI to detect
 unintended API drift.
 
 These commands map directly to the validation tooling documented in:
@@ -199,13 +198,13 @@ These identifiers are intentionally shared across:
 - CLI filtering;
 - TOML configuration;
 - API overlays;
-- resolver filtering;
+- resolution and filtering;
 - machine-readable output.
 
 See also:
 
 - [Machine-readable output](machine-output.md)
-- [Machine-readable formats](machine-formats.md)
+- [Machine-readable format conventions](machine-formats.md)
 
 ______________________________________________________________________
 
@@ -236,7 +235,7 @@ evolve independently as long as:
 
 - canonical identifier semantics remain stable.
 
-- **Supported Python range:** 3.10–3.14 (`nox` matrix). Future minor Python releases will be added
+- **Supported Python range:** 3.10-3.14 (`nox` matrix). Future minor Python releases will be added
   once supported by CI.
 
 - **File under version control:**\
@@ -328,7 +327,7 @@ ______________________________________________________________________
 - [Registry model](registry-model.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
 - [Machine-readable output](machine-output.md)
-- [Machine-readable formats](machine-formats.md)
+- [Machine-readable format conventions](machine-formats.md)
 - [Release Process](release-process.md)
 - [Test and validation architecture](../ci/test-validation.md)
 

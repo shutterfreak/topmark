@@ -17,8 +17,7 @@ This page documents `.github/workflows/ci.yml`.
 The CI workflow is TopMark's primary source-tree validation workflow. It validates pull requests,
 pushes to `main`, and version-tag pushes before release publication consumes CI-built artifacts.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Purpose
 

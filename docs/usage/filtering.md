@@ -22,8 +22,7 @@ Filtering controls determine:
 TopMark determines which files to process using a combination of **path-based filters** and **file
 type filters**.
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Filtering overview
 
@@ -155,10 +154,10 @@ In machine-readable JSON and NDJSON output, these are represented as probe resul
 
 Filtered probe results may use one of the following reasons:
 
-- `excluded_by_path_filter` — excluded by path-based include/exclude rules
-- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules
-- `excluded_by_discovery_filter` — excluded before probing, but exact category not identified
-- `no_candidates` — no file-type candidates were found (e.g., unsupported extension)
+- `excluded_by_path_filter` - excluded by path-based include/exclude rules
+- `excluded_by_file_type_filter` - excluded by file-type include/exclude rules
+- `excluded_by_discovery_filter` - excluded before probing, but exact category not identified
+- `no_candidates` - no file-type candidates were found (e.g., unsupported extension)
 
 Only explicitly requested inputs (CLI paths or `--files-from`) are reported this way. Files excluded
 implicitly during recursive discovery are not enumerated.
@@ -353,4 +352,4 @@ ______________________________________________________________________
 - [Shared options](shared-options.md)
 - [Policies](policies.md)
 - [Exit codes](exit-codes.md)
-- [Configuration discovery](../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../configuration/discovery.md)

@@ -169,7 +169,7 @@ nav:
   - Installation: install.md
   - Usage:
       - Command overview: usage/cli.md
-      - Configuration: usage/configuration.md
+      - Configuration discovery, precedence, and policy: usage/configuration.md
       - Shared options: usage/shared-options.md
       - Commands:
           - check: usage/commands/check.md

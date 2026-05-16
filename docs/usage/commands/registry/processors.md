@@ -10,13 +10,15 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `registry processors` Command Guide
+# `topmark registry processors`
 
 **Purpose:** Display registered header processor identities.
 
 The `registry processors` subcommand lists registered **header processors** and their
 comment/delimiter capabilities. Use it to understand what processing logic is available in the
 system.
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -46,7 +48,7 @@ topmark registry processors
 # Detailed Markdown table
 topmark registry processors --long --output-format markdown
 
-# Machine‑readable
+# Machine-readable
 topmark registry processors --output-format json | jq
 ```
 
@@ -80,7 +82,7 @@ identities and binding relationships.
 See [file-type filtering](../../filtering.md#file-type-filtering) for the full identifier contract.
 
 This command exposes the effective runtime processor view after registry composition and
-configuration freeze.
+configuration normalization.
 
 Unlike [`registry bindings`](bindings.md), this command focuses on canonical processor identities,
 not processor-dispatch relationships.
@@ -91,14 +93,14 @@ ______________________________________________________________________
 
 Use `--output-format` to pick the output format:
 
-- `text` — human‑readable (brief or detailed)
-- `json` — a single JSON document with `meta` and `processors` keys
-- `ndjson` — one JSON object per line (stream-friendly, record-oriented)
-- `markdown` — a beautified Markdown table
+- `text` - human-readable (brief or detailed)
+- `json` - a single machine-readable JSON document with `meta` and `processors` keys
+- `ndjson` - one machine-readable NDJSON record per line (stream-friendly, record-oriented)
+- `markdown` - a document-oriented Markdown table
 
 The `--long` flag controls the detail level for all output formats.
 
-This flag controls the data/detail depth across all formats. TEXT-only verbosity (`-v`) affects
+This flag controls the data/detail depth across all formats. TEXT-oriented verbosity (`-v`) affects
 presentation (e.g., headings) and does not change the data fields emitted.
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
@@ -109,32 +111,32 @@ ______________________________________________________________________
 
 ### Brief output (default)
 
-- **Canonical qualified key** — unique processor identifier
-- **Description** — short description of the processor
+- Canonical qualified key - unique processor identifier
+- Description - short description of the processor
 
 ### Detailed output (`--long`)
 
 Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 
-- **Canonical qualified key**
-- **Namespace / local key**
-- **Description**
-- **Delimiter / comment capabilities** (if applicable)
-- **Bound** (`true`/`false`) — whether the processor is referenced by any binding
+- Canonical qualified key
+- Namespace / local key
+- Description
+- Delimiter / comment capabilities (if applicable)
+- Bound (`true`/`false`) - whether the processor is referenced by any binding
 
 ______________________________________________________________________
 
 ## Shared output controls
 
-In human-readable formats, TopMark renders a **numbered list** of processors with right-aligned
-indices (e.g., `1.`, `2.`, …) to keep long lists scannable. With `--long`, additional details are
-shown alongside each identifier. TEXT verbosity (`-v`) affects presentation only.
+In human-readable formats, TopMark renders a numbered list of processors with right-aligned indices
+(e.g., `1.`, `2.`, ...) to keep long lists scannable. With `--long`, additional details are shown
+alongside each identifier. TEXT verbosity (`-v`) affects presentation only.
 
 ______________________________________________________________________
 
 ## Machine-readable output
 
-JSON output emits one document with shared metadata and a `processors` array:
+JSON output emits one machine-readable document with shared metadata and a `processors` array:
 
 ```jsonc
 {
@@ -150,7 +152,7 @@ JSON output emits one document with shared metadata and a `processors` array:
 - Long entries add binding and rendering-capability fields such as `bound`, `line_indent`,
   `line_prefix`, `line_suffix`, `block_prefix`, and `block_suffix`.
 
-NDJSON output emits one record per processor:
+NDJSON output emits one machine-readable record per processor:
 
 ```jsonc
 {
@@ -226,9 +228,9 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark registry filetypes`](filetypes.md) — inspect canonical file type identities, matching
+- [`topmark registry filetypes`](filetypes.md) - inspect canonical file type identities, matching
   rules, and policies.
-- [`topmark registry bindings`](bindings.md) — inspect effective processor-dispatch relationships
+- [`topmark registry bindings`](bindings.md) - inspect effective processor-dispatch relationships
   between file types and processors.
 
 ______________________________________________________________________
@@ -239,10 +241,11 @@ ______________________________________________________________________
 - [Registry model](../../../dev/registry-model.md)
 - [Plugins and extensibility](../../../dev/plugins.md)
 - [Resolution model](../../../dev/resolution.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Supported header processors](../../generated/processors.md)
 - [Exit codes](../../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../../terminology.md)
 
 ______________________________________________________________________
 

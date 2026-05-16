@@ -30,13 +30,12 @@ Covered command groups:
   [`config dump`](../usage/commands/config/dump.md)
 - **Version reporting**: [`version`](../usage/commands/version.md)
 
-This page is the canonical reference for TopMark’s machine-readable output shapes. Usage guides for
+This page is the canonical reference for TopMark's machine-readable output shapes. Usage guides for
 individual commands (for example, [`check`](../usage/commands/check.md),
 [`strip`](../usage/commands/strip.md), and [`probe`](../usage/commands/probe.md)) provide
 task-oriented examples consistent with this schema.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 See also:
 
@@ -142,7 +141,7 @@ sourced from generated package version metadata rather than a static config fiel
 
 ### NDJSON record contract
 
-NDJSON output is a stream of JSON objects (“records”). Each record:
+NDJSON output is a stream of JSON objects ("records"). Each record:
 
 - MUST include:
   - `kind` (string)
@@ -238,7 +237,7 @@ formats expose the same resolution evidence used by the human-facing probe rende
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload */ },
+  "config": { /* RuntimeConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "probes": [
     { /* per-path probe payload */ }
@@ -351,22 +350,22 @@ does not enumerate every recursively discovered file that was ignored by discove
 
 Filtered probe payloads may use one of these reasons:
 
-- `excluded_by_path_filter` — excluded by path-based include/exclude rules.
-- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules after identifier
+- `excluded_by_path_filter` - excluded by path-based include/exclude rules.
+- `excluded_by_file_type_filter` - excluded by file-type include/exclude rules after identifier
   normalization to canonical qualified keys.
-- `excluded_by_discovery_filter` — excluded before probing, but exact category was not identified.
+- `excluded_by_discovery_filter` - excluded before probing, but exact category was not identified.
 
 Fields:
 
 - `path`: probed or explicitly requested filesystem path. For filtered explicit inputs, this is the
   path supplied to the command.
 - `status`: probe status, currently one of:
-  - `resolved` — a file type and processor were selected.
-  - `unsupported` — no file type candidate matched.
-  - `no_processor` — a file type was selected, but no processor binding was available.
-  - `filtered` — an explicitly requested input was filtered during discovery before file-type
+  - `resolved` - a file type and processor were selected.
+  - `unsupported` - no file type candidate matched.
+  - `no_processor` - a file type was selected, but no processor binding was available.
+  - `filtered` - an explicitly requested input was filtered during discovery before file-type
     probing.
-  - `probe_missing` — internal fallback used only if a pipeline result lacks a probe payload.
+  - `probe_missing` - internal fallback used only if a pipeline result lacks a probe payload.
 - `reason`: machine-friendly explanation for the status and selection, for example:
   - `selected_highest_score`
   - `selected_by_tie_break`
@@ -432,7 +431,7 @@ Detail mode corresponds to `summary_mode = false`.
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload */ },
+  "config": { /* RuntimeConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "results": [
     { /* per-file result payload */ }
@@ -455,7 +454,7 @@ Summary mode corresponds to `summary_mode = true`.
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload */ },
+  "config": { /* RuntimeConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "summary": [
     { "outcome": "unchanged", "reason": "up-to-date", "count": 30 },
@@ -473,9 +472,9 @@ Important characteristics:
 
 - The summary is **not nested by outcome**.
 - Each row has three stable fields:
-  - `outcome` — pipeline outcome (e.g. `inserted`, `replaced`, `unchanged`).
-  - `reason` — short lowercase bucket reason used for grouping.
-  - `count` — number of files in that bucket.
+  - `outcome` - pipeline outcome (e.g. `inserted`, `replaced`, `unchanged`).
+  - `reason` - short lowercase bucket reason used for grouping.
+  - `count` - number of files in that bucket.
 - Ordering is deterministic: outcomes follow the internal \[`Outcome`\][topmark.api.types.Outcome]
   ordering and reasons are alphabetically sorted within each outcome.
 
@@ -732,11 +731,11 @@ envelope becomes:
 
 `config_provenance` is an inspection-oriented payload. Each layer contains:
 
-- `origin` — provenance origin label
-- `kind` — resolved config layer kind
-- `precedence` — numeric layer precedence
-- `scope_root` — optional scope root for discovered layers
-- `toml` — the source-local TopMark TOML fragment contributed by that layer
+- `origin` - provenance origin label
+- `kind` - resolved config layer kind
+- `precedence` - numeric layer precedence
+- `scope_root` - optional scope root for discovered layers
+- `toml` - the source-local TopMark TOML fragment contributed by that layer
 
 ### NDJSON shape for [`config dump`](../usage/commands/config/dump.md), [`config defaults`](../usage/commands/config/defaults.md), [`config init`](../usage/commands/config/init.md)
 
@@ -810,7 +809,7 @@ configuration diagnostics, and a `config_check` status payload.
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload */ },
+  "config": { /* RuntimeConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": true,
@@ -825,10 +824,10 @@ configuration diagnostics, and a `config_check` status payload.
 - `config_diagnostics`: full diagnostics payload, including counts and the list of individual config
   diagnostics.
 - `config_check`: command-status payload containing:
-  - `ok` — whether validation succeeded
-  - `strict` — whether strict config-checking mode was enabled
-  - `diagnostic_counts` — counts by diagnostic level
-  - `config_files` — config files that contributed to the resolved config
+  - `ok` - whether validation succeeded
+  - `strict` - whether strict config-checking mode was enabled
+  - `diagnostic_counts` - counts by diagnostic level
+  - `config_files` - config files that contributed to the resolved config
 
 The `strict` field reflects the **effective validation strictness** used for the run. It is derived
 from TOML source configuration (`[config].strict`) and may be overridden by CLI or API inputs. This
@@ -1105,7 +1104,7 @@ ______________________________________________________________________
 
 ## Backwards compatibility and evolution
 
-TopMark’s machine-readable output schema is part of its integration surface. For 1.0, documented
+TopMark's machine-readable output schema is part of its integration surface. For 1.0, documented
 JSON and NDJSON shapes are treated as stable machine-readable contracts.
 
 Consumers should:

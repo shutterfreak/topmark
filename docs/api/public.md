@@ -15,18 +15,17 @@ topmark:header:end
 These pages are generated using [mkdocstrings](https://mkdocstrings.github.io/) from the TopMark
 source code.
 
-The API reference complements the higher‑level usage guides:
+The API reference complements the higher-level usage guides:
 
 - [Installation](../install.md)
-- [Pre‑commit integration](../usage/pre-commit.md)
+- [Pre-commit integration](../usage/pre-commit.md)
 - [Header placement rules](../usage/header-placement.md)
 - [Supported file types](../usage/generated/filetypes.md)
 - [Supported header processors](../usage/generated/processors.md)
 
 Use this section if you need details on functions, classes, or constants available in TopMark.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 {% include-markdown "\_snippets/output-contract.md" %}
 

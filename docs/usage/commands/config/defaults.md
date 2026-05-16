@@ -10,19 +10,20 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `config defaults` Command Guide
+# `topmark config defaults`
 
 **Purpose:** Show the built-in default TopMark TOML document.
 
-The `config defaults` subcommand (part of the TopMark [`config` Command Family](../config.md))
-prints TopMark’s canonical built-in default TOML representation. It uses a cleaned, comment-free
-TOML document generated from the built-in defaults table (no project files are discovered or
-merged).
+The `config defaults` subcommand (part of [`topmark config`](../config.md)) prints TopMark's
+canonical built-in default TOML representation. It uses a cleaned, comment-free TOML document
+generated from the built-in defaults table (no project files are discovered or merged).
 
 Because the output is generated from TopMark's built-in defaults, it reflects only the built-in
 default TOML surface. Source-local TOML sections such as `[config]` and runtime-facing sections such
 as `[writer]` are included when they are part of the canonical defaults, but no project, user, or
 explicitly supplied config files are discovered or merged.
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -37,7 +38,7 @@ ______________________________________________________________________
 ## Quick start
 
 ```bash
-# Show the internal default configuration (TOML)
+# Show the built-in default configuration (TOML)
 topmark config defaults
 
 # Render document-oriented Markdown output
@@ -48,26 +49,26 @@ ______________________________________________________________________
 
 ## Behavior details
 
-- **Isolated**: ignores project/user config files and CLI overrides.
-- **File‑agnostic**: does not resolve or process any PATHS. Positional paths are rejected as invalid
-  CLI usage. STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
-- **Reference**: useful for understanding the canonical built-in defaults, header layout, policy
-  behavior, and TOML/config/runtime split.
+- Isolated: ignores project/user configuration files and CLI overrides.
+- File-agnostic: does not resolve or process any PATHS. Positional paths are rejected as invalid CLI
+  usage. STDIN content mode (`-`) and file-list modes (such as `--files-from -`) do not apply.
+- Reference: useful for understanding the canonical built-in defaults, header layout, runtime policy
+  behavior, and TOML/configuration/runtime separation.
 
-> **How config is resolved**
+> **How configuration is resolved**
 >
-> TopMark merges config from **defaults → user → project chain → `--config` → CLI**. Globs are
+> TopMark merges configuration from defaults → user → project chain → `--config` → CLI. Globs are
 > evaluated relative to the **workspace base** (`relative_to`). Paths to other files (like
 > `exclude_from`) are resolved relative to the **config file** that declared them.
 >
-> See: [`Configuration → Discovery & Precedence`](../../../configuration/discovery.md).
+> See: [Configuration discovery, precedence, and policy](../../../configuration/discovery.md).
 
 ______________________________________________________________________
 
 ## When to use
 
-- To compare your project’s configuration with the baseline shipped by TopMark.
-- To seed your own config manually (you can copy & modify the parts you need).
+- To compare your project's configuration with the baseline shipped by TopMark.
+- To seed your own configuration manually (you can copy and modify the parts you need).
 - To debug why a field or policy is present when you did not set it explicitly.
 
 ______________________________________________________________________
@@ -85,22 +86,22 @@ accept file-processing inputs:
 This ensures the output always reflects only the built-in defaults, independent of any workspace
 state.
 
-No config discovery, project traversal, resolver filtering, or runtime policy overlay evaluation
-occurs for this command.
+No configuration discovery, project traversal, resolution and filtering, or runtime policy overlay
+evaluation occurs for this command.
 
 ______________________________________________________________________
 
 ## Command-specific options
 
 This command is intentionally minimal and usually has no options. See `topmark config defaults -h`
-for any environment‑specific flags that may be available in your build.
+for any environment-specific flags that may be available in your build.
 
 `topmark config defaults` supports content-rendering options such as `--output-format`,
 `--pyproject`, `--root`, color controls, and TEXT verbosity. See `topmark config defaults -h` for
 the complete command help.
 
 Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
-support `--quiet`. Markdown and machine-readable formats ignore TEXT-only verbosity controls.
+support `--quiet`. Markdown and machine-readable formats ignore TEXT-oriented verbosity controls.
 
 ______________________________________________________________________
 
@@ -109,10 +110,10 @@ ______________________________________________________________________
 Output formats:
 
 - `text` / `markdown`: minimal, comment-free TOML. Markdown is document-oriented and ignores
-  TEXT-only verbosity controls.
+  TEXT-oriented verbosity controls.
 - `json` / `ndjson`: a machine-readable config snapshot derived from the canonical built-in defaults
   table, including TOML-authored runtime sections such as `[writer]` when present. No diagnostics
-  are emitted. Machine-readable formats ignore TEXT-only verbosity controls.
+  are emitted. Machine-readable formats ignore TEXT-oriented verbosity controls.
 
 ______________________________________________________________________
 
@@ -122,21 +123,21 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
-Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
-configuration freeze.
+Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+after configuration normalization.
 
 Notes:
 
-- `config defaults` is **file-agnostic** and emits a configuration snapshot derived only from the
+- `config defaults` is file-agnostic and emits a configuration snapshot derived only from the
   canonical built-in defaults table (no discovery and no merge with project/user config).
 - The machine-readable snapshot includes TOML-authored runtime sections such as `[writer]` when they
   are present in the canonical defaults, even though those sections are resolved outside the layered
-  Config model at runtime.
+  configuration model at runtime.
 - No diagnostics are emitted for this command.
 
 ### JSON schema
@@ -191,11 +192,11 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config check`](./check.md) — validate the effective runtime configuration and staged
-  config-loading diagnostics.
-- [`topmark config dump`](./dump.md) — show the effective runtime configuration, including
+- [`topmark config check`](./check.md) - validate the effective runtime configuration and staged
+  configuration-loading diagnostics.
+- [`topmark config dump`](./dump.md) - show the effective runtime configuration, including
   normalized canonical file type identifiers.
-- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+- [`topmark config init`](./init.md) - print the bundled example TopMark TOML template.
 
 ______________________________________________________________________
 
@@ -205,11 +206,12 @@ ______________________________________________________________________
 - [Configuration](../../configuration.md)
 - [Filtering](../../filtering.md)
 - [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../../../configuration/discovery.md)
 - [Configuration schema](../../../dev/configuration-schema.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Exit codes](../../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../../terminology.md)
 
 ______________________________________________________________________
 
@@ -219,4 +221,4 @@ ______________________________________________________________________
   overlay configuration.
 - **Unexpected identifier formatting**: machine-readable output may emit normalized canonical
   qualified identifiers such as `topmark:python`.
-- **Need the real effective config**: use [`topmark config dump`](./dump.md) instead.
+- **Need the real effective runtime configuration**: use [`topmark config dump`](./dump.md) instead.

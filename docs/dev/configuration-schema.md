@@ -12,7 +12,7 @@ topmark:header:end
 
 # Configuration schema summary
 
-This page is a machine-readable summary of TopMark’s external configuration schema as consumed from
+This page is a machine-readable summary of TopMark's external configuration schema as consumed from
 `topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
 
 > [!NOTE]
@@ -82,7 +82,7 @@ This distinction matters for
   `config_provenance.layers[].toml`
 
 For the canonical user-facing discovery, precedence, path-resolution, and staged validation
-contract, see [Configuration: Discovery, Precedence & Policy](../configuration/discovery.md).
+contract, see [Configuration discovery, precedence, and policy](../configuration/discovery.md).
 
 ## Schema validation model
 
@@ -299,7 +299,7 @@ topmark:
 
 At runtime, file type identifiers normalize to canonical qualified keys before:
 
-- resolver filtering
+- resolution and filtering
 - policy lookup
 - processor binding lookup
 - probe evaluation

@@ -13,7 +13,7 @@ topmark:header:end
 # Change Log
 
 All notable changes to this project will be documented in this file. This project adheres to
-[Semantic Versioning](https://semver.org/) and follows a Keep‑a‑Changelog–style structure with the
+[Semantic Versioning](https://semver.org/) and follows a Keep-a-Changelog-style structure with the
 sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
@@ -313,7 +313,7 @@ validation to the normal verification and release gates.
 
 ### Highlights - 1.0.0b2
 
-- Established canonical documentation conventions for TopMark’s 1.0 documentation system
+- Established canonical documentation conventions for TopMark's 1.0 documentation system
 - Harmonized command-page structure across pipeline, config, registry, version, and shared-option
   documentation
 - Improved MkDocs navigation, generated API navigation, sidebar density, and overview-page
@@ -462,7 +462,7 @@ ______________________________________________________________________
 ## [1.0.0b1] - 2026-05-09
 
 This first **1.0 beta release** marks the transition from alpha contract stabilization to beta
-validation for TopMark’s 1.0 release line.
+validation for TopMark's 1.0 release line.
 
 It completes the final documentation consistency, generated-site, CLI/help, alpha-semantics,
 warning/error wording, and machine-readable output freeze review. It also fixes the remaining
@@ -518,10 +518,10 @@ remain deferred.
 - **CLI and documentation terminology was finalized for shared options and machine-readable
   output.**
 
-  - Documentation and help text now consistently prefer “shared options” over the older “global
-    options” wording.
-  - User-facing prose now consistently uses “machine-readable output” / “machine-readable formats”
-    while retaining “machine-output contract/schema” where referring to formal internal contracts.
+  - Documentation and help text now consistently prefer "shared options" over the older "global
+    options" wording.
+  - User-facing prose now consistently uses "machine-readable output" / "machine-readable formats"
+    while retaining "machine-output contract/schema" where referring to formal internal contracts.
   - Downstream tests that assert exact help text or documentation snippets may need updating.
 
 ### Highlights - 1.0.0b1
@@ -625,8 +625,8 @@ remain deferred.
   - Renamed the former global-options usage page to shared-options documentation.
   - Updated CLI overview, command pages, configuration docs, policy docs, developer docs, README,
     source docstrings, and tests for consistent terminology.
-  - Clarified that “machine-readable output” is the preferred user-facing term, while
-    “machine-output contract/schema” remains appropriate for formal schema references.
+  - Clarified that "machine-readable output" is the preferred user-facing term, while
+    "machine-output contract/schema" remains appropriate for formal schema references.
 
 ### Fixed - 1.0.0b1
 
@@ -658,7 +658,7 @@ remain deferred.
 
   - Fixed stale references to built-in layered defaults where the docs now refer to canonical
     built-in default TOML documents.
-  - Fixed stale “global options” wording where the finalized CLI model uses shared options.
+  - Fixed stale "global options" wording where the finalized CLI model uses shared options.
   - Fixed machine-readable terminology drift across command docs, machine-format docs, generated
     API-facing docstrings, and tests.
 
@@ -692,7 +692,7 @@ ______________________________________________________________________
 
 ## [1.0.0a13] - 2026-05-07
 
-This thirteenth **1.0 alpha release** finalizes TopMark’s TOML strictness naming and closes the
+This thirteenth **1.0 alpha release** finalizes TopMark's TOML strictness naming and closes the
 explicit schema-versioning decision for the 1.0 configuration contract.
 
 It renames the alpha-cycle `[config].strict_config_checking` setting to `[config].strict`, updates
@@ -772,7 +772,7 @@ This twelfth **1.0 alpha release** finalizes two remaining pre-1.0 public-bounda
 
 1. the stable public probe API; and
 1. the qualified-vs-local file type identifier semantics used by CLI filters, TOML configuration,
-   API overlays, policy resolution, resolver filtering, diagnostics, and registry-facing APIs.
+   API overlays, policy resolution, resolution and filtering, diagnostics, and registry-facing APIs.
 
 It introduces `topmark.api.probe()` as the stable, read-only public API counterpart to the
 `topmark probe` CLI command. Probe results are exposed through small, frozen DTOs instead of raw
@@ -813,7 +813,7 @@ developer documentation.
 - **Configuration, CLI, API, and machine-output consumers should expect normalized identifiers.**
 
   - File type filters and `policy_by_type` entries supplied as local identifiers may be emitted as
-    canonical qualified identifiers after configuration freeze.
+    canonical qualified identifiers after configuration normalization.
   - Downstream tooling that relied on preserving the exact user-supplied identifier spelling should
     compare canonical keys instead.
 
@@ -856,7 +856,7 @@ developer documentation.
     - `exclude_file_types`
     - `policy_by_type`
     - API overlays
-    - resolver filtering helpers
+    - resolution and filtering helpers
   - Accepted local identifiers such as `python` only when unambiguous in the effective file type
     registry.
   - Added deterministic handling for ambiguous, unknown, and malformed file type identifiers.
@@ -1059,7 +1059,7 @@ ______________________________________________________________________
 
 ## [1.0.0a11] - 2026-05-04
 
-This eleventh **1.0 alpha release** finalizes TopMark’s **CLI command-applicability contract**,
+This eleventh **1.0 alpha release** finalizes TopMark's **CLI command-applicability contract**,
 STDIN handling rules, and user-facing policy/report semantics for 1.0.
 
 It tightens option scoping across `check`, `strip`, `probe`, `config`, `registry`, and `version`,
@@ -1114,7 +1114,7 @@ milestones from earlier alphas.
   - accepted for compatibility only
   - listed paths do not affect dumped configuration
 - Unified wording across CLI, docs, and tests for:
-  - “rejected” vs “ignored” behavior
+  - "rejected" vs "ignored" behavior
   - report-scope semantics
 - Improved robustness of CLI help tests by normalizing whitespace to account for Click wrapping
 
@@ -1149,7 +1149,7 @@ ______________________________________________________________________
 
 ## [1.0.0a10] - 2026-05-04
 
-This tenth **1.0 alpha release** finalizes TopMark’s **CLI exit-code contract**, tightens the
+This tenth **1.0 alpha release** finalizes TopMark's **CLI exit-code contract**, tightens the
 `--quiet` / verbosity surface, and completes the file-resolution diagnostics model for 1.0.
 
 It introduces structured file-list resolution with explicit diagnostics, preserves missing inputs
@@ -1182,8 +1182,8 @@ explainability milestones from earlier alphas.
 
 - **CLI behavior for missing inputs**
 
-  - Explicit missing input paths are no longer silently ignored or collapsed into “no files to
-    process”.
+  - Explicit missing input paths are no longer silently ignored or collapsed into "no files to
+    process".
   - Missing inputs are now reported as per-file errors in:
     - TEXT output
     - Markdown output
@@ -1282,13 +1282,13 @@ explainability milestones from earlier alphas.
   - `check`, `strip`, and `probe` now:
     - propagate resolver diagnostics end-to-end
     - report missing inputs explicitly
-    - no longer short-circuit on “no files to process” when inputs are invalid
+    - no longer short-circuit on "no files to process" when inputs are invalid
   - Total file counts now include synthetic resolver-level results
 
 - **Pipeline / outcome classification**
 
   - Updated `map_bucket()` to prioritize filesystem failures before resolution state
-  - Prevented synthetic contexts from being classified as “resolve pending”
+  - Prevented synthetic contexts from being classified as "resolve pending"
   - Ensured missing inputs are consistently classified as errors
 
 - **Probe semantics**
@@ -1375,7 +1375,7 @@ ______________________________________________________________________
 
 ## [1.0.0a9] - 2026-04-28
 
-This ninth **1.0 alpha release** finalizes TopMark’s **line-ending support contract** for 1.0.
+This ninth **1.0 alpha release** finalizes TopMark's **line-ending support contract** for 1.0.
 
 It audits and freezes how the pipeline detects, preserves, and rejects newline styles, clarifying
 that TopMark supports only standard physical newline sequences while tolerating nonstandard Unicode
@@ -1446,7 +1446,7 @@ separators as ordinary content characters.
 
 ### Notes - 1.0.0a9
 
-- TopMark’s supported physical newline styles for 1.0 are:
+- TopMark's supported physical newline styles for 1.0 are:
   - LF (`\n`)
   - CRLF (`\r\n`)
   - CR (`\r`)
@@ -1650,8 +1650,8 @@ TEXT, Markdown, JSON, and NDJSON output.
 - **Probe explainability gap**
 
   - Explicit inputs filtered before file-type probing are no longer reported as simply missing or as
-    “no files to process”.
-  - Users can now distinguish “unsupported file type” from “filtered before probing”.
+    "no files to process".
+  - Users can now distinguish "unsupported file type" from "filtered before probing".
 
 - **Presentation coupling**
 
@@ -2009,7 +2009,7 @@ dependency drift.
 
 - This release continues the cleanup of **implicit runtime dependencies** discovered during alpha
   testing.
-- TopMark’s dependency model is now more explicit, reproducible, and better guarded against future
+- TopMark's dependency model is now more explicit, reproducible, and better guarded against future
   drift through dependency-audit configuration.
 - Remaining work before 1.0 focuses on **CLI / human-output consistency and final contract freeze**.
 
@@ -2547,7 +2547,7 @@ automation**. There are **no user-facing or runtime behavior changes** relative 
 
 ### Notes - 0.11.1
 
-- This release **does not change TopMark’s runtime behavior, public API, or CLI output**.
+- This release **does not change TopMark's runtime behavior, public API, or CLI output**.
 - The migration affects **developers and CI only**.
 - Existing users upgrading from 0.11.0 require no action.
 
@@ -2632,7 +2632,7 @@ TopMark internals.
 
 - **CLI guidance correctness**
   - Made `check` and `strip` per-file guidance policy-aware and feasibility-aware.
-  - Prevented misleading “run --apply …” suggestions when policy or feasibility blocks changes,
+  - Prevented misleading "run --apply ..." suggestions when policy or feasibility blocks changes,
     especially for empty files and strip-only scenarios.
 
 ### Internal - 0.11.0
@@ -2727,7 +2727,7 @@ substantial internal cleanup, dependency updates, and correctness fixes.
 - **Legacy CLI Commands:**
 
   - Several deprecated commands were **removed entirely**:
-    - Old compatibility shims for `topmark header …`
+    - Old compatibility shims for `topmark header ...`
     - Legacy updater/stripper debug modes.
   - These commands now fail fast with a clear error.
 
@@ -2801,7 +2801,7 @@ substantial internal cleanup, dependency updates, and correctness fixes.
 - Accurate indentation handling for Markdown/HTML/XML processors.
 - Numerous header bound edge cases (multi-header, malformed, block comment variants).
 - Writer stability in dry-run and apply modes.
-- Accurate tracking of “would change” vs “changed” under mixed policy conditions.
+- Accurate tracking of "would change" vs "changed" under mixed policy conditions.
 - Corrected normalization for multi-line headers with mixed whitespace.
 - Better FileType detection for HTML/Markdown block-comments.
 
@@ -2817,12 +2817,12 @@ ______________________________________________________________________
 
 ### Highlights - 0.9.1
 
-- **Python 3.14 support (prerelease)** — test matrix, classifiers, and tooling updated for
-  3.10–3.14.
-- **Tox-first developer workflow** — Makefile simplified to delegate heavy lifting to tox;
+- **Python 3.14 support (prerelease)** - test matrix, classifiers, and tooling updated for
+  3.10-3.14.
+- **Tox-first developer workflow** - Makefile simplified to delegate heavy lifting to tox;
   consistent local/CI behavior.
-- **Property-based hardening** — Hypothesis harness added for idempotence and edge-case discovery.
-- **Robust idempotence & XML/HTML guardrails** — Safer insertion rules and whitespace/newline
+- **Property-based hardening** - Hypothesis harness added for idempotence and edge-case discovery.
+- **Robust idempotence & XML/HTML guardrails** - Safer insertion rules and whitespace/newline
   preservation.
 
 ### Added - 0.9.1
@@ -2867,7 +2867,7 @@ ______________________________________________________________________
 
 - **CI (`ci.yml`)**
   - **Tox-first** for lint (`format-check`, `lint`, `docstring-links`), docs (`docs`), tests
-    (`py310…py314`), and API snapshot (`py313-api`).
+    (`py310...py314`), and API snapshot (`py313-api`).
   - Add caching for **pip** and **.tox** across jobs; add `actions/checkout@v4` before cache
     globbing.
   - New **pre-commit** job; skip heavy/duplicated hooks in that job (`lychee-*`, `pyright`,
@@ -2881,7 +2881,7 @@ ______________________________________________________________________
 
 ### Notes - 0.9.1
 
-- We’ve moved from pure **venv** workflows (`.venv`, `.rtd`) to a **tox-based** model.
+- We've moved from pure **venv** workflows (`.venv`, `.rtd`) to a **tox-based** model.
   - Please **delete** any old `.venv` and `.rtd` directories.
 
   - If you want IDE/Pyright import resolution, recreate only the **optional** editor venv:
@@ -2903,13 +2903,13 @@ predictably across CLI, API, and generated docs.
 
 ### Highlights - 0.9.0
 
-- **Configuration resolution finalized** — TopMark now fully supports layered config discovery with
+- **Configuration resolution finalized** - TopMark now fully supports layered config discovery with
   deterministic merge precedence, explicit anchor semantics, and path-aware pattern resolution.
-- **Docs & MkDocs rebuild** — Documentation migrated to a snippet-driven architecture with reusable
+- **Docs & MkDocs rebuild** - Documentation migrated to a snippet-driven architecture with reusable
   callouts, dynamic version injection, and a modernized MkDocs toolchain.
-- **CLI alignment fix** — The `--align-fields` flag is now tri-state, preserving `pyproject.toml`
+- **CLI alignment fix** - The `--align-fields` flag is now tri-state, preserving `pyproject.toml`
   defaults when the flag is omitted.
-- **Public API parity** — The Python API now mirrors CLI behavior, respecting discovery, precedence,
+- **Public API parity** - The Python API now mirrors CLI behavior, respecting discovery, precedence,
   and formatting options such as `align_fields`.
 - **Note:** Config discovery and precedence are now finalized; projects that relied on implicit or
   CWD-only behavior may see changes in which configuration takes effect.\
@@ -2937,7 +2937,7 @@ predictably across CLI, API, and generated docs.
   - Introduced snippet-based reusable callouts (`> [!NOTE]`) rendered through a custom **simple
     hook**.
   - Added `docs/hooks.py` to convert callouts and inject `%%TOPMARK_VERSION%%` dynamically.
-  - Added `docs/_snippets/config-resolution.md` for consistent “How config is resolved” sections.
+  - Added `docs/_snippets/config-resolution.md` for consistent "How config is resolved" sections.
   - Automated generation of API reference pages for `topmark.api` and `topmark.registry`.
   - Updated `mkdocs.yml` plugin chain (include-markdown, simple-hooks, md_in_html, gen-files).
   - Added dynamic version display in docs (via `pre_build` hook).
@@ -2945,9 +2945,9 @@ predictably across CLI, API, and generated docs.
 ### Changed - 0.9.0
 
 - **CLI**
-  - `--align-fields` is now **tri-state** (`True`, `False`, `None`)—when omitted, TOML defaults are
+  - `--align-fields` is now **tri-state** (`True`, `False`, `None`)-when omitted, TOML defaults are
     respected.
-  - `topmark dump-config` and all CLI flows now reflect the effective merged configuration.
+  - `topmark dump-config` and all CLI flows now reflect the effective runtime configuration.
 - **Processor pipeline**
   - Field alignment respects `config.align_fields`.
   - Improved XML and JSON insertion gate logic to prevent unsafe mutations.
@@ -2964,16 +2964,16 @@ predictably across CLI, API, and generated docs.
 
 ### Fixed - 0.9.0
 
-- **Config precedence bug** — Same-directory order (`pyproject.toml` before `topmark.toml`) was
+- **Config precedence bug** - Same-directory order (`pyproject.toml` before `topmark.toml`) was
   previously inverted; now fixed via per-directory grouping.
-- **CLI override bug** — `--align-fields` no longer forces `false` when omitted; correctly inherits
+- **CLI override bug** - `--align-fields` no longer forces `false` when omitted; correctly inherits
   TOML default.
-- **Header alignment** — Processors no longer align fields when `align_fields = false`.
-- **Docs build** — Resolved missing MkDocs plugin errors in CI (`include-markdown` and
+- **Header alignment** - Processors no longer align fields when `align_fields = false`.
+- **Docs build** - Resolved missing MkDocs plugin errors in CI (`include-markdown` and
   `simple-hooks`).
-- **Lychee false positives** — Updated snippet links and exclusion list to prevent link-checker
+- **Lychee false positives** - Updated snippet links and exclusion list to prevent link-checker
   failures.
-- **Version token substitution** — The documentation now correctly substitutes `%%TOPMARK_VERSION%%`
+- **Version token substitution** - The documentation now correctly substitutes `%%TOPMARK_VERSION%%`
   via pre-build hook.
 
 ### Documentation - 0.9.0
@@ -3003,8 +3003,8 @@ ______________________________________________________________________
 
 ### Highlights - 0.8.1
 
-- **XML re-apply fix**: prevent double-wrapped `<!-- … -->` blocks by anchoring bounds via character
-  offset for XML/HTML processors.
+- **XML re-apply fix**: prevent double-wrapped `<!-- ... -->` blocks by anchoring bounds via
+  character offset for XML/HTML processors.
 
 ### Added - 0.8.1
 
@@ -3032,7 +3032,7 @@ ______________________________________________________________________
 
 ### Internal - 0.8.1
 
-- **New CI job**: “Dev validation” runs only tests marked `dev_validation` with
+- **New CI job**: "Dev validation" runs only tests marked `dev_validation` with
   `TOPMARK_VALIDATE=1`.
 - **Pre-commit**: bump `ruff-pre-commit` to `v0.13.2`.
 
@@ -3050,8 +3050,8 @@ ______________________________________________________________________
 ### Added - 0.8.0
 
 - **Processors**
-  - `CBlockHeaderProcessor` (C-style `/* … */` with per-line `*`) including tolerant directive
-    detection (accepts `* topmark:…` or bare `topmark:…`).
+  - `CBlockHeaderProcessor` (C-style `/* ... */` with per-line `*`) including tolerant directive
+    detection (accepts `* topmark:...` or bare `topmark:...`).
   - File type registrations: `css`, `scss`, `less`, `stylus`, `sql`, `solidity`.
 - **File types**
   - `python-stub` (`.pyi`) bound to `PoundHeaderProcessor` (shebang disabled; ensure blank after
@@ -3081,7 +3081,7 @@ ______________________________________________________________________
 
 ### Documentation - 0.8.0
 
-- **README.md**: mention block (`/* … */`) alongside line (`#`, `//`) comment styles; add a CSS
+- **README.md**: mention block (`/* ... */`) alongside line (`#`, `//`) comment styles; add a CSS
   example.
 - **docs/usage/filetypes.md**: expand processor table with modules and registered file types; add
   `CBlockHeaderProcessor`.
@@ -3104,7 +3104,7 @@ ______________________________________________________________________
 
 ### Added - 0.7.0
 
-- **CLI – `version` command**
+- **CLI - `version` command**
   - `--semver` option to render a **SemVer** view while keeping **PEP 440** as the default.
   - `--format json|markdown|pep440|semver` with standardized outputs.
   - `topmark.utils.version.pep440_to_semver()` with graceful fallback.
@@ -3113,7 +3113,7 @@ ______________________________________________________________________
 
 ### Changed - 0.7.0
 
-- **CLI output (breaking schemas; see “Breaking” below)**
+- **CLI output (breaking schemas; see "Breaking" below)**
   - **JSON** schema is now:
 
     ```json
@@ -3158,7 +3158,7 @@ ______________________________________________________________________
 
 ### Removed - 0.7.0
 
-- Duplicate “Build docs (strict)” step from the `lint` job.
+- Duplicate "Build docs (strict)" step from the `lint` job.
 - Stray `topmark.toml` at repo root.
 
 ### Internal - 0.7.0
@@ -3215,20 +3215,20 @@ ______________________________________________________________________
 ### Changed - 0.6.1
 
 - **MkDocs build**: enable `strict: true` and link validation to fail on broken internal links.
-- **Docstrings/x‑refs**: convert internal references to mkdocstrings+autorefs style (e.g.,
-  `` [`pkg.mod.Object`][] `` or `[Text][pkg.mod.Object]`) and prefer fully‑qualified names.
-- **Docs structure**: normalize mkdocstrings blocks (minor tidy‑ups).
+- **Docstrings/x-refs**: convert internal references to mkdocstrings+autorefs style (e.g.,
+  `` [`pkg.mod.Object`][] `` or `[Text][pkg.mod.Object]`) and prefer fully-qualified names.
+- **Docs structure**: normalize mkdocstrings blocks (minor tidy-ups).
 
 ### Fixed - 0.6.1
 
-- **README**: correct the “Adding & updating headers with topmark” link to
+- **README**: correct the "Adding & updating headers with topmark" link to
   `docs/usage/commands/check.md`.
 
 ### Internal - 0.6.1
 
-- **Lychee integration**: adopt Lychee for link checks (local + CI); scoped pre‑commit hooks.
+- **Lychee integration**: adopt Lychee for link checks (local + CI); scoped pre-commit hooks.
 - **Testing**: raise `pytest` minimum to `>=8.0` in the `test` optional dependencies.
-- **Refactors**: minor non‑functional cleanups (rename local import alias in filetype registry;
+- **Refactors**: minor non-functional cleanups (rename local import alias in filetype registry;
   small typing improvements).
 
 ______________________________________________________________________
@@ -3269,14 +3269,14 @@ ______________________________________________________________________
 
 ### Fixed - 0.6.0
 
-- CLI and pipeline now reflect header order deterministically (no “up-to-date” false negatives when
+- CLI and pipeline now reflect header order deterministically (no "up-to-date" false negatives when
   order differed). (Commit: `d778ace`)
 - Type-checking and lint issues (casts, variable redefinitions, analyzer false positives) resolved
   in CLI helpers and resolver paths. (Commits: `d778ace`, `adc35f9`)
 
 ### Documentation - 0.6.0
 
-- Add **“Configuration via mappings (immutable at runtime)”** section to the public API docs and
+- Add **"Configuration via mappings (immutable at runtime)"** section to the public API docs and
   mirror a concise note in the `topmark.api` module docstring. (Commit: `d778ace`)
 - Normalize docstrings across the codebase; remove Sphinx roles in favor of Markdown-friendly
   mkdocstrings. (Commit: `f649731`)
@@ -3301,15 +3301,15 @@ ______________________________________________________________________
 
 ### Fixed - 0.5.1
 
-- **Python 3.10/3.11 compatibility**: replace multiline f‑strings in CLI output code paths (not
+- **Python 3.10/3.11 compatibility**: replace multiline f-strings in CLI output code paths (not
   supported before Python 3.12) with concatenation/temporary variables. Affected commands:
   - `filetypes`: numbered list rendering and detail lines (description/content matcher)
-  - `processors`: processor header lines and per‑filetype detail lines
+  - `processors`: processor header lines and per-filetype detail lines
 
 ### Internal - 0.5.1
 
 - Bump project version to `0.5.1` in `pyproject.toml`.
-- Update local pre‑commit hook to use TopMark **v0.5.0**.
+- Update local pre-commit hook to use TopMark **v0.5.0**.
 
 ______________________________________________________________________
 
@@ -3318,36 +3318,36 @@ ______________________________________________________________________
 ### Added - 0.5.0
 
 - **Honest write statuses** across the pipeline:
-  - Dry‑run ⇒ `WriteStatus.PREVIEWED`
+  - Dry-run ⇒ `WriteStatus.PREVIEWED`
   - Apply (`--apply`) ⇒ terminal statuses (`INSERTED`, `REPLACED`, `REMOVED`)
-- **Apply intent plumbing** end‑to‑end:
-  - `Config.apply_changes` (tri‑state) consumed via `apply_cli_args()` and respected in updater
+- **Apply intent plumbing** end-to-end:
+  - `Config.apply_changes` (tri-state) consumed via `apply_cli_args()` and respected in updater
   - CLI and public API forward **apply** to the pipeline
 
 ### Changed - 0.5.0
 
 - **CLI & console output**
-  - Decoupled program‑output verbosity from internal logging; all user output routed through
+  - Decoupled program-output verbosity from internal logging; all user output routed through
     `ConsoleLike`
   - Banners/extra guidance are gated by verbosity (quiet by default; add `-v` for more detail)
-  - `filetypes` and `processors` now render numbered lists with right‑aligned indices
+  - `filetypes` and `processors` now render numbered lists with right-aligned indices
   - `dump-config` / `init-config`: emit **plain TOML** by default; BEGIN/END markers appear at
     higher verbosity
 - **Public API (behavioral)**
-  - Apply vs preview now consistently reflected in per‑file results (`PREVIEWED` vs terminal write
+  - Apply vs preview now consistently reflected in per-file results (`PREVIEWED` vs terminal write
     statuses)
 
 ### Fixed - 0.5.0
 
-- **Pre‑commit hooks**: remove redundant `--quiet` (default output is already terse) and fix its
+- **Pre-commit hooks**: remove redundant `--quiet` (default output is already terse) and fix its
   placement.
 
 ### Documentation - 0.5.0
 
 - Refresh CLI docs:
-  - Explicit subcommands in examples; stdin examples use `topmark check - …`
-  - Clarify dry‑run vs apply summary text (`- previewed` vs `- inserted`/`- replaced`/`- removed`)
-  - Add “Numbered output & verbosity” notes to `filetypes` / `processors`
+  - Explicit subcommands in examples; stdin examples use `topmark check - ...`
+  - Clarify dry-run vs apply summary text (`- previewed` vs `- inserted`/`- replaced`/`- removed`)
+  - Add "Numbered output & verbosity" notes to `filetypes` / `processors`
   - Add `version` command page; tidy headings and separators
 
 > [!CAUTION] **Breaking changes**
@@ -3357,10 +3357,10 @@ ______________________________________________________________________
 
 ### Breaking Changes - 0.5.0
 
-- Dry‑run summaries now end with **`- previewed`** instead of terminal verbs.\
+- Dry-run summaries now end with **`- previewed`** instead of terminal verbs.\
   Update any scripts/tests parsing human summaries that previously matched `- inserted` /
-  `- removed` / `- replaced` during dry‑run.
-- Human‑readable CLI output may differ (verbosity‑gated banners and numbered lists).
+  `- removed` / `- replaced` during dry-run.
+- Human-readable CLI output may differ (verbosity-gated banners and numbered lists).
 
 ______________________________________________________________________
 
@@ -3421,7 +3421,7 @@ ______________________________________________________________________
 ### Fixed - 0.3.2
 
 - **Pre-commit hooks**: update TopMark hooks to use the explicit `check` subcommand
-  (`topmark check …`) instead of the removed implicit default command. This restores correct
+  (`topmark check ...`) instead of the removed implicit default command. This restores correct
   behavior for `topmark-check` and `topmark-apply` hooks.
 
 ### Documentation - 0.3.2
@@ -3439,11 +3439,11 @@ ______________________________________________________________________
 
 ### Fixed - 0.3.1
 
-- **Snapshot tests**: stabilize public API snapshot across Python 3.10–3.13 by normalizing
+- **Snapshot tests**: stabilize public API snapshot across Python 3.10-3.13 by normalizing
   constructor signatures in tests (`<enum>` for Enum subclasses, `<class>` for other classes) while
   retaining real signatures for callables. Updated baseline `tests/api/public_api_snapshot.json`
   accordingly and refreshed the REPL snippet in the test docstring to generate a
-  cross‑version‑stable snapshot.
+  cross-version-stable snapshot.
 
 ______________________________________________________________________
 
@@ -3456,19 +3456,19 @@ ______________________________________________________________________
   - Result/metadata types: `Outcome`, `FileResult`, `RunResult`, `FileTypeInfo`, `ProcessorInfo`,
     `WritePolicy`.
   - Structural protocols for plugins: `PublicFileType`, `PublicHeaderProcessor`.
-  - `Registry` facade for read‑only discovery of file types, processors, and bindings.
+  - `Registry` facade for read-only discovery of file types, processors, and bindings.
   - Public API tests and snapshot (`tests/api/public_api_snapshot.json`) to guard semver stability.
     (Commits: `9ddd18e`, `ca5e3d7`)
 - **Docs overhaul** for API & internals:
   - New `docs/api/public.md` (stable public API) and `docs/api/internals.md` (internals landing).
-  - New `docs/gen_api_pages.py` generator for per‑module internals with **breadcrumbs** and
-    **first‑line summaries**; mkdocs wiring via `mkdocs-gen-files` & `autorefs`.
-  - Local typing stub `typings/mkdocs_gen_files/__init__.pyi` so dev envs don’t need the plugin.
+  - New `docs/gen_api_pages.py` generator for per-module internals with **breadcrumbs** and
+    **first-line summaries**; mkdocs wiring via `mkdocs-gen-files` & `autorefs`.
+  - Local typing stub `typings/mkdocs_gen_files/__init__.pyi` so dev envs don't need the plugin.
   - Stability policy & semver guardrails added to CONTRIBUTING. (Commits: `bf67c9e`, `41e2543`)
-- **CLI improvement**: re‑export `cli` at `topmark.cli` for `from topmark.cli import cli`. (Commit:
+- **CLI improvement**: re-export `cli` at `topmark.cli` for `from topmark.cli import cli`. (Commit:
   `cb7437f`)
 - **New `processors` command** to list registered header processors and their file types (with
-  `--long` and `--format default|json|ndjson|markdown`). Shared Click‑free `markdown_table` helper
+  `--long` and `--format default|json|ndjson|markdown`). Shared Click-free `markdown_table` helper
   for Markdown output. (Commits: `8742a46`, `ab346ed`)
 
 ### Changed - 0.3.0
@@ -3477,12 +3477,12 @@ ______________________________________________________________________
   `typed_*` helpers to native Click decorators. Includes: `check`, `strip`, `dump-config`,
   `filetypes`, `init-config`, `show-defaults`, `version`; shared plumbing; standardized exit policy
   & summaries. (Commit: `58476b9`)
-- **Config layer** now accepts `ArgsLike` mapping (CLI‑free) and no longer requires a Click
+- **Config layer** now accepts `ArgsLike` mapping (CLI-free) and no longer requires a Click
   namespace in public API entry points. (Commit: `9ddd18e`)
-- **Docs**: split monolithic API page, add generator‑based internals, and fix breadcrumb/link
-  regressions; align pre‑commit and mdformat settings with new docs layout. (Commits: `bf67c9e`,
+- **Docs**: split monolithic API page, add generator-based internals, and fix breadcrumb/link
+  regressions; align pre-commit and mdformat settings with new docs layout. (Commits: `bf67c9e`,
   `41e2543`)
-- **Output formatting**: use Click’s built‑in styling; unify Markdown views for `filetypes` &
+- **Output formatting**: use Click's built-in styling; unify Markdown views for `filetypes` &
   `processors`. (Commits: `cf5b789`, `8742a46`)
 - **Tooling**: bump pre-commit hooks (ruff v0.12.12, pyright v1.1.405); set project version to
   `0.3.0` in `pyproject.toml` and `CONTRIBUTING.md`.
@@ -3495,8 +3495,8 @@ ______________________________________________________________________
 ### Breaking Changes - 0.3.0
 
 - The public API surface is explicitly defined from this release forward and will follow semver.
-  Low‑level registries and internals remain **unstable**.
-- Implicit default CLI command removed (`topmark --…` → use `topmark check --…`). (Commit:
+  Low-level registries and internals remain **unstable**.
+- Implicit default CLI command removed (`topmark --...` → use `topmark check --...`). (Commit:
   `58476b9`)
 - Legacy `typed_*` Click helpers removed. (Commit: `58476b9`)
 
@@ -3513,22 +3513,22 @@ ______________________________________________________________________
 
 ### Added - 0.2.1
 
-- BOM‑aware pipeline behavior: detect BOM in reader and re‑attach in updater on all write paths.\
+- BOM-aware pipeline behavior: detect BOM in reader and re-attach in updater on all write paths.\
   (Commit: `27ad903`)
 - Newline detection utility centralised; tests and docs expanded accordingly.\
   (Commit: `27ad903`)
 
 ### Changed - 0.2.1
 
-- Comparer/renderer/updater flow consolidated; recognize formatting‑only drift as change; clarify
+- Comparer/renderer/updater flow consolidated; recognize formatting-only drift as change; clarify
   responsibilities via richer docstrings.\
   (Commit: `10bbf72`)
-- CLI summary bucket precedence stabilized (e.g., “up‑to‑date”).\
+- CLI summary bucket precedence stabilized (e.g., "up-to-date").\
   (Commit: `10bbf72`)
 
 ### Fixed - 0.2.1
 
-- Strip fast‑path and BOM/newline preservation edge cases via new test coverage (matrix tests,
+- Strip fast-path and BOM/newline preservation edge cases via new test coverage (matrix tests,
   inclusive spans).\
   (Commits: `7d8dbb8`, `10bbf72`)
 
@@ -3538,9 +3538,9 @@ ______________________________________________________________________
 
 ### Added - 0.2.0
 
-- New `strip` command to remove TopMark headers (supports dry‑run/apply/summary).\
+- New `strip` command to remove TopMark headers (supports dry-run/apply/summary).\
   (Commits: `c6b9df3`, `8b028d2`)
-- Pre‑commit integration docs and hooks; GitHub Actions workflow for PyPI releases.\
+- Pre-commit integration docs and hooks; GitHub Actions workflow for PyPI releases.\
   (Commit: `050445a`)
 
 ### Changed - 0.2.0
@@ -3567,7 +3567,7 @@ ______________________________________________________________________
 
 ### Changed - 0.1.1
 
-- Documentation passes and configuration updates (pre‑commit, pyproject, mkdocs).\
+- Documentation passes and configuration updates (pre-commit, pyproject, mkdocs).\
   (Commits: `399ea49`, `204a617`)
 
 ### Fixed - 0.1.1

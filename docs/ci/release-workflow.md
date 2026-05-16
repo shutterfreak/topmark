@@ -19,8 +19,7 @@ completed CI workflow run, verifies that the CI run corresponds to exactly one r
 downloads CI-built artifacts, publishes those artifacts to PyPI or TestPyPI, and creates the
 corresponding GitHub Release or prerelease.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Purpose
 

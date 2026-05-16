@@ -15,8 +15,7 @@ topmark:header:end
 This page documents TopMark's maintainer release process, versioning model, release workflow, and
 post-publication validation expectations.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 TopMark releases are Git-tag-driven and published through GitHub Actions. The release pipeline is
 intentionally split between source-tree validation, artifact creation, privileged publishing, and
@@ -306,22 +305,22 @@ ______________________________________________________________________
 
 ## Related pages
 
-- [CI & Validation](../ci/index.md) — overview of the CI documentation family
+- [CI & Validation](../ci/index.md) - overview of the CI documentation family
 - [Terminology and Canonical Vocabulary](../terminology.md)
 - GitHub workflows:
-  - [CI workflow](../ci/ci-workflow.md) — source-tree validation and release artifact creation
-  - [Release workflow](../ci/release-workflow.md) — artifact-only package publication
-  - [Published artifact validation workflow](../ci/published-artifact-validation.md) — package-index
+  - [CI workflow](../ci/ci-workflow.md) - source-tree validation and release artifact creation
+  - [Release workflow](../ci/release-workflow.md) - artifact-only package publication
+  - [Published artifact validation workflow](../ci/published-artifact-validation.md) - package-index
     install validation
-  - [Dependabot workflow](../ci/dependabot.md) — dependency and GitHub Actions update policy
-  - [GitHub Action pin audit](../ci/action-pin-audit.md) — action pin consistency audit
-- [Contributing](../contributing.md) — hosted contributor guide
+  - [Dependabot workflow](../ci/dependabot.md) - dependency and GitHub Actions update policy
+  - [GitHub Action pin audit](../ci/action-pin-audit.md) - action pin consistency audit
+- [Contributing](../contributing.md) - hosted contributor guide
 
 ______________________________________________________________________
 
 ## Summary
 
-TopMark’s release model separates:
+TopMark's release model separates:
 
 - source-tree validation;
 - release artifact creation;
@@ -331,5 +330,5 @@ TopMark’s release model separates:
 Git tags are the canonical source of truth for package versions, while CI-built artifacts are the
 only artifacts eligible for publication.
 
-This separation keeps release behavior deterministic, auditable, and aligned with TopMark’s stable
+This separation keeps release behavior deterministic, auditable, and aligned with TopMark's stable
 1.x compatibility model.

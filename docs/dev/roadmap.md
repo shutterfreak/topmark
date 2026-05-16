@@ -15,7 +15,7 @@ topmark:header:end
 ## Motivation / Why this matters
 
 TopMark increasingly operates on data that is not naturally file-backed: generated code, editor
-buffers, CI-provided snippets, or API-driven integrations. Today, almost all of TopMark’s processing
+buffers, CI-provided snippets, or API-driven integrations. Today, almost all of TopMark's processing
 pipeline assumes filesystem I/O, which makes testing heavier, limits reuse, and complicates future
 integrations.
 
@@ -107,7 +107,7 @@ Key improvements:
   pipeline presentation surfaces.
 - Aligned command help text, epilogs, and developer docstrings across CLI entry-point, command
   groups and commands.
-- Replaced lingering “global options” wording with the finalized shared-options terminology.
+- Replaced lingering "global options" wording with the finalized shared-options terminology.
 - Documented the public spelling contract for CLI option names, CLI value aliases, and canonical
   TOML/API/machine-readable values.
 - Completed a final help/epilog reflow and wording pass for command groups and subcommands.
@@ -363,7 +363,7 @@ At this point:
 - The public probe API is now aligned with the CLI probe command while preserving the
   public/internal boundary around resolver internals
 - Qualified-vs-local file type identifier semantics are now frozen, implemented, tested, and
-  documented across CLI, TOML configuration, API overlays, resolver filtering, policy lookup,
+  documented across CLI, TOML configuration, API overlays, resolution and filtering, policy lookup,
   registry-facing APIs, diagnostics, and machine output
 - Final documentation, generated-site, CLI/help, warning/error wording, beta-semantics, and
   machine-readable output terminology reviews have been completed through the `v1.0.0b3`
@@ -444,7 +444,7 @@ consumers must update to the canonical identity and explicit binding model.
 - `policy_by_type`, `include_file_types`, and `exclude_file_types` now share the same identifier
   contract: qualified identifiers are accepted explicitly, and local identifiers are accepted only
   when unambiguous.
-- Config merge semantics are no longer uniformly “last-wins”:
+- Config merge semantics are no longer uniformly "last-wins":
   - some fields accumulate
   - some fields merge key-wise
   - effective config is now resolved per path rather than as a single flat snapshot
@@ -818,7 +818,7 @@ Remaining follow-up:
 The main user-facing policy and behavior questions are frozen for 1.0. Remaining work is monitoring
 real-world beta feedback and keeping documentation aligned:
 
-- The default processing mode remains **“all supported file types”** for 1.0.
+- The default processing mode remains **"all supported file types"** for 1.0.
 - A stricter whitelist-first default remains a possible post-1.0 design question, not a 1.0 blocker.
 - Public API callers continue using stable string literals for policy tokens in 1.0; a dedicated
   public enum may be revisited later.
@@ -946,7 +946,7 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] pure informational content-producing commands (`version`, `config defaults`, `config init`,
     and registry commands) intentionally do not support `--quiet`
   - [x] final user-facing documentation reviewed and aligned
-- [x] Decision made on hint-ordering / “primary hint” semantics for 1.0
+- [x] Decision made on hint-ordering / "primary hint" semantics for 1.0
   - headline hint selection is based on severity prioritization
   - exact ordering and wording are not part of the stable contract
 - [x] Documentation wording, command-page structure, cross-reference labels, and generated-site
@@ -1267,7 +1267,7 @@ beta feedback identifies a release blocker.
 
 - [ ] Further Markdown layout evolution (tables, grouped sections, richer structures) within the
   document-oriented output contract
-- [ ] Generalize or refine the “primary hint” concept
+- [ ] Generalize or refine the "primary hint" concept
 - [ ] Evaluate Rich / `rich-click` migration and broader theme/style configurability once 1.0 is
   released
 
@@ -1287,7 +1287,7 @@ beta feedback identifies a release blocker.
 
 ______________________________________________________________________
 
-Only when all items in the “Must finish before 1.0” section are completed or explicitly deferred
+Only when all items in the "Must finish before 1.0" section are completed or explicitly deferred
 with rationale should `1.0.0` final be cut. The 1.0 alpha series served as the
 contract-stabilization and release-path rehearsal phase, while the beta stabilization series through
 `v1.0.0b3` validated the frozen contracts, release pipeline, and cross-platform installation

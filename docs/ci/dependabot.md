@@ -17,8 +17,7 @@ This page documents `.github/dependabot.yml`.
 TopMark uses Dependabot to keep GitHub Actions and Python dependencies current while preserving
 reproducibility, reviewability, and supply-chain safety.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Purpose
 

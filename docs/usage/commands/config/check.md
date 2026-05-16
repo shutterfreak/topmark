@@ -10,16 +10,18 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `config check` Command Guide
+# `topmark config check`
 
-**Purpose:** Validate the effective merged configuration and report configuration diagnostics.
+**Purpose:** Validate the effective runtime configuration and report configuration diagnostics.
 
-The `config check` subcommand (part of the TopMark [`config` Command Family](../config.md))
-validates the **effective merged configuration** and reports any configuration diagnostics.
+The `config check` subcommand (part of [`topmark config`](../config.md)) validates the effective
+runtime configuration and reports any configuration diagnostics.
 
 Unlike [`check`](../check.md) / [`strip`](../strip.md), this command is **file-agnostic**: it does
 not resolve or process files. It is intended for CI validation and debugging configuration
 precedence issues.
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -34,7 +36,7 @@ ______________________________________________________________________
 ## Quick start
 
 ```bash
-# Validate merged config (default human output)
+# Validate effective runtime configuration (default human output)
 topmark config check
 
 # Fail if warnings are present (in addition to errors)
@@ -61,10 +63,10 @@ ______________________________________________________________________
 
 ## Behavior details
 
-- **Validates merged config**: loads defaults → discovered config → `--config` files → CLI
-  overrides, performs whole-source TOML schema validation per source before layered config merge and
-  runtime applicability evaluation, then validates staged config-loading diagnostics and freezes the
-  final configuration.
+- **Validates effective runtime configuration**: loads defaults → discovered config → `--config`
+  files → CLI overrides, performs whole-source TOML validation per source before layered
+  configuration merging and runtime-applicability evaluation, then validates staged config-loading
+  diagnostics and produces the final runtime configuration.
 
 - **Reports TOML schema issues**: unknown sections/keys, malformed TOML structures, and missing
   known sections are surfaced as configuration diagnostics originating from the TOML layer.
@@ -82,12 +84,12 @@ ______________________________________________________________________
   - default non-strict mode
 
   Errors always fail; warnings fail only when strict config checking is enabled across staged
-  config-loading/preflight validation.
+  config-loading validation.
 
 TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation freezes the effective runtime configuration. See
-[Configuration: Discovery, Precedence & Policy](../../../configuration/discovery.md) for the full
-resolution and validation contract.
+files, and CLI overrides before staged validation produces the effective runtime configuration. See
+[Configuration discovery, precedence, and policy](../../../configuration/discovery.md) for the full
+configuration-loading and validation contract.
 
 Configuration and policy override values shown by this command are part of the stable public
 configuration surface. Internal implementation helpers such as
@@ -95,8 +97,8 @@ configuration surface. Internal implementation helpers such as
 \[`ConfigOverrides`\][topmark.config.overrides.ConfigOverrides] are not part of the user-facing CLI
 or Python API contract.
 
-API overlays follow the same identifier normalization and policy-resolution semantics documented
-above for TOML configuration and CLI filtering.
+API overlays follow the same identifier normalization and runtime policy-resolution semantics
+documented above for TOML configuration and CLI filtering.
 
 ______________________________________________________________________
 
@@ -119,20 +121,20 @@ file-processing inputs:
 - file-list STDIN modes (for example, `--files-from -`) do not apply
 
 Use `--config PATH` to validate an explicit config file, or rely on normal config discovery to
-validate the effective merged configuration for the current working directory.
+validate the effective runtime configuration for the current working directory.
 
 ______________________________________________________________________
 
 ## Command-specific options
 
-| Option                 | Description                                                      |
-| ---------------------- | ---------------------------------------------------------------- |
-| `--strict/--no-strict` | Override resolved TOML strict config checking for this run.      |
-| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`).            |
-| `-q`, `--quiet`        | Suppress TEXT output while preserving the command’s exit status. |
-| `--config`             | Merge an explicit TOML config file (can be repeated).            |
-| `--no-config`          | Do not discover local project/user config.                       |
-| `-v`, `--verbose`      | Increase human-readable diagnostic detail.                       |
+| Option                 | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| `--strict/--no-strict` | Override resolved TOML strict configuration checking for this run. |
+| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`).              |
+| `-q`, `--quiet`        | Suppress TEXT output while preserving the command's exit status.   |
+| `--config`             | Merge an explicit TOML config file (can be repeated).              |
+| `--no-config`          | Do not discover local project/user config.                         |
+| `-v`, `--verbose`      | Increase human-readable diagnostic detail.                         |
 
 > Run `topmark config check -h` for the full list of options and help text.
 
@@ -144,7 +146,7 @@ Output formats:
 
 - `text`: human-readable validation result (optionally verbose).
 - `markdown`: Markdown report suitable for pasting into tickets or CI logs.
-- `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark’s machine-readable
+- `json` / `ndjson`: machine-readable envelopes/records aligned with TopMark's machine-readable
   format conventions.
 
 ### Default output (human)
@@ -152,9 +154,9 @@ Output formats:
 - If there are no diagnostics: prints a short success message.
 - If diagnostics exist: prints counts of errors/warnings/info. With `-v` and above, it prints each
   diagnostic line.
-- With higher TEXT verbosity, it also prints the list of config files that were processed.
-- With very high TEXT verbosity, it can print the merged config as TOML (wrapped with BEGIN/END
-  markers).
+- With higher TEXT verbosity, it also prints the list of configuration files that were processed.
+- With very high TEXT verbosity, it can print the merged configuration as TOML (wrapped with
+  BEGIN/END markers).
 - `--quiet` suppresses TEXT output while preserving the exit status (does not affect exit codes).
 - File-processing diagnostics, summaries, diffs, and reports are not emitted by this command.
 
@@ -163,12 +165,12 @@ Output formats:
 `--output-format markdown` emits a report containing:
 
 - overall status (`ok` / `failed`)
-- whether effective strict config checking was enabled
+- whether effective strict configuration checking was enabled
 - diagnostic counts
 - (optionally) full diagnostic list and processed config files, depending on verbosity
 
 This format is designed for CI logs and copy/paste into issues. It is document-oriented and ignores
-TEXT-only verbosity and quiet controls.
+TEXT-oriented verbosity and quiet controls.
 
 ### Typical validation flow
 
@@ -176,11 +178,11 @@ TEXT-only verbosity and quiet controls.
 flowchart TD
     A["Resolve TOML sources<br/>defaults, discovered config, --config, CLI context"]
     B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes, missing known sections"]
-    C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
-    D["Merge layered config into mutable draft<br/>apply precedence and overrides"]
+    C["Extract layered configuration fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
+    D["Merge layered configuration into mutable state<br/>apply precedence and overrides"]
     E["Validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
-    F["Freeze final Config<br/>validated config snapshot"]
-    G["Emit human or machine-readable diagnostics<br/>config check result"]
+    F["Finalize runtime configuration<br/>normalized runtime configuration snapshot"]
+    G["Emit human-readable or machine-readable diagnostics<br/>config check result"]
 
     A --> B --> C --> D --> E --> F --> G
 ```
@@ -193,31 +195,31 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine-readable config snapshots emit normalized canonical qualified file type identifiers after
-configuration freeze.
+Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+after configuration normalization.
 
 Notes:
 
 - `config check` emits diagnostics for both TOML schema validation and configuration
   loading/validation, including missing-section INFO diagnostics from the TOML layer, but not
   pipeline processing diagnostics.
-- Validation follows staged config-loading/preflight validation: per-source TOML validation first
-  (TOML-source diagnostics), then layered config merge (merged-config diagnostics), then final
-  config validation including runtime-applicability checks. The effective validity decision is
-  evaluated across these staged validation logs collectively. Identifier normalization and runtime
-  applicability evaluation participate in this staged validation flow.
+- Validation follows staged config-loading validation: per-source TOML validation first (TOML-source
+  diagnostics), then layered configuration merging (merged-config diagnostics), then final
+  configuration validation including runtime-applicability checks. The effective validity decision
+  is evaluated across these staged validation logs collectively. Identifier normalization and
+  runtime applicability evaluation participate in this staged validation flow.
 
 Example (`[config].strict = true` resolved from TOML, with no CLI override):
 
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload */ },
+  "config": { /* RuntimeConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": false,
@@ -235,7 +237,7 @@ A single JSON document is emitted:
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload */ },
+  "config": { /* RuntimeConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "config_check": {
     "ok": true,
@@ -252,7 +254,7 @@ NDJSON is a stream where each line is a JSON object. Every record includes `kind
 
 Stream:
 
-1. kind="config" (effective config snapshot)
+1. kind="config" (effective runtime configuration snapshot)
 1. kind="config_diagnostics" (counts-only)
 1. kind="config_check" (summary: ok/strict/counts/config_files)
 1. zero or more kind="diagnostic" records (each with domain="config")
@@ -270,8 +272,8 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark config check` exits with `SUCCESS (0)` when the effective configuration is valid. It exits
-with `FAILURE (1)` when validation completes and reports failing diagnostics:
+`topmark config check` exits with `SUCCESS (0)` when the effective runtime configuration is valid.
+It exits with `FAILURE (1)` when validation completes and reports failing diagnostics:
 
 - errors are present, or
 - effective strict config checking is enabled and warnings are present.
@@ -280,7 +282,7 @@ Common `config check` exit codes:
 
 | Scenario                                       | Exit code           |
 | ---------------------------------------------- | ------------------- |
-| Valid effective configuration                  | `SUCCESS (0)`       |
+| Valid effective runtime configuration          | `SUCCESS (0)`       |
 | Validation completed with failing diagnostics  | `FAILURE (1)`       |
 | Invalid CLI usage                              | `USAGE_ERROR (64)`  |
 | Configuration cannot be loaded for the command | `CONFIG_ERROR (78)` |
@@ -288,7 +290,7 @@ Common `config check` exit codes:
 Notes:
 
 - `FAILURE (1)` is a validation result for this command, not an unexpected crash.
-- Warning-only diagnostics exit with `SUCCESS (0)` unless strict config checking is enabled.
+- Warning-only diagnostics exit with `SUCCESS (0)` unless strict configuration checking is enabled.
 - Malformed TOML discovered by `config check` is reported as a failing validation result and exits
   with `FAILURE (1)`.
 - CLI usage errors (for example, invalid options) exit with `USAGE_ERROR (64)`.
@@ -306,7 +308,7 @@ ______________________________________________________________________
 
 - CLI processing commands
 - API overlays
-- resolver filtering
+- resolution and filtering
 - machine-readable output
 - policy lookup
 
@@ -321,10 +323,10 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark config dump`](./dump.md) — show the effective runtime configuration, including
+- [`topmark config dump`](./dump.md) - show the effective runtime configuration, including
   normalized canonical file type identifiers.
-- [`topmark config defaults`](./defaults.md) — show the *built-in default TopMark TOML document*.
-- [`topmark config init`](./init.md) — print the bundled example TopMark TOML resource.
+- [`topmark config defaults`](./defaults.md) - show the *built-in default TopMark TOML document*.
+- [`topmark config init`](./init.md) - print the bundled example TopMark TOML resource.
 
 ______________________________________________________________________
 
@@ -334,11 +336,12 @@ ______________________________________________________________________
 - [Configuration](../../configuration.md)
 - [Filtering](../../filtering.md)
 - [Policies](../../policies.md)
-- [Configuration discovery](../../../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../../../configuration/discovery.md)
 - [Configuration schema](../../../dev/configuration-schema.md)
-- [Machine-readable output schema](../../../dev/machine-output.md)
-- [Machine-readable formats](../../../dev/machine-formats.md)
+- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Exit codes](../../exit-codes.md)
+- [Terminology and Canonical Vocabulary](../../../terminology.md)
 
 ______________________________________________________________________
 

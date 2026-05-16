@@ -60,7 +60,7 @@ In `topmark.toml`, policy is defined under `[policy]` and `[policy_by_type.<file
 `[tool.topmark.policy_by_type.<file_type>]`.
 
 For canonical file-type identifier semantics, see
-[Configuration](configuration.md#file-type-identifiers).
+[Configuration discovery, precedence, and policy](configuration.md#file-type-identifiers).
 
 During configuration loading, TopMark first validates each whole-source TOML fragment (unknown
 sections, unknown keys, malformed section shapes, etc.). Only validated layered configuration
@@ -358,4 +358,4 @@ ______________________________________________________________________
 - [Filtering](filtering.md)
 - [CLI overview](cli.md)
 - [Shared options](shared-options.md)
-- [Configuration discovery](../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../configuration/discovery.md)

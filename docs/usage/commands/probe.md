@@ -10,22 +10,24 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark `probe` Command Guide
+# `topmark probe`
 
 **Purpose:** Explain file-type and processor resolution.
 
 The `probe` command explains how TopMark resolves a file to a file type and header processor. It is
-**diagnostic-only**: it does not read full file content for header detection, does not compare or
-mutate headers, and does not write files.
+diagnostic-only: it does not read full file content for header detection, does not compare or mutate
+headers, and does not write files.
 
-Instead, it exposes the **resolution decision process**, including:
+Instead, it exposes the resolution decision process, including:
 
 - the selected file type and processor
-- canonical resolved file type identities
+- canonical resolved file type identities and qualified keys
 - the resolution status and reason
 - all scored candidate file types
 - match signals (extension, filename, pattern, content probing)
 - explicit inputs filtered during discovery before file-type resolution
+
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 
@@ -79,14 +81,14 @@ ______________________________________________________________________
 Before any file processing begins, TopMark performs whole-source TOML schema validation during
 configuration loading. TOML-source diagnostics (including missing-section INFO diagnostics) are
 evaluated together with merged-config and runtime-applicability diagnostics during staged
-config-loading/preflight validation for the run.
+config-loading validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation freezes the effective runtime configuration. See
-[Configuration: Discovery, Precedence & Policy](../../configuration/discovery.md) for the full
-resolution and validation contract.
+files, and CLI overrides before staged validation produces the effective runtime configuration. See
+[Configuration discovery, precedence, and policy](../../configuration/discovery.md) for the full
+configuration-loading and validation contract.
 
 ______________________________________________________________________
 
@@ -111,7 +113,8 @@ results instead of silently omitting them.
 - `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
   provided as a comma-separated list.
 
-Exclude rules take precedence over include rules.
+File type identifiers are normalized to canonical qualified keys before filtering, diagnostics,
+policy evaluation, and registry resolution.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
@@ -148,15 +151,15 @@ ______________________________________________________________________
 
 ## Behavior details
 
-- **Read-only**: does not modify files.
-- **Resolution-only**: does not perform scanning, comparison, or mutation.
-- **Shared discovery**: uses the same filtering pipeline as [`check`](check.md) and
+- Read-only: does not modify files.
+- Resolution-only: does not perform header scanning, comparison, mutation planning, or writes.
+- Shared discovery: uses the same discovery and filtering pipeline as [`check`](check.md) and
   [`strip`](strip.md), while preserving filtered explicit inputs as diagnostic probe results.
-- **Shared resolver**: uses the same resolver, normalization, and scoring logic as
+- Shared runtime resolution: uses the same normalization, scoring, and runtime resolution logic as
   [`check`](check.md) and [`strip`](strip.md).
-- **Candidate visibility**: exposes selected file type, processor, candidate scores, match signals,
+- Candidate visibility: exposes selected file type, processor, candidate scores, match signals,
   resolution status, and resolution reason.
-- **Idempotency**: repeated runs produce identical output for unchanged inputs.
+- Idempotency: repeated runs produce identical output for unchanged inputs.
 
 ______________________________________________________________________
 
@@ -176,7 +179,7 @@ Use `--output-format markdown` to render a document-oriented report.
 
 Notes:
 
-- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls
+- Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls.
 - Always includes selected details and candidate tables
 - Suitable for documentation or review artifacts
 
@@ -184,13 +187,15 @@ Notes:
 
 Machine-readable formats are intended for automation and tooling integration.
 
-- **JSON**: a single document containing `meta`, `config`, `config_diagnostics`, and `probes`
-- **NDJSON**: one record per line; includes `kind="probe"` records for each probe result
+- JSON: a single machine-readable JSON document containing `meta`, `config`, `config_diagnostics`,
+  and `probes`
+- NDJSON: one machine-readable NDJSON record per line; includes `kind="probe"` records for each
+  probe result
 
 For the canonical schema, see:
 
-- [Machine-readable output schema](../../dev/machine-output.md)
-- [Machine-readable formats](../../dev/machine-formats.md)
+- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable format conventions](../../dev/machine-formats.md)
 
 Probe machine-readable output emits resolved file type identities using canonical qualified keys
 when available.
@@ -204,14 +209,15 @@ TEXT output verbosity is separate from internal logging:
 
 - `-v`, `--verbose` increases TEXT output detail for probe diagnostics.
 - `-q`, `--quiet` suppresses TEXT output while preserving the command's exit status.
-- Markdown output is document-oriented and ignores TEXT-only verbosity and quiet controls.
-- Machine-readable output is unaffected by TEXT-only verbosity and quiet controls.
+- Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls.
+- Machine-readable JSON and NDJSON output are unaffected by TEXT-oriented verbosity and quiet
+  controls.
 
 Notes:
 
-- Primary/headline hint selection, where rendered in human output, is presentation-level guidance
-  and is not part of the stable CLI contract; rely on exit codes and machine-readable output for
-  automation.
+- Primary/headline hint selection, where rendered in human-readable output, is presentation-level
+  guidance and is not part of the stable CLI contract; rely on exit codes and machine-readable
+  output for automation.
 - `probe` is diagnostic-only and never renders diffs or patch previews.
 
 ______________________________________________________________________
@@ -223,7 +229,7 @@ ______________________________________________________________________
 ```jsonc
 {
   "meta": { /* MetaPayload */ },
-  "config": { /* ConfigPayload */ },
+  "config": { /* RuntimeConfigPayload */ },
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "probes": [
     {
@@ -238,7 +244,7 @@ ______________________________________________________________________
 }
 ```
 
-Filtered explicit inputs are also represented as probe payloads with:
+Filtered explicit inputs are also represented as semantic probe payloads
 
 ```jsonc
 {
@@ -253,10 +259,10 @@ Filtered explicit inputs are also represented as probe payloads with:
 
 Filtered probe results may use one of the following reasons:
 
-- `excluded_by_path_filter` — excluded by path-based include/exclude rules
-- `excluded_by_file_type_filter` — excluded by file-type include/exclude rules after identifier
+- `excluded_by_path_filter` - excluded by path-based include/exclude rules
+- `excluded_by_file_type_filter` - excluded by file-type include/exclude rules after identifier
   normalization to canonical qualified keys
-- `excluded_by_discovery_filter` — excluded before probing but exact category not identified
+- `excluded_by_discovery_filter` - excluded before probing but exact category not identified
 
 ### NDJSON
 
@@ -267,26 +273,26 @@ Filtered probe results may use one of the following reasons:
 {"kind":"probe","meta":{...},"probe":{...}}  <!-- one per probe result -->
 ```
 
-Canonical file type identities in machine-readable output use normalized qualified keys such as
-`topmark:python`.
+Canonical file type identities in machine-readable output use normalized qualified-key identities
+such as `topmark:python`.
 
 ______________________________________________________________________
 
 ## Command-specific options
 
-| Option                                               | Description                                                            |
-| ---------------------------------------------------- | ---------------------------------------------------------------------- |
-| `-q`, `--quiet`                                      | Suppress TEXT output while preserving exit status.                     |
-| `--files-from`                                       | Read newline-delimited paths from file (use '-' for STDIN).            |
-| `-` (PATH)                                           | Read a single file’s content from STDIN (requires `--stdin-filename`). |
-| `--include`                                          | Add paths by glob.                                                     |
-| `--include-from`                                     | File of patterns to include.                                           |
-| `--exclude`                                          | Exclude paths by glob.                                                 |
-| `--exclude-from`                                     | File of patterns to exclude.                                           |
-| `--include-file-types` / `-t`                        | Restrict to local or qualified file type identifiers.                  |
-| `--exclude-file-types` / `-T`                        | Exclude local or qualified file type identifiers.                      |
-| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                |
-| `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                        |
+| Option                                               | Description                                                             |
+| ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| `-q`, `--quiet`                                      | Suppress TEXT output while preserving exit status.                      |
+| `--files-from`                                       | Read newline-delimited paths from file (use '-' for STDIN).             |
+| `-` (PATH)                                           | Read one virtual file from STDIN content (requires `--stdin-filename`). |
+| `--include`                                          | Add paths by glob.                                                      |
+| `--include-from`                                     | File of patterns to include.                                            |
+| `--exclude`                                          | Exclude paths by glob.                                                  |
+| `--exclude-from`                                     | File of patterns to exclude.                                            |
+| `--include-file-types` / `-t`                        | Restrict to local or qualified file type identifiers.                   |
+| `--exclude-file-types` / `-T`                        | Exclude local or qualified file type identifiers.                       |
+| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                 |
+| `--allow-content-probe` / `--no-allow-content-probe` | Shared runtime policy override for file-type detection.                 |
 
 > Run `topmark probe -h` for the full list of options.
 
@@ -312,7 +318,7 @@ Notes:
 - `UNSUPPORTED_FILE_TYPE (69)` indicates semantic resolution failure (e.g., unsupported file type or
   filtered input), not a crash.
 - Explicit missing literal paths are treated as hard input errors and produce `FILE_NOT_FOUND (66)`.
-- Missing explicit inputs take precedence over semantic probe outcomes (`69`).
+- Missing explicit inputs take precedence over semantic resolution outcomes (`69`).
 - Unmatched glob patterns are reported as filtered probe results (e.g.,
   `filtered: excluded_by_discovery_filter`) and result in `UNSUPPORTED_FILE_TYPE (69)`.
 - Ambiguous local file type identifiers may also contribute to semantic resolution outcomes unless
@@ -324,7 +330,7 @@ ______________________________________________________________________
 
 ## Typical workflows
 
-### 1) Debug file classification
+### 1) Inspect file classification
 
 ```bash
 topmark probe README.md
@@ -346,11 +352,11 @@ ______________________________________________________________________
 
 ## Related commands
 
-- [`topmark check`](./check.md) — verify and update headers.
-- [`topmark strip`](./strip.md) — remove detected TopMark headers.
-- [`topmark config check`](./config/check.md) — validate the effective merged configuration and
+- [`topmark check`](./check.md) - verify and update headers.
+- [`topmark strip`](./strip.md) - remove detected TopMark headers.
+- [`topmark config check`](./config/check.md) - validate the effective runtime configuration and
   report diagnostics.
-- [`topmark config dump`](./config/dump.md) — inspect the effective runtime configuration, including
+- [`topmark config dump`](./config/dump.md) - inspect the effective runtime configuration, including
   normalized file type identifiers.
 
 ______________________________________________________________________
@@ -365,24 +371,25 @@ ______________________________________________________________________
 - [Exit codes](../exit-codes.md)
 - [Registry model](../../dev/registry-model.md)
 - [Resolution model](../../dev/resolution.md)
-- [Machine-readable output schema](../../dev/machine-output.md)
-- [Machine-readable formats](../../dev/machine-formats.md)
+- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable format conventions](../../dev/machine-formats.md)
+- [Terminology and Canonical Vocabulary](../../terminology.md)
 
 ______________________________________________________________________
 
 ## Troubleshooting
 
-- **Unsupported file**: ensure file type patterns or extensions are configured correctly.
-- **Unexpected selection**: use `-vv` to inspect candidate scores and match signals.
+- **Unsupported file**: ensure file type patterns, bindings, or extensions are configured correctly.
+- **Unexpected resolution result**: use `-vv` to inspect candidate scores and match signals.
 - **File type filter does not match**: prefer qualified identifiers such as `topmark:python` when
   local identifiers may be ambiguous.
-- **No processor**: check that a processor is registered for the selected file type.
-- **Filtered input**: the path was excluded by discovery filters (e.g., `--exclude`). The probe
-  output will show one of:
+- **No processor**: check that a processor binding exists for the selected file type.
+- **Filtered input**: the path was excluded during discovery or filtering evaluation (e.g.,
+  `--exclude`). The probe output will show one of:
   - `filtered: excluded_by_path_filter`
   - `filtered: excluded_by_file_type_filter`
   - `filtered: excluded_by_discovery_filter`
 - **`--stdin` is rejected**: Use `-` as the PATH sentinel together with `--stdin-filename NAME` when
-  reading one file’s content from STDIN.
+  reading one virtual file from STDIN content.
 - **Missing file error**: A literal path such as `fubar.py` is treated as an explicit input and
   fails with `FILE_NOT_FOUND (66)` when it does not exist.

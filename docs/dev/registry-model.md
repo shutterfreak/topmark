@@ -26,8 +26,7 @@ processor binding are separate operations.
 This page owns the detailed registry model. The broader system architecture is documented in
 [Architecture overview](architecture.md).
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 

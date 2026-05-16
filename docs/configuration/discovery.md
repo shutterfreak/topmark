@@ -240,7 +240,7 @@ The tables distinguish between **current** behavior and **recommended long-term*
 In practice, this means TopMark is converging toward the following rule of thumb:
 
 > **Closest config wins for behavior, but discovery inputs accumulate.** **Empty lists are treated
-> as “not set” for nearest-wins fields.**
+> as "not set" for nearest-wins fields.**
 
 ### Why this matters
 
@@ -259,7 +259,7 @@ ______________________________________________________________________
 
 ## Root semantics
 
-`[config].root = true` stops traversal above the directory where it’s defined.\
+`[config].root = true` stops traversal above the directory where it's defined.\
 This defines a discovery boundary similar to tools like **Black**, **isort**, or **ruff**.
 
 - Where to put it:
@@ -322,7 +322,7 @@ ______________________________________________________________________
 
 TopMark applies **effective policies** by merging global and per-file-type rules:
 
-See also: [TopMark Policy Guide](../usage/policies.md).
+See also: [Policy guide](../usage/policies.md).
 
 ```toml
 [tool.topmark.policy]
@@ -473,7 +473,7 @@ ______________________________________________________________________
     \[`resolve_toml_sources_and_build_mutable_config()`\][topmark.config.resolution.bridge.resolve_toml_sources_and_build_mutable_config]
   - Policy evaluation:
     \[`effective_frozen_policy()`\][topmark.config.policy.effective_frozen_policy]
-- [Usage configuration guide](../usage/configuration.md)
+- [Configuration](../usage/configuration.md)
 - [Filtering recipes](../usage/filtering.md)
 - [Policy guide](../usage/policies.md)
 - [CLI overview](../usage/cli.md)

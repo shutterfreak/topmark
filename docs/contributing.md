@@ -17,18 +17,18 @@ mode. The canonical contributor guide lives at the repository root.
 
 ## Where things live
 
-- **README.md** — overview, features, usage, examples
-- **INSTALL.md** — installation and development setup
-- **CONTRIBUTING.md** — canonical contributor guide at the repository root
-- **docs/** — MkDocs documentation site
-  - **docs/index.md** — docs landing page
-  - **docs/usage/** — detailed usage guides (pre-commit, header placement, file types, …)
-- **docs/ci/** — CI workflows, release automation, published-artifact validation, and dependency
+- **README.md** - overview, features, usage, examples
+- **INSTALL.md** - installation and development setup
+- **CONTRIBUTING.md** - canonical contributor guide at the repository root
+- **docs/** - MkDocs documentation site
+  - **docs/index.md** - docs landing page
+  - **docs/usage/** - detailed usage guides (pre-commit, header placement, file types, ...)
+- **docs/ci/** - CI workflows, release automation, published-artifact validation, and dependency
   automation
-  - **docs/api/** — API reference
-- **Makefile** — development automation (setup, lint, test, docs, packaging)
-- **.pre-commit-config.yaml** — enabled hooks for this repo
-- **.pre-commit-hooks.yaml** — hook definitions exported to consumer repos
+  - **docs/api/** - API reference
+- **Makefile** - development automation (setup, lint, test, docs, packaging)
+- **.pre-commit-config.yaml** - enabled hooks for this repo
+- **.pre-commit-hooks.yaml** - hook definitions exported to consumer repos
 
 ______________________________________________________________________
 
@@ -36,12 +36,12 @@ ______________________________________________________________________
 
 TopMark uses a layered architecture:
 
-- **TOML layer** (`topmark.toml`) — configuration discovery, parsing, and whole-source TOML
+- **TOML layer** (`topmark.toml`) - configuration discovery, parsing, and whole-source TOML
   validation (unknown sections/keys, malformed section shapes), plus TOML-source-local options (e.g.
   `[config].root`, `strict`)
-- **Configuration layer** (`topmark.config`) — layered configuration merging into `FrozenConfig` and
+- **Configuration layer** (`topmark.config`) - layered configuration merging into `FrozenConfig` and
   staged config-loading validation (TOML-source, merged-config, runtime-applicability diagnostics)
-- **Runtime layer** (`topmark.runtime`) — runtime overlays and execution-time behavior
+- **Runtime layer** (`topmark.runtime`) - runtime overlays and execution-time behavior
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -53,8 +53,7 @@ For 1.0, this boundary is intentional: staged validation remains primarily inter
 reporting and CLI, API, and machine-readable output expose only the flattened compatibility
 diagnostics contract and machine-readable compatibility surface.
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](./terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
 

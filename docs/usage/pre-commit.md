@@ -20,8 +20,7 @@ Pre-commit integration allows TopMark to participate in:
 - repository-wide mutation workflows
 - runtime policy enforcement during commits and pushes
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 TopMark ships a hook manifest so you can run header checks in Git workflows and CI. This page covers
 setup, recommended patterns, and troubleshooting.
@@ -34,7 +33,7 @@ ______________________________________________________________________
 ## Quick start (consumer repos)
 
 For canonical file-type identifier semantics and configuration behavior, see
-[Configuration](configuration.md#file-type-identifiers).
+[Configuration discovery, precedence, and policy](configuration.md#file-type-identifiers).
 
 Add TopMark to a project's `.pre-commit-config.yaml`:
 
@@ -62,12 +61,12 @@ ______________________________________________________________________
 
 TopMark provides three pre-commit hooks to help manage and diagnose file headers:
 
-- **`topmark-check`** — non-destructive validation. Fails if headers need changes.
+- **`topmark-check`** - non-destructive validation. Fails if headers need changes.
   - Entry: `topmark check`
-- **`topmark-apply`** — destructive fix; requires `--apply`. Marked `manual` so it only runs when
+- **`topmark-apply`** - destructive fix; requires `--apply`. Marked `manual` so it only runs when
   explicitly invoked.
   - Entry: `topmark check --apply`
-- **`topmark-probe`** — read-only resolution diagnostics. Explains which file type and processor
+- **`topmark-probe`** - read-only resolution diagnostics. Explains which file type and processor
   TopMark selects for each input. Marked `manual` because it is intended for troubleshooting and
   investigation rather than routine commit validation.
   - Entry: `topmark probe`
@@ -93,7 +92,7 @@ TopMark intentionally defaults to non-destructive behavior unless `--apply` is e
 
 The hook manifest intentionally exposes minimal behavioral defaults. All runtime behavioral flags
 (such as `--summary`, `--report`, policy options, probe verbosity, file-type filters, or output
-modes) should be supplied by consuming repositories via the hook’s `args:` configuration.
+modes) should be supplied by consuming repositories via the hook's `args:` configuration.
 
 TopMark performs whole-source TOML validation during hook execution; TOML-source diagnostics are
 included in the reported configuration diagnostics.
@@ -160,7 +159,7 @@ TopMark perform its own file discovery from config:
 Arguments passed through `args:` behave exactly like normal CLI arguments.
 
 Pre-commit supports an `args:` list **in consumer repos** (in `.pre-commit-config.yaml`). Because
-TopMark’s hook manifest uses minimal defaults, consumer `args:` are the primary mechanism for
+TopMark's hook manifest uses minimal defaults, consumer `args:` are the primary mechanism for
 configuring TopMark runtime behavior when run under pre-commit.
 
 Example (consumer repo):
@@ -197,7 +196,7 @@ Examples using canonical qualified identifiers:
 
 Notes:
 
-- `args:` is appended to the hook’s `entry`.
+- `args:` is appended to the hook's `entry`.
 
 - Prefer `args:` over copying a full `entry:` in the consumer config; it stays compatible when the
   hook entry changes.

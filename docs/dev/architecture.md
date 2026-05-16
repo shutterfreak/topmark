@@ -16,8 +16,7 @@ This document describes key architectural decisions in TopMark that are relevant
 plugin authors, and maintainers. It focuses on *design intent* and *invariants*, not on end-user
 usage.
 
-The canonical vocabulary used by this page is defined in
-[`Terminology and Canonical Vocabulary`](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 ## Canonical architecture invariants
 
@@ -80,8 +79,8 @@ config-loading validation flow is shown in the diagram above:
   pass malformed layered fragments without crashing
 
 At the TOML layer, malformed known sections are treated as **warning-and-ignore** cases, while
-missing known sections are emitted as **INFO diagnostics** so callers can distinguish “not present”
-from “present but malformed” before staged config-validation semantics are applied.
+missing known sections are emitted as **INFO diagnostics** so callers can distinguish "not present"
+from "present but malformed" before staged config-validation semantics are applied.
 
 The main integration point between TOML resolution and config merging is:
 
@@ -120,22 +119,22 @@ documented in [`Registry model`](registry-model.md).
 
 See also:
 
-- [`Registry model`](registry-model.md) — detailed registry layers, bindings, overlays, and
+- [`Registry model`](registry-model.md) - detailed registry layers, bindings, overlays, and
   identifier semantics
-- [`Plugins`](plugins.md) — plugin extension points and runtime processor overlays
-- [`Resolution`](resolution.md) — path-based winner selection and ambiguity policy
-- [`Configuration`](../usage/configuration.md) — public file type identifier semantics
+- [`Plugins`](plugins.md) - plugin extension points and runtime processor overlays
+- [`Resolution`](resolution.md) - path-based winner selection and ambiguity policy
+- [`Configuration`](../usage/configuration.md) - public file type identifier semantics
 
 ______________________________________________________________________
 
 ## File resolution diagnostics and exit-code boundaries
 
-TopMark’s file selection layer separates **selected processing inputs** from **discovery
+TopMark's file selection layer separates **selected processing inputs** from **discovery
 diagnostics**. The resolver returns a structured file-list resolution result containing:
 
-- `selected` — concrete files that should enter the processing or probe pipeline
-- `missing_literals` — explicit literal input paths that do not exist
-- `unmatched_patterns` — glob patterns that matched no files
+- `selected` - concrete files that should enter the processing or probe pipeline
+- `missing_literals` - explicit literal input paths that do not exist
+- `unmatched_patterns` - glob patterns that matched no files
 
 This distinction is important because not every discovery outcome should become a pipeline input:
 
@@ -179,8 +178,8 @@ Practical consequences:
 
 - Hard filesystem and input errors take precedence over semantic outcomes such as unsupported file
   types or dry-run would-change signals.
-- Missing explicit inputs are visible as per-file errors instead of being collapsed into “no files
-  to process”.
+- Missing explicit inputs are visible as per-file errors instead of being collapsed into "no files
+  to process".
 - Machine payloads expose structured diagnostics/results, while process status remains external as
   the CLI exit code.
 - Public probe API payloads expose normalized strings and DTOs. Internal resolver enums,
@@ -421,23 +420,23 @@ This page focuses on cross-cutting architectural decisions such as registry desi
 layering, policy resolution, presentation boundaries, and the relationship between human-facing and
 machine-facing interfaces.
 
-- [`Pipelines (Concepts)`](./pipelines.md) — conceptual overview of pipeline structure, phases, and
+- [`Pipelines (Concepts)`](./pipelines.md) - conceptual overview of pipeline structure, phases, and
   step responsibilities
-- [`Pipelines (Reference)`](./pipelines-reference.md) — curated entry point into the generated
+- [`Pipelines (Reference)`](./pipelines-reference.md) - curated entry point into the generated
   internal API reference for pipelines and steps
-- [`Terminology and Canonical Vocabulary`](../terminology.md) — canonical definitions for stable
+- [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical definitions for stable
   developer documentation terms
-- [`Registry model`](./registry-model.md) — registry layers, bindings, overlays, and identifier
+- [`Registry model`](./registry-model.md) - registry layers, bindings, overlays, and identifier
   semantics
-- [`Header placement rules`](../usage/header-placement.md) — user-facing placement behavior and
+- [`Header placement rules`](../usage/header-placement.md) - user-facing placement behavior and
   insertion rules
-- [`Configuration overview`](../configuration/index.md) — configuration entry point and links to
+- [`Configuration overview`](../configuration/index.md) - configuration entry point and links to
   discovery/merge semantics
-- [`Discovery & Precedence`](../configuration/discovery.md) — layered config discovery, root
+- [`Discovery & Precedence`](../configuration/discovery.md) - layered config discovery, root
   semantics, and precedence
-- [`Machine-readable output schema`](./machine-output.md) — JSON / NDJSON envelope and payload
+- [`Machine-readable output schema`](./machine-output.md) - JSON / NDJSON envelope and payload
   shapes
-- [`Configuration schema`](./configuration-schema.md) — documented TOML schema and key placement
+- [`Configuration schema`](./configuration-schema.md) - documented TOML schema and key placement
   rules
 
 Registry design is documented in [`Registry model`](registry-model.md) because it underpins test

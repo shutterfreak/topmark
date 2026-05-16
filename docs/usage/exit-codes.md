@@ -27,8 +27,7 @@ Exit codes define the stable command-line contract for:
 - automation and orchestration
 - machine-readable automation and subprocess execution
 
-The canonical vocabulary used throughout the documentation is defined in
-[Terminology and Canonical Vocabulary](../terminology.md).
+{% include-markdown "\_snippets/terminology.md" %}
 
 Exit-code behavior is intentionally deterministic and stable across:
 
@@ -289,4 +288,4 @@ ______________________________________________________________________
 - [Policies](policies.md)
 - [Pre-commit integration](pre-commit.md)
 - [Configuration](configuration.md)
-- [Configuration discovery](../configuration/discovery.md)
+- [Configuration discovery, precedence, and policy](../configuration/discovery.md)
