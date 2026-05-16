@@ -267,15 +267,15 @@ class ReaderStep(BaseStep):
             ) as f:
                 lines: list[str] = list(f)
 
-            # Normalize a leading UTF‑8 BOM so downstream steps work on BOM‑free text.
-            # We remember its presence to re‑attach it at write time in the updater.
+            # Normalize a leading UTF-8 BOM so downstream steps work on BOM-free text.
+            # We remember its presence to re-attach it at write time in the updater.
             if lines and lines[0].startswith("\ufeff"):
                 if not ctx.leading_bom:
                     ctx.leading_bom = True
                 lines = lines[:]  # copy to avoid mutating any shared list
                 lines[0] = lines[0].lstrip("\ufeff")
-                # For a BOM-only file, lines == [""], so it doesn’t take the empty-file branch.
-                # Downstream, an empty "" line can look like “body exists” to spacing logic.
+                # For a BOM-only file, lines == [""], so it doesn't take the empty-file branch.
+                # Downstream, an empty "" line can look like "body exists" to spacing logic.
 
             # Compute emptiness flags on the fully decoded, BOM-stripped image.
             ctx.is_effectively_empty, ctx.is_logically_empty = _compute_empty_flags(lines)
@@ -283,7 +283,7 @@ class ReaderStep(BaseStep):
             # Treat *true* empty files (0 bytes on disk) as `FsStatus.EMPTY`.
             #
             # IMPORTANT:
-            #   Do NOT upgrade “logical empties” (e.g., a BOM-only image that becomes a single
+            #   Do NOT upgrade "logical empties" (e.g., a BOM-only image that becomes a single
             #   empty logical line after BOM stripping) to `FsStatus.EMPTY` here. Those cases
             #   must be represented via `ctx.is_effectively_empty` / `ctx.is_logically_empty`
             #   so newline-style and round-trip placeholders remain stable.
@@ -346,7 +346,7 @@ class ReaderStep(BaseStep):
             )
 
             # Finalize newline style based on full-text histogram:
-            # (sniffer’s value is tentative and used only for early diagnostics)
+            # (sniffer's value is tentative and used only for early diagnostics)
             # NOTE: will be updated once we implement fixing / updating line endings
             total = sum(hist.values())
             if total > 0 and ctx.dominant_newline:
@@ -407,7 +407,7 @@ class ReaderStep(BaseStep):
                         ctx.pre_insert_reason = res.get("reason", "")
                         ctx.pre_insert_origin = res.get("origin", __name__)
                     logger.debug(
-                        "reader advisory: pre-insert %s – %s",
+                        "reader advisory: pre-insert %s - %s",
                         getattr(ctx.pre_insert_capability, "value", ctx.pre_insert_capability),
                         ctx.pre_insert_reason,
                     )

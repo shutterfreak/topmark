@@ -36,7 +36,7 @@ but it documents intent and keeps parity with earlier macro-based approaches.
 
 The transformations are designed to work both for content authored directly in Markdown
 files and for content brought in via snippet inclusion (e.g., include-markdown plugin),
-as long as the wrapper allows Markdown rendering (``<div markdown="1"> … </div>``).
+as long as the wrapper allows Markdown rendering (``<div markdown="1"> ... </div>``).
 """
 
 from __future__ import annotations
@@ -403,7 +403,7 @@ def on_page_markdown(
 
             for seq, sym in enumerate(symbols_sorted, start=1):
                 logger.warning(
-                    "%s - [%d] (%s) %s — Fix: [`%s`][%s]",
+                    "%s - [%d] (%s) %s - Fix: [`%s`][%s]",
                     page_path,
                     seq,
                     format_line_numbers(findings_by_symbol[sym]),

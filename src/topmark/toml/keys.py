@@ -102,7 +102,7 @@ class Toml:
     KEY_CONFIG_FILES: Final[str] = "config_files"
     KEY_FILES: Final[str] = "files"
 
-    # dump/provenance-only keys (emitted by config dump -–show-origin)
+    # dump/provenance-only keys (emitted by config dump --show-origin)
     KEY_INCLUDE_PATTERN_GROUPS: Final[str] = "include_pattern_groups"
     KEY_EXCLUDE_PATTERN_GROUPS: Final[str] = "exclude_pattern_groups"
     KEY_INCLUDE_FROM_SOURCES: Final[str] = "include_from_sources"

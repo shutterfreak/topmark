@@ -961,7 +961,7 @@ def main(
                     errors.append(
                         f"{chalk.bold(path)}:{chalk.bold(ln)}: "
                         f"avoid raw URL in docstring -> {url}"
-                        f"  (docstring {start_lineno}–{end_lineno})"
+                        f"  (docstring {start_lineno}-{end_lineno})"
                     )  # Include docstring range for quick context
 
             # 2) For internal fully-qualified names, require a reference-style link nearby.
@@ -984,7 +984,7 @@ def main(
                     lines.append(
                         f"{chalk.bold(path)}:{chalk.bold(ln)}: "
                         "internal names should be reference-linked: "
-                        f"{name}  (docstring {start_lineno}–{end_lineno})\n"
+                        f"{name}  (docstring {start_lineno}-{end_lineno})\n"
                         + chalk.italic(
                             "\tuse "
                             + chalk.yellow.bold(f"[`{name}`][]")

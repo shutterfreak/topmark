@@ -23,8 +23,8 @@ Conventions:
     [`StyledStrEnum`][topmark.core.presentation.StyledStrEnum]
     (from [`topmark.core.presentation`][topmark.core.presentation])
     for shared utilities and semantic style roles.
-  * Values are human‑readable strings used in CLI/diagnostics; do not rely on
-    identity (`is`) checks—prefer equality (`==`).
+  * Values are human-readable strings used in CLI/diagnostics; do not rely on
+    identity (`is`) checks; prefer equality (`==`).
   * Only the view/API layer synthesizes public outcomes; steps should not
     attempt to classify coarse buckets.
 """
@@ -223,7 +223,7 @@ class RenderStatus(BaseStatus):
     """Rendering status for expected header text.
 
     Indicates whether the renderer produced an in-memory textual representation of
-    the expected header. This status does not imply that a change is necessary —
+    the expected header. This status does not imply that a change is necessary -
     it only tracks whether rendering completed.
 
     States:

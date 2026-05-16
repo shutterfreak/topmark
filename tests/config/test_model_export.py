@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 def test_to_toml_strips_none_entries() -> None:
     """to_toml() rejects None by stripping (regression guard).
 
-    If your to_toml() strips None, validate it doesn’t crash and doesn’t emit None.
+    If your to_toml() strips None, validate it doesn't crash and doesn't emit None.
     """
     draft: MutableConfig = mutable_config_from_defaults()
     c: FrozenConfig = draft.freeze()

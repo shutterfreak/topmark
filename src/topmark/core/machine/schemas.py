@@ -19,7 +19,7 @@ This module centralizes:
 
 Design goals:
 - Pure (no Click / no Console / no serialization side-effects).
-- Stable, shared constants to avoid “stringly-typed” drift across commands.
+- Stable, shared constants to avoid "stringly-typed" drift across commands.
 - Conservative normalization to keep payload shaping predictable.
 
 Normalization rules:

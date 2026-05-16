@@ -12,24 +12,24 @@
 
 This step assigns a `ComparisonStatus` by comparing the *existing* header (from `HeaderView`)
 with the *expected* header produced by the renderer (from RenderView). The comparer prefers a
-**semantic (dict‑wise) comparison** of header fields and falls back to a
+**semantic (dict-wise) comparison** of header fields and falls back to a
 **formatting comparison** when content is equal but layout differs. In `strip`
 pipelines (or when an update has already produced a full image), it can perform a
 full-file comparison.
 
 Summary of behavior:
   • If `ctx.views.updated` carries an updated image, compare full file images.
-  • If `generation` is `PENDING` (pipelines that don’t render), set `UNCHANGED`.
+  • If `generation` is `PENDING` (pipelines that don't render), set `UNCHANGED`.
   • Else, compare dicts: `ctx.views.header.mapping` vs `ctx.views.build.selected`:
-      – If dicts differ → `CHANGED`.
-      – If dicts equal but *rendered block* differs from existing block
+      - If dicts differ → `CHANGED`.
+      - If dicts equal but *rendered block* differs from existing block
         (ordering/spacing/affixes/newlines), treat this as a **formatting
         change** → `CHANGED`.
   • Otherwise → `UNCHANGED`.
 
 This contract keeps CLI summaries consistent: content changes and pure formatting
 drifts both show up as "would update header", whereas true matches land in
-"up‑to‑date".
+"up-to-date".
 """
 
 from __future__ import annotations
@@ -115,9 +115,9 @@ class ComparerStep(BaseStep):
         1. **Precomputed image**: If `ctx.updated_file_lines` exists (e.g., `strip`), set
             `UNCHANGED` iff `file_lines == updated_file_lines`; else `CHANGED`.
         2. **No generation**: If `generation == PENDING`, set `UNCHANGED`.
-        3. **Dict‑wise content**: Compare `existing_header_dict` vs `expected_header_dict`.
-            – Different → `CHANGED`.
-            – Equal → proceed to (4).
+        3. **Dict-wise content**: Compare `existing_header_dict` vs `expected_header_dict`.
+            - Different → `CHANGED`.
+            - Equal → proceed to (4).
         4. **Formatting fallback**: If we have both `existing_header_block` and
             `expected_header_lines`, compare exact block text. If blocks differ (order,
             alignment, spacing, affixes, newline style), set `CHANGED`; otherwise `UNCHANGED`.
@@ -213,7 +213,7 @@ class ComparerStep(BaseStep):
             ctx.status.comparison = ComparisonStatus.CHANGED
 
         logger.debug(
-            "Comparer: %s – header status=%s, comparison=%s",
+            "Comparer: %s - header status=%s, comparison=%s",
             ctx.path,
             ctx.status.header.value,
             ctx.status.comparison.value,

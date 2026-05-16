@@ -31,7 +31,7 @@ These tests intentionally avoid checking the full serialized config content,
 focusing instead on structural stability, required top-level keys, provenance
 layer shape, and defaults-layer ordering.
 
-All CLI invocations are executed via Click’s `CliRunner`, using the helpers in
+All CLI invocations are executed via Click's `CliRunner`, using the helpers in
 `tests.cli.conftest` to assert exit codes and inspect machine-readable output.
 """
 

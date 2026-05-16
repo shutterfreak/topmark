@@ -275,11 +275,11 @@ def _render_file_summary_line_markdown(
         if triage_summary:
             parts.append(triage_summary)
 
-    suffix: str = (" — " + " - ".join(parts)) if parts else ""
+    suffix: str = (" - " + " - ".join(parts)) if parts else ""
 
     if ft_label is not None:
-        return f"`{get_display_path(ctx)}` ({ft_label}) — `{key}`: {label}{suffix}"
-    return f"`{get_display_path(ctx)}` — `{key}`: {label}{suffix}"
+        return f"`{get_display_path(ctx)}` ({ft_label}) - `{key}`: {label}{suffix}"
+    return f"`{get_display_path(ctx)}` - `{key}`: {label}{suffix}"
 
 
 def _render_per_file_guidance_markdown(

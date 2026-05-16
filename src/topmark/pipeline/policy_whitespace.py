@@ -17,9 +17,9 @@ its ``blank_collapse_mode`` and ``blank_collapse_extra`` fields.
 
 Helpers
 -------
-* ``is_pure_spacer(line, policy)`` — classify a single line as a *pure spacer*
+* ``is_pure_spacer(line, policy)`` - classify a single line as a *pure spacer*
   per policy (STRICT/UNICODE/NONE, with optional extra chars).
-* ``is_effectively_empty_body(lines, policy)`` — determine whether a sequence of
+* ``is_effectively_empty_body(lines, policy)`` - determine whether a sequence of
   lines should be treated as *effectively empty* (only spaces/tabs/EOLs and BOMs),
   without consuming control characters such as form-feed unless the policy opts in.
 """

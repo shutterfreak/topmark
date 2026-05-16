@@ -30,7 +30,7 @@ These tests intentionally avoid checking full schema content
 (e.g. every per-axis status field), focusing instead on structural stability,
 required top-level keys, and representative nested shapes.
 
-All CLI invocations are executed via Click’s `CliRunner`, using the helpers in
+All CLI invocations are executed via Click's `CliRunner`, using the helpers in
 `tests.cli.conftest` to control the working directory and assert exit codes.
 """
 

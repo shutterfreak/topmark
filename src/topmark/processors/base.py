@@ -135,14 +135,14 @@ class HeaderProcessor:
           (see `render_preamble_lines`, `render_header_lines`,
           `render_postamble_lines`).
         - **Placement policy:** Determine insertion points; default is
-          *shebang‑aware* for languages like Python (see
+          *shebang-aware* for languages like Python (see
           `get_header_insertion_index`).
         - **Update/strip helpers:** Prepare insertions and removals in a way that
           preserves surrounding whitespace (see
           `prepare_header_for_insertion`, `strip_header_block`).
 
     What this class does **not** do:
-        - **Content‑based recognition.** Deciding *which* file type a path belongs
+        - **Content-based recognition.** Deciding *which* file type a path belongs
           to is the role of [`topmark.filetypes.model.FileType`][] via
           `FileType.content_matcher`. The processor assumes it is already
           associated with the correct file type.
@@ -156,7 +156,7 @@ class HeaderProcessor:
     Extension points:
         Subclasses typically set comment delimiters (``line_prefix``,
         ``line_suffix``, ``block_prefix``, ``block_suffix``) and may override any of
-        the hooks documented below to support format‑specific behavior (e.g., XML
+        the hooks documented below to support format-specific behavior (e.g., XML
         prolog placement or Markdown fences).
 
     Placement strategies:
@@ -169,7 +169,7 @@ class HeaderProcessor:
     Public API note:
         In the stable public surface, consider typing against a minimal protocol
         rather than this concrete base if you are authoring plugins. The registry
-        binds processors to file types and exposes read‑only metadata for common
+        binds processors to file types and exposes read-only metadata for common
         integrations.
 
     Args:
@@ -452,7 +452,7 @@ class HeaderProcessor:
             if head.startswith(self.line_prefix):
                 cleaned = cleaned[:leading_ws_len] + head.removeprefix(self.line_prefix)
         elif self.line_prefix and not cleaned.strip().startswith(self.line_prefix):
-            # Prefix configured but not present—leave the line as-is; parser tolerates.
+            # Prefix configured but not present-leave the line as-is; parser tolerates.
             pass
 
         if self.line_suffix and cleaned.rstrip().endswith(self.line_suffix):
@@ -994,7 +994,7 @@ class HeaderProcessor:
             char_off: int | None = self.get_header_insertion_char_offset(text)
             if char_off is not None:
                 # Translate char offset to a line index using newline_style
-                # (best-effort; the default processor doesn’t rely on it further).
+                # (best-effort; the default processor doesn't rely on it further).
                 nl: str = newline_style or "\n"
                 anchor_idx = text[:char_off].count(nl)
             else:

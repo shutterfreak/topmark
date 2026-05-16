@@ -86,8 +86,8 @@ def _updated_lines(ctx: ProcessingContext) -> list[str] | None:
     return ctx.materialize_updated_lines()
 
 
-# TODO: currently `_normalize_eof` isn’t applied by _InplaceFileSink / _AtomicFileSink. Verify
-# whether we strill need to add this “no trailing newline” semantics for file writes in the real
+# TODO: currently `_normalize_eof` isn't applied by _InplaceFileSink / _AtomicFileSink. Verify
+# whether we strill need to add this "no trailing newline" semantics for file writes in the real
 # sinks (likely by adjusting what ctx.iter_updated_lines() yields).
 # def _normalize_eof(text: str, ctx: ProcessingContext) -> str:
 #     """Normalize end-of-file newline according to the original file policy.
@@ -336,7 +336,7 @@ def _select_sink(ctx: ProcessingContext) -> WriteSink:
         (emit updated content to standard output). This path ignores `apply_changes`
         because it does not mutate the filesystem.
       * Else (target is file):
-          - If `ctx.run_options.apply_changes` is falsy → `NullSink` (preview/no‑write).
+          - If `ctx.run_options.apply_changes` is falsy → `NullSink` (preview/no-write).
           - Otherwise select the file sink by strategy:
               · `FileWriteStrategy.IN_PLACE`  → `InplaceFileSink`
               · `FileWriteStrategy.ATOMIC`    → `AtomicFileSink` (default)
@@ -466,7 +466,7 @@ class WriterStep(BaseStep):
         # --- Policy enforcement (centralized + FileType-specific (optional) -----
         pol: FrozenPolicy = ctx.get_effective_policy()
 
-        # Only gate insert/replace (check mode) — strip/removal is not governed by add/update.
+        # Only gate insert/replace (check mode) - strip/removal is not governed by add/update.
         if (
             ctx.status.plan == PlanStatus.INSERTED
             and pol.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY

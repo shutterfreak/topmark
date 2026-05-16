@@ -122,7 +122,7 @@ def test_fallback_to_include_seed_when_no_positional(
 ) -> None:
     """When no positional paths are provided, include globs can seed candidates.
 
-    Config-declared globs are evaluated relative to the declaring config file’s
+    Config-declared globs are evaluated relative to the declaring config file's
     directory; CLI-declared globs are evaluated relative to CWD. Here we simulate
     a discovered config file by providing its path via `config_files` so that
     the seeding step expands the include pattern against that base.
@@ -512,7 +512,7 @@ def test_no_seeding_when_files_from_present(
     """
     inc: Path = tmp_path / "inc.txt"
     inc.write_text("**/*.py\n", encoding="utf-8")
-    # files_from lists a literal that doesn't exist: still counts as “inputs present”
+    # files_from lists a literal that doesn't exist: still counts as "inputs present"
     lst: Path = tmp_path / "list.txt"
     lst.write_text("missing.py\n", encoding="utf-8")
     (tmp_path / "src" / "a.py").parent.mkdir(parents=True, exist_ok=True)
@@ -541,7 +541,7 @@ def test_config_declared_globs_match_under_config_dir_even_if_cwd_diff(
 
     Put a `pyproject.toml` in `proj/` and run from a sibling directory. Confirm files under
     `proj/src/` match via the config-declared base even though the current working directory
-    doesn’t match.
+    doesn't match.
     """
     proj: Path = tmp_path / "proj"
     (proj / "src").mkdir(parents=True)
@@ -573,7 +573,7 @@ def test_pattern_file_base_outside_cwd(tmp_path: Path, monkeypatch: pytest.Monke
     """include_from and exclude_from bases respected.
 
     Store a pattern file outside CWD and confirm matching occurs relative to
-    the pattern file’s directory.
+    the pattern file's directory.
     """
     root: Path = tmp_path / "root"
     ext: Path = tmp_path / "ext"

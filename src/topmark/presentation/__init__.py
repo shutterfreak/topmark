@@ -43,7 +43,7 @@ Design principles:
 - **Strong typing**: explicit report models instead of ad-hoc dicts
 
 This package mirrors the conceptual domains of TopMark (registry, config,
-diagnostics, pipeline, …) to keep symmetry with machine-format layers and to
+diagnostics, pipeline, ...) to keep symmetry with machine-format layers and to
 support future extensions.
 """
 

@@ -361,7 +361,7 @@ class FileTypePolicyInfo(TypedDict, total=True):
     pre_header_blank_after_block: int
     ensure_blank_after_header: bool
 
-    # How to identify and collapse “blank” lines around the header during insert/strip repairs.
+    # How to identify and collapse "blank" lines around the header during insert/strip repairs.
     blank_collapse_mode: str
     blank_collapse_extra: str
 
@@ -479,7 +479,7 @@ PublicEmptyInsertModeLiteral = Literal[
     "logical_empty",
     "whitespace_empty",
 ]
-"""Public token type for configuring how TopMark classifies “empty” files.
+"""Public token type for configuring how TopMark classifies "empty" files.
 
 These values intentionally mirror the internal `EmptyInsertMode.value` strings
 without exposing the internal enum class as part of the public API.

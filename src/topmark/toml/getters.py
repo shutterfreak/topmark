@@ -325,7 +325,7 @@ def get_string_list_value_checked(
 ) -> list[str]:
     """Extract a list of strings from a TOML table, recording a warning when the type is incorrect.
 
-    This helper enforces a “list of strings” shape for TOML list fields.
+    This helper enforces a "list of strings" shape for TOML list fields.
 
     Non-string values in the list are dropped with a diagnostic with a uniform,
     stable warning location like: "Ignoring non-string entry in [header].fields: ..."

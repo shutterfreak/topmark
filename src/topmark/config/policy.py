@@ -70,9 +70,9 @@ class HeaderMutationMode(str, Enum):
 
 
 class EmptyInsertMode(str, Enum):
-    """How TopMark classifies “empty” inputs for header insertion.
+    """How TopMark classifies "empty" inputs for header insertion.
 
-    The selected mode determines which files count as “empty” when evaluating
+    The selected mode determines which files count as "empty" when evaluating
     [`Policy.allow_header_in_empty_files`][topmark.config.policy.FrozenPolicy].
 
     Attributes:
@@ -99,7 +99,7 @@ class FrozenPolicy:
             headers (`UPDATE_ONLY`).
         allow_header_in_empty_files: Allow inserting headers into files that are
             classified as empty under `empty_insert_mode`.
-        empty_insert_mode: Defines which files are considered “empty” for
+        empty_insert_mode: Defines which files are considered "empty" for
             insertion policy (`bytes_empty`, `logical_empty`, or `whitespace_empty`).
         render_empty_header_when_no_fields: Allow inserting an otherwise empty
             header when no fields are configured.

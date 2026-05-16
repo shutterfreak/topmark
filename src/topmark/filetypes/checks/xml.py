@@ -111,7 +111,7 @@ def xml_can_insert(ctx: PreInsertContextView) -> InsertCheckResult:
         }
 
     # Unterminated DOCTYPE (present but no closing '>') → unsafe (best-effort)
-    # We don’t fully parse internal subsets; this is a pragmatic guard.
+    # We don't fully parse internal subsets; this is a pragmatic guard.
     if "<!DOCTYPE" in text.upper() and ">" not in text[text.upper().find("<!DOCTYPE") :]:
         return {
             "capability": InsertCapability.SKIP_UNSUPPORTED_CONTENT,

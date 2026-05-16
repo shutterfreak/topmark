@@ -14,7 +14,7 @@ This package provides **file-type specific checks** (``InsertChecker`` instances
 that determine whether a TopMark header can be safely inserted into a given file.
 
 Unlike *content matchers* (see [`topmark.filetypes.detectors`][]), which classify
-a file’s type by examining its content, insert checkers focus on **pre-insert
+a file's type by examining its content, insert checkers focus on **pre-insert
 eligibility**. For example, a checker may forbid inserting a header into a JSON
 file that is actually JSON without comments, or into an XML document missing a
 declaration.

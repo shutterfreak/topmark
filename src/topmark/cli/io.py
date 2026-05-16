@@ -187,7 +187,7 @@ class InputPlan:
     """Normalized inputs for building a `MutableConfig` and file list.
 
     Attributes:
-        stdin_mode: True when reading a single file’s *content* from STDIN via "-".
+        stdin_mode: True when reading a single file's *content* from STDIN via "-".
         stdin_filename: The filename to use when in STDIN mode.
         temp_path: Temporary file path used in content-on-STDIN mode; None otherwise.
         paths: Positional PATH arguments after normalization
@@ -200,7 +200,7 @@ class InputPlan:
         exclude_from: File paths to read exclude patterns from (no '-' sentinels).
     """
 
-    stdin_mode: bool  # True if reading a single file’s content from STDIN ("-")
+    stdin_mode: bool  # True if reading a single file's content from STDIN ("-")
     stdin_filename: str | None
 
     temp_path: Path | None  # Temp file path for STDIN content mode, or None

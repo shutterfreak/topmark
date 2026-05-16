@@ -18,12 +18,12 @@ intermediate conditions or advisory diagnostics (e.g., "would insert header",
 and public API inspection but do not influence control flow directly.
 
 Overview:
-    • `Axis` — enumerates stable pipeline axes that can emit hints.
-    • `KnownCode` — curated list of common, machine-friendly hint codes.
-    • `Hint` — dataclass capturing a normalized hint payload.
-    • `make_hint` — factory helper to create validated, consistent Hint objects.
-    • `HintLog` — mutable container for per-context hints with convenience helpers.
-    • `select_headline_hint` — ranking helper that selects the most relevant hint.
+    • `Axis` - enumerates stable pipeline axes that can emit hints.
+    • `KnownCode` - curated list of common, machine-friendly hint codes.
+    • `Hint` - dataclass capturing a normalized hint payload.
+    • `make_hint` - factory helper to create validated, consistent Hint objects.
+    • `HintLog` - mutable container for per-context hints with convenience helpers.
+    • `select_headline_hint` - ranking helper that selects the most relevant hint.
 
 Design principles:
     * Hints are **diagnostic only**; they never alter processing behavior.
@@ -147,7 +147,7 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
 
     Codes are short, namespaced, and machine-friendly. Treat this enum as a
     convenient source of *well-known* codes used across TopMark. Do **not**
-    require all codes to live here—`Hint` accepts arbitrary strings so
+    require all codes to live here-`Hint` accepts arbitrary strings so
     extensions and experiments remain frictionless.
 
     Examples (selected):

@@ -66,7 +66,7 @@ def resolve_color_mode(
 
     Args:
         color_mode_override: Parsed `ColorMode` value from `--color`;
-            `None` means “not provided”.
+            `None` means "not provided".
         output_format: Structured output mode; `"json"` or `"ndjson"` suppress color.
         stdout_isatty: Optional override for TTY detection. When `None`, the function
             calls `sys.stdout.isatty()` and falls back to `False` on error.

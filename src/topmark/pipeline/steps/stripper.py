@@ -8,9 +8,9 @@
 #
 # topmark:header:end
 
-"""Pipeline step that removes the TopMark header (view‑based).
+"""Pipeline step that removes the TopMark header (view-based).
 
-The step uses the scanner‑detected header span when available
+The step uses the scanner-detected header span when available
 (``ctx.views.header.range``) and delegates removal to the active header processor.
 It sets ``ctx.views.updated`` with the stripped image (no I/O) and updates
 ``StripStatus`` to ``READY`` or ``NOT_NEEDED`` accordingly.
@@ -130,11 +130,11 @@ class StripperStep(BaseStep):
         return ctx.status.content == ContentStatus.OK
 
     def run(self, ctx: ProcessingContext) -> None:
-        """Remove the TopMark header using the processor and known span if available (view‑based).
+        """Remove the TopMark header using the processor and known span if available (view-based).
 
         Args:
             ctx: Pipeline context. Must contain a file image, the active header processor, and
-                (optionally) the scanner‑detected header span.
+                (optionally) the scanner-detected header span.
 
         Raises:
             RuntimeError: If header processor is not defined.
@@ -255,7 +255,7 @@ class StripperStep(BaseStep):
             # After removal, the original header start index is where our *own* blank
             # separator would remain (if we previously inserted one). Only drop an
             # *exact* blank line that matches the file's newline style (e.g., "\n" or "\r\n"),
-            # and DO NOT drop whitespace-only lines like " \n" — those belong to the user's body.
+            # and DO NOT drop whitespace-only lines like " \n" - those belong to the user's body.
             if 0 <= start < len(new_lines):
                 nxt: str = new_lines[start]
                 if nxt == ctx.newline_style:
@@ -269,7 +269,7 @@ class StripperStep(BaseStep):
         # with a newline, keep exactly one newline-style blank line. Otherwise collapse
         # to truly empty.
         #
-        # Do NOT collapse whitespace-only lines like " \n" — those belong to the user's body.
+        # Do NOT collapse whitespace-only lines like " \n" - those belong to the user's body.
         if new_lines and all(ln == ctx.newline_style for ln in new_lines):
             if ctx.ends_with_newline is True:
                 logger.debug(
@@ -308,7 +308,7 @@ class StripperStep(BaseStep):
         # with a newline. Keeping this invariant is required for insert→strip→insert
         # idempotence on BOM-only inputs.
         if updated_lines:
-            # Case 1: BOM-only image — keep as-is for round-trip fidelity.
+            # Case 1: BOM-only image - keep as-is for round-trip fidelity.
             if len(updated_lines) == 1 and updated_lines[0] == "\ufeff":
                 pass
             else:

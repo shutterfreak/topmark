@@ -205,7 +205,7 @@ def test_apply_write_guard_respects_relative_patterns(tmp_path: Path) -> None:
       * `a.py` → needs insertion (should be written once)
       * `LICENSE` → known no-header (should be skipped)
 
-    Runs with a relative glob to ensure the resolver’s “relative-only” policy is honored.
+    Runs with a relative glob to ensure the resolver's "relative-only" policy is honored.
     """
     (tmp_path / "a.py").write_text("print('a')\n", "utf-8")
     lic: Path = tmp_path / "LICENSE"

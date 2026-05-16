@@ -10,7 +10,7 @@
 
 r"""Core machine-readable output infrastructure.
 
-This package implements TopMark’s canonical JSON/NDJSON machine-readable formats.
+This package implements TopMark's canonical JSON/NDJSON machine-readable formats.
 
 Separation of concerns (naming + placement):
 
@@ -44,7 +44,7 @@ Separation of concerns (naming + placement):
 5) CLI emission (printing to ConsoleLike / stdout)
    - Lives under `topmark.cli.*`
    - Naming:
-     - reserve `emit_*` for side-effecting “print” operations
+     - reserve `emit_*` for side-effecting "print" operations
      - keep pure functions under `serialize_*` / `build_*`
 
 Rule of thumb:

@@ -116,7 +116,7 @@ class FileTypeHeaderPolicy:
     pre_header_blank_after_block: int = 1
     ensure_blank_after_header: bool = True
 
-    # How to identify and collapse “blank” lines around the header during insert/strip repairs.
+    # How to identify and collapse "blank" lines around the header during insert/strip repairs.
     blank_collapse_mode: BlankCollapseMode = BlankCollapseMode.STRICT
     blank_collapse_extra: str = ""
 

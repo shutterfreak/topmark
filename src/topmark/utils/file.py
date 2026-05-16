@@ -51,7 +51,7 @@ def compute_relpath(file_path: Path, root_path: Path) -> Path:
         # Direct subpath case
         return resolved_path.relative_to(resolved_root)
     except ValueError:
-        # Not a direct subpath — safe fallback using os.path.relpath
+        # Not a direct subpath - safe fallback using os.path.relpath
         return Path(os.path.relpath(resolved_path, start=resolved_root))
 
 

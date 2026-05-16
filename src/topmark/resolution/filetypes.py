@@ -403,8 +403,8 @@ def get_file_type_candidates_for_path(
 
     This helper centralizes the resolution logic used by `ResolverStep`.
     For each registered `FileType`, it computes name-based match signals,
-    determines whether content probing is allowed via the file type’s
-    `ContentGate`, optionally calls the file type’s `content_matcher`, and
+    determines whether content probing is allowed via the file type's
+    `ContentGate`, optionally calls the file type's `content_matcher`, and
     evaluates inclusion rules and scoring.
 
     Args:

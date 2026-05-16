@@ -10,7 +10,7 @@
 
 """Payload builders for core machine-readable output.
 
-“Payload” here means: the *domain object* that will be inserted into a JSON
+"Payload" here means: the *domain object* that will be inserted into a JSON
 envelope (top-level JSON output) or into an NDJSON record (streaming output).
 
 This module is intentionally:
@@ -18,7 +18,7 @@ This module is intentionally:
 - Console-free
 - serialization-free (no `json.dumps`)
 
-It provides small, stable “global” payloads used across multiple commands:
+It provides small, stable "global" payloads used across multiple commands:
 
 - `build_meta_payload()`:
     A minimal `{tool, version}` mapping. This is stable for the lifetime of the

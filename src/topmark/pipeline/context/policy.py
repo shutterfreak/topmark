@@ -60,15 +60,15 @@ class PolicyContext(Protocol):
 
         Returns whether the decoded, BOM-stripped text image contains **no
         non-whitespace characters**. Newlines and other whitespace are allowed.
-        This is the broad notion of “empty” used for most policy decisions.
+        This is the broad notion of "empty" used for most policy decisions.
         """
         ...
 
     @property
     def is_logically_empty(self) -> bool:
-        """Whether the file is “logically empty”.
+        """Whether the file is "logically empty".
 
-        Returns whether the file is “logically empty”: after BOM stripping,
+        Returns whether the file is "logically empty": after BOM stripping,
         it contains optional horizontal whitespace and **at most one** trailing
         newline sequence (LF/CRLF/CR), and nothing else. This is a stricter subset
         of `is_effectively_empty` and is useful to preserve stable round-trips for
@@ -479,7 +479,7 @@ def can_change(ctx: PolicyContext) -> bool:
        feasibility is satisfied.
 
     3) **Empty / empty-like files**
-       For files that are considered “empty for insert”, mutation is allowed only
+       For files that are considered "empty for insert", mutation is allowed only
        when policy explicitly permits inserting into such files. Importantly,
        emptiness classification is delegated to `is_empty_for_insert(ctx)`, which
        obeys the configured `EmptyInsertMode`.
@@ -503,7 +503,7 @@ def can_change(ctx: PolicyContext) -> bool:
     # If any of them fail, the pipeline should not attempt mutation at all.
     feasible: bool = (
         ctx.status.resolve == ResolveStatus.RESOLVED
-        # if strip preparation failed, we can’t change via strip:
+        # if strip preparation failed, we can't change via strip:
         and ctx.status.strip != StripStatus.FAILED
         # malformed headers block safe mutation in the default pipeline:
         and ctx.status.header
@@ -590,5 +590,5 @@ def effective_would_strip(ctx: PolicyContext) -> bool:
         `True` if a change is structurally and operationally safe,
         `False` otherwise.
     """
-    # Policy doesn’t block strip; feasibility is in can_change
+    # Policy doesn't block strip; feasibility is in can_change
     return would_strip(ctx) and can_change(ctx) is True

@@ -107,7 +107,7 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     expected content but whose on-disk **ordering** differs from what the
     renderer would emit. The comparer should report `ComparisonStatus.CHANGED`.
 
-    NOTE: This test is designed to exercise the comparer’s *formatting-fallback*
+    NOTE: This test is designed to exercise the comparer's *formatting-fallback*
     branch. We deliberately avoid calling builder.build() or renderer.render()
     here, because those steps would generate `expected_header_dict` values from
     config (e.g. `file`, `file_relpath`) that differ from the hand-authored

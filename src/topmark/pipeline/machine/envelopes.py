@@ -21,7 +21,7 @@ Responsibilities:
 - **JSON**: build a single top-level envelope containing `meta`, `config`,
   `config_diagnostics`, and either processing data (`results` / `summary`) or
   probe data (`probes`).
-- **NDJSON**: yield a stream of per-record mappings following the project’s
+- **NDJSON**: yield a stream of per-record mappings following the project's
   NDJSON contract (Pattern A: every record includes `kind` and `meta`), starting
   with config prefix records and followed by processing records (`result` /
   `summary`) or probe records (`probe`).
@@ -274,7 +274,7 @@ def iter_processing_results_ndjson_records(
 
     Yields:
         Shaped NDJSON record mappings (not yet serialized). Each yielded record
-        includes `kind` and `meta` and follows the project’s NDJSON envelope contract.
+        includes `kind` and `meta` and follows the project's NDJSON envelope contract.
     """
     # Prepare config payloads once, including flattened compatibility diagnostics.
     cfg_payload: ConfigPayload = build_config_payload(

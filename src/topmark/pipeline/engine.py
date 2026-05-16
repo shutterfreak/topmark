@@ -130,7 +130,7 @@ def run_steps_for_files(
 ) -> tuple[list[ProcessingContext], ExitCode | None]:
     """Run a pipeline for each file and return (results, encountered_error_code).
 
-    Catches common filesystem/encoding errors so command bodies don’t duplicate try/except.
+    Catches common filesystem/encoding errors so command bodies don't duplicate try/except.
 
     Args:
         run_options: Invocation-wide runtime options shared by all files in the run.

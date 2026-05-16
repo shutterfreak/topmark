@@ -22,10 +22,10 @@ that inspects files between resolution and full text loading. It performs:
 The main step entrypoint is [SnifferStep.run], which delegates to several
 helpers:
 
-* `_count_newlines` – counts LF/CRLF/CR sequences with CR/LF carry handling
-* `inspect_bom_shebang` – inspects the prefix for UTF-8 BOM and shebang ordering
-* `_commit_newline_stats` – populates newline histogram and derived stats on the context
-* `_sniff_stream` – orchestrates byte-level sniffing and returns an optional terminal
+* `_count_newlines` - counts LF/CRLF/CR sequences with CR/LF carry handling
+* `inspect_bom_shebang` - inspects the prefix for UTF-8 BOM and shebang ordering
+* `_commit_newline_stats` - populates newline histogram and derived stats on the context
+* `_sniff_stream` - orchestrates byte-level sniffing and returns an optional terminal
   `FsStatus` that `SnifferStep.run` applies
 
 Sets:

@@ -87,7 +87,7 @@ def ensure_pyproject_header(toml_text: str) -> TemplateEditResult:
     # Find end of topmark header block, if present
     insert_at = 0
     # Placement rule:
-    # - If a TopMark header block exists (``# topmark:header:start`` … ``# topmark:header:end``),
+    # - If a TopMark header block exists (``# topmark:header:start`` ... ``# topmark:header:end``),
     #   insert right after the end marker and any following blank lines.
     # - Otherwise, insert at the start of the file.
     for i, line in enumerate(lines):

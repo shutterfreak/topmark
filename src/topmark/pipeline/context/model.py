@@ -127,8 +127,8 @@ class ProcessingContext:
         has_shebang: True if the first logical line starts with ``"#!" `` (post-BOM normalization).
         is_effectively_empty: Whether the decoded, BOM-stripped text image contains **no
             non-whitespace characters**. Newlines and other whitespace are allowed.
-            This is the broad notion of “empty” used for most policy decisions.
-        is_logically_empty: Whether the file is “logically empty”: after BOM stripping,
+            This is the broad notion of "empty" used for most policy decisions.
+        is_logically_empty: Whether the file is "logically empty": after BOM stripping,
             it contains optional horizontal whitespace and **at most one** trailing
             newline sequence (LF/CRLF/CR), and nothing else. This is a stricter subset
             of `is_effectively_empty` and is useful to preserve stable round-trips for

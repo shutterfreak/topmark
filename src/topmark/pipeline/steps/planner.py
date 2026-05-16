@@ -12,31 +12,31 @@
 
 This step consumes views produced by earlier phases and emits an updated
 file image via ``ctx.views.updated``. It respects comparer outcomes and strip
-fast‑paths and never performs I/O.
+fast-paths and never performs I/O.
 
 Inputs:
-  * ``ctx.views.header`` ([`HeaderView`][topmark.pipeline.views.HeaderView]) –
+  * ``ctx.views.header`` ([`HeaderView`][topmark.pipeline.views.HeaderView]) -
     existing header (range/lines/block).
-  * ``ctx.views.build`` ([`BuilderView`][topmark.pipeline.views.BuilderView]) –
+  * ``ctx.views.build`` ([`BuilderView`][topmark.pipeline.views.BuilderView]) -
     field dictionaries (not used directly).
-  * ``ctx.views.render`` ([`RenderView`][topmark.pipeline.views.RenderView]) –
+  * ``ctx.views.render`` ([`RenderView`][topmark.pipeline.views.RenderView]) -
     expected header text to write.
-  * ``ctx.views.image`` ([`FileImageView`][topmark.pipeline.views.FileImageView]) –
+  * ``ctx.views.image`` ([`FileImageView`][topmark.pipeline.views.FileImageView]) -
     original file image.
 
 Outputs:
-  * ``ctx.views.updated`` ([`UpdatedView`][topmark.pipeline.views.UpdatedView]) –
+  * ``ctx.views.updated`` ([`UpdatedView`][topmark.pipeline.views.UpdatedView]) -
     updated file image (sequence/iterable).
-  * ``ctx.status.write`` – write outcome (SKIPPED/REPLACED/INSERTED/REMOVED/PREVIEWED/FAILED).
+  * ``ctx.status.write`` - write outcome (SKIPPED/REPLACED/INSERTED/REMOVED/PREVIEWED/FAILED).
 
 Behavior:
-  * **Strip fast‑path**: if ``status.strip == READY``, keep the precomputed image in
+  * **Strip fast-path**: if ``status.strip == READY``, keep the precomputed image in
     ``ctx.views.updated``, reattach BOM if needed, mark write=REMOVED (or PREVIEWED).
-  * **Already up‑to‑date**: if ``status.comparison == UNCHANGED``, set write=SKIPPED and
+  * **Already up-to-date**: if ``status.comparison == UNCHANGED``, set write=SKIPPED and
     mirror the original image into ``ctx.views.updated``.
   * **Replace**: if a header range is known, splice rendered header lines over that range.
-  * **Insert (text‑based)**: prefer character‑offset insertion when supported.
-  * **Insert (line‑based)**: fallback using ``compute_insertion_anchor`` plus
+  * **Insert (text-based)**: prefer character-offset insertion when supported.
+  * **Insert (line-based)**: fallback using ``compute_insertion_anchor`` plus
     optional whitespace fixes.
 """
 
@@ -189,7 +189,7 @@ def _prepend_bom_to_lines_if_needed(
     # Re-attach the stripped BOM
     first: str = lines[0]
     if not first.startswith("\ufeff"):
-        lines = lines[:]  # shallow copy to avoid mutating caller’s list
+        lines = lines[:]  # shallow copy to avoid mutating caller's list
         lines[0] = "\ufeff" + first
     return lines
 
@@ -394,7 +394,7 @@ class PlannerStep(BaseStep):
                     pre_insert_reason = ctx.pre_insert_reason or "pre-insert checker skipped update"
                     origin = ctx.pre_insert_origin or __name__
                     logger.debug(
-                        "pre-insert: %s – %s", getattr(cap, "value", cap), pre_insert_reason
+                        "pre-insert: %s - %s", getattr(cap, "value", cap), pre_insert_reason
                     )
                     # Preserve original image; mark as skipped
                     ctx.views.updated = UpdatedView(lines=original_lines)
@@ -416,7 +416,7 @@ class PlannerStep(BaseStep):
                     )
                     origin: str = ctx.pre_insert_origin or __name__
                     logger.debug(
-                        "pre-insert (advisory): %s – %s",
+                        "pre-insert (advisory): %s - %s",
                         getattr(ctx.pre_insert_capability, "value", ctx.pre_insert_capability),
                         pre_insert_reason,
                     )
@@ -436,7 +436,7 @@ class PlannerStep(BaseStep):
                 )
                 origin: str = ctx.pre_insert_origin or __name__
                 logger.debug(
-                    "pre-insert (advisory): %s – %s",
+                    "pre-insert (advisory): %s - %s",
                     getattr(ctx.pre_insert_capability, "value", ctx.pre_insert_capability),
                     pre_insert_reason,
                 )

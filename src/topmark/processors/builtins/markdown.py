@@ -48,7 +48,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 class MarkdownHeaderProcessor(BlockCommentMixin, HeaderProcessor):
-    """Header processor for Markdown formats (HTML comment–based, line-oriented).
+    """Header processor for Markdown formats (HTML comment-based, line-oriented).
 
     This processor uses `<!-- ... -->` block comments for the TopMark header and
     relies on the **line-based** placement strategy from `HeaderProcessor`. It

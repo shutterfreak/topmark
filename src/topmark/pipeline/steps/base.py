@@ -47,12 +47,12 @@ class BaseStep:
 
     Attributes:
         name: Fully qualified, stable step identifier for logs/tracing.
-        primary_axis: The axis this step “represents” in summaries
+        primary_axis: The axis this step "represents" in summaries
         axes_written: Status axes this step is allowed to write (e.g. ("fs",)).
     """
 
     name: str
-    primary_axis: Axis | None  # new: axis this step “represents” in summaries
+    primary_axis: Axis | None  # new: axis this step "represents" in summaries
     axes_written: tuple[Axis, ...] = ()
 
     def __call__(self, ctx: ProcessingContext) -> ProcessingContext:

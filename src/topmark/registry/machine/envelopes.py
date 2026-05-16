@@ -10,7 +10,7 @@
 
 """Envelope/record builders for registry machine-readable output.
 
-This module is responsible for *shaping* registry payloads into TopMark’s
+This module is responsible for *shaping* registry payloads into TopMark's
 canonical machine-readable output envelopes.
 
 Layers:

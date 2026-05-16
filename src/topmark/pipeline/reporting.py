@@ -49,7 +49,7 @@ class ReportScope(str, Enum):
             problem states that deserve visibility, but it intentionally hides
             unsupported entries from the per-file list.
         NONCOMPLIANT: Actionable entries plus unsupported entries. This is the
-            broader “show everything that is not already okay” view.
+            broader "show everything that is not already okay" view.
         ALL: Every result, including unchanged/compliant entries.
 
     Inclusion overview:
@@ -106,7 +106,7 @@ def _has_problem_diagnostics(r: ProcessingContext) -> bool:
 def _needs_attention(r: ProcessingContext) -> bool:
     """Return True when a result deserves human attention in per-file output.
 
-    This is intentionally broader than “would change”. In addition to
+    This is intentionally broader than "would change". In addition to
     user-actionable changes, it includes problem states such as unsupported
     files, warnings/errors, and unreadable / failed pipeline states.
 

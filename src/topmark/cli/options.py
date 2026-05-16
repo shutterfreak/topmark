@@ -336,7 +336,7 @@ def option_with_underscore_traps(
         d
         for d in param_decls
         if d.startswith("--")  # Only long options
-        and ("/" not in d)  # Keep paired flags: don’t generate underscore traps for them
+        and ("/" not in d)  # Keep paired flags: don't generate underscore traps for them
         and ("_" not in d)
         and ("-" in d[2:])
     ]

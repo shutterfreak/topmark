@@ -11,13 +11,13 @@
 """Builder step for TopMark pipeline.
 
 This step computes the **field dictionaries** that will later be rendered into a
-TopMark header. It derives built‑in fields from the filesystem (e.g., `file`,
+TopMark header. It derives built-in fields from the filesystem (e.g., `file`,
 `file_relpath`) and merges them with
 [`FrozenConfig.field_values`][topmark.config.model.FrozenConfig], then selects only
 those keys listed in [`FrozenConfig.header_fields`][topmark.config.model.FrozenConfig].
 
 Outputs:
-  * `ctx.views.build.builtins`: the derived built‑in field mapping.
+  * `ctx.views.build.builtins`: the derived built-in field mapping.
   * `ctx.views.build.selected`: the filtered/merged mapping to be rendered by the renderer.
   * `ctx.status.generation`: set to `GENERATED` (or `NO_FIELDS` when no fields are
     configured).
@@ -205,7 +205,7 @@ class BuilderStep(BaseStep):
             "abspath": content_absolute_path.parent.as_posix(),
         }
 
-        # Merge in any additional fields from the configuration (may override built‑ins).
+        # Merge in any additional fields from the configuration (may override built-ins).
         if config.field_values:
             # Warn if configuration fields override built-in fields (potentially accidental)
             builtin_overlap: list[str] = [
@@ -217,7 +217,7 @@ class BuilderStep(BaseStep):
                 )
                 ctx.diagnostics.add_warning(f"Redefined built-in fields: {builtin_overlap_repr}")
 
-        # Merge built‑ins with configuration‑defined values; allow overrides; restrict
+        # Merge built-ins with configuration-defined values; allow overrides; restrict
         # to header_fields.
         all_fields: dict[str, str] = {
             **builtin_fields,
@@ -239,7 +239,7 @@ class BuilderStep(BaseStep):
         ctx.status.generation = GenerationStatus.GENERATED
 
         logger.debug(
-            "Builder: %s – header status=%s, selected fields:\n%s",
+            "Builder: %s - header status=%s, selected fields:\n%s",
             ctx.path,
             ctx.status.header.value,
             "\n".join(

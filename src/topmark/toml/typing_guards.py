@@ -54,7 +54,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 def is_toml_table(obj: object) -> TypeGuard[TomlTable]:
-    """Type guard for a TOML table‑like mapping.
+    """Type guard for a TOML table-like mapping.
 
     Args:
         obj: Value to test.
@@ -115,7 +115,7 @@ def is_tomlkit_table(obj: object) -> TypeGuard[Table]:
     return isinstance(obj, Table)
 
 
-# --- “Casting / normalization” helpers ---
+# --- "Casting / normalization" helpers ---
 
 
 def as_toml_table(obj: object) -> TomlTable | None:

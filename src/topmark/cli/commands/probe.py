@@ -194,7 +194,7 @@ def probe_command(
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
         stdin_filename: Assumed filename when reading content from STDIN).
-        files_from: Files that contain newline‑delimited *paths* to add to the
+        files_from: Files that contain newline-delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
         include_from: Files that contain include glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.

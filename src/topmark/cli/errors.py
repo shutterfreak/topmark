@@ -50,7 +50,7 @@ class TopmarkCliError(click.ClickException):
         """Return the plain error message text.
 
         Notes:
-            - Unlike Click’s default, this method does not add color.
+            - Unlike Click's default, this method does not add color.
             - Colorization is applied in `show()` when a project console is present.
         """
         # ``self.message`` is set by ClickException; ensure it's a string.
@@ -62,7 +62,7 @@ class TopmarkCliError(click.ClickException):
         # same signature to satisfy override compatibility with third-party stubs.
         """Display the error using the project console if available.
 
-        Falls back to Click’s default error display when no typed CLI state is available.
+        Falls back to Click's default error display when no typed CLI state is available.
 
         Args:
             file: Ignored when a CLI console is available; used only by Click fallback.

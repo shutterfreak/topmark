@@ -8,16 +8,16 @@
 #
 # topmark:header:end
 
-"""Header renderer step for the TopMark pipeline (view‑based).
+"""Header renderer step for the TopMark pipeline (view-based).
 
 This step takes the **selected field mapping** built in the previous step
 (``ctx.views.build.selected``) and renders it into header text using the active
-file type’s formatting rules. It preserves the file’s newline convention,
+file type's formatting rules. It preserves the file's newline convention,
 mutates only the processing context, and performs no I/O.
 
 Outputs:
-  * ``ctx.views.render.lines`` – rendered header lines (keepends).
-  * ``ctx.views.render.block`` – concatenated rendered text.
+  * ``ctx.views.render.lines`` - rendered header lines (keepends).
+  * ``ctx.views.render.block`` - concatenated rendered text.
 
 Notes:
   * The builder remains the single source of field dictionaries
@@ -94,9 +94,9 @@ class RendererStep(BaseStep):
 
         Args:
             ctx: Mutable context with:
-                * ``header_processor`` – strategy providing ``render_header_lines()``;
-                * ``build.selected`` – expected fields (for ``GENERATED``);
-                * ``image`` – file image view (for indentation preservation and newline style).
+                * ``header_processor`` - strategy providing ``render_header_lines()``;
+                * ``build.selected`` - expected fields (for ``GENERATED``);
+                * ``image`` - file image view (for indentation preservation and newline style).
 
         Raises:
             RuntimeError: If header processor is not defined.
@@ -104,11 +104,11 @@ class RendererStep(BaseStep):
         Mutations:
             ProcessingContext: The same context with ``ctx.views.render`` populated depending on
             the generation status:
-                * ``NO_FIELDS`` – no‑op; sets ``ctx.views.render
+                * ``NO_FIELDS`` - no-op; sets ``ctx.views.render
                   = RenderView(lines=None, block=None)``.
-                * ``GENERATED`` – sets ``ctx.views.render.lines`` and ``ctx.views.render.block``.
+                * ``GENERATED`` - sets ``ctx.views.render.lines`` and ``ctx.views.render.block``.
                 If the selected mapping is empty, produces an empty render defensively.
-                * any other status – returns unchanged.
+                * any other status - returns unchanged.
 
         Notes:
             This step mutates ``ctx`` in place and performs no I/O.
@@ -131,7 +131,7 @@ class RendererStep(BaseStep):
                 ctx.views.render = RenderView(lines=rendered_lines, block="".join(rendered_lines))
                 ctx.status.render = RenderStatus.RENDERED
             else:
-                # Make it explicit that there is no “expected header” to compare against.
+                # Make it explicit that there is no "expected header" to compare against.
                 ctx.views.render = RenderView(lines=None, block=None)
                 ctx.status.render = RenderStatus.SKIPPED
                 # leave status as-is (PENDING) or set a neutral value if you add one
@@ -175,7 +175,7 @@ class RendererStep(BaseStep):
             # keep any other overrides you already pass (block_prefix/suffix,
             # line_prefix/suffix, etc.)
             header_indent_override=header_indent_override,  # preserve pre-prefix indent
-            # line_indent_override stays as default so fields still use processor’s
+            # line_indent_override stays as default so fields still use processor's
             # after-prefix spacing
         )
 

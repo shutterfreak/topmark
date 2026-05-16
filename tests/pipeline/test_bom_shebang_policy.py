@@ -56,7 +56,7 @@ def _write(tmp_path: Path, name: str, text: str) -> Path:
 @pytest.fixture
 def bom_and_shebang_file(tmp_path: Path) -> Path:
     """Python file with a leading BOM followed by a shebang (invalid combo)."""
-    # NOTE: BOM first, then shebang — invalid for POSIX shebang recognition.
+    # NOTE: BOM first, then shebang - invalid for POSIX shebang recognition.
     return _write(
         tmp_path,
         "bom_and_shebang.py",

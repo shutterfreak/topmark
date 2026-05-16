@@ -74,7 +74,7 @@ def make_file_type(
         - `matches` is used by file discovery/filtering (`resolve_file_list`). If not
           provided, it defaults to a small matcher that checks extensions, filename tails,
           regex patterns (fullmatch), and finally falls back to `content_matcher` when available.
-        - The default matcher is path-based and doesn’t read file contents unless `content_matcher`
+        - The default matcher is path-based and doesn't read file contents unless `content_matcher`
           is provided. Extension matching is suffix-based, so `.tar.gz` rules work.
 
     Args:

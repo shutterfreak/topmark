@@ -302,7 +302,7 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
         )
 
     # 6) Policy veto (add-only / update-only)
-    # Policy veto is tri-state: False means forbidden; True/None both mean “not vetoed”.
+    # Policy veto is tri-state: False means forbidden; True/None both mean "not vetoed".
     permitted_by_policy: bool | None = check_permitted_by_policy(ctx)
     if permitted_by_policy is False:
         return ret(

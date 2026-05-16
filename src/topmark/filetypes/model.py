@@ -223,7 +223,7 @@ class FileType:
             that tunes placement (e.g., shebang handling) and scanning windows around the
             expected insertion anchor.
         pre_insert_checker: Optional pre-insert checker:
-            “may we add a TopMark header here?”
+            "may we add a TopMark header here?"
 
     Content-based recognition (example)
     ----------------------------------
@@ -277,7 +277,7 @@ class FileType:
     # Gate defining when the matcher should trigger a match
     content_gate: ContentGate = ContentGate.NEVER
     header_policy: FileTypeHeaderPolicy = field(default_factory=FileTypeHeaderPolicy)
-    # Optional pre-insert checker: “may we add a TopMark header here?”
+    # Optional pre-insert checker: "may we add a TopMark header here?"
     pre_insert_checker: InsertChecker | None = None
 
     # Compiled regex patterns (cached)

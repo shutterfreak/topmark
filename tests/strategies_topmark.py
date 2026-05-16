@@ -12,7 +12,7 @@
 
 """Hypothesis strategies for generating TopMark-like files and header shapes.
 
-These utilities intentionally *approximate* TopMark’s real renderers so property
+These utilities intentionally *approximate* TopMark's real renderers so property
 tests can explore a wide but bounded input space without exploding combinations.
 """
 
@@ -31,7 +31,7 @@ from topmark.constants import STANDARD_NEWLINES
 Draw = Callable[[st.SearchStrategy[Any]], Any]
 
 
-# Common file type “families” you support
+# Common file type "families" you support
 CommentFamily = Literal[
     "pound",
     "slash",
@@ -351,7 +351,7 @@ def render_header_block(style: CommentStyle, le: str, fields: dict[str, str]) ->
     return "".join(lines)
 
 
-# Strategy: files that already contain “near headers”
+# Strategy: files that already contain "near headers"
 # (extra/missing fields, odd spacing)
 @st.composite
 def s_file_with_near_header(draw: Draw) -> tuple[str, CommentStyle, str, dict[str, str]]:

@@ -10,7 +10,7 @@
 
 """Machine-output helpers for pipeline processing commands.
 
-This package contains the *pipeline domain* implementation of TopMark’s
+This package contains the *pipeline domain* implementation of TopMark's
 machine-readable output for `topmark check` and `topmark strip`.
 
 Layers:

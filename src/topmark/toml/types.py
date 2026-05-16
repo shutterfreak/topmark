@@ -12,7 +12,7 @@
 
 These aliases model TOML-compatible in-memory structures used across parsing,
 validation, and serialization. They intentionally exclude `None`, since TOML
-has no null value — absent values must be omitted from tables rather than
+has no null value - absent values must be omitted from tables rather than
 represented explicitly.
 """
 
@@ -30,7 +30,7 @@ TomlValue: TypeAlias = TomlScalar | list["TomlValue"] | dict[str, "TomlValue"]
 """Recursive TOML-compatible value.
 
 A TOML value may be a scalar, a list of TOML values, or a nested table
-represented as a dictionary. `None` is intentionally excluded — callers must
+represented as a dictionary. `None` is intentionally excluded - callers must
 omit keys for absent values.
 """
 

@@ -28,8 +28,8 @@ This module is safe for Python 3.10-3.14.
 Callers are responsible for logging and for deciding severity based on
 `TOPMARK_DOCS_DEBUG` / `TOPMARK_DOCS_STRICT_REFS`.
 
-Because it’s executed as a script (not imported as a package), helpers must be imported via
-absolute module paths (e.g. tools.docs.…).
+Because it's executed as a script (not imported as a package), helpers must be imported via
+absolute module paths (e.g. tools.docs....).
 """
 
 from __future__ import annotations

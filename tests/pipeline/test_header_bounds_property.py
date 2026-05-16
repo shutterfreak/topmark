@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
 
-# If resolve depends on path suffix, we’ll simulate by extension choice.
+# If resolve depends on path suffix, we'll simulate by extension choice.
 EXTENSIONS: Sequence[str] = [
     ".py",
     ".sh",

@@ -12,9 +12,9 @@
 
 This package exposes:
 
-* [`topmark.registry.registry.Registry`][] – the **stable, read-only facade** for integrators.
+* [`topmark.registry.registry.Registry`][] - the **stable, read-only facade** for integrators.
 * [`topmark.registry.filetypes.FileTypeRegistry`][] and
-  [`topmark.registry.processors.HeaderProcessorRegistry`][] – advanced,
+  [`topmark.registry.processors.HeaderProcessorRegistry`][] - advanced,
   low-level registries intended for plugins and tests (no semver stability guarantee).
 
 Most users should import from here:

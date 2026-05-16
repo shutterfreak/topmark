@@ -19,7 +19,7 @@ The scanner itself is file format agnostic and relies on the HeaderProcessor to 
 format-specific parsing. It operates on a ProcessingContext that already exposes the file
 image via `ctx.image` (see ``FileImageView``). The scanner updates the context with a
 [`topmark.pipeline.views.HeaderView`][] that contains the header range, extracted lines,
-a reconstructed header block and parsed key‑value fields. Legacy ``existing_header_*`` fields
+a reconstructed header block and parsed key-value fields. Legacy ``existing_header_*`` fields
 are kept in sync during the migration.
 """
 

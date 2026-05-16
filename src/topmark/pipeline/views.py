@@ -96,7 +96,7 @@ class ListFileImageView:
             must not mutate it while the view is used.
     """
 
-    _lines: list[str] | None  # use a leading underscore to signal “internal”
+    _lines: list[str] | None  # use a leading underscore to signal "internal"
 
     def __init__(self, lines: list[str]) -> None:
         self._lines: list[str] | None = lines

@@ -475,10 +475,10 @@ def mutable_config_from_layered_toml_table(
                 draft.relative_to = p.resolve()
             else:
                 if cfg_dir is not None:
-                    # Resolve relative-to against the CONFIG FILE’s directory
+                    # Resolve relative-to against the CONFIG FILE's directory
                     draft.relative_to = (cfg_dir / p).resolve()
                 else:
-                    # Defaults or synthetic dicts: don’t bind to CWD; let the resolver
+                    # Defaults or synthetic dicts: don't bind to CWD; let the resolver
                     # pick the project root later.
                     draft.relative_to = None
         else:

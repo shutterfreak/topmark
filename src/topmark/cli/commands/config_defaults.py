@@ -10,7 +10,7 @@
 
 """TopMark `config defaults` command.
 
-Prints TopMark’s built-in default TOML configuration document.
+Prints TopMark's built-in default TOML configuration document.
 
 This command is intended as a copy/paste reference for users. It differs from
 `topmark config init`, which emits the annotated packaged template (when
@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     name=CliCmd.CONFIG_DEFAULTS,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
-        "Print TopMark’s built-in default configuration. "
+        "Print TopMark's built-in default configuration. "
         "This command is file-agnostic: positional PATHS "
         "and file-processing STDIN modes are rejected. "
         f"Use {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
@@ -99,7 +99,7 @@ def config_defaults_command(
 ) -> None:
     """Print the built-in default configuration document.
 
-    Outputs a clean TOML representation of TopMark’s default configuration.
+    Outputs a clean TOML representation of TopMark's default configuration.
     This serves as a reference when no configuration files are present.
 
     Notes:

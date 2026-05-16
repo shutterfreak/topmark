@@ -10,18 +10,18 @@
 
 """Patch (diff) generation step for the TopMark pipeline (view-based).
 
-This step compares the original file image (``ctx.image``) with the pipeline’s
+This step compares the original file image (``ctx.image``) with the pipeline's
 updated image (``ctx.views.updated``) and produces a unified diff suitable for CLI/CI
 consumption. It mutates only the processing context and performs no I/O.
 
 Inputs:
-  * ``ctx.views.image`` – [`FileImageView`][topmark.pipeline.views.FileImageView] carrying the
+  * ``ctx.views.image`` - [`FileImageView`][topmark.pipeline.views.FileImageView] carrying the
     original file image view.
-  * ``ctx.views.updated`` – [`UpdatedView`][topmark.pipeline.views.UpdatedView] carrinyng the
+  * ``ctx.views.updated`` - [`UpdatedView`][topmark.pipeline.views.UpdatedView] carrinyng the
     updated file image (or ``None``)).
 
 Outputs:
-  * ``ctx.views.diff`` – [`DiffView`][topmark.pipeline.views.DiffView] carrying the
+  * ``ctx.views.diff`` - [`DiffView`][topmark.pipeline.views.DiffView] carrying the
     unified diff text (or ``None``).
 """
 

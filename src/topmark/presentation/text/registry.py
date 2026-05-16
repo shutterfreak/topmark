@@ -87,7 +87,7 @@ def render_filetypes_text(
             it.description,
         )
         if report.show_details:
-            lines.append(f"{idx:>{num_width}}. {it.qualified_key} — {descr}")
+            lines.append(f"{idx:>{num_width}}. {it.qualified_key} - {descr}")
             lines.append(f"      local key       : {it.local_key}")
             lines.append(f"      namespace       : {it.namespace}")
             lines.append(f"      bound           : {'yes' if it.bound else 'no'}")
@@ -139,7 +139,7 @@ def render_processors_text(
     for proc_idx, proc in enumerate(report.processors, start=1):
         descr: str = dim_styler(proc.description)
         if report.show_details:
-            parts.append(f"{proc_idx:>{num_proc_width}}. {proc.qualified_key} — {descr}")
+            parts.append(f"{proc_idx:>{num_proc_width}}. {proc.qualified_key} - {descr}")
             parts.append(f"      local key       : {proc.local_key}")
             parts.append(f"      namespace       : {proc.namespace}")
             parts.append(f"      bound           : {'yes' if proc.bound else 'no'}")
@@ -194,14 +194,14 @@ def render_bindings_text(
         parts.append("")
         parts.append(heading_styler("Unbound file types:"))
         for idx, item in enumerate(report.unbound_filetypes, start=1):
-            parts.append(f"{idx:>{num_width}}. {item.name} — {dim_styler(item.description)}")
+            parts.append(f"{idx:>{num_width}}. {item.name} - {dim_styler(item.description)}")
 
     if report.unused_processors:
         parts.append("")
         parts.append(heading_styler("Unused processors:"))
         for idx, item in enumerate(report.unused_processors, start=1):
             parts.append(
-                f"{idx:>{num_width}}. {item.qualified_key} — {dim_styler(item.description)}"
+                f"{idx:>{num_width}}. {item.qualified_key} - {dim_styler(item.description)}"
             )
 
     return "\n".join(parts)

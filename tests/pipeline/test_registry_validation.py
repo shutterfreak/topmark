@@ -43,7 +43,7 @@ def test_one_processor_per_filetype() -> None:
     hp_registry: dict[str, HeaderProcessor] = get_base_header_processor_registry()
 
     # Keys are type names; duplicates would be impossible by design,
-    # but keep a guard that class names aren’t reused across different types.
+    # but keep a guard that class names aren't reused across different types.
 
     class_by_type: dict[str, type[HeaderProcessor]] = {
         ft_name: proc.__class__ for ft_name, proc in hp_registry.items()
@@ -55,7 +55,7 @@ def test_one_processor_per_filetype() -> None:
         by_class.setdefault(cls, []).append(ft_name)
 
     # Accept that one processor class can serve multiple types (e.g., Slash),
-    # but ensure we don’t accidentally register multiple instances under the same type.
+    # but ensure we don't accidentally register multiple instances under the same type.
     assert len(hp_registry) == len(set(hp_registry.keys()))
 
 

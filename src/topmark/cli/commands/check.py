@@ -236,7 +236,7 @@ def check_command(
         no_config: If True, skip loading project/user configuration files.
         config_files: Additional configuration file paths to load and merge.
         stdin_filename: Assumed filename when reading content from STDIN).
-        files_from: Files that contain newline‑delimited *paths* to add to the
+        files_from: Files that contain newline-delimited *paths* to add to the
             candidate set before filtering. Use ``-`` to read from STDIN.
         include_from: Files that contain include glob patterns (one per line).
             Use ``-`` to read patterns from STDIN.
@@ -265,7 +265,7 @@ def check_command(
         write_mode: Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
         diff: Show unified diffs of header changes (human output only).
-        summary_mode: Show outcome counts instead of per‑file details.
+        summary_mode: Show outcome counts instead of per-file details.
         report_scope: Reporting scope for human per-file output (`actionable`, `noncompliant`,
             `all`). Ignored for summary mode and machine-readable formats.
         align_fields: Whether to align header fields when rendering (captured in config).
@@ -275,7 +275,7 @@ def check_command(
 
     Exit Status:
         SUCCESS (0): No changes required or all requested changes were written.
-        WOULD_CHANGE (2): Dry‑run detected files that would change with ``--apply``.
+        WOULD_CHANGE (2): Dry-run detected files that would change with ``--apply``.
         USAGE_ERROR (64): Invalid invocation (e.g., mixing ``-`` with ``--files-from -``).
         FILE_NOT_FOUND (66): One or more specified files or directories could not be found.
         PERMISSION_DENIED (77): Insufficient permissions to read or write a file.

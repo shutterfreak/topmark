@@ -27,7 +27,7 @@ class FilesSerializationMode(str, Enum):
         REBASED:
             Emit flattened lists that are meaningful from the current working directory (CWD),
             e.g. `[files].include_patterns`, `[files].exclude_patterns`, and `*_from` path lists.
-            This is the default “as seen from here” view used for copy/paste friendly dumps.
+            This is the default "as seen from here" view used for copy/paste friendly dumps.
 
         ORIGIN:
             Emit provenance-oriented structured tables that retain each declaring base directory,

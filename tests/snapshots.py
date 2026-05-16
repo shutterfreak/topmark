@@ -32,7 +32,7 @@ def assert_snapshot(actual: str, snapshot_path: Path) -> None:
     If the file does not exist yet, it is created and the test fails with a
     message prompting a re-run (to review/commit the snapshot).
     """
-    # If the snapshot doesn’t exist yet, create it (first run UX).
+    # If the snapshot doesn't exist yet, create it (first run UX).
     if not snapshot_path.exists():
         snapshot_path.parent.mkdir(parents=True, exist_ok=True)
         snapshot_path.write_text(actual, encoding="utf-8")

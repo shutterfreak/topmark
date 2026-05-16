@@ -73,7 +73,7 @@ def is_str_list(obj: object) -> TypeGuard[list[str]]:
     return is_any_list(obj) and all(isinstance(x, str) for x in obj)
 
 
-# --- “Casting / normalization” helpers ---
+# --- "Casting / normalization" helpers ---
 
 
 def as_object_dict(value: object) -> dict[str, object]:

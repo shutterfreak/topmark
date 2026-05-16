@@ -25,8 +25,8 @@ To avoid mkdocs-autorefs duplicate-anchor warnings, it skips generating internal
 In debug/strict modes it also scans *module docstrings* in `src/` for unlinked backticked
 `topmark.*` symbol references and reports actionable `src/...` locations.
 
-Because it’s executed as a script (not imported as a package), helpers must be imported via
-absolute module paths (e.g. tools.docs.…).
+Because it's executed as a script (not imported as a package), helpers must be imported via
+absolute module paths (e.g. tools.docs....).
 """
 
 # pyright: reportMissingModuleSource=false
@@ -129,7 +129,7 @@ def _run_topmark_markdown(*args: str) -> str:
         check=False,
     )
     if proc.returncode != 0:
-        # Fail hard so 'strict: true' builds don’t silently publish stale docs.
+        # Fail hard so 'strict: true' builds don't silently publish stale docs.
         joined: str = " ".join(cmd)
         raise RuntimeError(
             f"Command failed: {joined}\n\nSTDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}"
@@ -390,7 +390,7 @@ def _scan_module_docstring(modname: str, src_path: str, current_doc: str) -> Non
 
     for seq, sym in enumerate(symbols_sorted, start=1):
         logger.warning(
-            "src/%s - [%d] (%s) %s — Fix: [`%s`][%s]",
+            "src/%s - [%d] (%s) %s - Fix: [`%s`][%s]",
             rel_src,
             seq,
             format_line_numbers(findings_abs[sym]),

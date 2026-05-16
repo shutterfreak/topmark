@@ -429,7 +429,7 @@ class XmlPositionalMixin:
 
         For XML/HTML-like processors that also support line-based insertion,
         we only guarantee the block terminates with the dominant newline; we do
-        not add a trailing spacer when inserting at EOF (that’s handled by the
+        not add a trailing spacer when inserting at EOF (that's handled by the
         text path or upstream policy).
 
         Notes:

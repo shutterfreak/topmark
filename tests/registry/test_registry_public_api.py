@@ -110,7 +110,7 @@ def test_processor_register_duplicate_raises() -> None:
 
 
 def test_replace_processor_requires_unregister() -> None:
-    """Verifies you can’t register the same processor twice without first unregistering it."""
+    """Verifies you can't register the same processor twice without first unregistering it."""
     cls1: type[HeaderProcessor] = registry_processor_class()
     proc_def1: ProcessorDefinition = HeaderProcessorRegistry.register(
         processor_class=cls1,

@@ -501,7 +501,7 @@ def resolve_file_list_with_diagnostics(
          If no positional paths are provided, extend with any literal paths read from
          ``--files-from`` **before filtering**. If the candidate set is still empty and
          include globs are configured, expand those include globs from **both** the current
-         working directory (CLI perspective) and each discovered/explicit config file’s
+         working directory (CLI perspective) and each discovered/explicit config file's
          directory (config perspective) to seed candidates.
       2. **File-only**: Only files (not directories) are kept for filtering.
       3. **Include intersection**: If any include patterns

@@ -11,13 +11,13 @@
 """Machine-output support for registry-related TopMark commands.
 
 This package implements the machine-readable JSON/NDJSON output shapes for
-commands that expose TopMark’s internal registries, such as:
+commands that expose TopMark's internal registries, such as:
 
 - `topmark registry filetypes`
 - `topmark registry processors`
 - `topmark registry bindings`
 
-The design follows TopMark’s general machine-readable output layering:
+The design follows TopMark's general machine-readable output layering:
 
 1) **Schema types** (`schemas.py`)
    TypedDict-based types describing the payload shapes emitted by registry commands.

@@ -410,7 +410,7 @@ class BlockSignatures(TypedDict, total=False):
 
 
 def expected_block_lines_for(path: Path, newline: str = "\n") -> BlockSignatures:
-    """Return the rendered preamble/postamble lines for the file’s processor.
+    """Return the rendered preamble/postamble lines for the file's processor.
 
     The returned strings match exactly what the processor would render for the
     preamble (block open, start marker, intentional blank) and postamble

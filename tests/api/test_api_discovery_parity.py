@@ -8,7 +8,7 @@
 #
 # topmark:header:end
 
-"""API–CLI discovery parity tests.
+"""API-CLI discovery parity tests.
 
 These tests assert that `topmark.api.check()` with `config=None` follows the
 same discovery/precedence model as the CLI:
@@ -134,7 +134,7 @@ def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
 @pytest.mark.cli
 @pytest.mark.integration
 def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
-    """Anchor in subdir: parent pyproject.toml, child topmark.toml — child wins."""
+    """Anchor in subdir: parent pyproject.toml, child topmark.toml - child wins."""
     proj: Path = tmp_path / "proj"
     child: Path = proj / "pkg"
     _write(child / "b.py", _mk_py_headerless())

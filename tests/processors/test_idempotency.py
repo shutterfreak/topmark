@@ -66,7 +66,7 @@ def test_idempotent_double_insert(tmp_path: Path, filename: str, content: str) -
     lines2: list[str] = materialize_updated_lines(ctx2)
 
     assert lines2 == lines1, "Second run must be a no-op (idempotent)"
-    # Header must be detected by scanner on the second run (it’s now in the original file)
+    # Header must be detected by scanner on the second run (it's now in the original file)
     assert ctx2.views.header is not None
 
 
@@ -143,5 +143,5 @@ def test_idempotent_insert_strip(tmp_path: Path, filename: str, content: str) ->
     lines2: list[str] = materialize_updated_lines(ctx2)
 
     assert lines2 == lines, "Second run must revert to initial (idempotent)"
-    # Header must be detected by scanner on the second run (it’s now in the original file)
+    # Header must be detected by scanner on the second run (it's now in the original file)
     assert ctx2.views.header is not None
