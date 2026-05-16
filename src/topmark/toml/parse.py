@@ -48,7 +48,7 @@ class SourceConfigLoadingOptions:
 
     Attributes:
         strict: Per-source strictness preference for later
-            staged config-loading/preflight validation. If `True`, warnings in
+            staged config-loading validation. If `True`, warnings in
             staged config-validation are treated as failures. `None` means that
             the TOML source does not specify a strictness preference.
     """

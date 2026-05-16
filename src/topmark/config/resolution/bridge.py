@@ -121,7 +121,7 @@ def resolve_toml_sources_and_build_mutable_config(
             layers. Later files override earlier ones.
         strict: Optional explicit override for the TOML-side
             strictness preference that later governs staged
-            config-loading/preflight validation.
+            staged config-loading validation.
         no_config: If `True`, skip all discovered config layers (user +
             project) and only use built-in defaults plus any explicit extra
             config files.

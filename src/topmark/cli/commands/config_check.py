@@ -81,7 +81,7 @@ logger: TopmarkLogger = get_logger(__name__)
     epilog=(
         "\b\n"
         "Examples:\n"
-        "  # Validate the effective merged configuration\n"
+        "  # Validate the effective runtime configuration\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}\n"
         "  # Fail on warnings (strict mode)\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} {CliOpt.STRICT}\n"

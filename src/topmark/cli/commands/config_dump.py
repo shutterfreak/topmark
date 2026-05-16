@@ -94,7 +94,7 @@ logger: TopmarkLogger = get_logger(__name__)
     epilog=(
         "\b\n"
         "Examples:\n"
-        "  # Print the effective merged configuration\n"
+        "  # Print the effective runtime configuration\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}\n"
         "  # Include configuration provenance layers\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} {CliOpt.SHOW_CONFIG_LAYERS}\n"

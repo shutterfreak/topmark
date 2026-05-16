@@ -13,8 +13,8 @@
 Provides subcommands for validating, inspecting, and scaffolding TopMark
 configuration:
 
-  * ``topmark config check``: validate the effective merged configuration.
-  * ``topmark config dump``: print the effective merged configuration.
+  * ``topmark config check``: validate the effective runtime configuration.
+  * ``topmark config dump``: print the effective runtime configuration.
   * ``topmark config defaults``: print the canonical built-in default TOML document.
   * ``topmark config init``: print a starter configuration file.
 """
@@ -38,9 +38,9 @@ from topmark.cli.options import GROUP_CONTEXT_SETTINGS
     epilog=(
         "\b\n"
         "Examples:\n"
-        "  # Validate the effective merged configuration\n"
+        "  # Validate the effective runtime configuration\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}\n"
-        "  # Print the effective merged configuration\n"
+        "  # Print the effective runtime configuration\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}\n"
         "  # Print the built-in default configuration reference\n"
         f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DEFAULTS}\n"
@@ -53,8 +53,8 @@ def config_command() -> None:
 
     This group performs no action itself; use one of its subcommands:
 
-      * ``check``: validate the effective merged configuration.
-      * ``dump``: print the effective merged configuration.
+      * ``check``: validate the effective runtime configuration.
+      * ``dump``: print the effective runtime configuration.
       * ``defaults``: print the canonical built-in defaults.
       * ``init``: print a starter configuration file for projects.
     """
