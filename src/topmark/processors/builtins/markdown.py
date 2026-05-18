@@ -31,8 +31,8 @@ import re
 from typing import TYPE_CHECKING
 from typing import ClassVar
 
-from topmark.constants import TOPMARK_END_MARKER
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin

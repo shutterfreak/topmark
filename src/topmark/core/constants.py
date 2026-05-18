@@ -2,13 +2,30 @@
 #
 #   project      : TopMark
 #   file         : constants.py
-#   file_relpath : src/topmark/constants.py
+#   file_relpath : src/topmark/core/constants.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""TopMark Constants."""
+"""Core constants and package metadata used across TopMark.
+
+This module collects UI-agnostic constants that are safe to import from any
+layer of the project, including configuration, registry, pipeline, API, CLI,
+and documentation tooling.
+
+The constants cover:
+
+- package identity and installed metadata
+- dependency metadata extracted from package metadata
+- bundled TOML resource names
+- TopMark header and embedded TOML markers
+- registry namespace and token-validation primitives
+- standard newline definitions shared by readers, processors, and policies
+
+Keep this module free of CLI, presentation, pipeline, and API-command imports so
+it remains a stable low-level dependency.
+"""
 
 from __future__ import annotations
 
@@ -147,7 +164,9 @@ TEST_DEPENDENCIES: Final[list[DependencyInfo]] = sorted(
 )
 
 # Using .resolve() ensures we have an absolute path regardless of CWD
-PYPROJECT_TOML_PATH: Final = (Path(__file__).parent.parent.parent / "pyproject.toml").resolve()
+PYPROJECT_TOML_PATH: Final = (
+    Path(__file__).parent.parent.parent.parent / "pyproject.toml"
+).resolve()
 
 # --- Global Markers ---
 
@@ -163,7 +182,9 @@ TOPMARK_END_MARKER: Final = "topmark:header:end"
 """End marker of TopMark header."""
 
 TOML_BLOCK_START: Final = "# === BEGIN[TOML] ==="
+"""Start marker of rendered TopMark TOML configuration block."""
 TOML_BLOCK_END: Final = "# === END[TOML] ==="
+"""End marker of rendered TopMark TOML configuration block."""
 
 # --- String constants ---
 

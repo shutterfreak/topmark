@@ -36,8 +36,8 @@ from tests.helpers.pipeline import run_insert
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
-from topmark.constants import TOPMARK_END_MARKER
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline

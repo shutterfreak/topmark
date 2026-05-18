@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.constants import VALUE_NOT_SET
+from topmark.core.constants import VALUE_NOT_SET
 from topmark.core.logging import get_logger
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster

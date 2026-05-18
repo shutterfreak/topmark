@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.constants import STANDARD_NEWLINES
+from topmark.core.constants import STANDARD_NEWLINES
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
 from topmark.pipeline.adapters import PreInsertViewAdapter

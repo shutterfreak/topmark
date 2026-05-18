@@ -27,7 +27,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import Final
 
-from topmark.constants import TOPMARK_NAMESPACE
+from topmark.core.constants import TOPMARK_NAMESPACE
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import ContentMatcher
 from topmark.filetypes.model import FileType

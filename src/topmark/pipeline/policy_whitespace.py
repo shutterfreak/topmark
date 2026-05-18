@@ -26,7 +26,7 @@ Helpers
 
 from __future__ import annotations
 
-from topmark.constants import STANDARD_NEWLINE_SET
+from topmark.core.constants import STANDARD_NEWLINE_SET
 from topmark.filetypes.policy import BlankCollapseMode
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 

@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 from topmark.config.resolution.bridge import resolve_default_table_and_build_mutable_config
 from topmark.config.resolution.bridge import resolve_default_template_and_build_mutable_config
 from topmark.config.resolution.synthetic import SyntheticConfigSource
-from topmark.constants import EXAMPLE_TOPMARK_TOML_NAME
-from topmark.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
+from topmark.core.constants import EXAMPLE_TOPMARK_TOML_NAME
+from topmark.core.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
 
 if TYPE_CHECKING:
     from topmark.diagnostic.model import MutableDiagnosticLog

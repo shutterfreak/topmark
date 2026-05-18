@@ -21,7 +21,7 @@ Design goals:
   [`Outcome`][topmark.core.outcomes.Outcome] values that are independent of the
   chosen frontend.
 - Deterministic summaries: `(outcome, reason)` counting is stable and ordered
-  using [`OUTCOME_ORDER`][topmark.core.outcomes.OUTCOME_ORDER].
+  using `OUTCOME_ORDER` defined in [topmark.core.outcomes][].
 
 Outcome primitives live in [`topmark.core.outcomes`][topmark.core.outcomes]
 rather than `topmark.api.types` so this pipeline layer does not import the API

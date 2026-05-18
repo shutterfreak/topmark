@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from topmark.constants import TOPMARK_VERSION
+from topmark.core.constants import TOPMARK_VERSION
 from topmark.version.convert import convert_pep440_to_semver
 from topmark.version.types import VersionFormatLiteral
 from topmark.version.types import VersionInfo

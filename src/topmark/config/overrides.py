@@ -42,7 +42,7 @@ from topmark.config.paths import pattern_source_from_cwd
 from topmark.config.policy import MutablePolicy
 from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.config.types import PatternGroup
-from topmark.constants import CLI_OVERRIDE_STR
+from topmark.core.constants import CLI_OVERRIDE_STR
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:

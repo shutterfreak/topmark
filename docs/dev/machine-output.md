@@ -475,8 +475,9 @@ Important characteristics:
   - `outcome` - pipeline outcome (e.g. `inserted`, `replaced`, `unchanged`).
   - `reason` - short lowercase bucket reason used for grouping.
   - `count` - number of files in that bucket.
-- Ordering is deterministic: outcomes follow the internal \[`Outcome`\][topmark.api.types.Outcome]
-  ordering and reasons are alphabetically sorted within each outcome.
+- Ordering is deterministic: outcomes follow the internal
+  \[`Outcome`\][topmark.core.outcomes.Outcome] ordering and reasons are alphabetically sorted within
+  each outcome.
 
 ### NDJSON schema (detail and summary)
 

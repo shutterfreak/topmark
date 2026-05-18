@@ -40,9 +40,9 @@ from typing import ClassVar
 from typing import Final
 from typing import Protocol
 
-from topmark.constants import TOPMARK_END_MARKER
-from topmark.constants import TOPMARK_NAMESPACE
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_NAMESPACE
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.processors.types import BoundsKind
@@ -220,7 +220,7 @@ class HeaderProcessor:
         Every concrete `HeaderProcessor` subclass must define a stable identity:
 
         - `namespace`: non-empty string identifying the producer. Built-in processors use the
-          reserved [`TOPMARK_NAMESPACE`][topmark.constants.TOPMARK_NAMESPACE].
+          reserved [`TOPMARK_NAMESPACE`][topmark.core.constants.TOPMARK_NAMESPACE].
         - `local_key`: non-empty string identifying the processor within its namespace.
 
         Constraints (kept intentionally strict so keys are stable and easy to serialize):
@@ -228,7 +228,7 @@ class HeaderProcessor:
         - Lowercase ASCII only.
         - Must not contain ':' (reserved separator for qualified keys).
         - Allowed characters are defined by
-          [`VALID_REGISTRY_TOKEN_RE`][topmark.constants.VALID_REGISTRY_TOKEN_RE].
+          [`VALID_REGISTRY_TOKEN_RE`][topmark.core.constants.VALID_REGISTRY_TOKEN_RE].
 
         Uniqueness of the qualified key (``"<namespace>:<local_key>"``) is validated at registry
         composition time.

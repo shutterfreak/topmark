@@ -33,9 +33,9 @@ from importlib.resources import files
 from typing import TYPE_CHECKING
 
 from topmark.config.policy import HeaderMutationMode
-from topmark.constants import EXAMPLE_TOPMARK_TOML_NAME
-from topmark.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
-from topmark.constants import TOPMARK_END_MARKER
+from topmark.core.constants import EXAMPLE_TOPMARK_TOML_NAME
+from topmark.core.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
+from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.logging import get_logger
 from topmark.toml.keys import Toml
 from topmark.toml.render import render_toml_table

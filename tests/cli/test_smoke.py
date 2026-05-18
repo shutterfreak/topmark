@@ -24,7 +24,7 @@ from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.constants import TOPMARK_VERSION
+from topmark.core.constants import TOPMARK_VERSION
 
 if TYPE_CHECKING:
     from click.testing import Result

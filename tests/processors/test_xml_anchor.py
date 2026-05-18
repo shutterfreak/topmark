@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 
-from topmark.constants import STANDARD_NEWLINE_RE
+from topmark.core.constants import STANDARD_NEWLINE_RE
 from topmark.processors.base import NO_LINE_ANCHOR
 from topmark.processors.builtins.xml import XmlHeaderProcessor
 

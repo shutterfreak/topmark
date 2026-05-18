@@ -33,8 +33,8 @@ from tests.cli.conftest import run_cli
 from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.constants import TOPMARK_END_MARKER
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from pathlib import Path

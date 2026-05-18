@@ -31,8 +31,8 @@ from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
-from topmark.constants import TOPMARK_END_MARKER
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.pipeline import runner

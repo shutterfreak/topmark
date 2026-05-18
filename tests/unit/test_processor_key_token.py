@@ -27,8 +27,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from topmark.constants import TOPMARK_NAMESPACE
-from topmark.constants import VALID_REGISTRY_TOKEN_RE
+from topmark.core.constants import TOPMARK_NAMESPACE
+from topmark.core.constants import VALID_REGISTRY_TOKEN_RE
 from topmark.core.errors import DuplicateProcessorRegistrationError
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.processors import HeaderProcessorRegistry

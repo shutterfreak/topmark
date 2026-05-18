@@ -289,7 +289,7 @@ class FileType:
         Every concrete `FileType` instance must define a stable identity:
 
         - `namespace`: non-empty string identifying the producer. Built-in file types use the
-          reserved [`TOPMARK_NAMESPACE`][topmark.constants.TOPMARK_NAMESPACE].
+          reserved [`TOPMARK_NAMESPACE`][topmark.core.constants.TOPMARK_NAMESPACE].
         - `local_key`: non-empty string identifying the file type within its namespace.
 
         Constraints (kept intentionally strict so keys are stable and easy to serialize):
@@ -297,7 +297,7 @@ class FileType:
         - Lowercase ASCII only.
         - Must not contain ':' (reserved separator for qualified keys).
         - Allowed characters are defined by
-          [`VALID_REGISTRY_TOKEN_RE`][topmark.constants.VALID_REGISTRY_TOKEN_RE].
+          [`VALID_REGISTRY_TOKEN_RE`][topmark.core.constants.VALID_REGISTRY_TOKEN_RE].
 
         Uniqueness of the qualified key (``"<namespace>:<local_key>"``) is validated at registry
         composition time.

@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import re
 
-from topmark.constants import PACKAGE_NAME
-from topmark.constants import TOPMARK_NAMESPACE
-from topmark.constants import VALID_REGISTRY_TOKEN_RE
+from topmark.core.constants import PACKAGE_NAME
+from topmark.core.constants import TOPMARK_NAMESPACE
+from topmark.core.constants import VALID_REGISTRY_TOKEN_RE
 
 
 def owner_label(obj_type: type[object]) -> str:
@@ -82,7 +82,7 @@ def is_valid_registry_token(value: str) -> bool:
     """Return whether a registry token is valid.
 
     Valid tokens are lowercase, must not contain ``":"``, and must match
-    [`VALID_REGISTRY_TOKEN_RE`][topmark.constants.VALID_REGISTRY_TOKEN_RE].
+    [`VALID_REGISTRY_TOKEN_RE`][topmark.core.constants.VALID_REGISTRY_TOKEN_RE].
     """
     if value != value.lower():
         return False

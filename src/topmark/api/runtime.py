@@ -47,7 +47,7 @@ from topmark.config.resolution.bridge import resolve_toml_sources_and_build_muta
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.config.resolution.synthetic import SyntheticConfigSource
-from topmark.constants import TOPMARK_VERSION
+from topmark.core.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
 from topmark.pipeline.engine import exit_code_from_pipeline_results

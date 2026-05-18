@@ -614,7 +614,7 @@ def _write_internals_summary(summary_path: str, groups: dict[str, list[str]]) ->
     for group in sorted(groups):
         pkg: str = f"{ROOT_PKG}.{group}"
 
-        # Some top-level groups are modules (e.g. topmark.constants), not packages.
+        # Some top-level groups might be modules, not packages.
         # Only packages have generated `.../index.md` pages; modules have `....md`.
         if _is_package(pkg):
             rel_entry: str = f"{pkg.replace('.', '/')}/index.md"
@@ -676,8 +676,9 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
     Notes:
         - Package indices live at `API_INTERNALS_DIR/<pkg>/index.md`.
         - For the top-level `topmark` package, we split immediate children into
-          packages vs modules so that top-level modules (e.g. `topmark.constants`)
-          are visible.
+          packages vs modules so that top-level modules are visible.
+        - Empty top-level sections are rendered as plain text rather than passed
+          through `_write_child_list()`, which only accepts real module names.
     """
     pkg_path: str = pkg.replace(".", "/")
     pkg_index_path: str = f"{API_INTERNALS_DIR}/{pkg_path}/index.md"
@@ -732,10 +733,16 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
                     child_mods.append(child_full)
 
             fd.write("## Top-level packages\n\n")
-            _write_child_list(fd, child_pkgs or ["(none)\n"])
+            if child_pkgs:
+                _write_child_list(fd, child_pkgs)
+            else:
+                fd.write("_None._\n")
 
             fd.write("\n## Top-level modules\n\n")
-            _write_child_list(fd, child_mods or ["(none)\n"])
+            if child_mods:
+                _write_child_list(fd, child_mods)
+            else:
+                fd.write("_None._\n")
 
         else:
             # Default: single mixed list for non-top-level packages.

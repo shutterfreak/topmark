@@ -30,8 +30,8 @@ from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.constants import TOML_BLOCK_END
-from topmark.constants import TOML_BLOCK_START
+from topmark.core.constants import TOML_BLOCK_END
+from topmark.core.constants import TOML_BLOCK_START
 from topmark.toml.typing_guards import is_toml_table
 
 if TYPE_CHECKING:

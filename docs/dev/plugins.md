@@ -111,7 +111,7 @@ Every \[`FileType`\][topmark.filetypes.model.FileType] has two identity componen
 - `name`: the local file type key within that namespace
 
 TopMark reserves the namespace `topmark` (the internal constant
-\[`TOPMARK_NAMESPACE`\][topmark.constants.TOPMARK_NAMESPACE]) for built-in file types.
+\[`TOPMARK_NAMESPACE`\][topmark.core.constants.TOPMARK_NAMESPACE]) for built-in file types.
 
 **Plugin guidance:**
 

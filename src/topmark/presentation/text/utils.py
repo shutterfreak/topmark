@@ -24,8 +24,8 @@ from __future__ import annotations
 
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
-from topmark.constants import TOML_BLOCK_END
-from topmark.constants import TOML_BLOCK_START
+from topmark.core.constants import TOML_BLOCK_END
+from topmark.core.constants import TOML_BLOCK_START
 from topmark.core.presentation import StyleRole
 
 # Config helpers

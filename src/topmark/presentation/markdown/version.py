@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.constants import TOPMARK_VERSION
+from topmark.core.constants import TOPMARK_VERSION
 
 if TYPE_CHECKING:
     from topmark.presentation.shared.version import VersionHumanReport

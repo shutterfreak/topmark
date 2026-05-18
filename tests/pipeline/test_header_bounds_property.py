@@ -33,7 +33,7 @@ from tests.helpers.pipeline import run_insert
 from tests.helpers.pipeline import run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

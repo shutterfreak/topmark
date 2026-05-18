@@ -436,7 +436,7 @@ Important properties of the summary model:
 - The summary is **not nested by outcome**.
 - Each row represents one `(outcome, reason)` bucket.
 - Ordering is deterministic:
-  - outcomes follow the internal \[`Outcome`\][topmark.api.types.Outcome] ordering
+  - outcomes follow the internal \[`Outcome`\][topmark.core.outcomes.Outcome] ordering
   - reasons are sorted alphabetically within each outcome.
 
 This design keeps JSON and NDJSON schemas consistent and avoids ambiguous aggregation when different

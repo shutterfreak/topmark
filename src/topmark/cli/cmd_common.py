@@ -43,7 +43,7 @@ from topmark.config.overrides import apply_config_overrides
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
-from topmark.constants import CLI_OVERRIDE_STR
+from topmark.core.constants import CLI_OVERRIDE_STR
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
 from topmark.core.presentation import StyleRole

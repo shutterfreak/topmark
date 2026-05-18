@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 import tomlkit
 
-from topmark.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.errors import TemplateValidationError
 from topmark.toml.template_surgery import ensure_pyproject_header
 from topmark.toml.template_surgery import set_root_flag_in_template_text

@@ -21,7 +21,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 from typing import Final
 
-from topmark.constants import TOPMARK_NAMESPACE
+from topmark.core.constants import TOPMARK_NAMESPACE
 from topmark.core.errors import ProcessorBindingError
 from topmark.processors.bindings import ProcessorBinding
 from topmark.processors.bindings import bindings_for

@@ -34,7 +34,7 @@ from typing_extensions import TypedDict
 from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
-from topmark.constants import STANDARD_NEWLINES
+from topmark.core.constants import STANDARD_NEWLINES
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE

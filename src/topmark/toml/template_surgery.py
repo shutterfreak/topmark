@@ -43,7 +43,7 @@ from tomlkit.exceptions import ParseError as TomlkitParseError
 from tomlkit.items import Item
 from tomlkit.items import Table
 
-from topmark.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.errors import TemplateValidationError
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger

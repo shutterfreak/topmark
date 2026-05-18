@@ -10,15 +10,23 @@
 
 """Core, UI-agnostic primitives shared across TopMark.
 
-The [`topmark.core`][topmark.core] package provides small, reusable building blocks
-that are safe to import from anywhere in the codebase (CLI, config, pipeline, tests)
-without pulling in rendering or user-interface concerns.
+The [`topmark.core`][topmark.core] package provides small, reusable building
+blocks that are safe to import from anywhere in the codebase without pulling in
+CLI, presentation, pipeline execution, or public API command concerns.
 
 Included modules:
 
-- ``diagnostics``
-  Internal diagnostic types and helpers (levels, messages, aggregation) used
-  to collect and report info, warnings, and errors consistently.
+- ``constants``
+  Package metadata, marker strings, registry token patterns, resource names,
+  and newline definitions shared across the project.
+
+- ``outcomes``
+  Stable outcome enum values, deterministic outcome ordering, and fallback
+  reason text shared by API DTOs, pipeline classifiers, and presentation code.
+
+- ``errors``
+  Core exception types used to classify configuration, TOML, registry,
+  processing, and runtime failures.
 
 - ``exit_codes``
   Centralized exit codes for the CLI and runtime, aligned with BSD-style
@@ -26,12 +34,25 @@ Included modules:
   dry-run mode.
 
 - ``enum_mixins``
-  Typing-friendly Enum utilities and mixins (introspection, parsing) that
-  remain independent of CLI or UI rendering.
+  Typing-friendly enum utilities and mixins for introspection and parsing.
+
+- ``machine``
+  Shared machine-output envelopes, payload contracts, and schemas used by
+  higher-level serializers.
+
+- ``presentation``
+  Minimal semantic presentation primitives that remain independent of concrete
+  text, Markdown, or CLI renderers.
+
+- ``typing_guards``
+  Narrow runtime type guards used to keep public and internal parsing code
+  precise under strict type checking.
 
 Design goals:
 
 - Keep this package free of UI dependencies and side effects.
+- Avoid imports from CLI commands, presentation renderers, pipeline steps, or
+  public API command helpers.
 - Prefer small, well-typed helpers over framework-specific utilities.
 - Maintain stable internal contracts that higher-level layers can rely on.
 """

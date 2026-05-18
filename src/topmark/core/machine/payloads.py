@@ -32,8 +32,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from topmark.constants import TOPMARK
-from topmark.constants import TOPMARK_VERSION
+from topmark.core.constants import TOPMARK
+from topmark.core.constants import TOPMARK_VERSION
 from topmark.core.machine.schemas import DetailedMetaPayload
 from topmark.core.machine.schemas import DetailLevel
 from topmark.core.machine.schemas import MetaPayload

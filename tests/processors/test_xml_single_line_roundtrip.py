@@ -26,7 +26,7 @@ from tests.helpers.pipeline import materialize_updated_lines
 from tests.helpers.pipeline import run_insert
 from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus

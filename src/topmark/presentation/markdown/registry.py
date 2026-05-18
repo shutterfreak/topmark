@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.constants import TOPMARK_VERSION
+from topmark.core.constants import TOPMARK_VERSION
 from topmark.presentation.formatters.filetypes import filetype_policy_to_display_pairs
 from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.presentation.markdown.version import render_version_footer_markdown

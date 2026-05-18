@@ -26,7 +26,7 @@ from typing import Literal
 
 from hypothesis import strategies as st
 
-from topmark.constants import STANDARD_NEWLINES
+from topmark.core.constants import STANDARD_NEWLINES
 
 Draw = Callable[[st.SearchStrategy[Any]], Any]
 

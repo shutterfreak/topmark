@@ -17,8 +17,8 @@ comments are not promoted to JSONC unless explicitly allowed.
 
 from __future__ import annotations
 
-from topmark.constants import TOPMARK_END_MARKER
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.filetypes.model import InsertCapability
 from topmark.filetypes.model import InsertCheckResult
 from topmark.filetypes.model import PreInsertContextView

@@ -33,7 +33,7 @@ from tests.cli.conftest import run_cli
 from tests.helpers.version import SEMVER_RE
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.constants import TOPMARK_VERSION
+from topmark.core.constants import TOPMARK_VERSION
 from topmark.utils.version import convert_pep440_to_semver
 
 if TYPE_CHECKING:

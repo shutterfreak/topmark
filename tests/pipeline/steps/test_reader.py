@@ -37,8 +37,8 @@ from tests.helpers.pipeline import run_reader
 from tests.helpers.pipeline import run_resolver
 from tests.helpers.pipeline import run_sniffer
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.constants import TOPMARK_END_MARKER
-from topmark.constants import TOPMARK_START_MARKER
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import ResolveStatus
