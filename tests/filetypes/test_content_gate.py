@@ -15,7 +15,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.registry import make_file_type
+from topmark.filetypes.detectors.jsonc import looks_like_jsonc
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
 
@@ -222,3 +225,107 @@ def test_gate_always_always_calls_matcher_and_returns_its_result(tmp_path: Path)
     p2.write_text("{}")
     assert ft_false.matches(p2) is False
     assert probe_false.calls == 1
+
+
+# --- JSONC Detector Tests ---
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{\n  // comment\n  "key": true\n}\n',
+        "[\n  1,\n  // comment\n  2\n]\n",
+        '{\n  /* block comment */\n  "key": true\n}\n',
+        '{\n  /* unterminated block comment\n  "key": true\n}\n',
+    ],
+)
+def test_jsonc_detector_accepts_comments_outside_strings(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    """JSONC detector should accept line and block comments outside strings."""
+    path: Path = tmp_path / "settings.json"
+    path.write_text(content, encoding="utf-8")
+
+    assert looks_like_jsonc(path) is True
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"url": "https://example.test/path"}\n',
+        '{"glob": "src/*/tests"}\n',
+        '{"escaped": "quote: \\" // not comment"}\n',
+        '{"escaped": "slashes: \\\\// not comment"}\n',
+        '{"block": "/* not comment */"}\n',
+    ],
+)
+def test_jsonc_detector_ignores_comment_markers_inside_strings(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    """JSONC detector should avoid false positives for comment tokens in strings."""
+    path: Path = tmp_path / "plain.json"
+    path.write_text(content, encoding="utf-8")
+
+    assert looks_like_jsonc(path) is False
+
+
+def test_jsonc_detector_line_comment_state_resets_after_newline(tmp_path: Path) -> None:
+    """Line comment handling should resume normal scanning after newline."""
+    path: Path = tmp_path / "line-reset.json"
+    path.write_text('{\n  // first comment\n  "key": "value"\n}\n', encoding="utf-8")
+
+    assert looks_like_jsonc(path) is True
+
+
+def test_jsonc_detector_block_comment_state_resets_after_close(tmp_path: Path) -> None:
+    """Block comment handling should resume scanning after closing delimiter."""
+    path: Path = tmp_path / "block-reset.json"
+    path.write_text('{\n  /* first comment */\n  "key": "value"\n}\n', encoding="utf-8")
+
+    assert looks_like_jsonc(path) is True
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "",
+        "   \n\t",
+        "// comment without JSON structure\n",
+        "plain text // comment\n",
+    ],
+)
+def test_jsonc_detector_rejects_content_without_json_structure(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    """JSONC detector should require at least a brace or bracket sanity marker."""
+    path: Path = tmp_path / "not-json.txt"
+    path.write_text(content, encoding="utf-8")
+
+    assert looks_like_jsonc(path) is False
+
+
+def test_jsonc_detector_rejects_plain_json_without_comments(tmp_path: Path) -> None:
+    """Plain JSON without comments should not be classified as JSONC."""
+    path = tmp_path / "plain.json"
+    path.write_text('{"key": [1, 2, 3]}\n', encoding="utf-8")
+
+    assert looks_like_jsonc(path) is False
+
+
+def test_jsonc_detector_returns_false_for_unreadable_path(tmp_path: Path) -> None:
+    """Unreadable paths should fail closed instead of raising."""
+    path: Path = tmp_path / "directory.json"
+    path.mkdir()
+
+    assert looks_like_jsonc(path) is False
+
+
+def test_jsonc_detector_scans_only_prefix_limit(tmp_path: Path) -> None:
+    """Comments beyond the detector prefix limit should not affect classification."""
+    path: Path = tmp_path / "large.json"
+    path.write_text("{" + (" " * 131072) + "// too late\n}", encoding="utf-8")
+
+    assert looks_like_jsonc(path) is False

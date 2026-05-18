@@ -28,8 +28,8 @@ def looks_like_jsonc(path: Path) -> bool:
     - Read up to ~128 KiB, UTF-8 with surrogate escapes ignored.
     - Track states: in_string (JSON double-quoted), in_line_comment, in_block_comment.
     - Properly handle string escapes (e.g. ``\"``), including backslash runs.
-    - Report True upon encountering ``//`` or ``/* ... */`` while **not** in a string
-      and **not** in an existing block comment.
+    - Report True if ``//`` or ``/* ... */`` is encountered while **not** in a
+      string and **not** in an existing block comment.
     """
     try:
         text: str = path.read_text(encoding="utf-8", errors="ignore")[:131072]
@@ -43,6 +43,7 @@ def looks_like_jsonc(path: Path) -> bool:
     in_string = False
     in_line_comment = False
     in_block_comment = False
+    comment_seen = False
     i: int = 0
     n: int = len(text)
 
@@ -88,10 +89,14 @@ def looks_like_jsonc(path: Path) -> bool:
         if ch == "/" and i + 1 < n:
             nxt: str = text[i + 1]
             if nxt == "/":
-                # Found a line comment outside strings ⇒ JSONC
-                return True
+                # Found a line comment outside strings ⇒ JSONC.
+                comment_seen = True
+                in_line_comment = True
+                i += 2
+                continue
             if nxt == "*":
-                # Enter block comment outside strings ⇒ JSONC
+                # Found a block comment outside strings ⇒ JSONC.
+                comment_seen = True
                 in_block_comment = True
                 i += 2
                 continue
@@ -104,4 +109,4 @@ def looks_like_jsonc(path: Path) -> bool:
 
         i += 1
 
-    return False
+    return comment_seen
