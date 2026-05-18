@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import materialize_updated_lines
 from tests.helpers.pipeline import run_builder
 from tests.helpers.pipeline import run_comparer
 from tests.helpers.pipeline import run_patcher
@@ -31,6 +32,15 @@ from tests.helpers.pipeline import run_scanner
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.constants import TOPMARK_END_MARKER
 from topmark.constants import TOPMARK_START_MARKER
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import PatchStatus
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.views import DiffView
+from topmark.pipeline.views import ListFileImageView
+from topmark.pipeline.views import UpdatedView
 from topmark.rendering.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
@@ -38,6 +48,28 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+
+
+def _make_patcher_context(
+    path: Path,
+    *,
+    image_lines: list[str],
+    updated_lines: list[str] | None,
+    comparison_status: ComparisonStatus = ComparisonStatus.CHANGED,
+    newline_style: str = "\n",
+) -> ProcessingContext:
+    """Create a minimal post-comparison context for patcher step tests."""
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(path, cfg)
+    ctx.status.resolve = ResolveStatus.RESOLVED
+    ctx.status.fs = FsStatus.OK
+    ctx.status.content = ContentStatus.OK
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.comparison = comparison_status
+    ctx.views.image = ListFileImageView(image_lines)
+    ctx.views.updated = None if updated_lines is None else UpdatedView(lines=updated_lines)
+    ctx.newline_style = newline_style
+    return ctx
 
 
 def _run_to_patcher(file: Path, cfg: FrozenConfig) -> ProcessingContext:
@@ -91,3 +123,115 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
         or ("CRLF" in rendered.upper())
     )
     assert "\n\r" not in rendered  # avoid flipped sequence
+
+
+def test_patcher_skips_when_comparison_is_unchanged(tmp_path: Path) -> None:
+    """UNCHANGED comparison should skip patch generation and attach an empty diff view."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "unchanged.py",
+        image_lines=["body\n"],
+        updated_lines=["body\n"],
+        comparison_status=ComparisonStatus.UNCHANGED,
+    )
+
+    ctx = run_patcher(ctx)
+
+    assert ctx.status.patch is PatchStatus.SKIPPED
+    assert ctx.status.comparison is ComparisonStatus.UNCHANGED
+    assert ctx.views.diff == DiffView(text=None)
+    assert ctx.halt_state is None
+
+
+def test_patcher_skips_when_changed_comparison_has_no_updated_view(
+    tmp_path: Path,
+) -> None:
+    """CHANGED comparison without updated lines should skip patch generation safely."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "missing_updated.py",
+        image_lines=["old\n"],
+        updated_lines=None,
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+
+    ctx = run_patcher(ctx)
+
+    assert ctx.status.patch is PatchStatus.SKIPPED
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+    assert ctx.views.diff == DiffView(text=None)
+    assert ctx.halt_state is None
+
+
+def test_patcher_generates_unified_diff_for_changed_updated_image(
+    tmp_path: Path,
+) -> None:
+    """Changed updated image should produce a unified diff view."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "changed.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=["new\n", "body\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+    assert "--- " in diff_text
+    assert "+++ " in diff_text
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+    assert materialize_updated_lines(ctx) == ["new\n", "body\n"]
+
+
+def test_patcher_normalizes_empty_diff_to_unchanged(tmp_path: Path) -> None:
+    """CHANGED comparison with identical images should normalize to unchanged."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "empty_diff.py",
+        image_lines=["same\n"],
+        updated_lines=["same\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+
+    ctx = run_patcher(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.UNCHANGED
+    assert ctx.status.patch is PatchStatus.SKIPPED
+    assert ctx.views.diff == DiffView(text=None)
+
+
+def test_patcher_preserves_configured_newline_style_in_raw_diff(
+    tmp_path: Path,
+) -> None:
+    """Raw diff text should use the newline style carried by the context."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "crlf_diff.py",
+        image_lines=["old\r\n", "body\r\n"],
+        updated_lines=["new\r\n", "body\r\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+        newline_style="\r\n",
+    )
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "\r\n" in diff_text
+    assert "\n\r" not in diff_text
+
+
+def test_patcher_halts_when_comparison_status_is_pending(tmp_path: Path) -> None:
+    """BaseStep should halt if patcher is invoked before comparison completes."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "pending.py",
+        image_lines=["old\n"],
+        updated_lines=["new\n"],
+        comparison_status=ComparisonStatus.PENDING,
+    )
+
+    ctx = run_patcher(ctx)
+
+    assert ctx.status.patch is PatchStatus.PENDING
+    assert ctx.views.diff is None
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "PatcherStep did not set state."
