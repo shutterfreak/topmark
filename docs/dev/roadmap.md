@@ -16,7 +16,8 @@ topmark:header:end
 
 TopMark 1.0 is now primarily a contract-stabilization effort. The major architecture refactors are
 complete, and the remaining work is focused on preserving stable behavior across CLI usage,
-configuration loading, machine-readable output, documentation, and release validation.
+configuration loading, machine-readable output, documentation, release validation, and finalized
+public/runtime naming.
 
 A key deferred post-1.0 opportunity remains support for data that is not naturally file-backed:
 generated code, editor buffers, CI-provided snippets, or API-driven integrations. Today, almost all
@@ -39,9 +40,9 @@ ______________________________________________________________________
 
 This section tracks work completed during the 0.12 development series and the 1.0 alpha/beta
 stabilization line. The focus has been on **architectural separation, deterministic behavior, strict
-typing, documentation governance, validation hygiene, and removal of legacy implicit behavior**. The
-system is now largely aligned with a clean *TOML → Config → Runtime → Pipeline → Presentation* model
-and is in late beta stabilization.
+typing, documentation governance, validation hygiene, canonical public/runtime naming, and removal
+of legacy implicit behavior**. The system is now largely aligned with a clean *TOML → Configuratin →
+Runtime → Pipeline → Presentation* model and is in late beta stabilization.
 
 ### Registry architecture (completed)
 
@@ -162,6 +163,8 @@ The configuration system has been fully restructured:
 - Implemented **layered configuration with provenance**
 - Introduced typed synthetic config provenance for built-in defaults, bundled templates, CLI/API
   overrides, and other non-filesystem config sources.
+- Finalized the canonical `MutableX` / `FrozenX` naming model across configuration, policy,
+  diagnostics, and staged validation-log types.
 - Added **per-path effective runtime configuration resolution**
 - Introduced **strict validation model** with diagnostics + strict mode
 - Introduced **staged configuration-loading validation logs**:
@@ -337,11 +340,21 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   wording.
 - Added lightweight documentation hygiene validation through `tools/docs/check_docs_hygiene.py`,
   exposed as `nox -s docs_hygiene` and `make docs-hygiene`.
+- Added changelog-specific hygiene validation for release heading shape, enforcing
+  Keep-a-Changelog-compatible level-3 section structure and heading conventions, disallowed deeper
+  headings, and decorative-symbol-free headings.
 - Integrated documentation hygiene validation into local verification and release gates, including
   `make verify`, `make release-check`, and `make release-full`.
 - Enforced objective documentation hygiene checks for broken snippet includes, malformed
   docs-root-relative include paths, include targets outside `docs/`, nested snippet includes,
-  accidental macOS `._*` files, and level-2 section separators.
+  accidental macOS `._*` files, level-2 section separators, heading emoji/decorative-symbol policy,
+  and `CHANGELOG.md` heading conventions.
+- Integrated documentation hygiene validation into local verification and release gates, including
+  `make verify`, `make release-check`, and `make release-full`.
+- Enforced objective documentation hygiene checks for broken snippet includes, malformed
+  docs-root-relative include paths, include targets outside `docs/`, nested snippet includes,
+  accidental macOS `._*` files, level-2 section separators, heading emoji/decorative-symbol policy,
+  and `CHANGELOG.md` heading conventions.
 - Added smart-punctuation hygiene for Markdown prose and normalized documentation prose to ASCII
   punctuation where appropriate.
 - Added `tools/docs/check_code_hygiene.py` to validate Python comments, docstrings, and
@@ -406,6 +419,8 @@ At this point:
 - Project-wide terminology, reusable terminology notes, command documentation, TOML template prose,
   Markdown prose hygiene, and Python code-prose hygiene are now aligned with the 1.0 documentation
   governance model
+- The canonical `MutableX` / `FrozenX` naming model is finalized across configuration, policy,
+  diagnostics, and staged validation-log types.
 
 The project is now in a **late beta stabilization phase**, with broad architecture complete,
 in-memory pipeline support explicitly deferred, documentation governance and prose hygiene
@@ -416,9 +431,9 @@ ______________________________________________________________________
 
 ## Breaking changes introduced so far
 
-This section summarizes the **externally relevant breaking changes** already introduced during the
-0.12 refactor series and the 1.0 alpha/beta stabilization line. The emphasis is on **contract
-changes**, not internal implementation details.
+This section summarizes the **externally relevant breaking changes** introduced during the 0.12
+refactor series and the 1.0 alpha/beta stabilization line. The emphasis is on **frozen contract and
+workflow changes**, not internal implementation details.
 
 ### Registry / resolution model
 
@@ -464,6 +479,10 @@ consumers must update to the canonical identity and explicit binding model.
     state.
 - Source-local TOML options such as `[config].root` and `[config].strict` now live outside layered
   configuration merging.
+- The canonical mutable/frozen runtime naming model was finalized:
+  - mutable runtime/configuration dataclasses now consistently use `MutableX`
+  - immutable runtime/configuration dataclasses now consistently use `FrozenX`
+  - older mixed naming conventions were removed before the 1.0 freeze
 - Runtime-facing TOML sections such as `[writer]` are resolved outside layered configuration but
   remain part of the effective TOML surface shown by config output commands and machine-readable
   configuration snapshots.
@@ -604,6 +623,8 @@ relied on older payload naming or outcome-keyed summaries must update.
   - Internal links and external references to the old developer-only glossary location must be
     updated.
 - Repeated terminology cross-reference notes now use `_snippets/terminology.md`.
+- The canonical terminology glossary moved from a developer-only page to the project-wide
+  `docs/terminology.md` reference location.
 
 Result: documentation is more accurate and better validated, but docs generation, documentation
 hygiene, and code-prose hygiene are now stricter than before.
@@ -651,21 +672,30 @@ system shape**:
 - explicit preview/apply runtime model
 - schema-driven machine output with domain-specific JSON envelopes and stable NDJSON record kinds
 - uv/nox-based tooling and artifact-based release automation
-- stricter documentation governance with convention-backed documentation and code-prose hygiene
-  validation
+- stricter documentation governance with convention-backed documentation hygiene, changelog
+  validation, terminology governance, and code-prose hygiene validation
 
-The 1.0 task is therefore not large-scale redesign anymore, but **contract freeze and final
-stabilization** on top of these already-landed changes.
+The 1.0 task is therefore no longer large-scale redesign, but **contract freeze, documentation
+freeze, workflow stabilization, and final hardening** on top of these already-landed changes.
 
 ______________________________________________________________________
 
 ## Still undecided / still to do
 
-This section captures the **remaining post-beta validation and targeted hardening work**. The large
-structural refactors, contract-freeze decisions, beta validation gates, documentation-governance
-work, command-page freeze review, and prose-hygiene tooling work are complete. What remains is
-mostly about **real-world beta feedback, ecosystem validation, and explicitly deferred post-1.0
-scope**.
+This section captures the remaining **post-beta stabilization, ecosystem validation, and targeted
+hardening work** before `1.0.0`.
+
+The large structural refactors, contract-freeze decisions, beta validation gates,
+documentation-governance work, command-page freeze review, terminology alignment, TOML-template
+harmonization, and prose-hygiene tooling work are complete.
+
+What remains is primarily:
+
+- real-world beta feedback,
+- downstream ecosystem validation,
+- compatibility preservation,
+- targeted hardening from concrete findings,
+- and explicitly deferred post-1.0 scope.
 
 ### Registry / resolution freeze
 
@@ -684,8 +714,9 @@ Completed decisions:
   surfaces outside the `topmark.api` stability contract.
 - Registry discovery/query commands remain deferred beyond 1.0.
 
-Remaining work is limited to real-world beta validation, targeted hardening, and ensuring generated
-API references continue reflecting the public/internal boundary as the code evolves.
+Remaining work is limited to real-world beta validation, targeted hardening, downstream ecosystem
+validation, and ensuring generated API references continue reflecting the frozen public/internal
+boundary as the code evolves.
 
 ### In-memory pipeline: implement or defer
 
@@ -721,8 +752,8 @@ Post-1.0:
 
 ### API / CLI / presentation boundary freeze
 
-The separation is frozen for 1.0. Remaining work is monitoring and targeted hardening rather than
-boundary redesign:
+The separation is frozen for 1.0. Remaining work is limited to stability monitoring, consistency
+validation, and targeted hardening rather than boundary redesign:
 
 - Keep monitoring for any remaining Click-facing concerns in non-CLI modules.
 - Keep formatting, TEXT verbosity/quiet, and color decisions strictly split between:
@@ -759,6 +790,8 @@ Frozen decisions:
   - TOML-source diagnostics
   - merged-config diagnostics
   - runtime-applicability diagnostics
+- Project-wide terminology and validation-stage wording are now aligned across CLI help,
+  machine-readable output, command pages, API documentation, and generated developer references.
 - Keep staged validation primarily internal for 1.0, with only the flattened compatibility
   diagnostics contract exposed at exception, presentation, and machine-readable output boundaries.
 - `[config].strict` is now the frozen public configuration-loading strictness knob for 1.0.
@@ -788,8 +821,8 @@ Recommended direction:
 ### Output contract freeze
 
 Output architecture work is complete. Machine-readable implementation, human-output rendering,
-tests, reference documentation, CLI/help wording, warning/error wording, command-page wording, and
-beta-semantics reviews are frozen for the beta line;
+tests, reference documentation, CLI/help wording, warning/error wording, command-page wording,
+terminology alignment, and beta-semantics reviews are frozen for the beta line.
 
 Machine-readable output decisions:
 
@@ -840,9 +873,9 @@ work is now limited to any last warning/error wording cleanup discovered during 
 
 ### Tooling / CI / release follow-up
 
-The security, workflow, release, tooling-parity, documentation-hygiene, and Python prose-hygiene
-work is functionally complete. What remains is mostly follow-up validation and post-1.0 ecosystem
-decisions.
+The security, workflow, release, tooling-parity, documentation-hygiene, changelog-hygiene, and
+Python prose-hygiene work is functionally complete. What remains is primarily follow-up validation,
+ecosystem monitoring, and explicitly deferred post-1.0 tooling decisions.
 
 Remaining follow-up:
 
@@ -870,8 +903,9 @@ Remaining follow-up:
 
 ### Human-facing policy / behavior questions
 
-The main user-facing policy and behavior questions are frozen for 1.0. Remaining work is monitoring
-real-world beta feedback and keeping documentation aligned:
+The main user-facing policy, reporting, terminology, and behavior questions are frozen for 1.0.
+Remaining work is limited to monitoring real-world beta feedback, preserving compatibility, and
+keeping documentation/help output aligned:
 
 - The default processing mode remains **"all supported file types"** for 1.0.
 - A stricter whitelist-first default remains a possible post-1.0 design question, not a 1.0 blocker.
@@ -912,12 +946,13 @@ What is left is mainly:
 - **ecosystem compatibility validation**
 - **downstream machine-readable output consumer validation**
 - **targeted hardening from concrete beta findings**
-- **ongoing documentation/prose-governance validation**
+- **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
 - **explicit post-1.0 follow-up for deferred scope**
 
-That means TopMark is now in the post-beta stabilization stage of the 1.0 effort: validating the
+That means TopMark is now in the late beta stabilization stage of the 1.0 effort: validating the
 frozen contracts in realistic environments, preserving compatibility, maintaining documentation and
-prose-governance quality, and avoiding new scope unless a concrete release blocker appears.
+prose-governance quality, validating downstream ecosystem behavior, and avoiding new scope unless a
+concrete release blocker appears.
 
 ______________________________________________________________________
 
@@ -928,8 +963,9 @@ surface, configuration semantics, machine-readable formats, CLI behavior, docume
 and release workflow expectations) must be stable, documented, and well-tested.
 
 The large refactors, beta gates, documentation freeze review, documentation-governance work,
-command-page consistency review, prose-hygiene tooling, and release-validation passes are complete.
-This checklist now records the frozen 1.0 contract state and remaining post-beta validation posture:
+command-page consistency review, terminology stabilization, mutable/frozen runtime naming cleanup,
+prose-hygiene tooling, changelog hygiene, and release-validation passes are complete. This checklist
+now records the frozen 1.0 contract state and remaining post-beta validation posture:
 
 - what is already stable for `1.0.0`
 - what has been explicitly deferred with rationale
@@ -955,6 +991,8 @@ These are release blockers unless explicitly deferred with a documented rational
   developer/tooling boundary
 - [x] User-facing command documentation avoids internal runtime implementation details such as
   concrete mutable/frozen dataclass names, `freeze()` / `thaw()` mechanics, and internal DTO names
+- [x] Canonical mutable/frozen runtime type naming finalized across public/runtime-facing developer
+  surfaces as `MutableX` / `FrozenX`
 
 #### [Must] Machine output contracts
 
@@ -1050,6 +1088,8 @@ These are release blockers unless explicitly deferred with a documented rational
 #### [Must] Configuration & validation
 
 - [x] Config keys and semantics documented and considered stable
+- [x] Mutable/frozen configuration, policy, diagnostics, and staged validation-log type naming
+  finalized with the canonical `MutableX` / `FrozenX` model
 - [x] Qualified/local file type identifier semantics documented and considered stable
   - [x] canonical internal identity is the qualified key, such as `topmark:python`
   - [x] local identifiers are accepted at public boundaries only when unambiguous
@@ -1147,6 +1187,8 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] CI
   - [x] artifact-based release workflow
 - [x] Artifact-based CI → release pipeline implemented and documented
+- [x] GitHub prerelease publication enabled for prerelease tags while preserving TestPyPI package
+  publication for prerelease artifacts
 - [x] Dedicated multi-platform install-smoke workflow implemented and documented
   - [x] validates wheel and sdist installation from built artifacts
   - [x] validates isolated installation behavior on Linux, macOS, and Windows
@@ -1182,6 +1224,11 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] `make code-hygiene` exposes the check through the Makefile
   - [x] `make verify`, `make release-check`, and `make release-full` include code-prose hygiene
     validation
+- [x] Changelog hygiene validation integrated into documentation hygiene checks
+  - [x] release headings use `## [version] - YYYY-MM-DD`
+  - [x] release sections use the accepted level-3 heading set
+  - [x] level-4 and deeper headings are rejected in `CHANGELOG.md`
+  - [x] decorative symbols are rejected in headings
 - [x] Dependency and pre-commit hook refresh completed during beta stabilization
   - [x] obsolete Pyright ignore removed after improved `tomlkit` typing
 
@@ -1192,13 +1239,17 @@ beta stabilization series. Packaging validation is intentionally handled through
 GitHub workflows, and release workflow checks rather than dedicated pytest tests.
 
 - [x] Packaging validation completed
-  - [x] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
-  - [x] wheel artifact installs into a clean environment and exposes the `topmark` console script
-  - [x] sdist artifact installs into a clean environment and exposes the `topmark` console script
-  - [x] dedicated install-smoke workflow validates installation and lightweight CLI execution on
-    Linux, macOS, and Windows
-  - [x] published `v1.0.0b3` artifacts validated successfully on Windows, macOS, and Ubuntu through
-    real installation and execution testing
+- [x] GitHub prerelease visibility validated for the beta line
+  - [x] `v1.0.0b1` and `v1.0.0b2` GitHub prereleases backfilled from existing tags
+  - [x] `v1.0.0b3` published as a GitHub prerelease through the release workflow
+  - [x] prerelease package publication remains routed to TestPyPI
+- [x] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
+- [x] wheel artifact installs into a clean environment and exposes the `topmark` console script
+- [x] sdist artifact installs into a clean environment and exposes the `topmark` console script
+- [x] dedicated install-smoke workflow validates installation and lightweight CLI execution on
+  Linux, macOS, and Windows
+- [x] published `v1.0.0b3` artifacts validated successfully on Windows, macOS, and Ubuntu through
+  real installation and execution testing
 - [x] uv-managed development environment works with the documented development extras
   - [x] TestPyPI upload/install rehearsal succeeds for the prerelease path
   - [x] dependency resolution succeeds without undeclared runtime dependencies
@@ -1222,6 +1273,7 @@ GitHub workflows, and release workflow checks rather than dedicated pytest tests
   - [x] generated API reference pages are current
   - [x] strict MkDocs build passes in a clean environment
   - [x] snippet/include hygiene and level-2 section-separator conventions pass validation
+  - [x] `CHANGELOG.md` heading and section conventions pass validation
 - [x] QA validation completed
   - [x] `make test` (runs `nox -s qa`)
   - [x] `make release-check`
@@ -1315,11 +1367,14 @@ as a record of recommended freeze work that has now been closed.
 - [x] Documentation hygiene validation added and integrated into local and release validation gates
 - [x] Generated-site navigation and TOC density reviewed and improved
 - [x] Project-wide terminology glossary promoted to `docs/terminology.md`
+- [x] Historical glossary references updated from the developer-only location to the project-wide
+  terminology page
 - [x] Shared terminology note centralized in `_snippets/terminology.md`
 - [x] Command-page user-facing implementation-boundary guidance documented
 - [x] Bundled `topmark-example.toml` template prose harmonized with the finalized documentation
   terminology and reference-template style
 - [x] Markdown prose and Python code-prose hygiene validation added and integrated
+- [x] Changelog-specific heading and section validation added and integrated
 
 ### Post-1.0 follow-up (nice-to-have)
 
@@ -1366,7 +1421,8 @@ ______________________________________________________________________
 Only when all items in the "Must finish before 1.0" section are completed or explicitly deferred
 with rationale should `1.0.0` final be cut. The 1.0 alpha series served as the
 contract-stabilization and release-path rehearsal phase, while the beta stabilization series
-validated the frozen contracts, release pipeline, documentation governance, prose hygiene, and
-cross-platform installation behavior. The remaining path to final `1.0.0` is now focused on
-preserving compatibility, collecting final real-world beta feedback, and avoiding new scope unless
-concrete release-blocking issues are identified.
+validated the frozen contracts, release pipeline, GitHub prerelease visibility, documentation
+governance, changelog hygiene, prose hygiene, terminology stability, and cross-platform installation
+behavior. The remaining path to final `1.0.0` is now focused on preserving compatibility, collecting
+final real-world beta feedback, and avoiding new scope unless concrete release-blocking issues are
+identified.
