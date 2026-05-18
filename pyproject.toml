@@ -67,7 +67,7 @@ dependencies = [
   # Git-style pattern matching for file inclusion/exclusion:
   "pathspec>=1.1.0,<1.2.0",
   # TOML configuration file manipulation:
-  "tomlkit>=0.13.3,<0.16.0",
+  "tomlkit>=0.15.0,<0.16.0",
   # Add typing extensions and deprecation annotations:
   "typing-extensions>=4.15.0,<5.0.0",
   # ANSI-colored terminal output:
