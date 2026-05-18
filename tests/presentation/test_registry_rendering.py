@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from typing import ClassVar
 
 from tests.helpers.registry import make_file_type
+from tests.presentation.conftest import find_table_row
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.presentation.markdown.registry import render_bindings_markdown
 from topmark.presentation.markdown.registry import render_filetype_policy_markdown
@@ -132,19 +133,6 @@ def _binding_item() -> BindingHumanItem:
         file_type_description="Python source",
         processor_description="Hash comments",
     )
-
-
-def _table_cells(row: str) -> list[str]:
-    """Return stripped Markdown table cells without outer separators."""
-    return [cell.strip() for cell in row.strip().strip("|").split("|")]
-
-
-def _find_table_row(output: str, marker: str) -> list[str]:
-    """Return normalized cells for the first Markdown table row containing marker."""
-    row = next(
-        line for line in output.splitlines() if line.lstrip().startswith("|") and marker in line
-    )
-    return _table_cells(row)
 
 
 # ---- Text ----
@@ -302,21 +290,21 @@ def test_render_filetypes_markdown_compact_and_details() -> None:
 
     compact_output: str = render_filetypes_markdown(compact_report)
     assert compact_output.startswith("# Supported File Types\n")
-    assert _find_table_row(compact_output, "Qualified Key") == ["Qualified Key", "Description"]
-    assert _find_table_row(compact_output, "`test.python`") == [
+    assert find_table_row(compact_output, "Qualified Key") == ["Qualified Key", "Description"]
+    assert find_table_row(compact_output, "`test.python`") == [
         "`test.python`",
         "Python source",
     ]
 
     detail_output: str = render_filetypes_markdown(detail_report)
     assert "## Legend" in detail_output
-    assert _find_table_row(detail_output, "Qualified Key")[:4] == [
+    assert find_table_row(detail_output, "Qualified Key")[:4] == [
         "Qualified Key",
         "Local Key",
         "Namespace",
         "Bound",
     ]
-    assert _find_table_row(detail_output, "`test.python`")[:4] == [
+    assert find_table_row(detail_output, "`test.python`")[:4] == [
         "`test.python`",
         "`python`",
         "`test`",
@@ -342,21 +330,21 @@ def test_render_processors_markdown_compact_and_details() -> None:
 
     compact_output: str = render_processors_markdown(compact_report)
     assert compact_output.startswith("# Supported Header Processors\n")
-    assert _find_table_row(compact_output, "Qualified Key") == ["Qualified Key", "Description"]
-    assert _find_table_row(compact_output, "`test.hash`") == [
+    assert find_table_row(compact_output, "Qualified Key") == ["Qualified Key", "Description"]
+    assert find_table_row(compact_output, "`test.hash`") == [
         "`test.hash`",
         "Hash comments",
     ]
 
     detail_output: str = render_processors_markdown(detail_report)
     assert "## Legend" in detail_output
-    assert _find_table_row(detail_output, "Qualified Key")[:4] == [
+    assert find_table_row(detail_output, "Qualified Key")[:4] == [
         "Qualified Key",
         "Local Key",
         "Namespace",
         "Bound",
     ]
-    assert _find_table_row(detail_output, "`test.hash`")[:4] == [
+    assert find_table_row(detail_output, "`test.hash`")[:4] == [
         "`test.hash`",
         "`hash`",
         "`test`",
@@ -379,13 +367,13 @@ def test_render_bindings_markdown_includes_unbound_and_unused_tables() -> None:
     output: str = render_bindings_markdown(report)
 
     assert output.startswith("# Effective File-Type-to-Processor Bindings\n")
-    assert _find_table_row(output, "File Type") == ["File Type", "Processor"]
-    assert _find_table_row(output, "`test.python`") == ["`test.python`", "`test.hash`"]
+    assert find_table_row(output, "File Type") == ["File Type", "Processor"]
+    assert find_table_row(output, "`test.python`") == ["`test.python`", "`test.hash`"]
     assert "## Unbound File Types" in output
-    assert _find_table_row(output, "`test.markdown`") == ["`test.markdown`", "Markdown"]
+    assert find_table_row(output, "`test.markdown`") == ["`test.markdown`", "Markdown"]
     assert "## Unused Processors" in output
-    assert _find_table_row(output, "`test.hash`") == ["`test.python`", "`test.hash`"]
-    assert _find_table_row(output, "Hash comments") == ["`test.hash`", "Hash comments"]
+    assert find_table_row(output, "`test.hash`") == ["`test.python`", "`test.hash`"]
+    assert find_table_row(output, "Hash comments") == ["`test.hash`", "Hash comments"]
 
 
 def test_render_bindings_markdown_details_include_identity_components() -> None:
@@ -401,7 +389,7 @@ def test_render_bindings_markdown_details_include_identity_components() -> None:
 
     output: str = render_bindings_markdown(report)
 
-    assert _find_table_row(output, "File Type")[:6] == [
+    assert find_table_row(output, "File Type")[:6] == [
         "File Type",
         "Processor",
         "File Type Local Key",
@@ -409,7 +397,7 @@ def test_render_bindings_markdown_details_include_identity_components() -> None:
         "Processor Local Key",
         "Processor Namespace",
     ]
-    assert _find_table_row(output, "`test.python`") == [
+    assert find_table_row(output, "`test.python`") == [
         "`test.python`",
         "`test.hash`",
         "`python`",
