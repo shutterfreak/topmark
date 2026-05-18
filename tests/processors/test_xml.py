@@ -28,6 +28,7 @@ from tests.helpers.pipeline import find_line
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import materialize_updated_lines
 from tests.helpers.pipeline import run_insert
+from tests.helpers.registry import make_file_type
 from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
@@ -35,6 +36,7 @@ from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import InsertCapability
+from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.pipeline import runner
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.status import ComparisonStatus
@@ -56,6 +58,19 @@ if TYPE_CHECKING:
     from topmark.processors.base import HeaderProcessor
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+def _xml_processor_with_policy(*, ensure_blank_after_header: bool) -> XmlHeaderProcessor:
+    """Create an XML processor with a deterministic test header policy."""
+    processor = XmlHeaderProcessor()
+    processor.file_type = make_file_type(
+        local_key="xml-test",
+        namespace="test",
+        header_policy=FileTypeHeaderPolicy(
+            ensure_blank_after_header=ensure_blank_after_header,
+        ),
+    )
+    return processor
 
 
 @mark_pipeline
@@ -559,3 +574,175 @@ def test_xml_processor_respects_prolog_and_removes_block() -> None:
     assert "<root/>" in body
     assert f"<!-- {TOPMARK_START_MARKER} -->" not in body
     assert span == (1, 3)
+
+
+def test_xml_strip_removes_exactly_one_policy_spacer_after_header() -> None:
+    """XML strip should remove adjacent policy spacers after a removed header."""
+    processor: XmlHeaderProcessor = _xml_processor_with_policy(
+        ensure_blank_after_header=True,
+    )
+    lines: list[str] = [
+        '<?xml version="1.0"?>\n',
+        f"<!-- {TOPMARK_START_MARKER} -->\n",
+        "<!-- h -->\n",
+        f"<!-- {TOPMARK_END_MARKER} -->\n",
+        "\n",
+        "\n",
+        "<root/>\n",
+    ]
+
+    updated, span, diag = processor.strip_header_block(
+        lines=lines,
+        span=(1, 3),
+        newline_style="\n",
+        ends_with_newline=True,
+    )
+
+    assert diag.kind == StripDiagKind.REMOVED
+    assert span == (1, 3)
+    assert updated == [
+        '<?xml version="1.0"?>\n',
+        "<root/>\n",
+    ]
+    assert diag.notes == ["xml: removed one trailing spacer per policy"]
+
+
+def test_xml_strip_preserves_pre_header_blank_while_trimming_policy_spacer() -> None:
+    """XML strip should preserve pre-existing blank lines before the header."""
+    processor: XmlHeaderProcessor = _xml_processor_with_policy(
+        ensure_blank_after_header=True,
+    )
+    lines: list[str] = [
+        '<?xml version="1.0"?>\n',
+        "\n",
+        f"<!-- {TOPMARK_START_MARKER} -->\n",
+        "<!-- h -->\n",
+        f"<!-- {TOPMARK_END_MARKER} -->\n",
+        "\n",
+        "<root/>\n",
+    ]
+
+    updated, span, diag = processor.strip_header_block(
+        lines=lines,
+        span=(2, 4),
+        newline_style="\n",
+        ends_with_newline=True,
+    )
+
+    assert diag.kind == StripDiagKind.REMOVED
+    assert span == (2, 4)
+    assert updated == [
+        '<?xml version="1.0"?>\n',
+        "\n",
+        "<root/>\n",
+    ]
+
+
+def test_xml_strip_disabled_blank_policy_preserves_trailing_spacer() -> None:
+    """XML strip should preserve base strip behavior when blank policy is disabled."""
+    processor: XmlHeaderProcessor = _xml_processor_with_policy(
+        ensure_blank_after_header=False,
+    )
+    lines: list[str] = [
+        '<?xml version="1.0"?>\n',
+        f"<!-- {TOPMARK_START_MARKER} -->\n",
+        "<!-- h -->\n",
+        f"<!-- {TOPMARK_END_MARKER} -->\n",
+        "\n",
+        "<root/>\n",
+    ]
+
+    updated, span, diag = processor.strip_header_block(
+        lines=lines,
+        span=(1, 3),
+        newline_style="\n",
+        ends_with_newline=True,
+    )
+
+    assert diag.kind == StripDiagKind.REMOVED
+    assert span == (1, 3)
+    assert updated == [
+        '<?xml version="1.0"?>\n',
+        "<root/>\n",
+    ]
+    assert diag.notes == []
+
+
+def test_xml_strip_at_eof_does_not_over_trim() -> None:
+    """XML strip at EOF should not remove unrelated preceding content."""
+    processor: XmlHeaderProcessor = _xml_processor_with_policy(ensure_blank_after_header=True)
+    lines: list[str] = [
+        "<root>\n",
+        f"<!-- {TOPMARK_START_MARKER} -->\n",
+        "<!-- h -->\n",
+        f"<!-- {TOPMARK_END_MARKER} -->\n",
+    ]
+
+    updated, span, diag = processor.strip_header_block(
+        lines=lines,
+        span=(1, 3),
+        newline_style="\n",
+        ends_with_newline=True,
+    )
+
+    assert diag.kind == StripDiagKind.REMOVED
+    assert span == (1, 3)
+    assert updated == ["<root>\n"]
+    assert diag.notes == ["xml: removed one trailing spacer per policy"]
+
+
+def test_xml_strip_auto_detect_path_trims_policy_spacer() -> None:
+    """XML strip auto-detect path should apply the same one-spacer cleanup."""
+    processor: XmlHeaderProcessor = _xml_processor_with_policy(ensure_blank_after_header=True)
+    lines: list[str] = [
+        '<?xml version="1.0"?>\n',
+        f"<!-- {TOPMARK_START_MARKER} -->\n",
+        "<!-- h -->\n",
+        f"<!-- {TOPMARK_END_MARKER} -->\n",
+        "\n",
+        "<root/>\n",
+    ]
+
+    updated, span, diag = processor.strip_header_block(
+        lines=lines,
+        span=None,
+        newline_style="\n",
+        ends_with_newline=True,
+    )
+
+    assert diag.kind == StripDiagKind.REMOVED
+    assert span == (1, 3)
+    assert updated == [
+        '<?xml version="1.0"?>\n',
+        "<root/>\n",
+    ]
+    assert diag.notes == ["xml: removed one trailing spacer per policy"]
+
+
+def test_xml_strip_preserves_bom_and_declaration_while_trimming_policy_spacer() -> None:
+    """XML strip should preserve a BOM-bearing declaration line exactly."""
+    processor: XmlHeaderProcessor = _xml_processor_with_policy(
+        ensure_blank_after_header=True,
+    )
+    lines: list[str] = [
+        '\ufeff<?xml version="1.0"?>\n',
+        f"<!-- {TOPMARK_START_MARKER} -->\n",
+        "<!-- h -->\n",
+        f"<!-- {TOPMARK_END_MARKER} -->\n",
+        "\n",
+        "<root/>\n",
+    ]
+
+    updated, span, diag = processor.strip_header_block(
+        lines=lines,
+        span=(1, 3),
+        newline_style="\n",
+        ends_with_newline=True,
+    )
+
+    assert diag.kind == StripDiagKind.REMOVED
+    assert span == (1, 3)
+    assert updated == [
+        '\ufeff<?xml version="1.0"?>\n',
+        "<root/>\n",
+    ]
