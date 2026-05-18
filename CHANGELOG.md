@@ -18,6 +18,312 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0b4] - 2026-05-18
+
+This fourth **1.0 beta release** focuses on final release-workflow polish, GitHub prerelease
+visibility, published-artifact validation closure, documentation terminology stabilization,
+canonical mutable/immutable runtime type naming, command documentation consistency, TOML template
+polish, and documentation/code prose hygiene ahead of the release-candidate phase.
+
+It does not reopen frozen CLI, API, configuration, registry, probe, machine-readable output, or
+pipeline behavior contracts. Instead, it strengthens the public and developer-facing surfaces around
+those contracts by finalizing terminology, aligning command pages, tightening changelog hygiene,
+adding Python prose hygiene validation, documenting the prerelease GitHub Release policy, adding a
+read-only pre-commit probe hook, and completing the canonical `MutableX` / `FrozenX` naming model.
+
+> [!CAUTION] **Breaking changes**
+>
+> - The immutable public/runtime configuration type `Config` is now named `FrozenConfig`.
+> - The immutable policy snapshot type `Policy` is now named `FrozenPolicy`.
+> - The mutable diagnostic log type `DiagnosticLog` is now named `MutableDiagnosticLog`.
+> - The immutable staged validation-log type `ValidationLogs` is now named `FrozenValidationLogs`.
+> - The canonical terminology glossary moved from `docs/dev/terminology.md` to
+>   `docs/terminology.md`.
+
+### Breaking Changes - 1.0.0b4
+
+- **Canonical mutable/immutable runtime type naming**
+
+  - Renamed immutable and mutable runtime-support types to align with the canonical `MutableX` /
+    `FrozenX` naming model:
+    - `Config` -> `FrozenConfig`
+    - `Policy` -> `FrozenPolicy`
+    - `DiagnosticLog` -> `MutableDiagnosticLog`
+    - `ValidationLogs` -> `FrozenValidationLogs`
+  - Freeze/thaw semantics remain unchanged:
+    - `MutableConfig.freeze()` returns `FrozenConfig`
+    - `MutablePolicy.freeze()` returns `FrozenPolicy`
+    - `MutableDiagnosticLog.freeze()` returns `FrozenDiagnosticLog`
+    - `MutableValidationLogs.freeze()` returns `FrozenValidationLogs`
+  - Downstream callers importing or referencing the old type names must update.
+
+- **Configuration bridge helper naming**
+
+  - Several configuration-resolution bridge helpers were renamed to describe mutable configuration
+    construction explicitly.
+  - Internal or advanced callers using these helpers must update imports and call sites.
+
+- **Terminology glossary location**
+
+  - The canonical terminology glossary moved from `docs/dev/terminology.md` to
+    `docs/terminology.md`.
+  - Internal links and external references to the old developer-only glossary path must be updated.
+
+- **Documentation and prose hygiene gates**
+
+  - Documentation and Python code-prose hygiene are now stricter validation surfaces.
+  - Markdown prose and Python comments, docstrings, and prose-oriented string literals are checked
+    for smart punctuation where applicable.
+  - Contributors may need to replace Unicode dashes, curly quotes, or ellipses with ASCII
+    punctuation before validation passes.
+
+### Highlights - 1.0.0b4
+
+- Finalized the canonical `MutableX` / `FrozenX` naming model across configuration, policy,
+  diagnostics, and validation-log types.
+- Enabled GitHub prerelease creation for alpha, beta, and release-candidate tags while preserving
+  TestPyPI routing for prerelease package artifacts.
+- Backfilled GitHub prereleases for `v1.0.0b1` and `v1.0.0b2` so the beta series now has coherent
+  public release-note history.
+- Confirmed the `v1.0.0b3` published artifacts install and run successfully on Windows, macOS, and
+  Ubuntu after the Windows atomic-writer fix.
+- Promoted the terminology glossary to `docs/terminology.md` as a project-wide vocabulary reference.
+- Renamed `docs/dev/config-schema.md` to `docs/dev/configuration-schema.md` to align developer
+  documentation terminology with the stabilized runtime configuration model.
+- Added `_snippets/terminology.md` as the shared terminology note reused across documentation pages.
+- Completed the command documentation consistency pass across pipeline, config, registry, probe,
+  version, and shared usage pages.
+- Harmonized terminology around effective runtime configuration, staged configuration-loading
+  validation, runtime policy evaluation, processor bindings, semantic outcomes, and TEXT-oriented
+  output.
+- Refined `topmark-example.toml` into a calmer reference-style starter template.
+- Added changelog-specific hygiene checks for release heading shape, allowed section headings,
+  separator style, and heading depth.
+- Added `tools/docs/check_code_hygiene.py` for Python comments, docstrings, and prose-oriented
+  strings.
+- Added a diagnostic-only `topmark-probe` pre-commit hook.
+- Refreshed dependencies and pre-commit hooks, including removing an obsolete Pyright ignore after
+  improved `tomlkit` typing.
+
+### Added - 1.0.0b4
+
+- **GitHub prerelease publication**
+
+  - Updated the release workflow so prerelease tags create GitHub prereleases.
+  - Kept package publishing policy unchanged:
+    - prerelease artifacts continue to publish to TestPyPI;
+    - final release artifacts publish to PyPI.
+  - Documented GitHub prereleases as the public release-note and traceability surface for prerelease
+    milestones.
+
+- **Python prose hygiene tooling**
+
+  - Added `tools/docs/check_code_hygiene.py`.
+  - Added token-based checks for Python comments, docstrings, and prose-oriented string literals.
+  - Added smart-punctuation diagnostics for Unicode dashes, curly quotes, and ellipses.
+  - Wired code hygiene into nox, Makefile, verification, and release validation paths.
+
+- **Shared terminology note**
+
+  - Added `_snippets/terminology.md` as the shared terminology cross-reference note.
+  - Reused the snippet across command, usage, API, CI, configuration, and developer documentation.
+
+- **Pre-commit probe hook**
+
+  - Added a manual `topmark-probe` pre-commit hook for read-only file-type and processor resolution
+    diagnostics.
+  - Documented manual invocation, recommended arguments, verbosity/output-format usage, and
+    pre-commit exit-code behavior.
+
+- **Changelog hygiene validation**
+
+  - Added `CHANGELOG.md`-specific hygiene checks for:
+    - release heading shape;
+    - release section heading shape;
+    - allowed section names;
+    - disallowed heading depth.
+  - Documented strict changelog heading and section conventions.
+
+### Changed - 1.0.0b4
+
+- **Release workflow and prerelease visibility**
+
+  - Changed the GitHub release job so it runs for prerelease tags as well as final tags.
+  - Marked alpha, beta, and release-candidate GitHub releases as prereleases automatically.
+  - Kept final tags published as normal GitHub releases.
+  - Updated release workflow documentation to describe prerelease GitHub Release creation,
+    permissions, trust boundaries, and release visibility policy.
+
+- **Runtime type naming**
+
+  - Renamed core mutable/immutable runtime support types to align with the finalized naming model.
+  - Updated source, tests, public API references, generated API documentation, user docs, and
+    developer docs.
+  - Normalized prose so “frozen” refers primarily to release-contract stabilization unless naming a
+    concrete `FrozenX` type.
+
+- **Documentation terminology**
+
+  - Normalized terminology across developer, usage, API, CI, configuration, and command
+    documentation.
+  - Standardized wording for:
+    - effective runtime configuration;
+    - layered configuration;
+    - staged configuration-loading validation;
+    - runtime policy evaluation;
+    - runtime resolution;
+    - processor bindings;
+    - canonical qualified identifiers;
+    - machine-readable output;
+    - semantic outcomes;
+    - TEXT-oriented human-readable output;
+    - public/internal API boundaries.
+  - configuration schema terminology and staged validation wording across developer and command
+    documentation.
+
+- **Command documentation**
+
+  - Finalized command-page wording and structure across:
+    - `topmark check`;
+    - `topmark strip`;
+    - `topmark probe`;
+    - `topmark version`;
+    - `topmark config` and subcommands;
+    - `topmark registry` and subcommands.
+  - Replaced repeated terminology paragraphs with the shared terminology snippet.
+  - Clarified user-facing implementation boundaries so command pages avoid internal dataclass names,
+    `freeze()` / `thaw()` mechanics, internal DTO names, and helper/bridge implementation details.
+
+- **TOML starter template**
+
+  - Harmonized `topmark-example.toml` with a mature reference-template style.
+  - Clarified configuration discovery, precedence, TOML-source-local settings, writer options,
+    runtime policy behavior, and file-selection comments.
+  - Normalized ASCII punctuation and reduced implementation-specific wording.
+
+- **Documentation hygiene**
+
+  - Extended Markdown hygiene checks to report smart punctuation in documentation prose.
+  - Reworked emoji/decorative-symbol checks to use dependency-free Unicode range checks.
+  - Updated snippet guidance for `mkdocs-include-markdown-plugin` relative-link rewriting.
+  - Updated documentation conventions and documentation pipeline guidance for separate Markdown and
+    Python prose hygiene validation.
+
+- **Dependency and tooling maintenance**
+
+  - Refreshed dependencies and pre-commit hook revisions.
+  - Updated indirect dependencies including `urllib3`, `nox-uv`, and `hypothesis`.
+  - Removed an obsolete Pyright ignore after improved `tomlkit` typing.
+
+### Fixed - 1.0.0b4
+
+- **Published artifact validation closure**
+
+  - Confirmed the `v1.0.0b3` artifacts validate successfully on Windows, macOS, and Ubuntu.
+  - Updated roadmap wording to record cross-platform published-artifact validation success through
+    the `v1.0.0b3` stabilization release.
+  - Clarified that remaining pre-1.0 work is now limited to release-candidate validation, packaging
+    checks, and concrete final beta feedback.
+
+- **GitHub prerelease history**
+
+  - Backfilled GitHub prereleases for `v1.0.0b1` and `v1.0.0b2` from their existing tags.
+  - Used concise GitHub release-note bodies that summarize each beta milestone and point to
+    `CHANGELOG.md` for full release notes.
+  - Avoided backfilling the full alpha series to keep prerelease history focused and readable.
+
+- **Documentation terminology drift**
+
+  - Fixed stale references to “effective merged configuration” in CLI help text, command examples,
+    and source docstrings.
+  - Fixed remaining `config-loading/preflight validation` wording.
+  - Fixed remaining `resolver` wording where the intended concept is runtime resolution.
+  - Fixed inconsistent TEXT-only vs TEXT-oriented wording.
+
+- **Changelog structure drift**
+
+  - Normalized historical `CHANGELOG.md` headings to use plain hyphen separators.
+  - Moved historical non-whitelisted release subsections under approved Keep-a-Changelog-compatible
+    headings.
+  - Fixed changelog heading validation gaps that allowed deeper or inconsistent release headings.
+  - Fixed inconsistent changelog section naming and separator usage by enforcing canonical
+    Keep-a-Changelog-compatible level-3 section headings.
+
+- **Documentation and code punctuation drift**
+
+  - Replaced smart punctuation in Markdown documentation prose.
+  - Replaced smart punctuation in source comments, docstrings, tests, helper docstrings, and
+    generated-doc tooling prose.
+  - Kept runtime behavior unchanged while making code-facing prose ASCII-clean.
+
+- **Navigation and reference drift**
+
+  - Fixed broken MkDocs navigation after introducing and moving the terminology page.
+  - Updated links after renaming `docs/dev/config-schema.md` to `docs/dev/configuration-schema.md`.
+  - Updated internal references after promoting the glossary to `docs/terminology.md`.
+
+### Documentation - 1.0.0b4
+
+- Updated release workflow documentation to explain GitHub prerelease creation for prerelease tags.
+- Updated published-artifact validation and roadmap documentation to reflect successful
+  cross-platform validation after `v1.0.0b3`.
+- Added concise GitHub prerelease notes for backfilled `v1.0.0b1` and `v1.0.0b2` releases.
+- Added and promoted `docs/terminology.md` as the canonical project-wide terminology reference.
+- Renamed `docs/dev/config-schema.md` to `docs/dev/configuration-schema.md` and aligned related
+  developer documentation references and navigation.
+- Updated documentation conventions with:
+  - changelog heading rules;
+  - command-page implementation-boundary guidance;
+  - snippet-link behavior;
+  - smart-punctuation guidance;
+  - Python code-prose hygiene guidance.
+- Updated documentation pipeline guidance to distinguish Markdown documentation hygiene from Python
+  code-prose hygiene.
+- Updated roadmap status to reflect:
+  - completed command documentation consistency review;
+  - terminology glossary promotion;
+  - shared terminology snippet adoption;
+  - TOML template polish;
+  - Markdown and Python prose hygiene validation;
+  - late-beta contract stabilization status.
+- Updated pre-commit documentation for the new diagnostic `topmark-probe` hook.
+- Updated configuration, API, usage, CI, registry, command, and developer documentation for the
+  finalized terminology model.
+
+### Internal - 1.0.0b4
+
+- Preserved the artifact-based release split while extending GitHub Release creation to prerelease
+  tags.
+- Kept prerelease package publication on TestPyPI while making prerelease milestones visible on
+  GitHub.
+- Completed canonical mutable/immutable naming across configuration, policy, diagnostics, and staged
+  validation logs.
+- Updated public API snapshots, tests, helpers, machine schemas, serializers, presentation code, and
+  pipeline internals for renamed types.
+- Improved `tools/docs/check_docs_hygiene.py` typing and diagnostics.
+- Raised the minimum supported `tomlkit` version to `0.15.0` to rely on improved typing support for
+  `tomlkit.dumps()` without retaining Pyright suppression comments.
+- Added code-prose hygiene validation as a separate tool rather than expanding Markdown hygiene into
+  a mixed-purpose checker.
+- Preserved runtime behavior while normalizing comments, docstrings, and prose-oriented strings.
+
+### Notes - 1.0.0b4
+
+- The beta prerelease series now has coherent GitHub release history from `v1.0.0b1` through
+  `v1.0.0b4`.
+- This beta does not introduce new user-facing CLI behavior or new machine-readable output payload
+  semantics.
+- Frozen 1.0 contracts for CLI behavior, config semantics, probe, registry/resolution,
+  machine-readable output, and pipeline execution remain unchanged.
+- This release does include public/runtime type renames for the canonical `MutableX` / `FrozenX`
+  naming model.
+- The main focus is terminology finalization, documentation consistency, prose hygiene, and release
+  readiness before the release-candidate phase.
+- Remaining work before `1.0.0rc1` should be limited to validation runs, packaging checks, published
+  artifact validation, and any concrete final beta feedback.
+
+______________________________________________________________________
+
 ## [1.0.0b3] - 2026-05-11
 
 This third **1.0 beta release** focuses on CI/workflow documentation harmonization,
