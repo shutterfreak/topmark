@@ -15,6 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import topmark.core.outcomes
 from tests.api.conftest import has_header
 from tests.helpers.api import api_check_dir
 from tests.helpers.api import api_strip_dir
@@ -39,8 +40,8 @@ def test_check_dry_run_reports_one_change_and_one_unchanged(
     b: Path = repo_py_with_and_without_header / "src" / "with_header.py"
 
     # assert by_path.get(a) in {"would_change", "changed"}
-    assert by_path.get(a) == api.Outcome.WOULD_INSERT  # "would_change"
-    assert by_path.get(b) == api.Outcome.UNCHANGED  # "unchanged"
+    assert by_path.get(a) == topmark.core.outcomes.Outcome.WOULD_INSERT  # "would_change"
+    assert by_path.get(b) == topmark.core.outcomes.Outcome.UNCHANGED  # "unchanged"
     assert r.written == 0 and r.failed == 0
 
 
@@ -87,7 +88,7 @@ def test_check_apply_update_only_does_not_add_new_headers(
     )
     # Should not create a header in a.py because update_only=True
     assert r.bucket_summary is not None
-    assert api.Outcome.UPDATED.value not in r.bucket_summary
+    assert topmark.core.outcomes.Outcome.UPDATED.value not in r.bucket_summary
     assert r.had_errors is False
     assert has_header(read_text(a), proc_py, "\n") is False
 
@@ -117,7 +118,7 @@ def test_strip_dry_run_reports_would_change_on_files_with_headers(
     r: api.RunResult = api_strip_dir(repo_py_with_and_without_header, apply=False)
     # At least b.py has a header; strip would remove it
     # assert r.summary.get("would_change", 0) >= 1
-    assert api.Outcome.WOULD_STRIP in r.summary
+    assert topmark.core.outcomes.Outcome.WOULD_STRIP in r.summary
 
 
 def test_strip_apply_removes_headers(

@@ -17,9 +17,15 @@ to a stable public outcome and an optional human-facing reason.
 Design goals:
 - Presentation-free: no ANSI styling, markdown, or CLI-only wording.
 - Reusable across frontends: CLI, docs tooling, and the public API.
-- Stable outcomes: bucketing produces public [`Outcome`][topmark.api.types.Outcome]
-  values that are independent of the chosen frontend.
-- Deterministic summaries: `(outcome, reason)` counting is stable and ordered.
+- Stable outcomes: bucketing produces shared
+  [`Outcome`][topmark.core.outcomes.Outcome] values that are independent of the
+  chosen frontend.
+- Deterministic summaries: `(outcome, reason)` counting is stable and ordered
+  using [`OUTCOME_ORDER`][topmark.core.outcomes.OUTCOME_ORDER].
+
+Outcome primitives live in [`topmark.core.outcomes`][topmark.core.outcomes]
+rather than `topmark.api.types` so this pipeline layer does not import the API
+package while classifying results.
 
 Notes:
     Styling is layered on top in frontend modules such as
@@ -34,9 +40,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from topmark.api.types import OUTCOME_ORDER
-from topmark.api.types import Outcome
 from topmark.core.logging import get_logger
+from topmark.core.outcomes import NO_REASON_PROVIDED
+from topmark.core.outcomes import OUTCOME_ORDER
+from topmark.core.outcomes import Outcome
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.context.policy import effective_would_add_or_update
@@ -58,8 +65,6 @@ if TYPE_CHECKING:
 
 
 logger: TopmarkLogger = get_logger(__name__)
-
-NO_REASON_PROVIDED: str = "(no reason provided)"
 
 
 class Intent(Enum):

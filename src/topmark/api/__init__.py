@@ -18,7 +18,8 @@ Design goals:
 - Return **machine-friendly** results (dataclasses / TypedDicts) without ANSI formatting.
 
 Stability policy:
-- Symbols exported by ``topmark.api`` via ``__all__`` are the supported surface.
+- Symbols exported by ``topmark.api`` via ``__all__`` are the supported surface,
+  including stable re-exports such as [`Outcome`][topmark.core.outcomes.Outcome].
 - Adding optional parameters with defaults is allowed in minor releases.
 - Removing/renaming symbols or changing return shapes is a breaking change.
 
@@ -27,6 +28,8 @@ High-level concepts:
 - **Supported** file types are recognized *and* have a processor bound.
 - Diagnostics returned by the API are JSON-friendly and use string severities:
   ``"info"``, ``"warning"``, ``"error"``.
+- Pipeline outcome values are shared core primitives re-exported here as
+  [`Outcome`][topmark.core.outcomes.Outcome] for public API convenience.
 
 Configuration contract:
 - Public pipeline functions (``probe()``, ``check()``, ``strip()``) accept an optional plain mapping
@@ -91,12 +94,12 @@ from topmark.api.commands.version import get_version_text
 from topmark.api.types import DiagnosticEntry
 from topmark.api.types import FileResult
 from topmark.api.types import FileTypeInfo
-from topmark.api.types import Outcome
 from topmark.api.types import ProbeCandidateInfo
 from topmark.api.types import ProbeFileResult
 from topmark.api.types import ProbeRunResult
 from topmark.api.types import ProcessorInfo
 from topmark.api.types import RunResult
+from topmark.core.outcomes import Outcome
 from topmark.version.types import VersionInfo
 
 __all__ = (

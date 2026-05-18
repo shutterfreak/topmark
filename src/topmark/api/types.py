@@ -15,12 +15,17 @@ This module centralizes the public, non-protocol type surface used by
 
 - public config-input mapping aliases
 - literal token types used in public function signatures
-- JSON-friendly TypedDict shapes for diagnostics and registry metadata
-- frozen dataclasses returned by public API helpers, including probe-specific DTOs
+- JSON-friendly TypedDict shapes for diagnostics, policy, and registry metadata
+- frozen dataclasses returned by public API helpers, including probe and run DTOs
 
 These shapes follow the project's semver policy. Internal domain objects may be
 richer and are allowed to evolve independently (for example, internal
 pipeline-only diagnostics, views, and runtime context objects).
+
+Outcome semantics are defined in
+[`topmark.core.outcomes`][topmark.core.outcomes] so lower-level pipeline code can
+classify results without importing the API package. API result DTOs reference
+that shared enum while keeping the rest of the public value surface here.
 
 Use this module for stable public value shapes. Structural plugin contracts
 belong in [`topmark.api.protocols`][topmark.api.protocols].
@@ -30,22 +35,16 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
 from typing import TYPE_CHECKING
-from typing import Final
 from typing import Literal
 from typing import TypeAlias
 from typing import TypedDict
-
-from topmark.core.logging import TopmarkLogger
-from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-
-logger: TopmarkLogger = get_logger(__name__)
+    from topmark.core.outcomes import Outcome
 
 
 # ---- Public config input and token literals ----
@@ -192,49 +191,7 @@ class ProbeRunResult:
     diagnostic_totals: DiagnosticTotals | None = None
 
 
-class Outcome(str, Enum):
-    """Stable per-file outcome bucket used by the public API.
-
-    Values mirror the high-level outcome categories exposed by the CLI and API.
-    Consumers should prefer `Outcome` (and `Outcome.value`) for programmatic
-    decisions rather than relying on human-facing labels.
-    """
-
-    PENDING = "pending"
-    ERROR = "error"
-    # File skipped (not processed)
-    SKIPPED = "skipped"
-    # File already complies
-    UNCHANGED = "unchanged"
-    # A change was detected but not applied
-    WOULD_CHANGE = "would change"
-    WOULD_INSERT = "would insert"
-    WOULD_UPDATE = "would update"
-    WOULD_STRIP = "would strip"
-    # Changes have been applied
-    CHANGED = "changed"
-    INSERTED = "inserted"
-    UPDATED = "updated"
-    STRIPPED = "stripped"
-
-
 # Stable presentation/aggregation order for public outcomes.
-OUTCOME_ORDER: Final[tuple[Outcome, ...]] = (
-    Outcome.PENDING,
-    Outcome.SKIPPED,
-    Outcome.UNCHANGED,
-    Outcome.WOULD_CHANGE,
-    Outcome.WOULD_INSERT,
-    Outcome.WOULD_UPDATE,
-    Outcome.WOULD_STRIP,
-    Outcome.CHANGED,
-    Outcome.INSERTED,
-    Outcome.UPDATED,
-    Outcome.STRIPPED,
-    Outcome.ERROR,
-)
-
-
 @dataclass(frozen=True, kw_only=True, slots=True)
 class FileResult:
     """Result for a single file after pipeline execution and view filtering.

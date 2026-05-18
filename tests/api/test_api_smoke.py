@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import topmark.core.outcomes
 from topmark import api
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ def test_strip_dry_run_reports_would_strip(repo_py_with_header: Path) -> None:
         include_file_types=["python"],
     )
     # At least one file (with_header.py) should be reported as would_change
-    assert api.Outcome.WOULD_STRIP in r.summary
+    assert topmark.core.outcomes.Outcome.WOULD_STRIP in r.summary
     assert r.written == 0 and r.failed == 0
 
 
@@ -78,4 +79,4 @@ def test_strip_apply_then_check_is_unchanged(repo_py_with_header: Path) -> None:
 
     # Accept either: would_change (header would be re-inserted) or unchanged
     # depending on project defaults. Assert at least one bucket is present.
-    assert api.Outcome.WOULD_INSERT in r_check.summary
+    assert topmark.core.outcomes.Outcome.WOULD_INSERT in r_check.summary

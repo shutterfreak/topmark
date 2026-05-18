@@ -36,7 +36,7 @@ from topmark.api.types import ProbeFileResult
 from topmark.api.types import ProbeRunResult
 from topmark.api.types import RunResult
 from topmark.core.logging import get_logger
-from topmark.pipeline.outcomes import NO_REASON_PROVIDED
+from topmark.core.outcomes import NO_REASON_PROVIDED
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import classify_outcome
 from topmark.pipeline.outcomes import map_bucket

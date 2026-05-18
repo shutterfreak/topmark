@@ -20,8 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.api.types import Outcome
 from topmark.cli.presentation import style_for_role
+from topmark.core.outcomes import Outcome
 from topmark.core.presentation import StyleRole
 from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import collect_outcome_reason_counts

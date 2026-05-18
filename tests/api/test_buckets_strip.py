@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import topmark.core.outcomes
 from topmark import api
 
 if TYPE_CHECKING:
@@ -36,7 +37,7 @@ def test_bucket_strip_ready_dry_run(repo_py_with_header: Path) -> None:
         include_file_types=["python"],
     )
     keys: set[str] = _summary_keys(r)
-    assert api.Outcome.WOULD_STRIP.value in keys
+    assert topmark.core.outcomes.Outcome.WOULD_STRIP.value in keys
 
 
 def test_bucket_strip_none_when_no_header(tmp_path: Path) -> None:
@@ -50,4 +51,4 @@ def test_bucket_strip_none_when_no_header(tmp_path: Path) -> None:
     )
     keys: set[str] = _summary_keys(r)
     # assert "strip:none" in keys
-    assert api.Outcome.UNCHANGED.value in keys
+    assert topmark.core.outcomes.Outcome.UNCHANGED.value in keys
