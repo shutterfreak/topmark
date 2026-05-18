@@ -111,7 +111,7 @@ class _ClickOptionKwargs(TypedDict, total=True):
     show_default: NotRequired[bool]
     help: NotRequired[str | None]
     metavar: NotRequired[str | None]
-    type: NotRequired[click.ParamType | type | object]
+    type: NotRequired[object]
     default: NotRequired[object]
     callback: NotRequired[object]
 

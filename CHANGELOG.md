@@ -306,6 +306,8 @@ read-only pre-commit probe hook, and completing the canonical `MutableX` / `Froz
 - Added code-prose hygiene validation as a separate tool rather than expanding Markdown hygiene into
   a mixed-purpose checker.
 - Preserved runtime behavior while normalizing comments, docstrings, and prose-oriented strings.
+- Simplified Click option kwargs typing in `topmark.cli.options._ClickOptionKwargs` after updating
+  Click.
 
 ### Notes - 1.0.0b4
 
