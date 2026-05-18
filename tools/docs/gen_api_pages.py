@@ -461,6 +461,40 @@ def _breadcrumbs_for_module(modname: str, current_doc: str) -> list[tuple[str, s
     return _breadcrumbs_for_parts(segs, current_doc)
 
 
+# --- Markdown rendering helpers ---
+
+
+def _write_breadcrumbs(fd: Any, breadcrumbs: list[tuple[str, str | None]]) -> None:
+    """Write a Markdown breadcrumb trail when breadcrumbs are available.
+
+    Args:
+        fd: The generated file handle to write to.
+        breadcrumbs: Ordered breadcrumb labels with optional relative links.
+    """
+    if not breadcrumbs:
+        return
+
+    rendered: list[str] = []
+    for label, href in breadcrumbs:
+        rendered.append(label if href is None else f"[{label}]({href})")
+    fd.write(" / ".join(rendered) + "\n\n")
+
+
+def _write_child_section(fd: Any, title: str, items: list[str]) -> None:
+    """Write a generated child-list section with an explicit empty state.
+
+    Args:
+        fd: The generated file handle to write to.
+        title: Markdown level-2 section title.
+        items: Full dotted module names to render as links.
+    """
+    fd.write(f"## {title}\n\n")
+    if items:
+        _write_child_list(fd, items)
+    else:
+        fd.write("_None._\n")
+
+
 def _first_line_summary(modname: str) -> str | None:
     """Get the first line of a module's docstring for summary lists.
 
@@ -486,11 +520,13 @@ def _first_line_summary(modname: str) -> str | None:
 
 
 def _write_child_list(fd: Any, items: list[str]) -> None:
-    """Write a Markdown list of child modules with icons and summaries.
+    """Write a Markdown list of real child modules with icons and summaries.
 
     Args:
         fd: The file handle to write to.
         items: List of full dotted module names.
+            Each item must correspond to an importable module or package; empty
+            states are handled by `_write_child_section()` instead.
     """
     for child_full in items:
         child_name: str = _child_segment(child_full)
@@ -544,29 +580,23 @@ skipped_import: list[tuple[str, str]] = []  # (module, reason)
 written_pages: int = 0
 
 
-# --- Refactored main generation logic ---
+# --- Page generation helpers ---
 def _write_module_page(name: str, current_doc: str) -> None:
-    """Write a Markdown file that uses 'mkdocstrings' to render a module.
+    """Write a generated internals page for a single importable module.
 
     The ':::' directive tells mkdocstrings to find this module and auto-generate
     documentation from its classes and functions.
+
+    Args:
+        name: Full dotted module name to document.
+        current_doc: Docs-relative output path for the generated Markdown page.
     """
     with mkdocs_gen_files.open(current_doc, "w") as fd:
         fd.write(f"# {name}\n\n")
-        # Breadcrumbs for module pages
-        bc: list[tuple[str, str | None]] = _breadcrumbs_for_module(name, current_doc)
-        if bc:
-            rendered: list[str] = []
-            label: str
-            href: str | None
-            for label, href in bc:
-                if href is None:
-                    rendered.append(label)
-                else:
-                    rendered.append(f"[{label}]({href})")
-            fd.write(" / ".join(rendered) + "\n\n")
+        # Breadcrumbs help users navigate the generated internals tree.
+        _write_breadcrumbs(fd, _breadcrumbs_for_module(name, current_doc))
 
-        # The 'mkdocstrings' identifier.
+        # The mkdocstrings directive renders the module API from source.
         fd.write(f"::: {name}\n")
         fd.write("    options:\n")
         fd.write("      heading_level: 2\n")
@@ -577,7 +607,12 @@ def _write_module_page(name: str, current_doc: str) -> None:
 
 
 def _write_internals_index(index_path: str, groups: dict[str, list[str]]) -> None:
-    """Write the main index page for all internal modules."""
+    """Write a grouped index page for generated internals modules.
+
+    Args:
+        index_path: Docs-relative output path for the generated index page.
+        groups: Mapping of top-level `topmark.*` segment to discovered modules.
+    """
     with mkdocs_gen_files.open(index_path, "w") as fd:
         fd.write("# topmark internals index\n\n")
         fd.write(
@@ -642,9 +677,9 @@ def _write_internals_summary(summary_path: str, groups: dict[str, list[str]]) ->
         fd.write("\n")
 
 
-# Public (reference) API
+# --- Public reference generation ---
 def _write_public_reference_pages() -> None:
-    """Generate high-level documentation for the library's public API."""
+    """Generate public API reference pages for configured public surfaces."""
     for mod in PUBLIC_API_PREFIXES:
         mod_ref_doc: str = f"{API_REFERENCE_DIR}/{mod}.md"
         mod_ref_md: str = f"""# [`{mod}`][{mod}]
@@ -660,7 +695,7 @@ options:
         with mkdocs_gen_files.open(mod_ref_doc, "w") as fd:
             fd.write(mod_ref_md)
         src_candidate: str = "src/" + mod.replace(".", "/") + ".py"
-        # Link back to the physical source code for "Edit this page" links.
+        # Link generated pages back to physical source files for edit links.
         src_pkg_init: str = "src/" + mod.replace(".", "/") + "/__init__.py"
         edit_path: str = src_candidate if Path(src_candidate).exists() else src_pkg_init
         mkdocs_gen_files.set_edit_path(mod_ref_doc, edit_path)  # generated only
@@ -677,8 +712,8 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
         - Package indices live at `API_INTERNALS_DIR/<pkg>/index.md`.
         - For the top-level `topmark` package, we split immediate children into
           packages vs modules so that top-level modules are visible.
-        - Empty top-level sections are rendered as plain text rather than passed
-          through `_write_child_list()`, which only accepts real module names.
+        - Empty top-level sections are rendered through `_write_child_section()`
+          so `_write_child_list()` only receives real module names.
     """
     pkg_path: str = pkg.replace(".", "/")
     pkg_index_path: str = f"{API_INTERNALS_DIR}/{pkg_path}/index.md"
@@ -691,20 +726,11 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
     with mkdocs_gen_files.open(pkg_index_path, "w") as fd:
         fd.write(f"# {pkg} package index\n\n")
 
-        # Breadcrumbs (from topmark down to the parent of `pkg`)
-        bc: list[tuple[str, str | None]] = _breadcrumbs_for_package(pkg, current_doc)
-        if bc:
-            crumbs_rendered: list[str] = []
-            for label, href in bc:
-                if href is None:
-                    crumbs_rendered.append(label)
-                else:
-                    crumbs_rendered.append(f"[{label}]({href})")
-            fd.write(" / ".join(crumbs_rendered) + "\n\n")
+        # Breadcrumbs run from `topmark` down to the current package.
+        _write_breadcrumbs(fd, _breadcrumbs_for_package(pkg, current_doc))
 
-        # Link to Public API page if this is a public surface.
         # Public surfaces are documented under API_REFERENCE_DIR/*.
-        # IMPORTANT: avoid duplicate mkdocs-autorefs identifiers.
+        # Link to that page instead of rendering duplicate mkdocstrings anchors.
         if pkg in PUBLIC_API_PREFIXES:
             pub_ref_doc: str = f"{API_REFERENCE_DIR}/{pkg}.md"
             pub_href: str = rel_href(current_doc, pub_ref_doc)
@@ -720,9 +746,8 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
             fd.write('        - "!^_"\n')
             fd.write("\n")
 
-        # Organize the children list for the top-level index.
-        # For the top-level `topmark` package, split immediate children into
-        # packages vs modules to make top-level modules visible.
+        # The root package index separates packages from top-level modules so
+        # both categories remain visible when either side is empty.
         if pkg == ROOT_PKG:
             child_pkgs: list[str] = []
             child_mods: list[str] = []
@@ -732,20 +757,12 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
                 else:
                     child_mods.append(child_full)
 
-            fd.write("## Top-level packages\n\n")
-            if child_pkgs:
-                _write_child_list(fd, child_pkgs)
-            else:
-                fd.write("_None._\n")
-
-            fd.write("\n## Top-level modules\n\n")
-            if child_mods:
-                _write_child_list(fd, child_mods)
-            else:
-                fd.write("_None._\n")
+            _write_child_section(fd, "Top-level packages", child_pkgs)
+            fd.write("\n")
+            _write_child_section(fd, "Top-level modules", child_mods)
 
         else:
-            # Default: single mixed list for non-top-level packages.
+            # Non-root package indices use one mixed child list.
             fd.write("## Immediate children in this package\n\n")
             _write_child_list(fd, sorted(children))
 
