@@ -29,7 +29,9 @@ Design:
 Example:
     ```python
     from enum import Enum
-    from topmark.core.enum_mixins import EnumIntrospectionMixin, enum_from_name
+
+    from topmark.core.enum_mixins import EnumIntrospectionMixin
+    from topmark.core.enum_mixins import enum_from_name
 
 
     class Mode(EnumIntrospectionMixin, str, Enum):
