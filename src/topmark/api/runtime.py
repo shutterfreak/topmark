@@ -51,6 +51,7 @@ from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
+from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
@@ -129,19 +130,6 @@ class PreparedTomlConfig:
 
     resolved: ResolvedTopmarkTomlSources | None
     draft: MutableConfig | None
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class PipelineExecution:
-    """Result of executing a selected pipeline for prepared files.
-
-    Attributes:
-        contexts: Processing contexts produced by the pipeline engine.
-        exit_code: Fatal pipeline-engine exit code, if one was encountered.
-    """
-
-    contexts: list[ProcessingContext]
-    exit_code: ExitCode | None
 
 
 def ensure_mutable_config(
@@ -700,7 +688,7 @@ def _execute_pipeline_for_file_list(
     """
     if not prepared.file_list:
         return PipelineExecution(
-            contexts=[],
+            results=[],
             exit_code=None,
         )
 
@@ -712,17 +700,14 @@ def _execute_pipeline_for_file_list(
     )
 
     # (2) Execute the selected pipeline for each resolved file.
-    contexts, exit_code = run_steps_for_files(
+    pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=prepared.run_options,
         config=prepared.effective_cfg,
         path_configs=path_configs,
         pipeline=pipeline,
         file_list=prepared.file_list,
     )
-    return PipelineExecution(
-        contexts=contexts,
-        exit_code=exit_code,
-    )
+    return pipeline_run
 
 
 def run_pipeline(
@@ -774,8 +759,8 @@ def run_pipeline(
         prepared=prepared,
         pipeline=pipeline,
     )
-    results: list[ProcessingContext] = execution.contexts
-    encountered_error_code: ExitCode | None = execution.exit_code
+    results: list[ProcessingContext] = execution.results
+    encountered_exit_code: ExitCode | None = execution.exit_code
 
     logger.info("Processing %d file(s) with TopMark %s", len(prepared.file_list), TOPMARK_VERSION)
 
@@ -783,7 +768,7 @@ def run_pipeline(
         effective_cfg=prepared.effective_cfg,
         file_list=prepared.file_list,
         results=results,
-        exit_code=encountered_error_code,
+        exit_code=encountered_exit_code,
     )
 
 
@@ -863,8 +848,8 @@ def run_probe_pipeline(
         prepared=prepared,
         pipeline=pipeline,
     )
-    results: list[ProcessingContext] = execution.contexts
-    encountered_error_code: ExitCode | None = execution.exit_code
+    results: list[ProcessingContext] = execution.results
+    encountered_exit_code: ExitCode | None = execution.exit_code
 
     # Missing explicit literals are hard resolver-level failures. Add them
     # before fatal precedence is derived so they can influence `had_errors`.
@@ -877,7 +862,7 @@ def run_probe_pipeline(
     )
 
     pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
-    encountered_error_code = encountered_error_code or pipeline_error_code
+    encountered_exit_code = encountered_exit_code or pipeline_error_code
 
     # Discovery-filtered explicit inputs are semantic probe outcomes rather than
     # hard execution errors, so append them after fatal precedence is computed.
@@ -895,5 +880,5 @@ def run_probe_pipeline(
         effective_cfg=prepared.effective_cfg,
         file_list=prepared.file_list,
         results=results,
-        exit_code=encountered_error_code,
+        exit_code=encountered_exit_code,
     )

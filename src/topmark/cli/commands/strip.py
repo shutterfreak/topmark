@@ -92,6 +92,7 @@ from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.reporting import ReportFilterResult
@@ -445,15 +446,17 @@ def strip_command(
     )
 
     results: list[ProcessingContext] = []
-    encountered_error_code: ExitCode | None = None
+    encountered_exit_code: ExitCode | None = None
 
-    results, encountered_error_code = run_steps_for_files(
+    pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=run_options,
         config=config,
         path_configs=None,
         pipeline=pipeline,
         file_list=file_list,
     )
+    results: list[ProcessingContext] = pipeline_run.results
+    encountered_exit_code: ExitCode | None = pipeline_run.exit_code
 
     # Add resolver-level hard failures before deriving the process exit code so
     # explicit missing inputs participate in reports and priority selection.
@@ -465,7 +468,7 @@ def strip_command(
     results.extend(missing_results)
 
     pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
-    encountered_error_code = encountered_error_code or pipeline_error_code
+    encountered_exit_code = encountered_exit_code or pipeline_error_code
 
     # Report scope is a human per-file listing policy only.
     #
@@ -548,12 +551,12 @@ def strip_command(
 
             if failed:
                 # Keep the user-facing apply summary above, but do not raise here.
-                # `encountered_error_code` already includes the prioritized
+                # `encountered_exit_code` already includes the prioritized
                 # pipeline-derived exit code, so the centralized
                 # `maybe_exit_on_error(...)` call below decides whether this run
                 # exits as FILE_NOT_FOUND, PERMISSION_DENIED, ENCODING_ERROR, or
                 # IO_ERROR.
-                encountered_error_code = encountered_error_code or ExitCode.IO_ERROR
+                encountered_exit_code = encountered_exit_code or ExitCode.IO_ERROR
 
     else:
         if fmt == OutputFormat.MARKDOWN:
@@ -563,7 +566,7 @@ def strip_command(
     # the dry-run WOULD_CHANGE signal so access/encoding failures never exit as
     # a successful diff-only result.
     maybe_exit_on_error(
-        code=encountered_error_code,
+        code=encountered_exit_code,
         temp_path=temp_path,
     )
 

@@ -16,7 +16,7 @@ Python API.
 
 The helpers here intentionally cover two distinct API-entry styles:
     - fully materialized [`FrozenConfig`][topmark.config.model.FrozenConfig] objects
-      and engine-level execution helpers
+      and engine-level execution helpers that return named test DTOs
     - TOML-shaped config mappings passed directly to
       [`api.check()`][topmark.api.commands.pipeline.check] /
       [`api.strip()`][topmark.api.commands.pipeline.strip]
@@ -27,11 +27,13 @@ importable, and reusable without relying on pytest fixture discovery.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark import api
 from topmark.api.runtime import select_pipeline
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
+from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.model import RunOptions
@@ -47,10 +49,32 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
-    from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.toml.types import TomlValue
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class CliLikeRun:
+    """Result of executing a CLI-like pipeline in tests.
+
+    This test-only value object intentionally differs from
+    [`ApiPipelineRun`][topmark.api.types.ApiPipelineRun]: tests using this helper
+    need access to the mutable config draft produced by TOML resolution before it
+    is frozen, whereas the public API runtime object exposes the final frozen
+    config instead.
+
+    Attributes:
+        draft_config: Mutable config draft produced through TOML resolution and
+            then frozen for pipeline execution.
+        file_list: Files selected for pipeline execution.
+        results: Processing contexts produced by pipeline execution.
+    """
+
+    draft_config: MutableConfig
+    file_list: list[Path]
+    results: list[ProcessingContext]
+
 
 # --- Config-related helpers ---
 
@@ -197,15 +221,32 @@ def run_cli_like(
     prune_views: bool = False,
     include_file_types: tuple[str, ...] = (),
     exclude_file_types: tuple[str, ...] = (),
-) -> tuple[MutableConfig, list[Path], list[ProcessingContext]]:
-    """Execute the selected pipeline using the same config-loading path as the CLI.
+) -> CliLikeRun:
+    """Execute a pipeline through the CLI-like config-discovery path.
 
-    This helper resolves TOML sources through the authoritative bridge used by
-    CLI-like flows, freezes the resulting config, resolves the file list, and
-    then runs the selected pipeline with explicit runtime options.
+    This helper resolves TOML sources through the same bridge used by CLI-like
+    flows, applies test-supplied positional and file-type filters to the mutable
+    draft, freezes that draft, resolves the selected file list, and runs the
+    requested pipeline with explicit runtime options.
 
-    It is useful for tests that want engine-level results while still honoring
-    layered config discovery and resolution semantics.
+    It is useful for tests that need engine-level processing contexts while
+    still honoring layered config discovery and resolution semantics.
+
+    Args:
+        anchor: Input path used both as the config-discovery anchor and as the
+            positional file selection seed.
+        kind: Pipeline kind to execute.
+        apply: Whether the pipeline may mutate files.
+        diff: Whether to select the diff-producing pipeline variant when
+            supported by `kind` and `apply`.
+        prune_views: Whether to prune heavy context views during pipeline
+            execution.
+        include_file_types: Optional file type identifiers to include.
+        exclude_file_types: Optional file type identifiers to exclude.
+
+    Returns:
+        CLI-like test run state containing the mutable config draft, selected
+        files, and processing contexts produced by the pipeline.
     """
     _resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=(anchor,),
@@ -223,14 +264,16 @@ def run_cli_like(
         prune_views=prune_views,
     )
 
-    results: list[ProcessingContext]
-    _exit_code: ExitCode | None
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(kind, apply=apply, diff=diff)
-    results, _exit_code = run_steps_for_files(
+    pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=run_options,
         config=cfg,
         path_configs=None,
         pipeline=pipeline,
         file_list=files,
     )
-    return draft, files, results
+    return CliLikeRun(
+        draft_config=draft,
+        file_list=files,
+        results=pipeline_run.results,
+    )

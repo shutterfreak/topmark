@@ -300,7 +300,7 @@ def finalize_run_result(
     report_scope: ReportScope,
     would_change: Callable[[ProcessingContext], bool],
     update_statuses: set[PlanStatus],
-    encountered_error_code: ExitCode | None,
+    encountered_exit_code: ExitCode | None,
 ) -> RunResult:
     """Assemble a `RunResult` from pipeline results with consistent report filtering.
 
@@ -316,7 +316,7 @@ def finalize_run_result(
         would_change: Predicate describing whether a result represents a file
             TopMark would change (or did change, depending on caller context).
         update_statuses: Which `PlanStatus` values count as written/updated.
-        encountered_error_code: Fatal exit code if any was encountered.
+        encountered_exit_code: Fatal exit code if any was encountered.
 
     Returns:
         Public, JSON-friendly bundle with per-file results and aggregates.
@@ -346,7 +346,7 @@ def finalize_run_result(
     diagnostics: dict[str, list[DiagnosticEntry]] = collect_diagnostics(view_results)
     diagnostic_totals: DiagnosticTotals = collect_diagnostic_totals(view_results)
     diagnostic_totals_all: DiagnosticTotals = collect_diagnostic_totals(results)
-    had_errors: bool = (diagnostic_totals_all["error"] > 0) or (encountered_error_code is not None)
+    had_errors: bool = (diagnostic_totals_all["error"] > 0) or (encountered_exit_code is not None)
 
     written: int
     failed: int
@@ -381,7 +381,7 @@ def finalize_probe_result(
     *,
     results: list[ProcessingContext],
     file_list: list[Path],
-    encountered_error_code: ExitCode | None,
+    encountered_exit_code: ExitCode | None,
 ) -> ProbeRunResult:
     """Assemble a `ProbeRunResult` from probe pipeline results.
 
@@ -395,7 +395,7 @@ def finalize_probe_result(
             discovery-filtered explicit inputs when supplied by the caller.
         file_list: Resolved input files for the run. Used only to preserve the
             empty-run behavior shared with other API entry points.
-        encountered_error_code: Fatal exit code if any was encountered.
+        encountered_exit_code: Fatal exit code if any was encountered.
 
     Returns:
         Public, JSON-friendly probe result bundle.
@@ -412,7 +412,7 @@ def finalize_probe_result(
 
     diagnostics: dict[str, list[DiagnosticEntry]] = collect_diagnostics(results)
     diagnostic_totals: DiagnosticTotals = collect_diagnostic_totals(results)
-    had_errors: bool = (diagnostic_totals["error"] > 0) or (encountered_error_code is not None)
+    had_errors: bool = (diagnostic_totals["error"] > 0) or (encountered_exit_code is not None)
 
     return ProbeRunResult(
         files=files,

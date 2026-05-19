@@ -90,7 +90,7 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
 
     run_options: RunOptions = RunOptions(apply_changes=False)
 
-    results, encountered_error = engine.run_steps_for_files(
+    pipeline_run: engine.PipelineExecution = engine.run_steps_for_files(
         run_options=run_options,
         config=shared_cfg,
         path_configs=path_configs,
@@ -98,8 +98,8 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
         file_list=[file_a, file_b],
     )
 
-    assert encountered_error is None
-    assert [result.path for result in results] == [file_a, file_b]
+    assert pipeline_run.exit_code is None
+    assert [result.path for result in pipeline_run.results] == [file_a, file_b]
 
     assert len(bootstrap_calls) == 2
     assert bootstrap_calls[0][0] == file_a
@@ -162,7 +162,7 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
 
     run_options: RunOptions = RunOptions(apply_changes=False)
 
-    results, encountered_error = engine.run_steps_for_files(
+    pipeline_run: engine.PipelineExecution = engine.run_steps_for_files(
         run_options=run_options,
         config=shared_cfg,
         path_configs=None,
@@ -170,8 +170,8 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
         file_list=[file_a, file_b],
     )
 
-    assert encountered_error is None
-    assert [result.path for result in results] == [file_a, file_b]
+    assert pipeline_run.exit_code is None
+    assert [result.path for result in pipeline_run.results] == [file_a, file_b]
 
     assert len(bootstrap_calls) == 2
     assert bootstrap_calls[0][1] is shared_cfg

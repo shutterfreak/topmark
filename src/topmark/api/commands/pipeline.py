@@ -168,7 +168,7 @@ def check(
         report_scope=report_scope,
         would_change=effective_would_add_or_update,
         update_statuses=update_statuses,
-        encountered_error_code=api_run.exit_code,
+        encountered_exit_code=api_run.exit_code,
     )
 
 
@@ -256,7 +256,7 @@ def strip(
         report_scope=report_scope,
         would_change=effective_would_strip,
         update_statuses=update_statuses,
-        encountered_error_code=api_run.exit_code,
+        encountered_exit_code=api_run.exit_code,
     )
 
 
@@ -332,5 +332,5 @@ def probe(
     return finalize_probe_result(
         results=api_run.results,
         file_list=api_run.file_list,
-        encountered_error_code=api_run.exit_code,
+        encountered_exit_code=api_run.exit_code,
     )

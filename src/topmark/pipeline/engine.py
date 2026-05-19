@@ -18,17 +18,21 @@ Design goals:
   - No CLI dependencies: Do not import Click, console helpers, or anything under
     ``topmark.cli.*`` from here. Presentation (printing, colors, exit) is a
     responsibility of the CLI layer.
-  - Structured results: Return a list of `ProcessingContext` objects, plus an
-    optional `ExitCode` summarizing any error encountered while iterating files.
+  - Structured results: Return a `PipelineExecution` containing produced
+    `ProcessingContext` objects plus an optional `ExitCode` summarizing any error
+    encountered while iterating files.
   - Logging only: Error conditions are logged via the package logger. Callers
     decide how to surface errors (e.g., raise, print, or exit).
 
 Typical usage:
 
-    results, err = run_steps_for_files(
-        file_list=files, pipeline=Pipeline.CHECK.steps, config=cfg, prune=True
+    run = run_steps_for_files(
+        file_list=files,
+        pipeline=Pipeline.CHECK.steps,
+        config=cfg,
+        run_options=run_options,
     )
-    if err is not None:
+    if run.error_code is not None:
         # CLI would map this to a process exit; API callers may handle it differently.
         ...
 
@@ -38,6 +42,7 @@ the execution path easy to test in isolation.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.config.policy import PolicyRegistry
@@ -61,6 +66,22 @@ if TYPE_CHECKING:
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PipelineExecution:
+    """Result of running pipeline steps over a selected file list.
+
+    Attributes:
+        results: Ordered per-file processing contexts produced by the pipeline,
+            one for each path in the input file list that did not raise a fatal
+            engine-level error.
+        exit_code: First non-success engine-level exit code encountered while
+            iterating files, or `None` when no such error occurred.
+    """
+
+    results: list[ProcessingContext]
+    exit_code: ExitCode | None
 
 
 def exit_code_from_pipeline_results(
@@ -127,8 +148,8 @@ def run_steps_for_files(
     path_configs: Mapping[Path, FrozenConfig] | None = None,
     pipeline: Sequence[Step[ProcessingContext]],
     file_list: list[Path],
-) -> tuple[list[ProcessingContext], ExitCode | None]:
-    """Run a pipeline for each file and return (results, encountered_error_code).
+) -> PipelineExecution:
+    """Run a pipeline for each file and return structured engine results.
 
     Catches common filesystem/encoding errors so command bodies don't duplicate try/except.
 
@@ -142,11 +163,10 @@ def run_steps_for_files(
         file_list: List of file Path instances to be processed in the run.
 
     Returns:
-        tuple[list[ProcessingContext], ExitCode | None]: A pair ``(results, error_code)`` where:
-            - ``results`` is the ordered list of per-file `ProcessingContext` objects produced
-              by the pipeline, one for each path in ``file_list`` that did not raise a fatal error.
-            - ``error_code`` is ``None`` if no error occurred; otherwise the first encountered
-              non-success exit code, suitable for reporting or process exit in the CLI layer.
+        Structured engine result containing ordered per-file
+        `ProcessingContext` objects and the first encountered non-success exit
+        code, if any. The exit code is suitable for reporting or process exit
+        in the CLI layer.
 
     Exit code mapping:
         FILE_NOT_FOUND
@@ -166,7 +186,7 @@ def run_steps_for_files(
           (a conventional behavior for batch tools). Subsequent files continue to run.
     """
     results: list[ProcessingContext] = []
-    encountered_error_code: ExitCode | None = None
+    encountered_exit_code: ExitCode | None = None
     default_policy_registry: PolicyRegistry | None = (
         None if path_configs is not None else make_policy_registry(config)
     )
@@ -196,18 +216,18 @@ def run_steps_for_files(
             logger.error("Filesystem error while processing %s: %s", path, e)
             if isinstance(e, FileNotFoundError | IsADirectoryError):
                 logger.error("%s: %s", e, path)
-                encountered_error_code = encountered_error_code or ExitCode.FILE_NOT_FOUND
+                encountered_exit_code = encountered_exit_code or ExitCode.FILE_NOT_FOUND
             else:
                 logger.error("%s: %s", e, path)
-                encountered_error_code = encountered_error_code or ExitCode.PERMISSION_DENIED
+                encountered_exit_code = encountered_exit_code or ExitCode.PERMISSION_DENIED
             continue
         except UnicodeDecodeError as e:
             logger.error("Encoding error while reading %s: %s", path, e)
-            encountered_error_code = encountered_error_code or ExitCode.ENCODING_ERROR
+            encountered_exit_code = encountered_exit_code or ExitCode.ENCODING_ERROR
             continue
         except Exception as e:  # pragma: no cover
             logger.exception("Unexpected error processing %s: %s", path, e)
-            encountered_error_code = encountered_error_code or ExitCode.PIPELINE_ERROR
+            encountered_exit_code = encountered_exit_code or ExitCode.PIPELINE_ERROR
             continue
 
-    return results, encountered_error_code
+    return PipelineExecution(results=results, exit_code=encountered_exit_code)

@@ -84,6 +84,7 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
+from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
@@ -414,16 +415,15 @@ def probe_command(
     # Choose and run the concrete pipeline variant.
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.PROBE
 
-    results: list[ProcessingContext] = []
-    encountered_error_code: ExitCode | None = None
-
-    results, encountered_error_code = run_steps_for_files(
+    pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=run_options,
         config=config,
         path_configs=None,
         pipeline=pipeline,
         file_list=file_list,
     )
+    results: list[ProcessingContext] = pipeline_run.results
+    encountered_exit_code: ExitCode | None = pipeline_run.exit_code
 
     # Add resolver-level hard failures before deriving the process exit code.
     # Missing explicit inputs should beat probe-specific semantic statuses such
@@ -438,7 +438,7 @@ def probe_command(
     # Compute hard-error precedence before adding synthetic filtered contexts;
     # filtered explicit inputs remain probe-semantic outcomes and map to 69.
     pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
-    encountered_error_code = encountered_error_code or pipeline_error_code
+    encountered_exit_code = encountered_exit_code or pipeline_error_code
 
     # Add synthetic probe results for explicit inputs that were filtered before
     # the probe pipeline could run.
@@ -478,7 +478,7 @@ def probe_command(
 
     # Exit on any hard error encountered while running the selected pipeline.
     maybe_exit_on_error(
-        code=encountered_error_code,
+        code=encountered_exit_code,
         temp_path=temp_path,
     )
 

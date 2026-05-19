@@ -21,21 +21,18 @@ same discovery/precedence model as the CLI:
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.helpers.api import run_cli_like
 from topmark import api
-from topmark.config.model import MutableConfig
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import MutableConfig
+    from tests.helpers.api import CliLikeRun
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -110,10 +107,7 @@ def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
     api_diff: str = rr.files[0].diff or ""
 
     # CLI-like run from same anchor
-    _draft: MutableConfig
-    files: list[Path]
-    results: list[ProcessingContext]
-    _draft, files, results = run_cli_like(
+    cli_run: CliLikeRun = run_cli_like(
         proj,
         kind="check",
         apply=apply,
@@ -121,12 +115,13 @@ def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
         prune_views=False,
         include_file_types=("python",),
     )
-    assert files, "CLI-like resolver produced no files"
+    assert cli_run.file_list, "CLI-like resolver produced no files"
+    first: ProcessingContext = cli_run.results[0]
 
     # The aligned form must be present (topmark.toml overrides pyproject.toml)
     assert _contains_aligned_fields(api_diff), "API did not reflect topmark.toml override"
     # Parity: ensure CLI-like result also aligns
-    cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
+    cli_diff: str = first.views.diff.text or "" if first.views.diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not reflect topmark.toml override"
 
 
@@ -177,10 +172,7 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     assert _contains_aligned_fields(api_diff), "API did not honor nearest (child) config"
 
     # CLI-like parity
-    _draft: MutableConfig
-    files: list[Path]
-    results: list[ProcessingContext]
-    _draft, files, results = run_cli_like(
+    cli_run: CliLikeRun = run_cli_like(
         child,
         kind="check",
         apply=apply,
@@ -188,8 +180,10 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
         prune_views=False,
         include_file_types=("python",),
     )
-    assert files
-    cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
+    assert cli_run.file_list, "CLI-like resolver produced no files"
+    first: ProcessingContext = cli_run.results[0]
+
+    cli_diff: str = first.views.diff.text or "" if first.views.diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not honor nearest (child) config"
 
 
@@ -245,10 +239,7 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     assert _contains_unaligned_fields(api_diff), "API did not stop at root=true boundary"
 
     # CLI-like parity
-    _draft: MutableConfig
-    files: list[Path]
-    results: list[ProcessingContext]
-    _draft, files, results = run_cli_like(
+    cli_run: CliLikeRun = run_cli_like(
         sub,
         kind="check",
         apply=apply,
@@ -256,8 +247,10 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
         prune_views=False,
         include_file_types=("python",),
     )
-    assert files
-    cli_diff: str = results[0].views.diff.text or "" if results[0].views.diff else ""
+    assert cli_run.file_list, "CLI-like resolver produced no files"
+    first: ProcessingContext = cli_run.results[0]
+
+    cli_diff: str = first.views.diff.text or "" if first.views.diff else ""
     assert _contains_unaligned_fields(cli_diff), "CLI-like did not stop at root=true boundary"
 
 
@@ -302,13 +295,14 @@ def test_cli_like_positional_paths_preserve_discovered_exclude_from_gitignore(
 
     monkeypatch.chdir(repo)
 
-    _draft, files, _results = run_cli_like(
+    cli_run: CliLikeRun = run_cli_like(
         pkg,
         kind="check",
         diff=True,
         include_file_types=("python",),
     )
 
+    files: list[Path] = cli_run.file_list
     file_names: set[str] = {path.name for path in files}
     file_texts: set[str] = {path.as_posix() for path in files}
 
