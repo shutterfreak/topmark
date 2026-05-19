@@ -376,7 +376,7 @@ def apply_color_policy_for_output_format(
             warn_and_clear(
                 ctx,
                 message=(
-                    f"Note: {ctx.command_path}: {CliOpt.COLOR_MODE}={color_mode} is ignored "
+                    f"Note: {ctx.command_path}: {CliOpt.COLOR_MODE}={color_mode.value} is ignored "
                     f"when {CliOpt.OUTPUT_FORMAT}={fmt.value}."
                 ),
                 obj_key=ArgKey.COLOR_ENABLED,

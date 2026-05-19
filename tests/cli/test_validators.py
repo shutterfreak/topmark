@@ -106,7 +106,7 @@ def test_extra_arg_matches_option(arg: str, opt: str, expected: bool) -> None:
 
 def test_validate_common_forbidden_path_options_accepts_absent_options() -> None:
     """Common forbidden-option validator should pass when no known option remains."""
-    ctx = _make_click_context(args=["--unknown", "file.py"])
+    ctx: click.Context = _make_click_context(args=["--unknown", "file.py"])
 
     validate_common_forbidden_path_command_options_in_extra_args(ctx)
 
@@ -114,7 +114,7 @@ def test_validate_common_forbidden_path_options_accepts_absent_options() -> None
 @pytest.mark.parametrize("arg", ["--stdin", "--stdin=ignored"])
 def test_validate_common_forbidden_path_options_rejects_stdin(arg: str) -> None:
     """Path commands should reject leftover `--stdin` spellings."""
-    ctx = _make_click_context(args=[arg])
+    ctx: click.Context = _make_click_context(args=[arg])
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -125,7 +125,7 @@ def test_validate_common_forbidden_path_options_rejects_stdin(arg: str) -> None:
 
 def test_validate_forbidden_options_in_extra_args_rejects_custom_option() -> None:
     """Custom forbidden options should be rejected from permissive extra args."""
-    ctx = _make_click_context(args=["--unsafe=true"])
+    ctx: click.Context = _make_click_context(args=["--unsafe=true"])
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -139,7 +139,7 @@ def test_validate_forbidden_options_in_extra_args_rejects_custom_option() -> Non
 
 def test_validate_forbidden_options_in_extra_args_ignores_unmatched_options() -> None:
     """Custom forbidden-option validator should ignore unrelated extras."""
-    ctx = _make_click_context(args=["--other", "file.py"])
+    ctx: click.Context = _make_click_context(args=["--other", "file.py"])
 
     validate_forbidden_options_in_extra_args(
         ctx,
@@ -149,7 +149,7 @@ def test_validate_forbidden_options_in_extra_args_ignores_unmatched_options() ->
 
 def test_validate_mutually_exclusive_accepts_zero_or_one_enabled_flag() -> None:
     """Mutual-exclusion validator should allow zero or one enabled flag."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     validate_mutually_exclusive(
         ctx,
@@ -169,7 +169,7 @@ def test_validate_mutually_exclusive_accepts_zero_or_one_enabled_flag() -> None:
 
 def test_validate_mutually_exclusive_reports_default_two_flag_message() -> None:
     """Mutual-exclusion validator should report the enabled option spellings."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -186,7 +186,7 @@ def test_validate_mutually_exclusive_reports_default_two_flag_message() -> None:
 
 def test_validate_mutually_exclusive_uses_custom_message() -> None:
     """Mutual-exclusion validator should preserve explicit custom messages."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(TopmarkCliUsageError, match="custom conflict"):
         validate_mutually_exclusive(
@@ -201,7 +201,7 @@ def test_validate_mutually_exclusive_uses_custom_message() -> None:
 
 def test_validate_machine_format_forbids_flags_allows_text_and_disabled_flags() -> None:
     """Machine-format validator should pass for text or when all flags are off."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     validate_machine_format_forbids_flags(
         ctx,
@@ -219,7 +219,7 @@ def test_validate_machine_format_forbids_flags_allows_text_and_disabled_flags() 
 
 def test_validate_machine_format_forbids_flags_reports_single_flag() -> None:
     """Machine-format validator should report one incompatible enabled flag."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -235,7 +235,7 @@ def test_validate_machine_format_forbids_flags_reports_single_flag() -> None:
 
 def test_validate_machine_format_forbids_flags_reports_multiple_flags() -> None:
     """Machine-format validator should report multiple incompatible flags."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -258,9 +258,9 @@ def test_validate_machine_format_forbids_flags_reports_multiple_flags() -> None:
 def test_warn_and_clear_updates_color_enabled_and_returns_value() -> None:
     """warn_and_clear should emit a warning and mutate supported typed state."""
     state, err = _state_with_console(color_enabled=True)
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
-    result = warn_and_clear(
+    result: bool = warn_and_clear(
         ctx,
         message="color ignored",
         obj_key=ArgKey.COLOR_ENABLED,
@@ -275,7 +275,7 @@ def test_warn_and_clear_updates_color_enabled_and_returns_value() -> None:
 def test_warn_and_clear_rejects_wrong_cleared_type() -> None:
     """warn_and_clear should validate cleared values for supported fields."""
     state, _err = _state_with_console(color_enabled=True)
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
     with pytest.raises(TypeError, match="color_enabled must be cleared with a bool value"):
         warn_and_clear(
@@ -288,7 +288,7 @@ def test_warn_and_clear_rejects_wrong_cleared_type() -> None:
 
 def test_warn_and_clear_rejects_unsupported_state_key() -> None:
     """warn_and_clear should not become a generic state mutation helper."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(KeyError, match="Unsupported TopmarkCliState clear key"):
         warn_and_clear(
@@ -305,7 +305,7 @@ def test_apply_color_policy_keeps_text_color_state_unchanged() -> None:
         color_mode=ColorMode.ALWAYS,
         color_enabled=True,
     )
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
     apply_color_policy_for_output_format(ctx, fmt=OutputFormat.TEXT)
 
@@ -319,7 +319,7 @@ def test_apply_color_policy_disables_non_text_color_without_warning_for_auto() -
         color_mode=ColorMode.AUTO,
         color_enabled=True,
     )
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
     apply_color_policy_for_output_format(ctx, fmt=OutputFormat.MARKDOWN)
 
@@ -333,20 +333,20 @@ def test_apply_color_policy_warns_when_forced_color_is_ignored() -> None:
         color_mode=ColorMode.ALWAYS,
         color_enabled=True,
     )
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
     apply_color_policy_for_output_format(ctx, fmt=OutputFormat.JSON)
 
     assert state.color_enabled is False
     assert err.getvalue() == (
-        "Note: topmark-test: --color=ColorMode.ALWAYS is ignored when --output-format=json.\n"
+        "Note: topmark-test: --color=always is ignored when --output-format=json.\n"
     )
 
 
 def test_apply_ignore_positional_paths_policy_noops_without_extra_args() -> None:
     """File-agnostic path policy should be silent when there are no extras."""
     state, err = _state_with_console()
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
     apply_ignore_positional_paths_policy(ctx)
 
@@ -357,7 +357,7 @@ def test_apply_ignore_positional_paths_policy_noops_without_extra_args() -> None
 def test_apply_ignore_positional_paths_policy_warns_and_clears_args() -> None:
     """File-agnostic path policy should warn and clear unexpected paths."""
     state, err = _state_with_console()
-    ctx = _make_click_context(args=["-", "src"], state=state)
+    ctx: click.Context = _make_click_context(args=["-", "src"], state=state)
 
     apply_ignore_positional_paths_policy(ctx)
 
@@ -371,7 +371,7 @@ def test_apply_ignore_positional_paths_policy_warns_and_clears_args() -> None:
 def test_apply_ignore_positional_paths_policy_can_suppress_stdin_dash_warning() -> None:
     """STDIN dash warning should be suppressible while keeping the path warning."""
     state, err = _state_with_console()
-    ctx = _make_click_context(args=["-"], state=state)
+    ctx: click.Context = _make_click_context(args=["-"], state=state)
 
     apply_ignore_positional_paths_policy(ctx, warn_stdin_dash=False)
 
@@ -383,7 +383,7 @@ def test_apply_ignore_positional_paths_policy_can_suppress_stdin_dash_warning() 
 
 def test_validate_output_verbosity_policy_allows_text_without_conflict() -> None:
     """TEXT verbosity policy should allow either verbose or quiet alone."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     validate_output_verbosity_policy(
         ctx,
@@ -401,7 +401,7 @@ def test_validate_output_verbosity_policy_allows_text_without_conflict() -> None
 
 def test_validate_output_verbosity_policy_rejects_text_verbose_and_quiet() -> None:
     """TEXT verbosity policy should reject verbose and quiet together."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -418,7 +418,7 @@ def test_validate_output_verbosity_policy_rejects_text_verbose_and_quiet() -> No
 def test_validate_output_verbosity_policy_clears_non_text_controls() -> None:
     """Non-TEXT output should silently clear TEXT-only verbosity controls."""
     state = TopmarkCliState(verbosity=2, quiet=True)
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
     validate_output_verbosity_policy(
         ctx,
@@ -433,7 +433,7 @@ def test_validate_output_verbosity_policy_clears_non_text_controls() -> None:
 
 def test_validate_diff_policy_for_output_format_rejects_machine_diff() -> None:
     """Unified diffs should be rejected for machine-readable output."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -451,7 +451,7 @@ def test_validate_diff_policy_for_output_format_rejects_machine_diff() -> None:
 
 def test_validate_diff_policy_for_output_format_allows_text_diff() -> None:
     """Unified diffs should be allowed for human-readable text output."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     validate_diff_policy_for_output_format(
         ctx,
@@ -462,7 +462,7 @@ def test_validate_diff_policy_for_output_format_allows_text_diff() -> None:
 
 def test_validate_human_only_config_flags_rejects_machine_format() -> None:
     """Human-only config template flags should be rejected for machine formats."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     with pytest.raises(
         TopmarkCliUsageError,
@@ -481,7 +481,7 @@ def test_validate_human_only_config_flags_rejects_machine_format() -> None:
 
 def test_validate_human_only_config_flags_allows_markdown_format() -> None:
     """Human-only config template flags should be allowed for Markdown output."""
-    ctx = _make_click_context()
+    ctx: click.Context = _make_click_context()
 
     validate_human_only_config_flags_for_machine_format(
         ctx,
@@ -494,7 +494,7 @@ def test_validate_human_only_config_flags_allows_markdown_format() -> None:
 def test_warn_if_report_scope_ignored_noops_when_report_was_not_explicit() -> None:
     """Report-scope warnings should only fire for command-line report values."""
     state, err = _state_with_console()
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
 
     warn_if_report_scope_ignored(
         ctx,
@@ -509,7 +509,7 @@ def test_warn_if_report_scope_ignored_noops_when_report_was_not_explicit() -> No
 def test_warn_if_report_scope_ignored_warns_for_machine_and_summary() -> None:
     """Explicit report scope should warn for every policy reason that ignores it."""
     state, err = _state_with_console()
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
     ctx.set_parameter_source(
         ArgKey.REPORT_SCOPE,
         click.core.ParameterSource.COMMANDLINE,
@@ -531,7 +531,7 @@ def test_warn_if_report_scope_ignored_warns_for_machine_and_summary() -> None:
 def test_warn_if_report_scope_ignored_noops_when_explicit_but_effective() -> None:
     """Explicit report scope should not warn when the selected modes use it."""
     state, err = _state_with_console()
-    ctx = _make_click_context(state=state)
+    ctx: click.Context = _make_click_context(state=state)
     ctx.set_parameter_source(
         ArgKey.REPORT_SCOPE,
         click.core.ParameterSource.COMMANDLINE,
