@@ -8,25 +8,24 @@
 #
 # topmark:header:end
 
-"""Stable public structural contracts for TopMark integrations.
+"""Plugin-facing structural contracts for TopMark integrations.
 
-This module contains plugin-facing protocols and TypedDict contracts used by
-third-party integrations that want to register file types, header processors,
-or public policy overlays without importing TopMark's internal base classes.
+This module contains protocols used by integrations that want to register file
+types or header processors without importing TopMark's internal base classes.
 
 Use this module for structural contracts. Stable public value types and literal
-aliases belong in [`topmark.api.types`][topmark.api.types].
+aliases belong in [`topmark.api.types`][topmark.api.types]. Symbols exported by
+[`topmark.api`][topmark.api] are governed by the public API snapshot; this
+module is public-adjacent integration surface, but is not re-exported from the
+facade package.
 
-Stability policy:
-- Attribute names and types here follow semver.
-- Adding new optional attributes is allowed in minor releases.
-- Removing/renaming attributes or changing types is a breaking change.
-
-Diagnostics:
-- The public API uses JSON-friendly diagnostics with string literal severities.
-- See [`DiagnosticEntry`][topmark.api.types.DiagnosticEntry] for the stable
-  shape and [`DiagnosticLevelLiteral`][topmark.api.types.DiagnosticLevelLiteral]
-  for allowed values.
+Compatibility policy:
+- Attribute names and types should remain stable unless a pre-1.0 cleanup or a
+  concrete integration bug requires changing them.
+- Adding optional attributes is preferred over broad protocol reshaping.
+- Removing/renaming attributes or changing types should be treated as an
+  integration-facing breaking change even when the public API snapshot is
+  unchanged.
 """
 
 from __future__ import annotations
@@ -44,14 +43,14 @@ if TYPE_CHECKING:
 
 
 class PublicFileType(Protocol):
-    """Minimal public structural contract for a file type.
+    """Minimal plugin-facing structural contract for a file type.
 
     These attributes provide the discovery metadata TopMark needs to recognize
     files and determine whether a header can be managed. Instances are
     registered via the public registry and may be recognized but unsupported
     (`skip_processing`) to enable reporting without modification.
 
-    Required attributes:
+    Attributes:
         name: Stable identifier (for example, ``"jsonc"``). Must be unique.
         description: Short human description for UI/logs.
         extensions: File extensions (without dot), for example ("json",).
@@ -59,14 +58,12 @@ class PublicFileType(Protocol):
         patterns: Glob-like patterns.
         skip_processing: If `True`, TopMark will not add/update/remove a header
             even if the type matches (still discoverable for reporting).
-        header_policy_name: Symbolic policy name used by TopMark to guide
-            header placement.
-
-    Optional:
-        content_matcher: `Callable[[Path], bool]` that returns `True` only if
-            the file contents confirm this specific type. Use this to
+        content_matcher: Optional `Callable[[Path], bool]` that returns `True`
+            only if the file contents confirm this specific type. Use this to
             disambiguate overlapping extensions. The callable should be cheap
             and side-effect free; it must not modify files.
+        header_policy_name: Symbolic policy name used by TopMark to guide
+            header placement.
     """
 
     name: str
@@ -80,13 +77,13 @@ class PublicFileType(Protocol):
 
 
 class PublicHeaderProcessor(Protocol):
-    """Minimal public structural contract for a header processor.
+    """Minimal plugin-facing structural contract for a header processor.
 
     Implementors expose comment delimiters and are attached to a file type
     during registration. At bind time, the registry sets `file_type` on the
     processor instance.
 
-    Required attributes:
+    Attributes:
         description: Short human description for UI/logs.
         line_prefix: Line comment prefix (if applicable).
         line_suffix: Line comment suffix (if applicable).
@@ -94,8 +91,9 @@ class PublicHeaderProcessor(Protocol):
         block_prefix: Block comment prefix (if applicable).
         block_suffix: Block comment suffix (if applicable).
         file_type: The bound
-            [`PublicFileType`][topmark.api.protocols.PublicFileType] instance,
-            set by the registry.
+            [`PublicFileType`][topmark.api.protocols.PublicFileType] instance.
+            The registry assigns this attribute at bind time, so it intentionally
+            remains mutable instance state.
 
     Notes:
         A processor represents the behavior for rendering, scanning, and placing
@@ -114,5 +112,5 @@ class PublicHeaderProcessor(Protocol):
     block_prefix: str
     block_suffix: str
 
-    # The registry binds this at runtime.
+    # The registry assigns this mutable binding at runtime.
     file_type: PublicFileType
