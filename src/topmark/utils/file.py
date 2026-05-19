@@ -17,6 +17,7 @@ presentation logic shared across the CLI, API and core.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,6 +30,19 @@ if TYPE_CHECKING:
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class RebasedGlobPatterns:
+    """Result of rebasing glob-like patterns between directory anchors.
+
+    Attributes:
+        patterns: Rebased glob patterns using POSIX-style separators.
+        warnings: Non-fatal warnings encountered during rebasing.
+    """
+
+    patterns: list[str]
+    warnings: list[str]
 
 
 def compute_relpath(file_path: Path, root_path: Path) -> Path:
@@ -60,7 +74,7 @@ def rebase_glob_patterns(
     *,
     from_base: Path,
     to_base: Path,
-) -> tuple[list[str], list[str]]:
+) -> RebasedGlobPatterns:
     """Rebase glob-like patterns declared relative to one base directory to another.
 
     This is intended for *presentation* (e.g. `topmark config dump`) when configuration
@@ -80,9 +94,7 @@ def rebase_glob_patterns(
         to_base: The directory the returned patterns should be relative to.
 
     Returns:
-        A tuple of:
-            - The rebased patterns (POSIX-style separators).
-            - Warning strings describing any issues (empty if none).
+        Structured rebasing result containing rebased patterns and any non-fatal warnings.
     """
     warnings: list[str] = []
 
@@ -94,7 +106,10 @@ def rebase_glob_patterns(
             f"{from_base!r} to {to_base!r} (different filesystem roots?): {exc}. "
             "Leaving patterns unchanged."
         )
-        return list(patterns), warnings
+        return RebasedGlobPatterns(
+            patterns=list(patterns),
+            warnings=warnings,
+        )
 
     # Let other exceptions bubble (they indicate a bug / unexpected invariant violation).
 
@@ -124,7 +139,10 @@ def rebase_glob_patterns(
 
         rebased.append(f"{neg}{prefix}/{s}")
 
-    return rebased, warnings
+    return RebasedGlobPatterns(
+        patterns=rebased,
+        warnings=warnings,
+    )
 
 
 def safe_unlink(path: Path | None) -> None:

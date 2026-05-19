@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.toml.types import TomlTable
     from topmark.toml.types import TomlValue
+    from topmark.utils.file import RebasedGlobPatterns
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -186,25 +187,25 @@ def config_to_topmark_toml_table(
 
         # Process include/exclude pattern groups in order
         for group in config.include_pattern_groups:
-            rebased, warns = rebase_glob_patterns(
+            rebased_patterns: RebasedGlobPatterns = rebase_glob_patterns(
                 patterns=group.patterns,
                 from_base=group.base,
                 to_base=cwd,
             )
-            include_patterns.extend(rebased)
-            for w in warns:
+            include_patterns.extend(rebased_patterns.patterns)
+            for w in rebased_patterns.warnings:
                 if diagnostics is not None:
                     diagnostics.add_warning(w)
                 else:
                     logger.warning(w)
         for group in config.exclude_pattern_groups:
-            rebased, warns = rebase_glob_patterns(
+            rebased_patterns = rebase_glob_patterns(
                 patterns=group.patterns,
                 from_base=group.base,
                 to_base=cwd,
             )
-            exclude_patterns.extend(rebased)
-            for w in warns:
+            exclude_patterns.extend(rebased_patterns.patterns)
+            for w in rebased_patterns.warnings:
                 if diagnostics is not None:
                     diagnostics.add_warning(w)
                 else:
