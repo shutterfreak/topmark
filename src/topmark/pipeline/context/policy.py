@@ -24,9 +24,7 @@ from typing import TYPE_CHECKING
 from typing import Protocol
 
 from topmark.config.policy import EmptyInsertMode
-from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import HeaderMutationMode
-from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import FsStatus
@@ -36,6 +34,7 @@ from topmark.pipeline.status import StripStatus
 
 if TYPE_CHECKING:
     from topmark.config.policy import FrozenPolicy
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.status import ProcessingStatus
 
 
@@ -206,7 +205,7 @@ def allow_insert_into_empty_like(ctx: PolicyContext) -> bool:
         - Do **not** use it to skip reading/analysis steps; those should be governed by
           filesystem/content feasibility (e.g., unreadable/binary/mixed-newlines).
     """
-    policy: FrozenPolicy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy = ctx.get_effective_policy()
 
     return is_empty_for_insert(ctx) and bool(policy.allow_header_in_empty_files)
 
@@ -225,7 +224,7 @@ def allow_empty_header(ctx: PolicyContext) -> bool:
         `True` if policy allows rendering an empty header when there are no fields,
         `False` otherwise.
     """
-    policy: FrozenPolicy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy = ctx.get_effective_policy()
 
     return policy.render_empty_header_when_no_fields
 
@@ -243,7 +242,7 @@ def allow_content_reflow(ctx: PolicyContext) -> bool:
         bool: True if policy allows reflowing content around the header,
         False otherwise.
     """
-    policy: FrozenPolicy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy = ctx.get_effective_policy()
 
     return policy.allow_reflow
 
@@ -277,7 +276,7 @@ def allow_mixed_line_endings(ctx: PolicyContext) -> bool:
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
         return True
 
-    policy: FrozenPolicy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy = ctx.get_effective_policy()
 
     if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
         # Newer policies may provide this flag; default False if absent.
@@ -316,7 +315,7 @@ def allow_bom_before_shebang(ctx: PolicyContext) -> bool:
     if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
         return True
 
-    policy: FrozenPolicy | None = ctx.get_effective_policy()
+    policy: FrozenPolicy = ctx.get_effective_policy()
 
     if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
         # Newer policies may provide this flag; default False if absent.
@@ -340,8 +339,8 @@ def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
         - False : policy forbids it (e.g., header_mutation_mode=add_only forbids replace)
         - None  : indeterminate (no clear intent yet)
     """
-    pol: FrozenPolicy | None = ctx.get_effective_policy()
-    pol_header_mutation_mode: HeaderMutationMode = pol.header_mutation_mode
+    policy: FrozenPolicy = ctx.get_effective_policy()
+    pol_header_mutation_mode: HeaderMutationMode = policy.header_mutation_mode
 
     if ctx.status.strip != StripStatus.PENDING:
         # StripperStep did run

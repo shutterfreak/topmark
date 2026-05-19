@@ -140,7 +140,7 @@ class FrozenPolicy:
             Dictionary containing primitive TOML-serializable values.
 
         Notes:
-            This is an export helper for documentation, machine payloads, andconfig rendering.
+            This is an export helper for documentation, machine payloads, and config rendering.
             Resolved [`FrozenPolicy`][topmark.config.policy.FrozenPolicy] instances always emit
             all fields.
         """
@@ -251,7 +251,7 @@ class MutablePolicy:
         )
 
     def freeze(self) -> FrozenPolicy:
-        """Freeze to a concrete `MutablePolicy` using the built-in policy defaults.
+        """Freeze to a concrete `FrozenPolicy` using the built-in policy defaults.
 
         Returns:
             Fully resolved immutable policy.
@@ -389,7 +389,15 @@ class PolicyRegistry:
 
 
 def make_policy_registry(config: HasPolicyConfig) -> PolicyRegistry:
-    """Build an immutable `PolicyRegistry` from a resolved Config-like object."""
+    """Build an immutable `PolicyRegistry` from a resolved config-like object.
+
+    Args:
+        config: Resolved configuration object exposing global and per-type policy
+            mappings through the `HasPolicyConfig` protocol.
+
+    Returns:
+        Immutable effective policy registry.
+    """
     return PolicyRegistry(
         global_policy=config.policy,
         by_type=config.policy_by_type,
@@ -404,7 +412,7 @@ def effective_frozen_policy(cfg: HasPolicyConfig, file_type_id: str | None) -> F
     is returned.
 
     This helper assumes that both `cfg.policy` and entries in `cfg.policy_by_type`
-    re already fully resolved [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
+    are already fully resolved [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
     instances (that is, no tri-state inheritance remains at runtime).
 
     Args:
