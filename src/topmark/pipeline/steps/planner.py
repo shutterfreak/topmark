@@ -46,6 +46,7 @@ from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import InsertCapability
+from topmark.filetypes.model import InsertCheckResult
 from topmark.pipeline.adapters import PreInsertViewAdapter
 from topmark.pipeline.context.policy import allow_content_reflow
 from topmark.pipeline.context.policy import allow_insert_into_empty_like
@@ -71,7 +72,6 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
     from topmark.filetypes.model import InsertChecker
-    from topmark.filetypes.model import InsertCheckResult
     from topmark.pipeline.context.model import ProcessingContext
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -376,13 +376,19 @@ class PlannerStep(BaseStep):
                     logger.exception(
                         "pre-insert checker failed for %s: %s", getattr(ft, "name", ft), exc
                     )
-                    from topmark.utils.introspection import format_callable_pretty
 
-                    result = {
-                        "capability": InsertCapability.SKIP_OTHER,
-                        "reason": f"checker error: {format_callable_pretty(checker)}, {exc}",
-                        "origin": __name__,
-                    }
+                    # Obtain the name of the checker
+                    checker_name = getattr(checker, "__qualname__", None) or getattr(
+                        checker, "__name__", None
+                    )
+                    if checker_name is None:
+                        checker_name = type(checker).__name__
+
+                    result = InsertCheckResult(
+                        capability=InsertCapability.SKIP_OTHER,
+                        reason=f"checker error: {checker_name}, {exc}",
+                        origin=__name__,
+                    )
 
                 # Persist the authoritative view for downstream bucketing/rendering
                 cap: InsertCapability = result.get("capability", InsertCapability.OK)
