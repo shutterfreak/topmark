@@ -18,6 +18,284 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0b5] - 2026-05-19
+
+This fifth **1.0 beta release** focuses on late-stage pre-release hardening through expanded
+semantic coverage, presentation-contract stabilization, pipeline lifecycle validation, TOML mutation
+testing, and internal ownership-boundary cleanup ahead of the `1.0.0rc1` release candidate.
+
+It does not reopen frozen CLI, API, configuration, registry, probe, machine-readable output, or
+pipeline behavior contracts. Instead, it strengthens confidence in those frozen contracts by adding
+focused coverage for planner, stripper, patcher, writer, TOML surgery, diagnostic rendering,
+registry rendering, pipeline rendering, CLI validator policy handling, XML processor edge cases, and
+pipeline outcome classification.
+
+This release also continues internal ownership-boundary refinement by relocating shared constants
+and shared outcome primitives into the `topmark.core` package, removing the obsolete
+`topmark.rendering` package, and tightening presentation-layer ownership semantics.
+
+> [!CAUTION] **Breaking changes**
+>
+> - The former `topmark.constants` module has moved to `topmark.core.constants`.
+> - The obsolete `topmark.rendering` package has been removed.
+> - Internal presentation and outcome helpers were reorganized around canonical core ownership
+>   boundaries.
+
+### Breaking Changes - 1.0.0b5
+
+- **Core constants relocation**
+
+  - The former top-level `topmark.constants` module has moved to `topmark.core.constants`.
+  - Shared package metadata, registry-token primitives, marker strings, newline constants, and TOML
+    resource constants now live under the canonical `topmark.core` namespace.
+  - Internal and advanced callers importing from `topmark.constants` must update imports.
+
+- **Rendering package removal**
+
+  - Removed the obsolete `topmark.rendering` package.
+  - The unused `topmark.rendering.api` convenience layer has been deleted.
+  - Unified diff formatting helpers now live under:
+    - `topmark.presentation.formatters`
+  - Internal callers importing `format_patch_plain()` from the old rendering package must update
+    imports.
+
+- **Internal ownership-boundary cleanup**
+
+  - Shared outcome primitives (`Outcome`, `OUTCOME_ORDER`, `NO_REASON_PROVIDED`) now live in
+    `topmark.core.outcomes`.
+  - Pipeline, presentation, and API layers now consume the shared core outcome primitives directly.
+  - `Outcome` remains a stable `topmark.api` re-export for public API consumers.
+
+### Highlights - 1.0.0b5
+
+- Added extensive focused semantic coverage for planner, stripper, patcher, writer, TOML surgery,
+  TOML template surgery, pipeline outcomes, CLI validators, pipeline rendering, registry rendering,
+  diagnostic rendering, and XML processor edge cases.
+- Expanded XML processor coverage for declaration-safe insertion, BOM handling, DOCTYPE anchoring,
+  strip cleanup, and policy-aware spacing behavior.
+- Added dedicated semantic rendering tests for text and Markdown pipeline, registry, and diagnostic
+  presentation.
+- Added focused CLI validator and typed CLI state bootstrap coverage without invoking the full Click
+  command tree.
+- Added focused outcome bucketing coverage for semantic pipeline result classification and summary
+  aggregation behavior.
+- Added JSON-like insertion-policy coverage and improved JSONC detection for block comments.
+- Removed the obsolete `topmark.rendering` package and consolidated rendering ownership under
+  `topmark.presentation`.
+- Relocated shared constants and outcome primitives into the `topmark.core` package.
+- Removed the unused introspection utility module and simplified planner diagnostic handling.
+- Improved generated API page generation for empty package sections and child-link rendering.
+- Fixed CLI color warning rendering so diagnostics use stable CLI-facing enum values across Python
+  versions.
+- Continued late-beta coverage and ownership-boundary hardening ahead of `1.0.0rc1`.
+
+### Added - 1.0.0b5
+
+- **Pipeline lifecycle coverage**
+
+  - Added focused coverage for:
+    - `PlannerStep`
+    - `StripperStep`
+    - `PatcherStep`
+    - `WriterStep`
+  - Added tests for:
+    - dry-run behavior;
+    - replace vs insert planning;
+    - malformed-header handling;
+    - blocked insertion policies;
+    - unified diff generation;
+    - write sink behavior;
+    - atomic and in-place writes;
+    - header mutation policy enforcement;
+    - non-mutating execution paths;
+    - failure handling without target truncation.
+
+- **Presentation rendering coverage**
+
+  - Added focused semantic rendering tests for:
+    - pipeline presentation;
+    - registry presentation;
+    - diagnostic presentation.
+  - Added normalized Markdown table assertion helpers for stable semantic table assertions without
+    spacing-sensitive snapshots.
+
+- **TOML mutation coverage**
+
+  - Added focused tests for:
+    - TOML surgery helpers;
+    - TOML template surgery helpers;
+    - pyproject nesting;
+    - root flag insertion/removal;
+    - idempotence;
+    - invalid TOML handling;
+    - target-table scoping;
+    - TopMark header-block placement.
+
+- **CLI validator and state coverage**
+
+  - Added dedicated unit coverage for:
+    - CLI validation helpers;
+    - option-policy handling;
+    - typed CLI state bootstrapping;
+    - legacy mapping lifting;
+    - STDIN dash validation;
+    - mutually exclusive options;
+    - machine-format restrictions.
+
+- **Pipeline outcome coverage**
+
+  - Added dedicated semantic coverage for:
+    - intent inference;
+    - outcome bucketing;
+    - policy veto handling;
+    - dry-run vs apply mapping;
+    - summary aggregation;
+    - deterministic outcome ordering.
+
+- **XML processor edge-case coverage**
+
+  - Added focused XML processor tests covering:
+    - BOM and declaration offset detection;
+    - DOCTYPE anchoring;
+    - malformed declaration fallback behavior;
+    - single-line prolog insertion;
+    - declaration-safe strip cleanup;
+    - policy-aware spacing and trimming behavior.
+
+- **JSON-like insertion and JSONC detection coverage**
+
+  - Added focused coverage for:
+    - JSON-like insertion policies;
+    - explicit JSON promotion behavior;
+    - JSONC comment detection;
+    - block comment handling;
+    - unterminated comment detection;
+    - escaped string behavior.
+
+- **Utility and enum coverage**
+
+  - Added focused unit coverage for:
+    - enum parsing helpers;
+    - keyed enum metadata behavior;
+    - merge helper utilities;
+    - processing status helpers;
+    - pipeline status serialization.
+
+### Changed - 1.0.0b5
+
+- **Core ownership boundaries**
+
+  - Moved shared constants into `topmark.core.constants`.
+  - Moved shared outcome primitives into `topmark.core.outcomes`.
+  - Updated API, pipeline, presentation, CLI, processor, registry, and test imports accordingly.
+  - Clarified ownership boundaries in module docstrings and generated API pages.
+
+- **Presentation ownership**
+
+  - Removed the obsolete `topmark.rendering` package.
+  - Relocated unified diff formatting into:
+    - `topmark.presentation.formatters.unified_diff`
+  - Consolidated presentation formatting helpers under the presentation layer.
+
+- **Generated API page generation**
+
+  - Refactored `tools/docs/gen_api_pages.py` to centralize breadcrumb and child-section rendering.
+  - Improved handling for packages with no top-level modules.
+  - Prevented invalid generated `(none).md` links for empty package sections.
+
+- **JSONC detection**
+
+  - Updated JSONC detection to recognize block comments in addition to line comments.
+  - Preserved correct behavior for comment markers appearing inside JSON strings.
+
+- **Planner diagnostics**
+
+  - Removed the standalone introspection helper module.
+  - Inlined planner checker-name fallback logic used only for diagnostic reporting.
+
+- **CLI validator diagnostics**
+
+  - Updated forced-color warnings to render stable CLI-facing enum values such as:
+    - `--color=always`
+  - Avoided Python-version-specific enum repr formatting in diagnostics.
+
+- **Merge helper behavior**
+
+  - Updated `none_if_empty()` so empty iterators behave consistently with empty containers by
+    materializing iterables before emptiness checks.
+
+### Fixed - 1.0.0b5
+
+- **Generated API navigation drift**
+
+  - Fixed generated API package indices emitting invalid `(none).md` links when packages lacked
+    top-level modules.
+  - Fixed empty generated-package sections rendering placeholder names instead of explicit empty
+    states.
+
+- **CLI warning rendering drift**
+
+  - Fixed forced-color warnings using Python enum repr output such as:
+    - `ColorMode.ALWAYS`
+  - Diagnostics now consistently render canonical CLI-facing values such as:
+    - `always`
+
+- **JSONC detection gaps**
+
+  - Fixed JSONC detection missing block comments while still correctly ignoring comment markers
+    inside strings.
+
+- **Merge helper iterator handling**
+
+  - Fixed `none_if_empty()` incorrectly treating empty iterators differently from empty sized
+    containers.
+
+- **Rendering ownership drift**
+
+  - Fixed obsolete rendering helpers remaining outside the canonical presentation layer.
+
+### Documentation - 1.0.0b5
+
+- Updated generated API documentation ownership boundaries for shared constants and outcome
+  primitives.
+- Updated generated API page helpers and package index generation behavior.
+- Updated presentation-layer ownership references after removing the obsolete rendering package.
+- Updated roadmap status to reflect:
+  - expanded late-beta semantic coverage;
+  - pipeline lifecycle hardening;
+  - presentation-contract validation;
+  - TOML mutation coverage;
+  - ownership-boundary cleanup ahead of `1.0.0rc1`.
+
+### Internal - 1.0.0b5
+
+- Continued the late-beta semantic coverage pass across pipeline, presentation, TOML, CLI,
+  processors, registry, and utility layers.
+- Preferred semantic assertions over formatting-sensitive snapshots in new rendering tests to
+  stabilize frozen presentation contracts.
+- Preserved existing CLI, API, config, registry, and pipeline behavior while tightening lifecycle
+  validation coverage.
+- Reduced cross-layer imports by relocating shared primitives into `topmark.core`.
+- Simplified planner diagnostics by removing the standalone introspection utility module.
+- Improved strict typing coverage in validator tests and JSON-like insertion checks.
+
+### Notes - 1.0.0b5
+
+- This beta primarily strengthens semantic validation coverage and ownership-boundary clarity rather
+  than introducing new user-facing functionality.
+- Frozen 1.0 contracts for CLI behavior, config semantics, registry/resolution, probe behavior,
+  machine-readable output, and pipeline execution remain unchanged.
+- The focus is semantic lifecycle hardening, presentation validation, TOML mutation coverage, and
+  internal cleanup ahead of the release-candidate phase.
+- Remaining work before `1.0.0rc1` should now primarily consist of:
+  - final release validation;
+  - packaging checks;
+  - published-artifact validation;
+  - selective internal cleanup items already documented in the roadmap;
+  - and any concrete final beta feedback.
+
+______________________________________________________________________
+
 ## [1.0.0b4] - 2026-05-18
 
 This fourth **1.0 beta release** focuses on final release-workflow polish, GitHub prerelease

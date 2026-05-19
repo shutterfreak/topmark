@@ -421,6 +421,13 @@ At this point:
   governance model
 - The canonical `MutableX` / `FrozenX` naming model is finalized across configuration, policy,
   diagnostics, and staged validation-log types.
+- Late-beta typing and API-hardening follow-up work identified during the `v1.0.0b4` stabilization
+  cycle is now tracked explicitly for post-freeze evaluation, including:
+  - tightening protocol/view contracts toward read-only semantics where mutation is not intended
+  - replacing mixed-type tuple return values with typed value objects or DTO-style result models
+  - continuing targeted coverage expansion for complex orchestration, planner, writer, and
+    presentation paths
+  - preserving Python 3.10 compatibility while keeping Pyright strict-mode guarantees intact
 
 The project is now in a **late beta stabilization phase**, with broad architecture complete,
 in-memory pipeline support explicitly deferred, documentation governance and prose hygiene
@@ -770,6 +777,9 @@ validation, and targeted hardening rather than boundary redesign:
   does not leak into validation-oriented commands or stable public API contracts.
 - Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
   public Python API surfaces.
+- Continue evaluating opportunities to tighten internal protocol/view surfaces toward read-only
+  semantics and to replace ambiguous tuple-shaped internal return contracts with explicit typed
+  result objects where this improves clarity without destabilizing the frozen 1.0 public API.
 
 ### Config / validation contract freeze
 
@@ -947,6 +957,7 @@ What is left is mainly:
 - **downstream machine-readable output consumer validation**
 - **targeted hardening from concrete beta findings**
 - **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
+- **late-beta typing/API hardening follow-up identified during coverage-driven stabilization work**
 - **explicit post-1.0 follow-up for deferred scope**
 
 That means TopMark is now in the late beta stabilization stage of the 1.0 effort: validating the
@@ -1168,6 +1179,19 @@ These are release blockers unless explicitly deferred with a documented rational
   `UNSUPPORTED_FILE_TYPE (69)` for `probe`
 - [x] API and CLI policy override behavior have focused coverage
 - [x] Engine applies per-path configs and policy registries correctly
+- [x] Coverage-driven late-beta stabilization and typing hardening completed for the frozen 1.0
+  contract surface
+  - [x] focused coverage expansion added for outcomes, status/context, merge utilities, file-type
+    gating, enum mixins, diff rendering, and validation/error-path behavior
+  - [x] obsolete or effectively dead internal helpers removed where they no longer contributed to
+    the frozen architecture (`rendering/api.py`, introspection-only helpers)
+  - [x] presentation-layer diff rendering consolidated under
+    `topmark.presentation.formatters.unified_diff`
+  - [x] Python 3.10 compatibility regressions discovered during late-beta coverage expansion were
+    resolved without weakening Pyright strict-mode guarantees
+  - [x] remaining identified follow-up opportunities (read-only protocol tightening and replacing
+    tuple-shaped internal return contracts with typed result objects) explicitly deferred as
+    post-freeze hardening work rather than 1.0 blockers
 
 #### [Must] Tooling / dependency / release ecosystem
 
@@ -1393,6 +1417,11 @@ beta feedback identifies a release blocker.
   current read-only registry listings and probe diagnostics
 - [ ] Explore support for multi-line TopMark header fields while preserving deterministic parsing,
   rendering, idempotence, and backward compatibility with the existing single-line field contract
+- [ ] Continue tightening internal protocol/view contracts toward read-only semantics where mutation
+  is not intended
+- [ ] Replace remaining ambiguous tuple-shaped internal return contracts with explicit typed result
+  objects or DTO-style models where this improves clarity without destabilizing the frozen public
+  API
 
 #### [Post-1.0] Human output
 
@@ -1424,5 +1453,6 @@ contract-stabilization and release-path rehearsal phase, while the beta stabiliz
 validated the frozen contracts, release pipeline, GitHub prerelease visibility, documentation
 governance, changelog hygiene, prose hygiene, terminology stability, and cross-platform installation
 behavior. The remaining path to final `1.0.0` is now focused on preserving compatibility, collecting
-final real-world beta feedback, and avoiding new scope unless concrete release-blocking issues are
-identified.
+final real-world beta feedback, validating downstream ecosystem behavior, continuing targeted
+post-freeze hardening where appropriate, and avoiding new scope unless concrete release-blocking
+issues are identified.
