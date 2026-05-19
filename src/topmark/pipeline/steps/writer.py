@@ -15,7 +15,8 @@ This step is the canonical place where TopMark writes results to a destination
 and public API.
 
 This step is responsible for the final I/O after all other steps have computed
-`ctx.views.updated` and selected the intended `WriteStatus` (INSERTED, REPLACED, REMOVED).
+`ctx.views.updated` and selected the intended `PlanStatus` (INSERTED, REPLACED, REMOVED,
+or PREVIEWED for stdout output).
 It also applies policy gates (e.g., header mutation mode) so that command-line intent
 and config policies are centralized here.
 
@@ -87,7 +88,7 @@ def _updated_lines(ctx: ProcessingContext) -> list[str] | None:
 
 
 # TODO: currently `_normalize_eof` isn't applied by _InplaceFileSink / _AtomicFileSink. Verify
-# whether we strill need to add this "no trailing newline" semantics for file writes in the real
+# whether we still need to add this "no trailing newline" semantics for file writes in the real
 # sinks (likely by adjusting what ctx.iter_updated_lines() yields).
 # def _normalize_eof(text: str, ctx: ProcessingContext) -> str:
 #     """Normalize end-of-file newline according to the original file policy.
@@ -102,9 +103,12 @@ def _updated_lines(ctx: ProcessingContext) -> list[str] | None:
 
 
 class WriteSink(Protocol):
-    """Protocol for write sinks used by the writer step.
+    """Behavioral protocol for writer-step sinks.
 
-    Implementations receive a ProcessingContext and return a WriteResult.
+    Sink implementations encapsulate the final destination-specific I/O for a
+    processing context, such as writing to disk, emitting to stdout, or performing
+    a dry-run no-op. The protocol intentionally exposes only behavior and does
+    not require shared sink state.
     """
 
     def write(self, *, ctx: ProcessingContext) -> WriteResult:
@@ -118,15 +122,21 @@ class WriteSink(Protocol):
             ctx: Context that holds updated content and write status.
 
         Returns:
-            Structured result indicating the write status and the number of bytes written
-            (if applicable).
+            Structured result indicating the write status and byte count when
+            the sink can report one.
         """
         ...
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class WriteResult:
-    """Structured result of a write operation."""
+    """Structured result of a writer sink operation.
+
+    Attributes:
+        status: Final status reported by the sink.
+        bytes_written: Number of bytes written when the sink can report one;
+            zero for dry-run, skipped, failed, or unreported file writes.
+    """
 
     status: WriteStatus
     bytes_written: int = 0
@@ -142,7 +152,7 @@ class NullSink:
             ctx: Processing context for the current file.
 
         Returns:
-            The input ``ctx.status.write`` echoed back with zero bytes written.
+            The current ``ctx.status.write`` echoed back with zero bytes written.
         """
         return WriteResult(status=ctx.status.write, bytes_written=0)
 
@@ -200,8 +210,8 @@ class InplaceFileSink(WriteSink):
                 with UTF-8-encoded text to write.
 
         Returns:
-            WriteResult: Result containing `WriteStatus.WRITTEN` on success, or
-            `WriteStatus.FAILED` with diagnostic info on error.
+            Structured write result containing `WriteStatus.WRITTEN` on success,
+            or `WriteStatus.FAILED` after recording diagnostic information on error.
         """
         path: Path = ctx.path
         try:
@@ -259,8 +269,8 @@ class AtomicFileSink(WriteSink):
                 contain `ctx.views.updated.lines` with UTF-8-encoded text to write.
 
         Returns:
-            Result with `WriteStatus.WRITTEN` on success, or `WriteStatus.FAILED` if the operation
-            fails.
+            Structured write result with `WriteStatus.WRITTEN` on success, or
+            `WriteStatus.FAILED` after recording diagnostic information on error.
         """
         path: Path = ctx.path
         dirpath: Path = path.parent
@@ -338,8 +348,8 @@ def _select_sink(ctx: ProcessingContext) -> WriteSink:
       * Else (target is file):
           - If `ctx.run_options.apply_changes` is falsy → `NullSink` (preview/no-write).
           - Otherwise select the file sink by strategy:
-              · `FileWriteStrategy.IN_PLACE`  → `InplaceFileSink`
-              · `FileWriteStrategy.ATOMIC`    → `AtomicFileSink` (default)
+            · `FileWriteStrategy.INPLACE`   → `InplaceFileSink`
+            · `FileWriteStrategy.ATOMIC`    → `AtomicFileSink` (default)
 
     Notes:
       * Output target is configured and set at config resolution.
@@ -404,7 +414,7 @@ class WriterStep(BaseStep):
             ctx: The processing context for the current file.
 
         Returns:
-            True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the write step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -450,7 +460,8 @@ class WriterStep(BaseStep):
             ctx: The processing context with update intent.
 
         Mutations:
-            The same context, with `status.write` finalized.
+            Updates `ctx.status.write` and may append diagnostics when policy or
+            sink failures prevent writing.
         """
         logger.debug("ctx: %s", ctx)
 
@@ -463,7 +474,7 @@ class WriterStep(BaseStep):
             ctx.status.write = WriteStatus.SKIPPED
             return
 
-        # --- Policy enforcement (centralized + FileType-specific (optional) -----
+        # --- Policy enforcement (centralized + file-type-specific when configured) ---
         pol: FrozenPolicy = ctx.get_effective_policy()
 
         # Only gate insert/replace (check mode) - strip/removal is not governed by add/update.
@@ -494,7 +505,6 @@ class WriterStep(BaseStep):
 
         # Update write status:
         ctx.status.write = result.status
-        return
 
     def hint(self, ctx: ProcessingContext) -> None:
         """Attach write hints (non-binding).
