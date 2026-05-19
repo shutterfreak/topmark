@@ -25,7 +25,6 @@ from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Final
 from typing import Protocol
 from typing import TypedDict
@@ -143,6 +142,15 @@ class InsertCheckResult(TypedDict, total=False):
 
 
 @runtime_checkable
+class PreInsertHeaderProcessorView(Protocol):
+    """Read-only header-processor surface needed by pre-insert checkers."""
+
+    def get_header_insertion_char_offset(self, original_text: str) -> int | None:
+        """Return the character insertion offset for positional formats, if any."""
+        ...
+
+
+@runtime_checkable
 class PreInsertContextView(Protocol):
     """Minimal view of ProcessingContext for pre-insert checkers.
 
@@ -150,15 +158,29 @@ class PreInsertContextView(Protocol):
     must have to be used by pre-insert checkers. It allows checkers to be defined
     without depending on the full ProcessingContext class.
 
-    Note:
-        The type of `header_processor` is set to `Any` to avoid a circular import.
+    Attributes are exposed as read-only properties so pre-insert checkers can
+    inspect context state without mutating pipeline-owned data.
     """
 
-    # The minimal attributes checkers need; add more if needed later
-    lines: Iterable[str]
-    newline_style: str
-    header_processor: Any  # concrete checker can cast to its processor class if needed
-    file_type: FileType | None
+    @property
+    def lines(self) -> Iterable[str]:
+        """Streaming access to the file image lines."""
+        ...
+
+    @property
+    def newline_style(self) -> str:
+        """Detected newline style used for insertion decisions."""
+        ...
+
+    @property
+    def header_processor(self) -> PreInsertHeaderProcessorView | None:
+        """Resolved header processor, if one is available."""
+        ...
+
+    @property
+    def file_type(self) -> FileType | None:
+        """Resolved file type, if one is available."""
+        ...
 
 
 @runtime_checkable

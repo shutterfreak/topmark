@@ -27,6 +27,7 @@ their lifecycle.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
 
 
 # --- Adapter for PreInsertContextView (streaming-friendly) -----------
+@dataclass(frozen=True, kw_only=True, slots=True, init=False)
 class PreInsertViewAdapter:
     """Adapter that exposes a ProcessingContext as a PreInsertContextView.
 
@@ -63,10 +65,10 @@ class PreInsertViewAdapter:
     file_type: FileType | None
 
     def __init__(self, ctx: ProcessingContext) -> None:
-        self.lines: Iterable[str] = ctx.iter_image_lines()
-        self.newline_style: str = ctx.newline_style
-        self.header_processor: HeaderProcessor | None = ctx.header_processor
-        self.file_type: FileType | None = ctx.file_type
+        object.__setattr__(self, "lines", ctx.iter_image_lines())
+        object.__setattr__(self, "newline_style", ctx.newline_style)
+        object.__setattr__(self, "header_processor", ctx.header_processor)
+        object.__setattr__(self, "file_type", ctx.file_type)
 
     def __repr__(self) -> str:
         """Return a developer-friendly string representation of the adapter.

@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.version.machine.payloads import VersionPayloadResult
 
 
 def serialize_version(
@@ -101,11 +102,11 @@ def serialize_version_json(
     Returns:
         Serialized NDJSON string.
     """
-    payload, _err = build_version_payload(semver=semver)
+    result: VersionPayloadResult = build_version_payload(semver=semver)
     return serialize_json_envelope(
         meta=meta,
         **{
-            VersionKey.VERSION_INFO.value: payload,
+            VersionKey.VERSION_INFO.value: result.payload,
         },
     )
 

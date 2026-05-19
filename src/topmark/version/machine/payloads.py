@@ -30,6 +30,7 @@ If a payload needs keys/kinds/domains, import those from
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.version.machine.schemas import VersionKey
@@ -39,10 +40,23 @@ if TYPE_CHECKING:
     from topmark.version.types import VersionInfo
 
 
+@dataclass(frozen=True, kw_only=True, slots=True)
+class VersionPayloadResult:
+    """Payload build result for machine-readable version output.
+
+    Attributes:
+        payload: Mapping with version information for machine envelopes.
+        err: Conversion exception when SemVer was requested and failed; otherwise `None`.
+    """
+
+    payload: dict[str, object]
+    err: Exception | None = None
+
+
 def build_version_payload(
     *,
     semver: bool,
-) -> tuple[dict[str, object], Exception | None]:
+) -> VersionPayloadResult:
     """Build the version payload for machine-readable output.
 
     This helper never raises on SemVer conversion failure. If SemVer conversion
@@ -53,15 +67,14 @@ def build_version_payload(
         semver: Whether to attempt SemVer conversion.
 
     Returns:
-        A tuple of:
-            - payload: Mapping with keys:
-                - `MachineKey.VERSION`: version string (SemVer if successful, else PEP 440).
-                - `MachineKey.VERSION_FORMAT`: `"semver"` or `"pep440"` (effective format).
-            - error: Conversion exception when SemVer was requested and failed; otherwise None.
+        A typed result containing the payload and any SemVer conversion error.
     """
     version_info: VersionInfo = compute_version_info(semver=semver)
 
-    return {
-        VersionKey.VERSION.value: version_info.version_text,
-        VersionKey.VERSION_FORMAT.value: version_info.version_format,
-    }, version_info.err
+    return VersionPayloadResult(
+        payload={
+            VersionKey.VERSION.value: version_info.version_text,
+            VersionKey.VERSION_FORMAT.value: version_info.version_format,
+        },
+        err=version_info.err,
+    )

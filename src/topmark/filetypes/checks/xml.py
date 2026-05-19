@@ -23,7 +23,7 @@ from topmark.filetypes.model import InsertCheckResult
 from topmark.filetypes.model import PreInsertContextView
 
 if TYPE_CHECKING:
-    from topmark.processors.base import HeaderProcessor
+    from topmark.filetypes.model import PreInsertHeaderProcessorView
 
 # --- Local helpers for strict XML gate ---
 _BOM = "\ufeff"
@@ -86,8 +86,8 @@ def xml_can_insert(ctx: PreInsertContextView) -> InsertCheckResult:
     origin: str = f"{__name__}.xml_can_insert"
     lines: list[str] = list(ctx.lines or [])
     text: str = "".join(lines)
-    proc: HeaderProcessor | None = ctx.header_processor
-    if not proc or not hasattr(proc, "get_header_insertion_char_offset"):
+    proc: PreInsertHeaderProcessorView | None = ctx.header_processor
+    if proc is None:
         return {
             "capability": InsertCapability.SKIP_OTHER,
             "reason": "no XML processor",

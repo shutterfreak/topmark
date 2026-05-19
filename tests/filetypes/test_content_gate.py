@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.filetypes.model import InsertCheckResult
+    from topmark.filetypes.model import PreInsertHeaderProcessorView
 
 
 class JsonLikePreInsertContext:
@@ -38,7 +39,7 @@ class JsonLikePreInsertContext:
 
     lines: Iterable[str]
     newline_style: str
-    header_processor: object | None
+    header_processor: PreInsertHeaderProcessorView | None
     file_type: FileType | None
 
     def __init__(
@@ -46,7 +47,7 @@ class JsonLikePreInsertContext:
         *,
         lines: Iterable[str],
         newline_style: str = "\n",
-        header_processor: object | None = None,
+        header_processor: PreInsertHeaderProcessorView | None = None,
         file_type: FileType | None,
     ) -> None:
         self.lines = tuple(lines)

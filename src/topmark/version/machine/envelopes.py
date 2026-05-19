@@ -50,6 +50,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from collections.abc import Mapping
 
+    from topmark.version.machine.payloads import VersionPayloadResult
+
 
 def build_version_ndjson_record(
     *,
@@ -125,14 +127,14 @@ def iter_version_ndjson_records(
     Yields:
         Shaped NDJSON record mappings.
     """
-    payload, err = build_version_payload(semver=semver)
+    result: VersionPayloadResult = build_version_payload(semver=semver)
 
     yield build_version_ndjson_record(
         meta=meta,
-        payload=payload,
+        payload=result.payload,
     )
-    if err is not None:
+    if result.err is not None:
         yield build_version_diagnostic_ndjson_record(
             meta=meta,
-            message=str(err),
+            message=str(result.err),
         )
