@@ -10,7 +10,7 @@
 
 """Common mixins for header processors.
 
-These mixins provide reusable behavior for:
+These mixins provide reusable, state-light behavior for:
 
 * Line-comment based processors (e.g., Pound/Slash) via ``LineCommentMixin``.
 * Positional, tag- or prolog-sensitive processors (e.g., XML/HTML) via
@@ -18,7 +18,9 @@ These mixins provide reusable behavior for:
 * Shebang-aware insertion rules via ``ShebangAwareMixin``.
 
 They **do not** change public behavior on their own. Processors can adopt these
-mixins to share well-tested logic and reduce duplication.
+mixins to share well-tested logic and reduce duplication. Delimiter attributes
+such as ``line_prefix`` and ``block_prefix`` remain normal instance attributes so
+processor instances may override them during construction or registration.
 """
 
 from __future__ import annotations
@@ -39,7 +41,7 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
 
     class _EnsureBlockPadding(Protocol):
-        """Callable protocol for block-padding helpers on processors."""
+        """Structural callable for optional block-padding helpers."""
 
         def __call__(
             self,
@@ -68,7 +70,7 @@ def _equals_affix_ignoring_space_tab(line: str, affix: str) -> bool:
 
 
 class ShebangAwareMixin:
-    """Utilities to skip shebang lines when inserting headers.
+    """Utilities for shebang-aware insertion anchors.
 
     Notes:
         These helpers operate on line-oriented content. Processors that manage
@@ -90,17 +92,18 @@ class ShebangAwareMixin:
 class LineCommentMixin(ShebangAwareMixin):
     """Shared helpers for line-comment based processors.
 
-    Processors should define:
+    Processors define line-comment delimiter attributes, usually during
+    construction:
         * ``line_prefix``: the comment introducer for a header line (e.g., ``# ``).
-        * ``line_suffix`` (optional): trailing comment portion to append (e.g., `` */``).
+        * ``line_suffix``: optional trailing comment portion to append (e.g., `` */``).
 
     Methods here centralize header line normalization, scanning, and safe
     insertion point computation (shebang aware).
     """
 
-    #: Override per concrete processor, e.g., "# ", "// ", "; ", "-- "
+    #: Instance-level line comment prefix, e.g., "# ", "// ", "; ", "-- ".
     line_prefix: str = ""
-    #: Optional suffix appended after content (rare for line comments)
+    #: Instance-level suffix appended after content, rare for line comments.
     line_suffix: str = ""
 
     # ---- Line classification -------------------------------------------------
@@ -195,7 +198,7 @@ class LineCommentMixin(ShebangAwareMixin):
         """
         out: list[str] = list(rendered_header_lines)
 
-        # Read policy if present
+        # Read the bound file type policy if present.
         policy: FileTypeHeaderPolicy | None = getattr(
             getattr(self, "file_type", None), "header_policy", None
         )
@@ -241,7 +244,8 @@ class LineCommentMixin(ShebangAwareMixin):
 class BlockCommentMixin:
     """Shared helpers for block-comment processors (e.g., CSS/JS C-style).
 
-    Processors should define:
+    Processors define block-comment delimiter attributes, usually during
+    construction:
         * ``block_prefix``: the opening delimiter (e.g., ``/*`` or ``<!--``).
         * ``block_suffix``: the closing delimiter (e.g., ``*/`` or ``-->``).
 
@@ -249,7 +253,9 @@ class BlockCommentMixin:
     migrate concrete processors and spot duplication opportunities.
     """
 
+    #: Instance-level opening delimiter for block comments.
     block_prefix: str = ""
+    #: Instance-level closing delimiter for block comments.
     block_suffix: str = ""
 
     def is_block_prefix(self, line: str) -> bool:
@@ -366,7 +372,8 @@ class XmlPositionalMixin:
     ) -> str:
         """Adjust whitespace so the header block sits on its own lines.
 
-        Blank detection here approximates the policy in a text (char-offset) path:
+        Blank detection here applies the configured policy in a text
+        (char-offset) path:
         - Leading spacer is added only when inserting after some preamble and the
           previous character is not already an EOL.
         - Trailing spacer is added only when body content follows **and** the next
