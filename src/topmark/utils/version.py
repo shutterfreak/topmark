@@ -14,11 +14,28 @@ from __future__ import annotations
 
 import re
 import sys
+from dataclasses import dataclass
 
 from topmark.core.constants import MIN_VERSION_MAJOR
 from topmark.core.constants import MIN_VERSION_MINOR
 from topmark.core.constants import TOPMARK
 from topmark.core.constants import TOPMARK_VERSION
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ComputedVersion:
+    """Computed package version text and format metadata.
+
+    Attributes:
+        version_text: The effective version string.
+        version_format: The format of `version_text`, such as `"pep440"` or `"semver"`.
+        error: Conversion error when SemVer conversion was requested but failed.
+    """
+
+    version_text: str
+    version_format: str
+    error: Exception | None = None
+
 
 # Recognize the subset of PEP 440 we actually emit:
 #   X.Y.Z
@@ -92,7 +109,7 @@ def convert_pep440_to_semver(pep440_version: str) -> str:
 def compute_version_text(
     *,
     semver: bool,
-) -> tuple[str, str, Exception | None]:
+) -> ComputedVersion:
     """Compute the version string for TopMark.
 
     Args:
@@ -120,7 +137,11 @@ def compute_version_text(
         except ValueError as err:
             # Fall back to PEP440 and report the error
             error = err
-    return version_text, version_format, error
+    return ComputedVersion(
+        version_text=version_text,
+        version_format=version_format,
+        error=error,
+    )
 
 
 # Simple runtime safety check (Optional but recommended)

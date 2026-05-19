@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from topmark.cli.errors import TopmarkCliVersionConversionError
+from topmark.utils.version import ComputedVersion
 from topmark.utils.version import compute_version_text
 
 
@@ -52,12 +53,16 @@ def make_version_human_report(
     Returns:
         The ``VersionHumanReport`` object.
     """
-    version_text, version_format, err = compute_version_text(semver=semver)
+    result: ComputedVersion = compute_version_text(semver=semver)
 
     return VersionHumanReport(
-        version_text=version_text,
-        version_format=version_format,
-        error=TopmarkCliVersionConversionError(message=str(err)) if err else None,
+        version_text=result.version_text,
+        version_format=result.version_format,
+        error=TopmarkCliVersionConversionError(
+            message=str(result.error),
+        )
+        if result.error
+        else None,
         verbosity_level=verbosity_level,
         styled=styled,
     )
