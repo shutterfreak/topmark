@@ -18,6 +18,129 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0b6] - 2026-05-20
+
+This sixth **1.0 beta release** focuses on pre-RC internal typing, ownership-boundary cleanup, and
+typed-result hardening ahead of `1.0.0rc1`.
+
+> [!CAUTION] **Breaking changes**
+>
+> - `run_pipeline()` and `run_probe_pipeline()` now return `ApiPipelineRun`.
+> - `run_steps_for_files()` now returns `PipelineExecution`.
+> - Several internal helper APIs now return frozen typed result objects instead of positional
+>   tuples.
+
+### Breaking Changes - 1.0.0b6
+
+- **Typed low-level API runtime results**
+
+  - `run_pipeline()` and `run_probe_pipeline()` now return `ApiPipelineRun` instead of:
+    - `(FrozenConfig, list[Path], list[ProcessingContext], ExitCode | None)`
+  - `ApiPipelineRun` is exposed through the public API snapshot for integrations that intentionally
+    consume low-level runtime state.
+
+- **Typed pipeline engine results**
+
+  - `run_steps_for_files()` now returns `PipelineExecution` instead of:
+    - `(list[ProcessingContext], ExitCode | None)`
+
+- **Typed internal helper results**
+
+  - Replaced several mixed tuple return contracts with frozen typed result objects across:
+    - version formatting;
+    - TOML template loading;
+    - config resolution;
+    - CLI input planning;
+    - processor stripping;
+    - diagnostic presentation;
+    - glob rebasing;
+    - file type candidate ordering.
+
+### Highlights - 1.0.0b6
+
+- Replaced ambiguous mixed tuple returns with named frozen value objects.
+- Tightened read-only protocol and view ownership boundaries.
+- Clarified public API snapshot vs plugin-facing protocol surfaces.
+- Tightened XML strip diagnostics so spacer-cleanup notes are emitted only when XML-specific cleanup
+  actually occurs.
+- Simplified CLI input planning by removing duplicated dash-sentinel cleanup.
+- Preserved user-facing CLI behavior and machine-readable output schemas.
+
+### Changed - 1.0.0b6
+
+- **Typing and ownership boundaries**
+
+  - Tightened protocol/view surfaces toward read-only semantics where mutation is not intended.
+  - Replaced mutable `dict` exposure with `Mapping` where callers only observe values.
+  - Clarified intentional mutable registry bindings and instance-level processor delimiter state.
+
+- **Typed result objects**
+
+  - Added typed result objects including:
+    - `ComputedVersion`
+    - `DefaultTomlTemplateText`
+    - `ApiPipelineRun`
+    - `PipelineExecution`
+    - `StripHeaderResult`
+    - `HumanDiagnostics`
+    - `RebasedGlobPatterns`
+    - `ResolvedConfigDraft`
+    - `PreparedCliConfig`
+    - `FileTypeCandidateOrderKey`
+
+- **CLI input planning**
+
+  - Replaced tuple-based `--*-from` helper returns with typed result objects.
+  - Simplified `plan_cli_inputs()` so dash-sentinel cleanup is performed once after mode-specific
+    input routing.
+
+- **Protocol documentation**
+
+  - Clarified plugin-facing protocols, diagnostic protocols, console protocols, processor mixins,
+    and writer sink contracts.
+  - Clarified that `api/protocols.py` is public-adjacent integration surface, not part of the
+    exported public API snapshot.
+
+### Fixed - 1.0.0b6
+
+- **XML strip diagnostic precision**
+
+  - Fixed XML strip diagnostics claiming policy-spacer cleanup even when no XML-specific spacer was
+    removed.
+
+- **Typing ambiguity**
+
+  - Fixed multiple strict-typing ambiguity points caused by positional mixed tuples and mutable
+    protocol/view surfaces.
+
+- **Stale internal documentation**
+
+  - Fixed stale tuple-return docstrings, outdated comments, typo drift, and incorrect ownership
+    wording across runtime, pipeline, processor, CLI, config, and presentation helpers.
+
+### Documentation - 1.0.0b6
+
+- Updated roadmap status to record substantial completion of late-beta typing and ownership cleanup.
+- Documented the remaining coverage workflow/reporting follow-up as an open roadmap item.
+- Clarified that README coverage badge adoption remains deferred until CI coverage reporting exists
+  and provides a stable public quality signal.
+
+### Internal - 1.0.0b6
+
+- Improved Pyright strict-mode clarity by replacing positional result tuples with typed DTOs.
+- Updated tests to consume named result fields instead of tuple positions.
+- Refined processor, pipeline, runtime, config, CLI, and presentation ownership boundaries.
+- Preserved existing user-facing CLI behavior and emitted machine-readable output schemas.
+
+### Notes - 1.0.0b6
+
+- This beta is an internal hardening release, not a new feature release.
+- The main focus is strict typing, ownership clarity, and pre-RC maintainability.
+- Coverage workflow/reporting and possible README coverage badge integration remain open roadmap
+  items for follow-up.
+
+______________________________________________________________________
+
 ## [1.0.0b5] - 2026-05-19
 
 This fifth **1.0 beta release** focuses on late-stage pre-release hardening through expanded

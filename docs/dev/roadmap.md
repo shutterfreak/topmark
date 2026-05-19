@@ -40,9 +40,10 @@ ______________________________________________________________________
 
 This section tracks work completed during the 0.12 development series and the 1.0 alpha/beta
 stabilization line. The focus has been on **architectural separation, deterministic behavior, strict
-typing, documentation governance, validation hygiene, canonical public/runtime naming, and removal
-of legacy implicit behavior**. The system is now largely aligned with a clean *TOML → Configuratin →
-Runtime → Pipeline → Presentation* model and is in late beta stabilization.
+typing, documentation governance, validation hygiene, canonical public/runtime naming, internal
+ownership clarity, and removal of legacy implicit behavior**. The system is now largely aligned with
+a clean *TOML → Configuration → Runtime → Pipeline → Presentation* model and is in late beta
+stabilization.
 
 ### Registry architecture (completed)
 
@@ -73,6 +74,8 @@ model**:
   explicit inputs filtered before probing through stable DTOs at the API boundary.
 - Refactored `ResolverStep` and `ProberStep` so normal pipelines and the probe pipeline share the
   same probe-backed resolution mapping.
+- Replaced the positional file type candidate ordering tuple with `FileTypeCandidateOrderKey`,
+  preserving deterministic ranking while making score and tie-break fields explicit.
 
 Result: the registry is now **predictable, testable, and plugin-ready**, with no import-time side
 effects.
@@ -124,6 +127,10 @@ Key improvements:
   configuration” terminology.
 - Expanded focused human-output tests for version, diagnostics, config, registry, and pipeline
   commands.
+- Replaced mixed CLI option-helper and presentation-helper tuple returns with typed result objects,
+  including `FromOptionValues`, `FromOptionStdinText`, `ComputedVersion`, `DefaultTomlTemplateText`,
+  and `HumanDiagnostics`, and simplified `plan_cli_inputs()` so dash-sentinel cleanup is performed
+  once after mode-specific input routing.
 - Documented and enforced the stable CLI exit-code contract across implementation, tests, the
   canonical usage page, command pages, command-group pages, README, documentation index, pre-commit
   guidance, and developer-facing machine/API documentation.
@@ -149,6 +156,9 @@ A strict separation between **configuration and execution intent** is now in pla
   preserving them in config dumps, config checks, and machine-readable configuration snapshots.
 - Aligned `config defaults` and `config init` so machine-readable output is generated through TOML
   parsing/resolution rather than by shortcutting directly to configuration defaults.
+- Replaced mixed TOML/config bridge tuples with typed result objects, including
+  `ResolvedConfigDraft` and `PreparedCliConfig`, so TOML provenance, mutable config drafts, and CLI
+  override ownership are passed through named fields instead of positional tuple slots.
 
 Result: config is now **pure, layered, and reproducible**, while runtime behavior is explicit.
 
@@ -222,6 +232,11 @@ The pipeline has been stabilized with clearer semantics:
   result runs.
 - Added resolution-level synthetic pipeline contexts for explicit missing literal inputs so missing
   files appear in human output, machine output, summaries, and exit-code selection.
+- Replaced mixed pipeline and processor result tuples with typed value objects, including
+  `PipelineExecution`, `ApiPipelineRun`, `StripHeaderResult`, and `HumanDiagnostics`, clarifying
+  runtime, pipeline, processor, and presentation ownership boundaries under Pyright strict mode.
+- Tightened XML strip diagnostics so XML-specific spacer-cleanup notes are emitted only when the XML
+  override actually removes an additional policy spacer.
 
 Result: pipeline behavior is now **explicit, consistent, and predictable**.
 
@@ -422,12 +437,19 @@ At this point:
 - The canonical `MutableX` / `FrozenX` naming model is finalized across configuration, policy,
   diagnostics, and staged validation-log types.
 - Late-beta typing and API-hardening follow-up work identified during the `v1.0.0b4` stabilization
-  cycle is now tracked explicitly for post-freeze evaluation, including:
-  - tightening protocol/view contracts toward read-only semantics where mutation is not intended
-  - replacing mixed-type tuple return values with typed value objects or DTO-style result models
-  - continuing targeted coverage expansion for complex orchestration, planner, writer, and
-    presentation paths
-  - preserving Python 3.10 compatibility while keeping Pyright strict-mode guarantees intact
+  cycle has been substantially completed before RC:
+  - protocol/view contracts were tightened toward read-only semantics where mutation is not intended
+  - ambiguous mixed-type tuple return values were replaced with frozen typed value objects or
+    DTO-style result models across version, TOML/config, CLI input, runtime, pipeline, processor,
+    diagnostics, glob-rebasing, and file-type-resolution paths
+  - plugin-facing and internal protocol documentation now distinguishes public API snapshot exports,
+    public-adjacent integration surfaces, intentional mutable registry bindings, and read-only
+    observation protocols
+  - XML strip diagnostics were tightened to avoid claiming spacer cleanup when no XML-specific
+    spacer was removed
+  - Python 3.10 compatibility and Pyright strict-mode guarantees were preserved
+  - remaining follow-up is limited to targeted incremental confidence-building, including future
+    coverage workflow/reporting integration
 
 The project is now in a **late beta stabilization phase**, with broad architecture complete,
 in-memory pipeline support explicitly deferred, documentation governance and prose hygiene
@@ -484,6 +506,10 @@ consumers must update to the canonical identity and explicit binding model.
 - Configuration-loading entry points were consolidated around TOML-first resolution.
   - Callers needing provenance must explicitly handle resolved sources and mutable configuration
     state.
+- Config-resolution bridge helpers now return typed result objects such as `ResolvedConfigDraft`
+  instead of `(resolved, draft)` tuples.
+  - Internal callers must consume named `resolved` and `draft` fields instead of positional tuple
+    slots.
 - Source-local TOML options such as `[config].root` and `[config].strict` now live outside layered
   configuration merging.
 - The canonical mutable/frozen runtime naming model was finalized:
@@ -536,9 +562,19 @@ older policy tokens, or older TOML layout/validation assumptions must update.
     registry commands) no longer expose `--quiet`.
 - Runtime-only execution intent is now modeled separately from layered configuration.
   - `RunOptions` now carries runtime behavior such as apply/preview and stdin handling.
+- Low-level API runtime helpers now return typed runtime result objects instead of positional
+  tuples.
+  - `run_pipeline()` and `run_probe_pipeline()` return `ApiPipelineRun` instead of
+    `(FrozenConfig, list[Path], list[ProcessingContext], ExitCode | None)`.
+  - `ApiPipelineRun` is exposed through the public API snapshot for integrations that intentionally
+    work with low-level runtime state.
+- Pipeline engine execution now returns `PipelineExecution` instead of
+  `(list[ProcessingContext], ExitCode | None)`.
 - Dry-run / apply semantics are now explicit:
   - preview runs report preview statuses
   - apply runs report terminal write outcomes
+- Internal CLI input and preparation helpers now return typed result objects rather than positional
+  tuples where the returned values have distinct ownership semantics.
 - Summary output is now grouped by `(outcome, reason)` rather than by a single collapsed outcome
   label.
 - CLI/report surface changes:
@@ -568,35 +604,51 @@ snapshots, and downstream automation may need adjustment.
 ### Machine output contracts
 
 - Machine output is now domain-scoped, schema-driven, and separated from CLI formatting.
+
 - Pipeline summary payloads now use explicit flat rows with:
+
   - `outcome`
   - `reason`
   - `count`
+
 - `config check` machine output now uses the explicit `config_check` payload/record kind rather than
   a generic summary wrapper.
+
 - `config dump --show-layers` now adds layered provenance output (`config_provenance`) before the
   final flattened runtime configuration payload.
+
 - Configuration machine-readable payloads include TOML-authored runtime sections such as `[writer]`
   when present in the effective TOML source, even though those values are resolved outside the
   layered configuration model.
+
 - `detail_level` is now part of the machine-readable output contract for command families that emit
   projection metadata (notably registry machine output).
+
 - Registry JSON machine output was flattened for 1.0 contract stability:
+
   - `registry filetypes` → `{meta, filetypes}`
   - `registry processors` → `{meta, processors}`
   - `registry bindings` → `{meta, bindings, unbound_filetypes, unused_processors}`
+
 - Machine-output naming conventions are now explicitly frozen for 1.0, including:
+
   - shared envelope/meta ownership in `topmark.core.machine.schemas`
   - plural/domain-specific JSON collection keys
   - singular NDJSON record kinds
   - `qualified_key`, `namespace` + `local_key`, and `*_key` reference naming
+
 - Machine-readable configuration, registry, resolution, and probe payloads emit canonical qualified
   file type identifiers when a resolved identity is available.
+
 - Probe machine output now treats probe records as per-path results and includes filtered explicit
   inputs via `status="filtered"` with path-filter, file-type-filter, or generic discovery-filter
   reasons.
+
 - Machine output no longer implies process status: consumers must inspect the CLI exit code
   separately from JSON/NDJSON payloads.
+
+- Internal presentation helpers now use typed result objects for human diagnostics and
+  version/config preparation, without changing emitted human or machine output schemas.
 
 Result: machine-readable formats are much more stable and structured, but downstream consumers that
 relied on older payload naming or outcome-keyed summaries must update.
@@ -694,7 +746,7 @@ hardening work** before `1.0.0`.
 
 The large structural refactors, contract-freeze decisions, beta validation gates,
 documentation-governance work, command-page freeze review, terminology alignment, TOML-template
-harmonization, and prose-hygiene tooling work are complete.
+harmonization, prose-hygiene tooling work, and late-beta typing/ownership cleanup are complete.
 
 What remains is primarily:
 
@@ -702,6 +754,7 @@ What remains is primarily:
 - downstream ecosystem validation,
 - compatibility preservation,
 - targeted hardening from concrete findings,
+- coverage workflow/reporting follow-up,
 - and explicitly deferred post-1.0 scope.
 
 ### Registry / resolution freeze
@@ -777,14 +830,12 @@ validation, and targeted hardening rather than boundary redesign:
   does not leak into validation-oriented commands or stable public API contracts.
 - Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
   public Python API surfaces.
-- Continue evaluating opportunities to:
-  - tighten internal protocol/view surfaces toward read-only semantics where mutation is not
-    intended
-  - replace ambiguous tuple-shaped internal return contracts with explicit typed result objects or
-    DTO-style models
-  - simplify or retire effectively dead internal helper layers that no longer contribute meaningful
-    architectural separation after the 1.0 freeze where this improves clarity, typing precision,
-    maintainability, or testability without destabilizing the frozen 1.0 public API.
+- Treat the late-beta internal typing/ownership cleanup as substantially complete for RC:
+  - protocol/view surfaces were tightened toward read-only semantics where mutation is not intended
+  - ambiguous tuple-shaped internal return contracts were replaced with explicit typed result
+    objects or DTO-style models where they materially improved clarity
+  - further protocol/DTO cleanup should now be incremental and justified by concrete findings rather
+    than reopened as broad pre-1.0 refactoring scope
 
 ### Config / validation contract freeze
 
@@ -910,6 +961,10 @@ Remaining follow-up:
   conventions evolve.
 - Keep Python code-prose hygiene validation integrated in local and release gates as comments,
   docstrings, tooling prose, and generated documentation conventions evolve.
+- Add coverage testing to GitHub workflows and decide how to surface coverage results in project
+  documentation.
+  - A README coverage badge remains an open follow-up once coverage reporting is integrated and the
+    resulting signal is stable enough to be useful.
 - Keep MkDocs 1.x as the accepted documentation generator through the `v1.0.0` beta stabilization
   releases because the current strict docs build, link checks, generated API pages, release
   validation, and cross-platform packaging/install validation are green. Evaluate ProperDocs as a
@@ -962,9 +1017,10 @@ What is left is mainly:
 - **downstream machine-readable output consumer validation**
 - **targeted hardening from concrete beta findings**
 - **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
-- **late-beta typing/API hardening follow-up identified during coverage-driven stabilization work**
-- **ongoing coverage expansion for complex orchestration and integration-heavy paths where
-  additional confidence is still valuable despite the frozen 1.0 architecture**
+- **coverage workflow/reporting follow-up identified during late-beta stabilization work**
+- **ongoing coverage expansion and CI coverage reporting for complex orchestration and
+  integration-heavy paths where additional confidence is still valuable despite the frozen 1.0
+  architecture**
 - **explicit post-1.0 follow-up for deferred scope**
 
 That means TopMark is now in the late beta stabilization stage of the 1.0 effort: validating the
@@ -1198,9 +1254,8 @@ These are release blockers unless explicitly deferred with a documented rational
     `topmark.presentation.formatters.unified_diff`
   - [x] Python 3.10 compatibility regressions discovered during late-beta coverage expansion were
     resolved without weakening Pyright strict-mode guarantees
-  - [x] remaining identified follow-up opportunities (read-only protocol tightening and replacing
-    tuple-shaped internal return contracts with typed result objects) explicitly deferred as
-    post-freeze hardening work rather than 1.0 blockers
+  - [x] identified read-only protocol tightening and tuple-shaped internal return contract follow-up
+    substantially completed before RC using focused frozen value objects and documentation updates
 
 #### [Must] Tooling / dependency / release ecosystem
 
@@ -1311,6 +1366,10 @@ GitHub workflows, and release workflow checks rather than dedicated pytest tests
   - [x] `make test` (runs `nox -s qa`)
   - [x] `make release-check`
   - [x] `make release-full`, or an equivalent CI-backed full release gate, passes
+- [ ] Coverage workflow/reporting follow-up evaluated
+  - [ ] GitHub workflow coverage reporting added or explicitly deferred with rationale
+  - [ ] README coverage badge decision recorded after coverage reporting output is available and
+    stable enough to be meaningful
 - [x] Tooling parity validation completed
   - [x] nox formatter/linter behavior matches pre-commit behavior
   - [x] local `.venv` behavior matches nox expectations where documented
@@ -1453,8 +1512,8 @@ beta feedback identifies a release blocker.
   current lightweight hygiene checks
 - [ ] Further refactor GitHub workflow structure into reusable workflow/release-infra patterns if
   still worthwhile
-- [ ] Revisit whether a public README coverage badge adds meaningful signal after 1.0 once coverage
-  stabilizes naturally through maintenance releases and downstream adoption patterns
+- [ ] Add GitHub workflow coverage reporting and revisit whether a public README coverage badge adds
+  meaningful signal once the reporting output is stable.
 
 ______________________________________________________________________
 
@@ -1464,6 +1523,6 @@ contract-stabilization and release-path rehearsal phase, while the beta stabiliz
 validated the frozen contracts, release pipeline, GitHub prerelease visibility, documentation
 governance, changelog hygiene, prose hygiene, terminology stability, and cross-platform installation
 behavior. The remaining path to final `1.0.0` is now focused on preserving compatibility, collecting
-final real-world beta feedback, validating downstream ecosystem behavior, continuing targeted
-post-freeze hardening where appropriate, and avoiding new scope unless concrete release-blocking
-issues are identified.
+final real-world beta feedback, validating downstream ecosystem behavior, completing or explicitly
+deferring coverage workflow/reporting follow-up, continuing targeted post-freeze hardening where
+appropriate, and avoiding new scope unless concrete release-blocking issues are identified.
