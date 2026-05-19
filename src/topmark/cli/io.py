@@ -39,6 +39,9 @@ if TYPE_CHECKING:
 
     import click
 
+    from topmark.cli.options import FromOptionStdinText
+    from topmark.cli.options import FromOptionValues
+
 
 # Keep this module narrowly scoped to STDIN handling only.
 
@@ -250,13 +253,15 @@ def plan_cli_inputs(
     # detect content mode
     stdin_mode: bool = raw_args == ["-"]
 
-    # route list-on-STDIN to one of the ...-from options
-    files_from_text: str | None = None
-    include_from_text: str | None = None
-    exclude_from_text: str | None = None
-    files_from_text, include_from_text, exclude_from_text = extract_stdin_for_from_options(
-        files_from, include_from, exclude_from
+    # Route list-on-STDIN to one of the ...-from options.
+    from_stdin: FromOptionStdinText = extract_stdin_for_from_options(
+        files_from,
+        include_from,
+        exclude_from,
     )
+    files_from_text: str | None = from_stdin.files_from
+    include_from_text: str | None = from_stdin.include_from
+    exclude_from_text: str | None = from_stdin.exclude_from
 
     # forbid mixing content mode with ...-from - usage
     if stdin_mode and any(
@@ -282,9 +287,6 @@ def plan_cli_inputs(
             raise TopmarkCliUsageError("No data received on STDIN while '-' was specified.")
         temp_path = res.paths[0]
         paths = [str(temp_path)]
-        files_from, include_from, exclude_from = strip_dash_sentinels(
-            files_from, include_from, exclude_from
-        )
     else:
         # ...-from routing (list mode)
         if files_from_text is not None:
@@ -303,9 +305,16 @@ def plan_cli_inputs(
         if exclude_from_text is not None:
             exc += split_nonempty_lines(exclude_from_text)
 
-        files_from, include_from, exclude_from = strip_dash_sentinels(
-            files_from, include_from, exclude_from
-        )
+    # Remove STDIN sentinels from --*-from option values after mode-specific
+    # routing has consumed them.
+    from_values: FromOptionValues = strip_dash_sentinels(
+        files_from,
+        include_from,
+        exclude_from,
+    )
+    files_from = from_values.files_from
+    include_from = from_values.include_from
+    exclude_from = from_values.exclude_from
 
     if not paths and not allow_empty_paths:
         raise TopmarkCliUsageError(f"No arguments provided. Try 'topmark {ctx.command.name} FILE'")

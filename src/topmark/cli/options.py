@@ -29,6 +29,7 @@ Conventions
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 from typing import ParamSpec
@@ -97,6 +98,36 @@ class StdinUse(str, Enum):
     EXCLUDE_FROM = "exclude-from"
 
 
+@dataclass(frozen=True, kw_only=True, slots=True)
+class FromOptionValues:
+    """Values supplied through `--*-from` options.
+
+    Attributes:
+        files_from: Values passed through `--files-from`.
+        include_from: Values passed through `--include-from`.
+        exclude_from: Values passed through `--exclude-from`.
+    """
+
+    files_from: list[str]
+    include_from: list[str]
+    exclude_from: list[str]
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class FromOptionStdinText:
+    """STDIN text routed to at most one `--*-from -` option.
+
+    Attributes:
+        files_from: Raw STDIN text for `--files-from -`, or `None`.
+        include_from: Raw STDIN text for `--include-from -`, or `None`.
+        exclude_from: Raw STDIN text for `--exclude-from -`, or `None`.
+    """
+
+    files_from: str | None = None
+    include_from: str | None = None
+    exclude_from: str | None = None
+
+
 class _ClickOptionKwargs(TypedDict, total=True):
     """Provide typing for the `click.Option` kwargs.
 
@@ -160,21 +191,21 @@ def strip_dash_sentinels(
     files_from: Iterable[str],
     include_from: Iterable[str],
     exclude_from: Iterable[str],
-) -> tuple[list[str], list[str], list[str]]:
+) -> FromOptionValues:
     """Remove '-' sentinels so downstream code never treats STDIN as a file path.
 
     Args:
-        files_from: Values passed via `--files-from`.
-        include_from: Values passed via `--include-from`.
-        exclude_from: Values passed via `--exclude-from`.
+        files_from: Values passed via `--files-from` (may include '-').
+        include_from: Values passed via `--include-from` (may include '-').
+        exclude_from: Values passed via `--exclude-from` (may include '-').
 
     Returns:
-        A triple of lists with '-' removed from each.
+        Values from each `--*-from` option with `'-'` removed.
     """
-    return (
-        [x for x in files_from if x != "-"],
-        [x for x in include_from if x != "-"],
-        [x for x in exclude_from if x != "-"],
+    return FromOptionValues(
+        files_from=[x for x in files_from if x != "-"],
+        include_from=[x for x in include_from if x != "-"],
+        exclude_from=[x for x in exclude_from if x != "-"],
     )
 
 
@@ -183,7 +214,7 @@ def extract_stdin_for_from_options(
     include_from: Iterable[str],
     exclude_from: Iterable[str],
     stdin_text: str | None = None,
-) -> tuple[str | None, str | None, str | None]:
+) -> FromOptionStdinText:
     """Return raw STDIN text for at most one `--*-from -` option.
 
     If one of the options contains `'-'`, this reads STDIN (unless `stdin_text`
@@ -197,8 +228,8 @@ def extract_stdin_for_from_options(
         stdin_text: Optional pre-read STDIN content (useful for tests).
 
     Returns:
-        `(files_from_stdin, include_from_stdin, exclude_from_stdin)` where only
-        one entry is non-None.
+        Routed STDIN text for the requesting `--*-from -` option. At most one field
+        is non-`None`.
 
     Raises:
         TopmarkCliUsageError: If multiple options request STDIN simultaneously.
@@ -232,7 +263,11 @@ def extract_stdin_for_from_options(
         else:
             text_excludes = text
 
-    return text_files, text_includes, text_excludes
+    return FromOptionStdinText(
+        files_from=text_files,
+        include_from=text_includes,
+        exclude_from=text_excludes,
+    )
 
 
 def _split_csv_multi_option(
