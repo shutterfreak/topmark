@@ -36,13 +36,15 @@ from topmark.pipeline.hints import Axis
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
-from topmark.pipeline.views import BuilderView
-from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import RenderView
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import BuilderView
+    from topmark.pipeline.views import HeaderView
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -142,7 +144,7 @@ class RendererStep(BaseStep):
         # Use builder output as the source of fields
         header_view: HeaderView | None = ctx.views.header
         builder_view: BuilderView | None = ctx.views.build
-        fields: dict[str, str] = (
+        fields: Mapping[str, str] = (
             builder_view.selected if builder_view and builder_view.selected else {}
         )
 

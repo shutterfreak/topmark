@@ -29,6 +29,7 @@ from typing import runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from collections.abc import Mapping
     from collections.abc import Sequence
 
 
@@ -132,10 +133,10 @@ class HeaderView(Releasable):
             file, or ``None`` when absent.
         lines: Header lines exactly as found (keepends), or ``None`` when not captured.
         block: Concatenated header text (``"".join(lines)``), or ``None`` when not captured.
-        mapping: Parsed field dictionary extracted from the header, or ``None`` when parsing was
+        mapping: Parsed field mapping extracted from the header, or ``None`` when parsing was
             not performed.
         success_count: The number of header lines that were successfully parsed and added to the
-            ``mapping`` dictionary. Defaults to 0.
+            ``mapping``. Defaults to 0.
         error_count: The number of header lines that were malformed (e.g., missing a colon, or
             having an empty field name). Defaults to 0.
     """
@@ -143,7 +144,7 @@ class HeaderView(Releasable):
     range: tuple[int, int] | None
     lines: Sequence[str] | None
     block: str | None
-    mapping: dict[str, str] | None
+    mapping: Mapping[str, str] | None
     success_count: int = 0
     error_count: int = 0
 
@@ -164,11 +165,12 @@ class BuilderView(Releasable):
             configuration's ``header_fields`` order.
 
     Notes:
-        This view is intentionally lightweight and does not implement `Releasable`.
+        The contained mappings are exposed read-only through abstract mapping
+        types. Calling `release()` clears the references to allow pruning.
     """
 
-    builtins: dict[str, str] | None
-    selected: dict[str, str] | None
+    builtins: Mapping[str, str] | None
+    selected: Mapping[str, str] | None
 
     def release(self) -> None:
         """Release the diff payload to reduce memory usage."""
@@ -185,8 +187,8 @@ class RenderView(Releasable):
         block: Concatenated rendered header text, or ``None``.
 
     Notes:
-        Large buffers may be pruned by the runner by setting ``lines``/``block`` to ``None``
-        rather than via ``release()``.
+        Large buffers may be pruned by calling `release()`, which clears
+        ``lines`` and ``block``.
     """
 
     lines: Sequence[str] | None
@@ -211,8 +213,9 @@ class UpdatedView(Releasable):
             was produced.
 
     Notes:
-        Pruning is handled by the runner, which may set ``lines`` to ``None`` to save memory.
-        This view is not ``Releasable`` because it may be an iterator owned by upstream logic.
+        Pruning is handled by calling `release()`, which clears the updated file
+        image reference. If ``lines`` is an iterator, callers must treat this view
+        as single-pass.
     """
 
     lines: Sequence[str] | Iterable[str] | None
@@ -277,8 +280,8 @@ class Views:
         return {
             "image_lines": self.image.line_count() if self.image else 0,
             "header_range": getattr(self.header, "range", None),
-            "header_fields": (self.header.mapping or {}) if self.header else None,
-            "build_selected": (self.build.selected if self.build else None),
+            "header_fields": dict(self.header.mapping or {}) if self.header else None,
+            "build_selected": dict(self.build.selected or {}) if self.build else None,
             "render_line_count": (
                 len(self.render.lines) if (self.render and self.render.lines is not None) else 0
             ),

@@ -26,7 +26,7 @@ Attributes:
 ----------
 name : str
     Fully qualified name used for tracing/telemetry.
-axes_written : tuple[str, ...]
+axes_written : tuple[Axis, ...]
     Declares which status axes this step is allowed to set (e.g. ("fs", "content")).
 """
 

@@ -58,6 +58,7 @@ from topmark.registry.identity import validate_reserved_topmark_namespace
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from collections.abc import Mapping
 
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import MutableDiagnosticLog
@@ -96,8 +97,15 @@ class ProcessingContextLike(Protocol):
     diagnostic sink methods needed by processor helpers are included here.
     """
 
-    views: Views
-    diagnostics: MutableDiagnosticLog
+    @property
+    def views(self) -> Views:
+        """Pipeline view bundle used by processor helpers."""
+        ...
+
+    @property
+    def diagnostics(self) -> MutableDiagnosticLog:
+        """Mutable diagnostic sink used by processor helpers."""
+        ...
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -185,10 +193,10 @@ class HeaderProcessor:
             header block inside a document (e.g., nested JSONC).
 
     Attributes:
-        namespace: Processor namespace.
-        local_key: Unique identifier for the header processor class within its namespace.
-        description: Brief description of the header processor class.
-        file_type: The `FileType` registered to the header processor.
+        namespace: Processor namespace class metadata.
+        local_key: Unique processor identity class metadata within its namespace.
+        description: Human-readable processor description class metadata.
+        file_type: The `FileType` bound to this processor instance by the registry.
         block_prefix: The prefix string for block-style header start.
         block_suffix: The suffix string for block-style header end.
         line_prefix: The prefix string for each line within the header block.
@@ -629,7 +637,7 @@ class HeaderProcessor:
 
     def render_header_lines(
         self,
-        header_values: dict[str, str],
+        header_values: Mapping[str, str],
         config: RuntimeConfigLike,
         newline_style: str,
         block_prefix_override: str | None = None,
@@ -1035,7 +1043,7 @@ class HeaderProcessor:
 
         1. **Policy-aware detection** (preferred):
            If ``span`` is not provided, the processor calls
-           ``get_header_bounds(lines, newoline_style)``
+           ``get_header_bounds(lines, newline_style)``
            to locate a valid header near the computed insertion anchor. This respects
            file-type placement rules (shebang handling, XML prolog, Markdown fences, etc.).
 
@@ -1061,11 +1069,9 @@ class HeaderProcessor:
                 If ``None``, this information is not available.
 
         Returns:
-            A tuple containing:
-                - The updated list of file lines with the header removed.
-                - The (start, end) line indices (inclusive) of the removed block
-                  in the original input.
-                - The diagnostic describing the outcome.
+            Structured strip result containing the updated file lines, the
+            inclusive removed span when a header was removed, and the diagnostic
+            describing the outcome.
 
         Raises:
             RuntimeError: If policy-aware bounds detection reports a SPAN but omits
@@ -1257,7 +1263,7 @@ class HeaderProcessor:
         return results
 
     def _get_bounds_line_comments(self, lines: list[str]) -> tuple[int | None, int | None]:
-        """Identify bounds of a line-comment TopMark header.
+        """Identify bounds of the first line-comment TopMark header.
 
         Scans for the first occurrence of ``TOPMARK_START_MARKER`` and the next
         ``TOPMARK_END_MARKER`` using the processor's configured line affixes. This
@@ -1295,7 +1301,7 @@ class HeaderProcessor:
             lines: The lines in which a comment block is to be found.
 
         Returns:
-            A tuple `(start_index, end_index)` representing the lines to include (inclusive),
+            A tuple `(start_index, end_index)` representing the inclusive lines to include,
             or `(None, None)` if not found or malformed.
         """
         block_prefix_index: int | None = None

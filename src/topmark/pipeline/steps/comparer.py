@@ -47,6 +47,8 @@ from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import BuilderView
@@ -180,10 +182,10 @@ class ComparerStep(BaseStep):
         # 3) Dict-wise comparison using views
         header_view: HeaderView | None = ctx.views.header
         builder_view: BuilderView | None = ctx.views.build
-        existing_dict: dict[str, str] = (
+        existing_dict: Mapping[str, str] = (
             header_view.mapping if (header_view and header_view.mapping) else {}
         )
-        expected_dict: dict[str, str] = (
+        expected_dict: Mapping[str, str] = (
             builder_view.selected if (builder_view and builder_view.selected) else {}
         )
         ctx.status.comparison = (

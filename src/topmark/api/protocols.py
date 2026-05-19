@@ -114,5 +114,5 @@ class PublicHeaderProcessor(Protocol):
     block_prefix: str
     block_suffix: str
 
-    # registry binds at runtime
+    # The registry binds this at runtime.
     file_type: PublicFileType
