@@ -45,7 +45,9 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.config.resolution.layers import ConfigLayer
+    from topmark.diagnostic.model import MutableDiagnosticLog
 
 
 @pytest.mark.config
@@ -80,10 +82,10 @@ def test_include_from_accumulates_across_multiple_applicable_layers(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
-    paths: list[Path] = [ps.path for ps in draft.include_from]
+    paths: list[Path] = [ps.path for ps in resolved_config.draft.include_from]
 
     assert paths == [
         (root / ".gitignore").resolve(),
@@ -115,10 +117,10 @@ def test_files_nearest_non_empty_list_wins_across_layers(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
-    assert draft.files == [str((child / "module.py").resolve())]
+    assert resolved_config.draft.files == [str((child / "module.py").resolve())]
 
 
 @pytest.mark.config
@@ -145,10 +147,10 @@ def test_include_file_types_nearest_non_empty_set_wins_across_layers(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
-    assert draft.include_file_types == {"markdown"}
+    assert resolved_config.draft.include_file_types == {"markdown"}
 
 
 @pytest.mark.config
@@ -272,7 +274,7 @@ def test_cli_overrides_merge_last(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
     )
     # Simulate CLI override
@@ -280,10 +282,10 @@ def test_cli_overrides_merge_last(
         align_fields=True,
     )
     apply_config_overrides(
-        draft,
+        resolved_config.draft,
         overrides,
     )
-    assert draft.align_fields is True
+    assert resolved_config.draft.align_fields is True
 
 
 @pytest.mark.config
@@ -301,7 +303,7 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
     )
 
@@ -309,9 +311,9 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
     overrides = ConfigOverrides(
         files=["", "README.md"],
     )
-    apply_config_overrides(draft, overrides)
+    apply_config_overrides(resolved_config.draft, overrides)
 
-    flattened_diagnostics = draft.validation_logs.flattened()
+    flattened_diagnostics: MutableDiagnosticLog = resolved_config.draft.validation_logs.flattened()
     # Flat diagnostics reflect the warning
     assert_diagnostic_level_stats(
         stats=flattened_diagnostics.stats(),
@@ -320,7 +322,7 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
 
     # Staged diagnostics: only merged_config should contain entries
     assert_validation_stage_totals(
-        draft.validation_logs,
+        resolved_config.draft.validation_logs,
         # Skip TOML-source assertions here: this fixture intentionally defines
         # only `[header]`, so TOML missing-section INFO diagnostics are expected
         # and are not relevant to this override-routing test.
@@ -331,7 +333,7 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
     # Sanity: message content present in both views
     assert any(
         "Ignoring empty string entries in override files" in d.message
-        for d in draft.validation_logs.merged_config.items
+        for d in resolved_config.draft.validation_logs.merged_config.items
     )
     assert any(
         "Ignoring empty string entries in override files" in d.message

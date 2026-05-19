@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 
 from topmark import api
 from topmark.api.runtime import select_pipeline
+from topmark.config.model import MutableConfig
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import run_steps_for_files
@@ -49,6 +50,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.toml.types import TomlValue
@@ -248,9 +250,11 @@ def run_cli_like(
         CLI-like test run state containing the mutable config draft, selected
         files, and processing contexts produced by the pipeline.
     """
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=(anchor,),
     )
+    draft: MutableConfig = resolved_config.draft
+
     draft.files = [str(anchor)]  # seed positional inputs
     if include_file_types:
         draft.include_file_types = set(include_file_types)

@@ -46,6 +46,7 @@ from topmark.presentation.text.config import render_config_init_text
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.core.machine.schemas import MetaPayload
 
 
@@ -166,12 +167,12 @@ def config_init_command(
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         # Machine-readable formats: emit JSON/NDJSON without human banners
-        resolved_toml, mutable_config = resolve_default_template_and_build_mutable_config()
+        resolved_config: ResolvedConfigDraft = resolve_default_template_and_build_mutable_config()
         emit_config_machine(
             console=console,
             meta=meta,
-            config=mutable_config.freeze(),
-            resolved_toml=resolved_toml,
+            config=resolved_config.draft.freeze(),
+            resolved_toml=resolved_config.resolved,
             fmt=fmt,
         )
         return

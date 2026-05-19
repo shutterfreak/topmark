@@ -61,8 +61,10 @@ if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.config.model import FrozenConfig
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -175,14 +177,15 @@ def config_check_command(
     )
 
     # Build a merged draft config (we do not need an InputPlan since we're not processing files)
-    resolved_toml, draft_config = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         strict=strict,
         no_config=no_config,
         extra_config_files=[Path(p) for p in config_files],
     )
+    resolved_toml: ResolvedTopmarkTomlSources = resolved_config.resolved
 
     # Freeze ensures sanitize + schema validation runs (and produces diagnostics)
-    config: FrozenConfig = draft_config.freeze()
+    config: FrozenConfig = resolved_config.draft.freeze()
     logger.trace("Run config after layered CLI overrides: %s", config)
 
     # Check config validity:
@@ -191,7 +194,7 @@ def config_check_command(
         resolved=resolved_toml,
     )
 
-    logger.trace("MutableConfig after merging CLI and discovered config: %s", draft_config)
+    logger.trace("MutableConfig after merging CLI and discovered config: %s", resolved_config.draft)
 
     def _exit(ctx: click.Context, *, success: bool) -> None:
         """Select exit code depending on outcome."""

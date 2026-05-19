@@ -22,6 +22,7 @@ config/preflight validation sees the full config-loading diagnostic picture.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -51,6 +52,21 @@ if TYPE_CHECKING:
     from topmark.toml.defaults import DefaultTomlTemplateText
     from topmark.toml.parse import ParsedTopmarkToml
     from topmark.toml.types import TomlTable
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ResolvedConfigDraft:
+    """Resolved TOML-side state and the mutable config draft built from it.
+
+    Attributes:
+        resolved: Resolved TOML-side state, including source provenance,
+            writer options, and TOML-side strictness.
+        draft: Mutable config draft produced by merging the resolved config
+            layers.
+    """
+
+    resolved: ResolvedTopmarkTomlSources
+    draft: MutableConfig
 
 
 # ---- Public TOML -> config bridge helpers ----
@@ -106,7 +122,7 @@ def resolve_toml_sources_and_build_mutable_config(
     extra_config_files: Iterable[Path] | None = None,
     strict: bool | None = None,
     no_config: bool = False,
-) -> tuple[ResolvedTopmarkTomlSources, MutableConfig]:
+) -> ResolvedConfigDraft:
     """Resolve TOML sources once and build the merged config draft from them.
 
     This helper is the preferred bridge between TOML-side source resolution and
@@ -128,8 +144,7 @@ def resolve_toml_sources_and_build_mutable_config(
             config files.
 
     Returns:
-        A tuple containing the resolved TOML-side state and the merged mutable
-        config draft built from it.
+        Resolved TOML-side state and the merged mutable config draft built from it.
     """
     resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
         input_paths=input_paths,
@@ -137,7 +152,10 @@ def resolve_toml_sources_and_build_mutable_config(
         strict=strict,
         no_config=no_config,
     )
-    return resolved, build_mutable_config_from_resolved_toml_sources(resolved)
+    return ResolvedConfigDraft(
+        resolved=resolved,
+        draft=build_mutable_config_from_resolved_toml_sources(resolved),
+    )
 
 
 def _resolve_single_builtin_toml_table_and_build_mutable_config(
@@ -145,7 +163,7 @@ def _resolve_single_builtin_toml_table_and_build_mutable_config(
     table: TomlTable,
     source_path: Path | SyntheticConfigSource,
     load_diagnostics: MutableDiagnosticLog | None = None,
-) -> tuple[ResolvedTopmarkTomlSources, MutableConfig]:
+) -> ResolvedConfigDraft:
     """Resolve one bundled TOML table and build its config draft.
 
     Args:
@@ -156,8 +174,8 @@ def _resolve_single_builtin_toml_table_and_build_mutable_config(
             bundled resource before TOML table parsing.
 
     Returns:
-        Tuple containing the resolved TOML-side state and merged mutable config
-        draft built from the bundled source.
+        Resolved TOML-side state and merged mutable config draft built from the
+        bundled source.
     """
     diagnostics: MutableDiagnosticLog = load_diagnostics or MutableDiagnosticLog()
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
@@ -178,13 +196,13 @@ def _resolve_single_builtin_toml_table_and_build_mutable_config(
         writer_options=parsed.writer_options if parsed is not None else None,
         strict=parsed.config_loading_options.strict if parsed is not None else None,
     )
-    return resolved, build_mutable_config_from_resolved_toml_sources(resolved)
+    return ResolvedConfigDraft(
+        resolved=resolved,
+        draft=build_mutable_config_from_resolved_toml_sources(resolved),
+    )
 
 
-def resolve_default_template_and_build_mutable_config() -> tuple[
-    ResolvedTopmarkTomlSources,
-    MutableConfig,
-]:
+def resolve_default_template_and_build_mutable_config() -> ResolvedConfigDraft:
     """Resolve the bundled init template and build its config draft.
 
     This helper is intended for machine-readable `topmark config init` output.
@@ -196,8 +214,8 @@ def resolve_default_template_and_build_mutable_config() -> tuple[
     comments and formatting are preserved.
 
     Returns:
-        Tuple containing the resolved TOML-side state and mutable config draft
-        built from the bundled init template.
+        Resolved TOML-side state and mutable config draft built from the bundled
+        init template.
     """
     diagnostics: MutableDiagnosticLog = MutableDiagnosticLog()
     template_text: DefaultTomlTemplateText = load_default_topmark_template_toml_text()
@@ -216,10 +234,7 @@ def resolve_default_template_and_build_mutable_config() -> tuple[
     )
 
 
-def resolve_default_table_and_build_mutable_config() -> tuple[
-    ResolvedTopmarkTomlSources,
-    MutableConfig,
-]:
+def resolve_default_table_and_build_mutable_config() -> ResolvedConfigDraft:
     """Resolve the built-in default TOML table and build its config draft.
 
     This helper is intended for machine-readable `topmark config defaults`
@@ -227,8 +242,8 @@ def resolve_default_table_and_build_mutable_config() -> tuple[
     the annotated starter template used by `topmark config init`.
 
     Returns:
-        Tuple containing the resolved TOML-side state and mutable config draft
-        built from the canonical default TOML table.
+        Resolved TOML-side state and mutable config draft built from the canonical
+        default TOML table.
     """
     return _resolve_single_builtin_toml_table_and_build_mutable_config(
         table=build_default_topmark_toml_table(),

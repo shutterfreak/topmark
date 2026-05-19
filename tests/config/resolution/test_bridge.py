@@ -21,40 +21,41 @@ from topmark.core.constants import EXAMPLE_TOPMARK_TOML_NAME
 from topmark.core.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
 
 if TYPE_CHECKING:
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.diagnostic.model import MutableDiagnosticLog
 
 
 def test_default_template_resolves_without_errors() -> None:
     """The bundled starter template should resolve without error diagnostics."""
-    resolved_toml, draft_config = resolve_default_template_and_build_mutable_config()
+    resolved_config: ResolvedConfigDraft = resolve_default_template_and_build_mutable_config()
 
-    assert len(resolved_toml.sources) == 1
-    diagnostics: MutableDiagnosticLog = draft_config.validation_logs.flattened()
+    assert len(resolved_config.resolved.sources) == 1
+    diagnostics: MutableDiagnosticLog = resolved_config.draft.validation_logs.flattened()
     assert not diagnostics.has_error(), (
         f"An error occurred during parsing of the built-in TOML resource "
         f"in {EXAMPLE_TOPMARK_TOML_PACKAGE}/{EXAMPLE_TOPMARK_TOML_NAME}: "
         f"{diagnostics}"
     )
-    assert draft_config.config_files == [
+    assert resolved_config.draft.config_files == [
         SyntheticConfigSource(
             label="<bundled topmark-template.toml>",
         ),
     ]
-    assert resolved_toml.writer_options is not None
+    assert resolved_config.resolved.writer_options is not None
 
 
 def test_builtin_defaults_resolve_without_errors() -> None:
     """The canonical built-in default table should resolve without errors."""
-    resolved_toml, draft_config = resolve_default_table_and_build_mutable_config()
+    resolved_config: ResolvedConfigDraft = resolve_default_table_and_build_mutable_config()
 
-    assert len(resolved_toml.sources) == 1
-    diagnostics = draft_config.validation_logs.flattened()
+    assert len(resolved_config.resolved.sources) == 1
+    diagnostics: MutableDiagnosticLog = resolved_config.draft.validation_logs.flattened()
     assert not diagnostics.has_error(), (
         f"An error occurred during parsing of the built-in TOML defaults: {diagnostics}"
     )
-    assert draft_config.config_files == [
+    assert resolved_config.draft.config_files == [
         SyntheticConfigSource(
             label="<built-in topmark defaults>",
         ),
     ]
-    assert resolved_toml.writer_options is not None
+    assert resolved_config.resolved.writer_options is not None

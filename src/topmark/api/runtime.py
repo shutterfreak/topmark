@@ -70,6 +70,7 @@ if TYPE_CHECKING:
 
     from topmark.api.types import PipelineKindLiteral
     from topmark.api.types import PublicPolicy
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
@@ -351,13 +352,16 @@ def _prepare_toml_and_mutable_config_for_api_run(
         return PreparedTomlConfig(resolved=None, draft=None)
 
     path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
-    resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=tuple(path_list),
         extra_config_files=(),
         strict=None,
         no_config=False,
     )
-    return PreparedTomlConfig(resolved=resolved, draft=draft)
+    return PreparedTomlConfig(
+        resolved=resolved_config.resolved,
+        draft=resolved_config.draft,
+    )
 
 
 # ---- Per-path config helpers ----

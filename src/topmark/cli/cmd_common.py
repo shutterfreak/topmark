@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.config.policy import MutablePolicy
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.core.exit_codes import ExitCode
     from topmark.core.formats import OutputFormat
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -364,9 +365,9 @@ def build_resolved_toml_sources_and_config_for_plan(
         relative_to: Optional CLI override for header-relative path rendering.
 
     Returns:
-        A tuple containing:
-            - resolved TOML-side state for the current run
-            - mutable config draft ready to be frozen
+        Resolved TOML-side state for the current run and a mutable config draft
+        ready to be frozen. The CLI command layer still receives these as a pair
+        for compatibility with existing command plumbing.
     """
 
     def _resolve_discovery_inputs() -> list[Path] | None:
@@ -392,12 +393,14 @@ def build_resolved_toml_sources_and_config_for_plan(
     discovery_inputs: list[Path] | None = _resolve_discovery_inputs()
     extra_config_files: list[Path] = [Path(p) for p in config_paths]
 
-    resolved_toml, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=discovery_inputs,
         extra_config_files=extra_config_files,
         strict=strict,
         no_config=no_config,
     )
+    resolved_toml: ResolvedTopmarkTomlSources = resolved_config.resolved
+    draft: MutableConfig = resolved_config.draft
 
     state: TopmarkCliState = bootstrap_cli_state(ctx)
     state.resolved_writer_options = resolved_toml.writer_options

@@ -24,10 +24,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.toml.conftest import write_toml_document
+from topmark.config.resolution.bridge import ResolvedConfigDraft
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
 
 
 @pytest.mark.config
@@ -54,9 +57,11 @@ def test_same_dir_precedence_topmark_over_pyproject(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(input_paths=[proj])
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[proj]
+    )
     # topmark.toml should win within the same directory
-    assert draft.align_fields is True
+    assert resolved_config.draft.align_fields is True
 
 
 @pytest.mark.config
@@ -91,9 +96,11 @@ def test_root_true_stops_traversal(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(input_paths=[child])
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[child]
+    )
     # Should see settings from `root`, not from `above`
-    assert draft.align_fields is True
+    assert resolved_config.draft.align_fields is True
 
 
 @pytest.mark.config
@@ -117,5 +124,7 @@ def test_malformed_toml_in_discovered_config_is_ignored(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(input_paths=[child])
-    assert draft.align_fields is True
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[child]
+    )
+    assert resolved_config.draft.align_fields is True

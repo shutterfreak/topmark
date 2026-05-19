@@ -31,14 +31,15 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
-from topmark.resolution.files import FileListResolution
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import MutableConfig
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.config.types import PatternSource
+    from topmark.resolution.files import FileListResolution
 
 
 @pytest.mark.config
@@ -59,11 +60,11 @@ def test_relative_to_resolves_against_config_dir(
     )
 
     # Anchor discovery under nested path
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[src],
     )
-    assert draft.relative_to is not None
-    assert draft.relative_to == proj.resolve()
+    assert resolved_config.draft.relative_to is not None
+    assert resolved_config.draft.relative_to == proj.resolve()
 
 
 @pytest.mark.config
@@ -143,11 +144,13 @@ def test_globs_evaluated_relative_to_relative_to(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
     )
     # File-list resolution should include our file based on the glob evaluated from proj.
-    resolution: FileListResolution = resolve_file_list_with_diagnostics(draft.freeze())
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(
+        resolved_config.draft.freeze()
+    )
     paths: list[Path] = list(resolution.selected)
     assert py.resolve() in paths
 
@@ -178,11 +181,11 @@ def test_relative_to_inheritance_across_multiple_discovered_configs(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
-    assert draft.relative_to is not None
-    assert draft.relative_to == root.resolve()
+    assert resolved_config.draft.relative_to is not None
+    assert resolved_config.draft.relative_to == root.resolve()
 
 
 @pytest.mark.config
@@ -210,11 +213,11 @@ def test_child_overrides_relative_to_with_its_own_dir(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
-    assert draft.relative_to is not None
-    assert draft.relative_to == sub.resolve()
+    assert resolved_config.draft.relative_to is not None
+    assert resolved_config.draft.relative_to == sub.resolve()
 
 
 @pytest.mark.config
@@ -249,15 +252,15 @@ def test_parent_include_from_and_child_exclude_from_normalized_with_proper_bases
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child],
     )
     # include_from normalized to root base
-    assert draft.include_from
-    assert draft.include_from[0].base == root.resolve()
+    assert resolved_config.draft.include_from
+    assert resolved_config.draft.include_from[0].base == root.resolve()
     # exclude_from normalized to child base
-    assert draft.exclude_from
-    assert draft.exclude_from[0].base == child.resolve()
+    assert resolved_config.draft.exclude_from
+    assert resolved_config.draft.exclude_from[0].base == child.resolve()
 
 
 @pytest.mark.config
@@ -282,11 +285,13 @@ def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
 
     # Build merged config anchored under "elsewhere"
     monkeypatch.chdir(elsewhere)
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[elsewhere],
         extra_config_files=[proj / "pyproject.toml"],
     )
-    resolution: FileListResolution = resolve_file_list_with_diagnostics(draft.freeze())
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(
+        resolved_config.draft.freeze()
+    )
     files: list[Path] = list(resolution.selected)
     # Normalize paths relative to the test root for stable assertions.
     rel: list[str] = sorted(

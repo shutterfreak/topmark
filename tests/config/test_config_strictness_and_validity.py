@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
+    from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.diagnostic.model import FrozenDiagnosticLog
 
 
@@ -57,8 +58,10 @@ def test_load_resolved_config_applies_strictness_from_config_table(
         """,
     )
 
-    resolved, _draft = resolve_toml_sources_and_build_mutable_config(input_paths=[proj])
-    assert resolved.strict is True
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[proj]
+    )
+    assert resolved_config.resolved.strict is True
 
 
 @pytest.mark.config
@@ -77,11 +80,11 @@ def test_explicit_strictness_override_false_wins_over_resolved_true(
         """,
     )
 
-    resolved, _draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
         strict=False,
     )
-    assert resolved.strict is False
+    assert resolved_config.resolved.strict is False
 
 
 @pytest.mark.config
@@ -100,11 +103,11 @@ def test_explicit_strictness_override_true_wins_over_resolved_false(
         """,
     )
 
-    resolved, _draft = resolve_toml_sources_and_build_mutable_config(
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[proj],
         strict=True,
     )
-    assert resolved.strict is True
+    assert resolved_config.resolved.strict is True
 
 
 @pytest.mark.config
@@ -125,19 +128,21 @@ def test_replayed_toml_warning_is_non_strict_valid_but_strict_invalid(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(input_paths=[proj])
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[proj]
+    )
 
     assert_validation_stage_totals(
-        draft.validation_logs,
+        resolved_config.draft.validation_logs,
         toml=NON_EMPTY,
         config=0,
         runtime=0,
     )
 
-    assert draft.is_valid() is True
-    assert draft.is_valid(strict=True) is False
+    assert resolved_config.draft.is_valid() is True
+    assert resolved_config.draft.is_valid(strict=True) is False
 
-    frozen: FrozenConfig = draft.freeze()
+    frozen: FrozenConfig = resolved_config.draft.freeze()
 
     assert_validation_stage_totals(
         frozen.validation_logs,
@@ -166,25 +171,27 @@ def test_missing_section_info_does_not_fail_even_when_strict(
         """,
     )
 
-    _resolved, draft = resolve_toml_sources_and_build_mutable_config(input_paths=[proj])
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[proj]
+    )
 
-    assert draft.is_valid() is True
-    assert draft.is_valid(strict=True) is True
+    assert resolved_config.draft.is_valid() is True
+    assert resolved_config.draft.is_valid(strict=True) is True
 
     assert_diagnostic_level_stats(
-        stats=draft.validation_logs.flattened().stats(),
+        stats=resolved_config.draft.validation_logs.flattened().stats(),
         expected_info=NON_EMPTY,
         expected_warning=0,
         expected_error=0,
     )
     assert_validation_stage_totals(
-        draft.validation_logs,
+        resolved_config.draft.validation_logs,
         toml=NON_EMPTY,
         config=0,
         runtime=0,
     )
 
-    frozen: FrozenConfig = draft.freeze()
+    frozen: FrozenConfig = resolved_config.draft.freeze()
     assert frozen.is_valid() is True
     assert frozen.is_valid(strict=True) is True
 
