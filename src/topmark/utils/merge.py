@@ -35,8 +35,9 @@ T = TypeVar("T")
 
 
 def none_if_empty(items: Iterable[T]) -> list[T] | None:
-    """Return `None` if an Iterable is empty."""
-    return list(items) if items else None
+    """Return `None` if an iterable materializes to an empty list."""
+    materialized: list[T] = list(items)
+    return materialized or None
 
 
 def merge_unique_iterables(
