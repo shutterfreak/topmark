@@ -37,8 +37,6 @@ from typing import TYPE_CHECKING
 
 from topmark.config.io.serializers import config_to_topmark_toml_table
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
-from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
-from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 from topmark.presentation.shared.diagnostic import prepare_human_diagnostics
 from topmark.runtime.writer_options import writer_options_to_toml_table
 from topmark.toml.defaults import build_default_topmark_toml_table
@@ -56,6 +54,9 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
+    from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
+    from topmark.presentation.shared.diagnostic import HumanDiagnostics
     from topmark.runtime.writer_options import WriterOptions
     from topmark.toml.defaults import DefaultTomlTemplateText
     from topmark.toml.parse import ParsedTopmarkToml
@@ -319,15 +320,15 @@ def build_config_check_human_report(
     # Flatten staged validation logs here so human-facing reports keep the
     # current compatibility diagnostics view.
     flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
-    counts, lines = prepare_human_diagnostics(flattened_diagnostics)
+    human_diagnostics: HumanDiagnostics = prepare_human_diagnostics(flattened_diagnostics)
 
     return ConfigCheckHumanReport(
         config_files=_stringify_config_files(config),
         ok=ok,
         strict=strict,
         merged_toml=merged_toml,
-        counts=counts,
-        diagnostics=lines,
+        counts=human_diagnostics.counts,
+        diagnostics=human_diagnostics.lines,
         styled=styled,
         verbosity_level=verbosity_level,
     )

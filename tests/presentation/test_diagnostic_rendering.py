@@ -12,7 +12,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -31,6 +30,8 @@ from topmark.presentation.text.diagnostic import render_human_diagnostics_text
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from topmark.presentation.shared.diagnostic import HumanDiagnostics
 
 
 class CustomLevel(str, Enum):
@@ -147,10 +148,10 @@ def test_prepare_human_diagnostics_counts_known_levels() -> None:
         Diagnostic(level=DiagnosticLevel.INFO, message="FYI"),
     ]
 
-    counts, lines = prepare_human_diagnostics(diagnostics)
+    human_diagnostics: HumanDiagnostics = prepare_human_diagnostics(diagnostics)
 
-    assert counts == HumanDiagnosticCounts(error=1, warning=1, info=1)
-    assert lines == [
+    assert human_diagnostics.counts == HumanDiagnosticCounts(error=1, warning=1, info=1)
+    assert human_diagnostics.lines == [
         HumanDiagnosticLine(level="error", message="Broken"),
         HumanDiagnosticLine(level="warning", message="Deprecated"),
         HumanDiagnosticLine(level="info", message="FYI"),
@@ -167,10 +168,10 @@ def test_prepare_human_diagnostics_treats_unknown_levels_as_info() -> None:
         ],
     )
 
-    counts, lines = prepare_human_diagnostics(diagnostics)
+    human_diagnostics: HumanDiagnostics = prepare_human_diagnostics(diagnostics)
 
-    assert counts == HumanDiagnosticCounts(error=0, warning=0, info=2)
-    assert lines == [
+    assert human_diagnostics.counts == HumanDiagnosticCounts(error=0, warning=0, info=2)
+    assert human_diagnostics.lines == [
         HumanDiagnosticLine(level="notice", message="123"),
         HumanDiagnosticLine(level="info", message="empty level"),
     ]

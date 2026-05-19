@@ -73,6 +73,19 @@ class HumanDiagnosticCounts:
     error: int
 
 
+@dataclass(frozen=True, kw_only=True, slots=True)
+class HumanDiagnostics:
+    """Prepared human-facing diagnostics for presentation emitters.
+
+    Attributes:
+        counts: Aggregated diagnostic counts grouped by severity.
+        lines: Prepared human-facing diagnostic lines.
+    """
+
+    counts: HumanDiagnosticCounts
+    lines: list[HumanDiagnosticLine]
+
+
 def _level_to_str(level_obj: object) -> str:
     """Normalize diagnostic level objects to a stable string.
 
@@ -97,14 +110,14 @@ def _level_to_str(level_obj: object) -> str:
 
 def prepare_human_diagnostics(
     diagnostics: Iterable[Diagnostic],
-) -> tuple[HumanDiagnosticCounts, list[HumanDiagnosticLine]]:
+) -> HumanDiagnostics:
     """Convert internal diagnostics into human-facing counts and lines.
 
     Args:
         diagnostics: Iterable of internal Diagnostic objects.
 
     Returns:
-        A tuple containing aggregated diagnostic counts and prepared diagnostic lines.
+        Structured human-facing diagnostic preparation result.
     """
     info = 0
     warning = 0
@@ -125,6 +138,18 @@ def prepare_human_diagnostics(
             if not level:
                 level = "info"
 
-        lines.append(HumanDiagnosticLine(level=level, message=msg))
+        lines.append(
+            HumanDiagnosticLine(
+                level=level,
+                message=msg,
+            )
+        )
 
-    return HumanDiagnosticCounts(info=info, warning=warning, error=error), lines
+    return HumanDiagnostics(
+        counts=HumanDiagnosticCounts(
+            info=info,
+            warning=warning,
+            error=error,
+        ),
+        lines=lines,
+    )
