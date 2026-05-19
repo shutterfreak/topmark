@@ -8,13 +8,14 @@
 #
 # topmark:header:end
 
-"""Shared typing helpers for TopMark diagnostics.
+"""Structural typing helpers for TopMark diagnostic containers.
 
-This module defines small Protocols used to express "diagnostic-carrying"
-objects structurally. It allows code to accept either mutable or frozen
-containers (e.g., [`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog] or
-[`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog]) without
-depending on concrete classes.
+This module defines small protocols for code that only needs to observe
+contained diagnostics and aggregated counts. The protocols allow callers to
+accept mutable or frozen diagnostic containers without depending on concrete
+implementations such as
+[`MutableDiagnosticLog`][topmark.diagnostic.model.MutableDiagnosticLog] or
+[`FrozenDiagnosticLog`][topmark.diagnostic.model.FrozenDiagnosticLog].
 """
 
 from __future__ import annotations
@@ -24,13 +25,14 @@ from typing import Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from collections.abc import Mapping
 
     from topmark.diagnostic.model import Diagnostic
     from topmark.diagnostic.model import DiagnosticStats
 
 
 class DiagnosticsLike(Protocol):
-    """Structural interface for objects that carry diagnostics."""
+    """Read-only structural interface for diagnostic containers."""
 
     def __iter__(self) -> Iterator[Diagnostic]:
         """Iterate over contained diagnostics in insertion order."""
@@ -40,6 +42,6 @@ class DiagnosticsLike(Protocol):
         """Return aggregated per-level counts for the contained diagnostics."""
         ...
 
-    def to_dict(self) -> dict[str, int]:
-        """Return a JSON-friendly mapping of counts by severity."""
+    def to_dict(self) -> Mapping[str, int]:
+        """Return a read-only JSON-friendly mapping of counts by severity."""
         ...
