@@ -149,6 +149,9 @@ class PreInsertContextView(Protocol):
     This protocol defines the minimal set of attributes that a ProcessingContext
     must have to be used by pre-insert checkers. It allows checkers to be defined
     without depending on the full ProcessingContext class.
+
+    Note:
+        The type of `header_processor` is set to `Any` to avoid a circular import.
     """
 
     # The minimal attributes checkers need; add more if needed later

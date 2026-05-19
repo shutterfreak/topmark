@@ -17,11 +17,15 @@ comments are not promoted to JSONC unless explicitly allowed.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.filetypes.model import InsertCapability
 from topmark.filetypes.model import InsertCheckResult
-from topmark.filetypes.model import PreInsertContextView
+
+if TYPE_CHECKING:
+    from topmark.filetypes.model import PreInsertContextView
 
 
 def json_like_can_insert(
@@ -71,8 +75,8 @@ def json_like_can_insert(
             "origin": origin,
         }
 
-    return {
-        "capability": InsertCapability.SKIP_POLICY,
-        "reason": "JSON lacks comments; promotion to JSONC is disabled",
-        "origin": origin,
-    }
+    return InsertCheckResult(
+        capability=InsertCapability.SKIP_POLICY,
+        reason="JSON lacks comments; promotion to JSONC is disabled",
+        origin=origin,
+    )

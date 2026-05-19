@@ -18,12 +18,41 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.helpers.registry import make_file_type
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.filetypes.checks.json_like import json_like_can_insert
 from topmark.filetypes.detectors.jsonc import looks_like_jsonc
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
+from topmark.filetypes.model import InsertCapability
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
+
+    from topmark.filetypes.model import InsertCheckResult
+
+
+class JsonLikePreInsertContext:
+    """Minimal pre-insert context for JSON-like insert-check tests."""
+
+    lines: Iterable[str]
+    newline_style: str
+    header_processor: object | None
+    file_type: FileType | None
+
+    def __init__(
+        self,
+        *,
+        lines: Iterable[str],
+        newline_style: str = "\n",
+        header_processor: object | None = None,
+        file_type: FileType | None,
+    ) -> None:
+        self.lines = tuple(lines)
+        self.newline_style = newline_style
+        self.header_processor = header_processor
+        self.file_type = file_type
 
 
 class Probe:
@@ -37,6 +66,38 @@ class Probe:
         """Increment call counter and return the fixed result."""
         self.calls += 1
         return self.result
+
+
+_USE_JSON_AS_JSONC_FILE_TYPE = object()
+
+
+def _json_as_jsonc_file_type() -> FileType:
+    """Return the JSON-as-JSONC file type used by the insert checker."""
+    return make_file_type(local_key="json-as-jsonc")
+
+
+def _json_like_context(
+    lines: list[str],
+    *,
+    file_type: FileType | None | object = _USE_JSON_AS_JSONC_FILE_TYPE,
+) -> JsonLikePreInsertContext:
+    """Build a minimal context for `json_like_can_insert()`.
+
+    By default this returns a context for the targeted `json-as-jsonc` file type.
+    Pass `file_type=None` explicitly to exercise unresolved file-type behavior.
+    """
+    resolved_file_type: FileType | None
+    if file_type is _USE_JSON_AS_JSONC_FILE_TYPE:
+        resolved_file_type = _json_as_jsonc_file_type()
+    elif isinstance(file_type, FileType) or file_type is None:
+        resolved_file_type = file_type
+    else:
+        raise TypeError("file_type must be a FileType, None, or the internal sentinel")
+
+    return JsonLikePreInsertContext(
+        lines=lines,
+        file_type=resolved_file_type,
+    )
 
 
 def test_gate_never_does_not_call_matcher_but_keeps_name_match(tmp_path: Path) -> None:
@@ -329,3 +390,108 @@ def test_jsonc_detector_scans_only_prefix_limit(tmp_path: Path) -> None:
     path.write_text("{" + (" " * 131072) + "// too late\n}", encoding="utf-8")
 
     assert looks_like_jsonc(path) is False
+
+
+# --- JSON-like Insert Check Tests ---
+
+
+def test_json_like_can_insert_allows_non_json_as_jsonc_file_types() -> None:
+    """JSON-like insert check should only gate the JSON-as-JSONC file type."""
+    ctx: JsonLikePreInsertContext = _json_like_context(
+        ['{"key": true}\n'],
+        file_type=make_file_type(local_key="python"),
+    )
+
+    result: InsertCheckResult = json_like_can_insert(ctx)
+
+    assert result == {
+        "capability": InsertCapability.OK,
+        "origin": "topmark.filetypes.checks.json_like.json_like_can_insert",
+    }
+
+
+def test_json_like_can_insert_allows_unresolved_file_type() -> None:
+    """Missing file-type information should fail open for this targeted checker."""
+    ctx: JsonLikePreInsertContext = _json_like_context(['{"key": true}\n'], file_type=None)
+
+    result: InsertCheckResult = json_like_can_insert(ctx)
+
+    assert result == {
+        "capability": InsertCapability.OK,
+        "origin": "topmark.filetypes.checks.json_like.json_like_can_insert",
+    }
+
+
+def test_json_like_can_insert_skips_plain_json_when_promotion_disabled() -> None:
+    """Plain JSON should not be promoted to JSONC by default."""
+    ctx: JsonLikePreInsertContext = _json_like_context(['{"key": true}\n'])
+
+    result: InsertCheckResult = json_like_can_insert(ctx)
+
+    assert result == {
+        "capability": InsertCapability.SKIP_POLICY,
+        "reason": "JSON lacks comments; promotion to JSONC is disabled",
+        "origin": "topmark.filetypes.checks.json_like.json_like_can_insert",
+    }
+
+
+def test_json_like_can_insert_allows_plain_json_when_promotion_enabled() -> None:
+    """Explicit promotion should allow inserting a JSONC-style header."""
+    ctx: JsonLikePreInsertContext = _json_like_context(['{"key": true}\n'])
+
+    result: InsertCheckResult = json_like_can_insert(ctx, allow_promote=True)
+
+    assert result == {
+        "capability": InsertCapability.OK,
+        "origin": "topmark.filetypes.checks.json_like.json_like_can_insert",
+    }
+
+
+@pytest.mark.parametrize(
+    "lines",
+    [
+        ["{\n", "  // existing user comment\n", '  "key": true\n', "}\n"],
+        ["{\n", "  /* existing user comment */\n", '  "key": true\n', "}\n"],
+    ],
+)
+def test_json_like_can_insert_allows_existing_non_topmark_comments(lines: list[str]) -> None:
+    """Existing non-TopMark comments indicate JSONC-compatible content."""
+    ctx: JsonLikePreInsertContext = _json_like_context(lines)
+
+    result: InsertCheckResult = json_like_can_insert(ctx)
+
+    assert result == {
+        "capability": InsertCapability.OK,
+        "origin": "topmark.filetypes.checks.json_like.json_like_can_insert",
+    }
+
+
+@pytest.mark.parametrize(
+    "lines",
+    [
+        [
+            "{\n",
+            f"  // {TOPMARK_START_MARKER}\n",
+            f"  // {TOPMARK_END_MARKER}\n",
+            '  "key": true\n',
+            "}\n",
+        ],
+        [
+            "{\n",
+            f"  /* {TOPMARK_START_MARKER} */\n",
+            f"  /* {TOPMARK_END_MARKER} */\n",
+            '  "key": true\n',
+            "}\n",
+        ],
+    ],
+)
+def test_json_like_can_insert_does_not_treat_topmark_markers_as_user_comments(
+    lines: list[str],
+) -> None:
+    """TopMark marker comments alone should not make plain JSON safe to promote."""
+    ctx: JsonLikePreInsertContext = _json_like_context(lines)
+
+    result: InsertCheckResult = json_like_can_insert(ctx)
+
+    assert result.get("capability") is InsertCapability.SKIP_POLICY
+    assert result.get("reason") == "JSON lacks comments; promotion to JSONC is disabled"
