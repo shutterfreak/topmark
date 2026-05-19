@@ -11,8 +11,8 @@
 """Generic Enum utilities for TopMark (typing-friendly, UI-agnostic).
 
 This module provides helpers that add lightweight *introspection* to Enum types
-without binding callers to UI/CLI concerns (like color). Keep rendering-specific
-concepts in [`topmark.rendering`][topmark.rendering] and reuse these mixins/utilities
+without binding callers to UI/CLI concerns (like color). Keep presentation-specific
+concepts in [topmark.presentation][] and reuse these mixins/utilities
 anywhere else.
 
 Provided:

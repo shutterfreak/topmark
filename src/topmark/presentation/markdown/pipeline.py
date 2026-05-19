@@ -40,6 +40,7 @@ from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_markdown_table
@@ -47,7 +48,6 @@ from topmark.presentation.markdown.utils import render_path_display_markdown
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.shared.pipeline import get_display_path
 from topmark.presentation.shared.pipeline import get_file_type_label
-from topmark.rendering.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
     from collections.abc import Callable

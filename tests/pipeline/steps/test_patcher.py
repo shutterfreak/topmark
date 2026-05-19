@@ -41,7 +41,7 @@ from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.views import DiffView
 from topmark.pipeline.views import ListFileImageView
 from topmark.pipeline.views import UpdatedView
-from topmark.rendering.unified_diff import format_patch_plain
+from topmark.presentation.formatters.unified_diff import format_patch_plain
 
 if TYPE_CHECKING:
     from pathlib import Path

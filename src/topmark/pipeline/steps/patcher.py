@@ -39,7 +39,7 @@ from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import DiffView
 from topmark.pipeline.views import UpdatedView
-from topmark.rendering.unified_diff import format_patch_plain
+from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.utils.timestamp import format_gnu_diff_timestamp
 
 if TYPE_CHECKING:

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_diff_render.py
-#   file_relpath : tests/utils/test_diff_render.py
+#   file_relpath : tests/presentation/test_diff_render.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -15,7 +15,7 @@ Covers `render_patch` inputs and output type guarantees.
 
 from __future__ import annotations
 
-from topmark.rendering.unified_diff import format_patch_plain
+from topmark.presentation.formatters.unified_diff import format_patch_plain
 
 
 def test_render_patch_accepts_str_and_list() -> None:

@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : unified_diff.py
-#   file_relpath : src/topmark/rendering/unified_diff.py
+#   file_relpath : src/topmark/presentation/formatters/unified_diff.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
