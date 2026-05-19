@@ -777,9 +777,14 @@ validation, and targeted hardening rather than boundary redesign:
   does not leak into validation-oriented commands or stable public API contracts.
 - Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
   public Python API surfaces.
-- Continue evaluating opportunities to tighten internal protocol/view surfaces toward read-only
-  semantics and to replace ambiguous tuple-shaped internal return contracts with explicit typed
-  result objects where this improves clarity without destabilizing the frozen 1.0 public API.
+- Continue evaluating opportunities to:
+  - tighten internal protocol/view surfaces toward read-only semantics where mutation is not
+    intended
+  - replace ambiguous tuple-shaped internal return contracts with explicit typed result objects or
+    DTO-style models
+  - simplify or retire effectively dead internal helper layers that no longer contribute meaningful
+    architectural separation after the 1.0 freeze where this improves clarity, typing precision,
+    maintainability, or testability without destabilizing the frozen 1.0 public API.
 
 ### Config / validation contract freeze
 
@@ -958,6 +963,8 @@ What is left is mainly:
 - **targeted hardening from concrete beta findings**
 - **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
 - **late-beta typing/API hardening follow-up identified during coverage-driven stabilization work**
+- **ongoing coverage expansion for complex orchestration and integration-heavy paths where
+  additional confidence is still valuable despite the frozen 1.0 architecture**
 - **explicit post-1.0 follow-up for deferred scope**
 
 That means TopMark is now in the late beta stabilization stage of the 1.0 effort: validating the
@@ -1180,11 +1187,13 @@ These are release blockers unless explicitly deferred with a documented rational
 - [x] API and CLI policy override behavior have focused coverage
 - [x] Engine applies per-path configs and policy registries correctly
 - [x] Coverage-driven late-beta stabilization and typing hardening completed for the frozen 1.0
-  contract surface
+  contract surface, with remaining follow-up limited to targeted incremental confidence-building
+  rather than architectural risk reduction
   - [x] focused coverage expansion added for outcomes, status/context, merge utilities, file-type
     gating, enum mixins, diff rendering, and validation/error-path behavior
-  - [x] obsolete or effectively dead internal helpers removed where they no longer contributed to
-    the frozen architecture (`rendering/api.py`, introspection-only helpers)
+  - [x] obsolete, redundant, or effectively dead internal helper layers removed where they no longer
+    contributed to the frozen architecture (`rendering/api.py`, redundant rendering package
+    structure, introspection-only helpers)
   - [x] presentation-layer diff rendering consolidated under
     `topmark.presentation.formatters.unified_diff`
   - [x] Python 3.10 compatibility regressions discovered during late-beta coverage expansion were
@@ -1444,6 +1453,8 @@ beta feedback identifies a release blocker.
   current lightweight hygiene checks
 - [ ] Further refactor GitHub workflow structure into reusable workflow/release-infra patterns if
   still worthwhile
+- [ ] Revisit whether a public README coverage badge adds meaningful signal after 1.0 once coverage
+  stabilizes naturally through maintenance releases and downstream adoption patterns
 
 ______________________________________________________________________
 
