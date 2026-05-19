@@ -8,14 +8,12 @@
 #
 # topmark:header:end
 
-"""Shared CLI parameter types and argument parsing helpers for TopMark.
+"""Shared Click parameter types and argument parsing helpers for TopMark.
 
-This module serves as the central container for shared CLI argument types, validators,
-and helpers in TopMark. It defines the ArgsNamespace TypedDict for consistent
-argument passing throughout the CLI, as well as reusable validator functions and
-custom Click parameter types for argument parsing (such as file paths and globs).
-These utilities ensure robust and uniform handling of CLI parameters
-across all TopMark commands and subcommands.
+This module contains reusable Click parameter validators and custom parameter
+classes used by TopMark CLI commands. The helpers stay focused on CLI argument
+conversion and validation; command-level input planning lives in
+`topmark.cli.io`.
 """
 
 from __future__ import annotations
@@ -38,15 +36,19 @@ if TYPE_CHECKING:
     from click.shell_completion import CompletionItem as ClickCompletionItem
 
     class ParamTypeBase(Protocol):
-        """Typed base to avoid subclassing Any when Click lacks stubs."""
+        """Minimal typed Click parameter base used only during type checking.
+
+        Runtime code subclasses `click.ParamType` directly. This protocol keeps
+        `EnumChoiceParam` from inheriting from `Any` when Click stubs are not
+        precise enough for strict type checking.
+        """
 
         name: str
-
 else:
-    # At runtime, subclass the real Click type
+    # At runtime, subclass the real Click type.
     ParamTypeBase = click.ParamType  # type: ignore[assignment]
 
-# Type variable bounded to Enum for generic EnumParam
+# Type variable bounded to Enum for generic enum choice parameters.
 E = TypeVar("E", bound=Enum)
 
 
@@ -54,11 +56,11 @@ E = TypeVar("E", bound=Enum)
 
 
 class EnumChoiceParam(ParamTypeBase, Generic[E]):
-    """A Click parameter type that converts a string to a member of a given Enum.
+    """Click parameter type that converts CLI text to an enum member.
 
-    The parameter can optionally accept case-insensitive input and present/accept
-    kebab-case spellings for string-valued enum members whose internal values use
-    underscores.
+    The parameter can optionally accept case-insensitive input and present or
+    accept kebab-case spellings for string-valued enum members whose internal
+    values use underscores.
     """
 
     # Add instance variable annotations for maximum clarity
@@ -79,8 +81,8 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         self.name = self.enum_cls.__name__.lower()
         self.case_sensitive = case_sensitive
         self.kebab_case = kebab_case
-        # Assume the enum exposes string-valued members (e.g., OutputFormat).
         # `choices` contains the user-facing spellings shown in help/errors.
+        # Enum values are expected to be string-like for TopMark CLI options.
         self.choices = [
             self._display_value(cast("str", getattr(e, "value", str(e)))) for e in self.enum_cls
         ]
@@ -115,7 +117,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         param: click.Parameter | None,
         ctx: click.Context | None,
     ) -> E | None:
-        """Converts a string to a member of the Enum."""
+        """Convert CLI text to a member of the configured enum."""
         if value is None:
             return None
 
@@ -128,7 +130,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         if key in lookup:
             return lookup[key]
 
-        # Raise a BadParameter exception for invalid input
+        # Raise a BadParameter exception for invalid input.
         self._fail_noreturn(
             f"Invalid value '{value}'. Must be one of: {', '.join(self.choices)}",
             param,
@@ -148,7 +150,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         """
         _, _ = ctx, param
 
-        # Runtime import to avoid import-time dependency for non-completion paths
+        # Runtime import to avoid import-time dependency for non-completion paths.
         from click.shell_completion import CompletionItem as RuntimeCompletionItem  # Click 8.x
 
         prefix: str = self._normalize_input(incomplete or "")
@@ -162,7 +164,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         return items
 
     def __repr__(self) -> str:
-        """Return a string representation."""
+        """Return a debugging representation for this parameter type."""
         return f"EnumChoiceParam({self.enum_cls.__name__})"
 
 
@@ -171,7 +173,7 @@ def FileTypeParam(
     param: click.Parameter,
     value: object,
 ) -> Path | None:
-    """Validator: Ensure a CLI argument is a valid file path.
+    """Validate and convert a CLI argument to an existing file path.
 
     Validates and converts the CLI argument to a Path, raising an error if it does not exist
     or is not a file.
@@ -203,7 +205,7 @@ def GlobParam(
     param: click.Parameter,
     value: object,
 ) -> list[Path]:
-    """Validator: Expand a glob pattern CLI argument to a list of file paths.
+    """Expand a glob pattern CLI argument to matching file paths.
 
     Expands the given glob pattern string into a list of `Path` objects matching the
     pattern.
