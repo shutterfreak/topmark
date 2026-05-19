@@ -42,7 +42,6 @@ from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripDiagnostic
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
@@ -52,6 +51,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
+    from topmark.processors.types import StripHeaderResult
 
 
 @mark_pipeline
@@ -238,21 +238,16 @@ def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None
     lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)
 
     # Explicit span (block occupies lines 0..4)
-    new1: list[str] = []
-    span1: tuple[int, int] | None = None
-    diag1: StripDiagnostic
-    new1, span1, diag1 = proc.strip_header_block(lines=lines, span=(0, 4))
-    assert TOPMARK_START_MARKER not in "".join(new1)
-    assert diag1.kind == StripDiagKind.REMOVED
-    assert span1 == (0, 4)
+    strip_result_1: StripHeaderResult = proc.strip_header_block(lines=lines, span=(0, 4))
+    assert TOPMARK_START_MARKER not in "".join(strip_result_1.lines)
+    assert strip_result_1.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result_1.removed_span == (0, 4)
 
     # Auto-detect span
-    new2: list[str] = []
-    span2: tuple[int, int] | None = None
-    diag2: StripDiagnostic
-    new2, span2, diag2 = proc.strip_header_block(lines=lines)
-    assert diag2.kind == StripDiagKind.REMOVED
-    assert new2 == new1 and span2 == (0, 4)
+    strip_result_2: StripHeaderResult = proc.strip_header_block(lines=lines)
+    assert strip_result_2.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result_1.lines == strip_result_2.lines
+    assert strip_result_2.removed_span == (0, 4)
 
 
 @mark_pipeline
@@ -295,15 +290,12 @@ def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     assert proc is not None
 
     # Let processor auto-detect the span and strip
-    new_lines: list[str]
-    span: tuple[int, int] | None = None
-    diag: StripDiagnostic
-    new_lines, span, diag = proc.strip_header_block(
+    strip_result: StripHeaderResult = proc.strip_header_block(
         lines=file.read_text().splitlines(keepends=True)
     )
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span is not None
-    assert "topmark:start" not in "".join(new_lines)
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span is not None
+    assert TOPMARK_START_MARKER not in "".join(strip_result.lines)
 
 
 @mark_pipeline

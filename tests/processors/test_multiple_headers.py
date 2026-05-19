@@ -29,7 +29,6 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
+    from topmark.processors.types import StripHeaderResult
 
 
 def _count_markers(text: str) -> int:
@@ -83,15 +83,12 @@ def test_multiple_headers_strip_removes_first_only_xml(tmp_path: Path) -> None:
     assert proc is not None
 
     lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
-    new: list[str] = []
-    span: tuple[int, int] | None = None
-    diag: StripDiagnostic
-    new, span, diag = proc.strip_header_block(lines=lines, span=None)
+    strip_result: StripHeaderResult = proc.strip_header_block(lines=lines, span=None)
 
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span is not None, "First header must be detected and removed"
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span is not None, "First header must be detected and removed"
 
-    out: str = "".join(new)
+    out: str = "".join(strip_result.lines)
 
     assert _count_markers(out) == 1, "Only the first header should be removed"
     assert header1 not in out, "First header content must be stripped"

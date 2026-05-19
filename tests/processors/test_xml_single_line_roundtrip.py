@@ -31,7 +31,6 @@ from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
+    from topmark.processors.types import StripHeaderResult
 
 
 def test_xml_prolog_and_body_on_same_line_blocked_by_policy(tmp_path: Path) -> None:
@@ -90,18 +90,15 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     assert proc is not None
 
     lines = after_insert.splitlines(keepends=True)
-    stripped_lines: list[str] = []
-    _span: tuple[int, int] | None = None
-    diag: StripDiagnostic
-    stripped_lines, _span, diag = proc.strip_header_block(
+    strip_result: StripHeaderResult = proc.strip_header_block(
         lines=lines,
         span=None,
         newline_style=ctx.newline_style,  # from ProcessingContext
         ends_with_newline=False,  # original was single-line without FNL
     )
-    assert diag.kind == StripDiagKind.REMOVED
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
 
-    roundtrip: str = "".join(stripped_lines)
+    roundtrip: str = "".join(strip_result.lines)
 
     # Assert that original and roundtrip only differ in white space
     # The re.sub(r'\s+', '', ...) function removes all whitespace characters

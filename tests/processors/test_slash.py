@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.conftest import mark_pipeline
-from tests.helpers.pipeline import BlockSignatures
 from tests.helpers.pipeline import expected_block_lines_for
 from tests.helpers.pipeline import find_line
 from tests.helpers.pipeline import materialize_updated_lines
@@ -32,7 +31,6 @@ from tests.helpers.pipeline import run_insert
 from tests.helpers.pipeline import run_writer
 from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
@@ -41,16 +39,19 @@ from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.status import HeaderStatus
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripDiagnostic
+from topmark.processors.types import StripHeaderResult
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from tests.helpers.pipeline import BlockSignatures
     from topmark.config.model import FrozenConfig
+    from topmark.config.policy import PolicyRegistry
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
+    from topmark.processors.types import StripHeaderResult
 
 
 @mark_pipeline
@@ -259,22 +260,17 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     assert proc is not None
     lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)
 
-    new1: list[str] = []
-    span1: tuple[int, int] | None = None
-    diag1: StripDiagnostic
-    new1, span1, diag1 = proc.strip_header_block(lines=lines, span=(0, 2))
+    strip_result_1: StripHeaderResult = proc.strip_header_block(lines=lines, span=(0, 2))
 
-    assert diag1.kind == StripDiagKind.REMOVED
-    assert TOPMARK_START_MARKER not in "".join(new1)
-    assert span1 == (0, 2)
+    assert strip_result_1.diagnostic.kind == StripDiagKind.REMOVED
+    assert TOPMARK_START_MARKER not in "".join(strip_result_1.lines)
+    assert strip_result_1.removed_span == (0, 2)
 
-    new2: list[str] = []
-    span2: tuple[int, int] | None = None
-    diag2: StripDiagnostic
-    new2, span2, diag2 = proc.strip_header_block(lines=lines)
+    strip_result_2: StripHeaderResult = proc.strip_header_block(lines=lines)
 
-    assert diag2.kind == StripDiagKind.REMOVED
-    assert new2 == new1 and span2 == (0, 2)
+    assert strip_result_2.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result_2.removed_span == (0, 2)
+    assert strip_result_2.lines == strip_result_1.lines
 
 
 @mark_pipeline

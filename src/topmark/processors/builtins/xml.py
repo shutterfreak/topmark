@@ -25,11 +25,12 @@ from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.mixins import BlockCommentMixin
 from topmark.processors.mixins import XmlPositionalMixin
+from topmark.processors.types import StripDiagnostic
+from topmark.processors.types import StripHeaderResult
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.policy import FileTypeHeaderPolicy
-    from topmark.processors.types import StripDiagnostic
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -399,7 +400,7 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         span: tuple[int, int] | None = None,
         newline_style: str = "\n",
         ends_with_newline: bool | None = None,
-    ) -> tuple[list[str], tuple[int, int] | None, StripDiagnostic]:
+    ) -> StripHeaderResult:
         """Remove the TopMark header with minimal, policy-aware cleanup.
 
         Strategy 1 (strict gate): malformed or unsafe XML never reaches here because
@@ -422,17 +423,12 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
                 simplified implementation but kept for signature compatibility.
 
         Returns:
-            A tuple containing:
-                - The updated list of file lines with the header removed.
-                - The (start, end) line indices (inclusive) of the removed block
-                  in the original input.
-                - The diagnostic describing the outcome.
+            Structured strip result containing the updated file lines, the
+            inclusive removed span when a header was removed, and the diagnostic
+            describing the outcome.
         """
         # Delegate policy-aware detection and removal to the base implementation
-        updated: list[str]
-        removed_span: tuple[int, int] | None
-        diag: StripDiagnostic | None
-        updated, removed_span, diag = super().strip_header_block(
+        strip_result: StripHeaderResult = super().strip_header_block(
             lines=lines,
             span=span,
             newline_style=newline_style,
@@ -441,8 +437,8 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
 
         # XML-specific tweak: if a header was removed and policy ensures a spacer after header,
         # drop exactly one spacer line that matches the file's newline style (no whitespace-only).
-        if removed_span is None:
-            return updated, None, diag
+        if strip_result.removed_span is None:
+            return strip_result
 
         policy: FileTypeHeaderPolicy | None = (
             self.file_type.header_policy if self.file_type else None
@@ -450,12 +446,31 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
 
         # Remove *one* trailing spacer that we likely introduced after the header
         # (only when policy asked for it). Never touch pre-header blanks or the prolog.
-        if policy and bool(getattr(policy, "ensure_blank_after_header", False)):
-            start: int
-            _end: int
-            start, _end = removed_span
-            if 0 <= start < len(updated) and is_pure_spacer(updated[start], policy):
-                del updated[start]
-            diag.notes.append("xml: removed one trailing spacer per policy")
+        if not policy or not bool(getattr(policy, "ensure_blank_after_header", False)):
+            return strip_result
 
-        return updated, removed_span, diag
+        start: int
+        _end: int
+        start, _end = strip_result.removed_span
+        if not (0 <= start < len(strip_result.lines)) or not is_pure_spacer(
+            strip_result.lines[start], policy
+        ):
+            return strip_result
+
+        updated_lines: list[str] = list(strip_result.lines)
+        del updated_lines[start]
+        updated_notes: list[str] = [
+            *strip_result.diagnostic.notes,
+            "xml: removed one trailing spacer per policy",
+        ]
+
+        return StripHeaderResult(
+            lines=updated_lines,
+            removed_span=strip_result.removed_span,
+            diagnostic=StripDiagnostic(
+                kind=strip_result.diagnostic.kind,
+                reason=strip_result.diagnostic.reason,
+                removed_span=strip_result.diagnostic.removed_span,
+                notes=updated_notes,
+            ),
+        )

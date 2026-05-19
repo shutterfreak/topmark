@@ -50,6 +50,7 @@ from topmark.processors.types import HeaderBounds
 from topmark.processors.types import HeaderParseResult
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.processors.types import StripHeaderResult
 from topmark.registry.identity import make_qualified_key
 from topmark.registry.identity import owner_label
 from topmark.registry.identity import require_and_validate_registry_identity
@@ -1027,7 +1028,7 @@ class HeaderProcessor:
         span: tuple[int, int] | None = None,
         newline_style: str = "\n",
         ends_with_newline: bool | None = None,
-    ) -> tuple[list[str], tuple[int, int] | None, StripDiagnostic]:
+    ) -> StripHeaderResult:
         """Remove the TopMark header block and return the updated file image.
 
         This method supports two detection modes:
@@ -1084,10 +1085,10 @@ class HeaderProcessor:
 
             elif bounds.kind is BoundsKind.MALFORMED:
                 # Do not strip malformed headers; return unchanged lines.
-                return (
-                    lines,
-                    None,
-                    StripDiagnostic(
+                return StripHeaderResult(
+                    lines=lines,
+                    removed_span=None,
+                    diagnostic=StripDiagnostic(
                         kind=StripDiagKind.MALFORMED_REFUSED,
                         reason=bounds.reason,
                     ),
@@ -1126,10 +1127,10 @@ class HeaderProcessor:
 
         # 2) No header? Return original content unchanged.
         if span is None:
-            return (
-                lines,
-                None,
-                StripDiagnostic(
+            return StripHeaderResult(
+                lines=lines,
+                removed_span=None,
+                diagnostic=StripDiagnostic(
                     kind=StripDiagKind.NOT_FOUND,
                 ),
             )
@@ -1138,10 +1139,10 @@ class HeaderProcessor:
         # Defensive validation of bounds
         if start < 0 or end < start or end >= len(lines):
             # Defensive: invalid span -> no-op
-            return (
-                lines,
-                None,
-                StripDiagnostic(
+            return StripHeaderResult(
+                lines=lines,
+                removed_span=None,
+                diagnostic=StripDiagnostic(
                     kind=StripDiagKind.NOT_FOUND,
                 ),
             )
@@ -1163,10 +1164,10 @@ class HeaderProcessor:
             if 0 <= start < len(new_lines) and is_pure_spacer(new_lines[start], policy):
                 del new_lines[start]
 
-        return (
-            new_lines,
-            (start, end),
-            StripDiagnostic(
+        return StripHeaderResult(
+            lines=new_lines,
+            removed_span=(start, end),
+            diagnostic=StripDiagnostic(
                 kind=StripDiagKind.REMOVED,
                 removed_span=(start, end),
             ),

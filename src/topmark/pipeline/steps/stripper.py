@@ -33,6 +33,7 @@ from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import UpdatedView
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.processors.types import StripHeaderResult
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
@@ -196,15 +197,15 @@ class StripperStep(BaseStep):
         # Prefer the span detected by the scanner; fall back to processor logic otherwise.
         header_view: HeaderView | None = ctx.views.header
         span: tuple[int, int] | None = header_view.range if header_view else None
-        new_lines: list[str]
-        removed: tuple[int, int] | None
-        diag: StripDiagnostic
-        new_lines, removed, diag = ctx.header_processor.strip_header_block(
+        strip_result: StripHeaderResult = ctx.header_processor.strip_header_block(
             lines=original_lines,
             span=span,
             newline_style=ctx.newline_style,
             ends_with_newline=ctx.ends_with_newline,
         )
+        new_lines: list[str] = strip_result.lines
+        removed: tuple[int, int] | None = strip_result.removed_span
+        diag: StripDiagnostic = strip_result.diagnostic
 
         # Surface any additional diagnostic notes from the processor
         for note in getattr(diag, "notes", []) or []:

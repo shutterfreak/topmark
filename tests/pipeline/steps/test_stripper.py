@@ -36,6 +36,7 @@ from topmark.pipeline.views import ListFileImageView
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
+from topmark.processors.types import StripHeaderResult
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -60,12 +61,15 @@ class _NotFoundStripProcessor(HeaderProcessor):
         span: tuple[int, int] | None = None,
         newline_style: str = "\n",
         ends_with_newline: bool | None = None,
-    ) -> tuple[list[str], tuple[int, int] | None, StripDiagnostic]:
+    ) -> StripHeaderResult:
         """Return a NOT_FOUND strip diagnostic without changing lines."""
-        return (
-            lines,
-            None,
-            StripDiagnostic(kind=StripDiagKind.NOT_FOUND, reason="stub not found"),
+        return StripHeaderResult(
+            lines=lines,
+            removed_span=None,
+            diagnostic=StripDiagnostic(
+                kind=StripDiagKind.NOT_FOUND,
+                reason="stub not found",
+            ),
         )
 
 
@@ -82,12 +86,15 @@ class _ErrorStripProcessor(HeaderProcessor):
         span: tuple[int, int] | None = None,
         newline_style: str = "\n",
         ends_with_newline: bool | None = None,
-    ) -> tuple[list[str], tuple[int, int] | None, StripDiagnostic]:
+    ) -> StripHeaderResult:
         """Return an ERROR strip diagnostic without changing lines."""
-        return (
-            lines,
-            None,
-            StripDiagnostic(kind=StripDiagKind.ERROR, reason="stub strip error"),
+        return StripHeaderResult(
+            lines=lines,
+            removed_span=None,
+            diagnostic=StripDiagnostic(
+                kind=StripDiagKind.ERROR,
+                reason="stub strip error",
+            ),
         )
 
 

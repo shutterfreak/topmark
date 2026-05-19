@@ -29,7 +29,6 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
+    from topmark.processors.types import StripHeaderResult
 
 
 def _ends_with_newline(text: str) -> bool:
@@ -101,28 +101,22 @@ def test_strip_preserves_final_newline_xml(tmp_path: Path) -> None:
     lines1: list[str] = f1.read_text(encoding="utf-8").splitlines(keepends=True)
     lines2: list[str] = f2.read_text(encoding="utf-8").splitlines(keepends=True)
 
-    new1: list[str] = []
-    _span1: tuple[int, int] | None = None
-    diag1: StripDiagnostic
-    new1, _span1, diag1 = proc1.strip_header_block(
+    strip_result_1: StripHeaderResult = proc1.strip_header_block(
         lines=lines1,
         span=None,
         newline_style="\n",  # the fixture uses LF
         ends_with_newline=True,  # with_nl: ends with "\n"
     )
-    new2: list[str] = []
-    _span2: tuple[int, int] | None = None
-    diag2: StripDiagnostic
-    new2, _span2, diag2 = proc2.strip_header_block(
+    strip_result_2: StripHeaderResult = proc2.strip_header_block(
         lines=lines2,
         span=None,
         newline_style="\n",  # the fixture uses LF
         ends_with_newline=False,  # no_nl: no trailing newline
     )
 
-    out1: str = "".join(new1)
-    out2: str = "".join(new2)
-    assert diag1.kind == StripDiagKind.REMOVED
-    assert diag2.kind == StripDiagKind.REMOVED
+    out1: str = "".join(strip_result_1.lines)
+    out2: str = "".join(strip_result_2.lines)
+    assert strip_result_1.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result_2.diagnostic.kind == StripDiagKind.REMOVED
     assert _ends_with_newline(out1), "Strip must preserve final newline"
     assert not _ends_with_newline(out2), "Strip must preserve absence of final newline"

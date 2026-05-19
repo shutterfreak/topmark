@@ -38,13 +38,13 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.processors.base import HeaderProcessor
+    from topmark.processors.types import StripHeaderResult
 
 mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
 
@@ -142,15 +142,12 @@ def test_strip_preserves_newline_style(
     assert proc is not None
     lines: list[str] = f.read_text(encoding="utf-8").splitlines(keepends=True)
 
-    new_lines: list[str] = []
-    span: tuple[int, int] | None = None
-    diag: StripDiagnostic
-    new_lines, span, diag = proc.strip_header_block(lines=lines)
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span is not None
+    strip_result: StripHeaderResult = proc.strip_header_block(lines=lines)
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span is not None
 
     # Simulate updater fast-path BOM/newline handling via the context defaults
     # (here we don't feed through the full pipeline; just assert newline style).
-    for i, ln in enumerate(new_lines):
-        if i < len(new_lines) - 1:
+    for i, ln in enumerate(strip_result.lines):
+        if i < len(strip_result.lines) - 1:
             assert ln.endswith(newline), f"line {i} lost newline style"

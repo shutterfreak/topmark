@@ -127,3 +127,20 @@ class StripDiagnostic:
     reason: str | None = None
     removed_span: tuple[int, int] | None = None  # inclusive span
     notes: list[str] = field(default_factory=list[str])
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class StripHeaderResult:
+    """Result of attempting to remove a TopMark header from file lines.
+
+    Attributes:
+        lines: Updated file lines. This is the original line list when no header
+            was removed or when removal was refused.
+        removed_span: Inclusive `(start, end)` line span of the removed header in
+            the original input, or `None` when no header was removed.
+        diagnostic: Diagnostic payload describing the strip attempt outcome.
+    """
+
+    lines: list[str]
+    removed_span: tuple[int, int] | None
+    diagnostic: StripDiagnostic

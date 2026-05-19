@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING
 
 from tests.conftest import mark_pipeline
 from tests.conftest import parametrize
-from tests.helpers.pipeline import BlockSignatures
 from tests.helpers.pipeline import expected_block_lines_for
 from tests.helpers.pipeline import find_line
 from tests.helpers.pipeline import make_pipeline_context
@@ -33,7 +32,6 @@ from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
-from topmark.core.logging import TopmarkLogger
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import InsertCapability
 from topmark.filetypes.policy import FileTypeHeaderPolicy
@@ -45,17 +43,20 @@ from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.processors.builtins.xml import XmlHeaderProcessor
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripDiagnostic
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from tests.helpers.pipeline import BlockSignatures
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
+    from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
+    from topmark.processors.types import StripHeaderResult
+
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -330,18 +331,15 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     assert proc is not None
 
     lines = after_insert.splitlines(keepends=True)
-    stripped_lines: list[str] = []
-    _span: tuple[int, int] | None = None
-    diag: StripDiagnostic
-    stripped_lines, _span, diag = proc.strip_header_block(
+    strip_result: StripHeaderResult = proc.strip_header_block(
         lines=lines,
         span=None,
         newline_style=ctx.newline_style,  # from ProcessingContext
         ends_with_newline=False,  # original was single-line without FNL
     )
-    assert diag.kind == StripDiagKind.REMOVED
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
 
-    roundtrip: str = "".join(stripped_lines)
+    roundtrip: str = "".join(strip_result.lines)
 
     # Assert that original and roundtrip only differ in white space
     # The re.sub(r'\s+', '', ...) function removes all whitespace characters
@@ -485,25 +483,23 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     lines: list[str] = file.read_text(encoding="utf-8").splitlines(keepends=True)
 
     # 1) With explicit span for the HTML-style comment block
-    new1: list[str] = []
-    span1: tuple[int, int] | None = None
-    diag1: StripDiagnostic
-    new1, span1, diag1 = proc.strip_header_block(lines=lines, span=(1, 3))
-    assert diag1.kind == StripDiagKind.REMOVED
-    assert new1[0].lstrip("\ufeff").startswith("<?xml"), "XML declaration must remain"
-    assert TOPMARK_START_MARKER not in "".join(new1)
-    assert span1 == (1, 3)
+    strip_result_1: StripHeaderResult = proc.strip_header_block(lines=lines, span=(1, 3))
+    assert strip_result_1.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result_1.lines[0].lstrip("\ufeff").startswith("<?xml"), (
+        "XML declaration must remain"
+    )
+    assert TOPMARK_START_MARKER not in "".join(strip_result_1.lines)
+    assert strip_result_1.removed_span == (1, 3)
 
     # 2) Let the processor detect bounds itself
-    new2: list[str] = []
-    span2: tuple[int, int] | None = None
-    diag2: StripDiagnostic
-    new2, span2, diag2 = proc.strip_header_block(lines=lines)
+    strip_result_2: StripHeaderResult = proc.strip_header_block(lines=lines)
     # Declaration must remain identical on the auto-detect path as well
-    assert diag2.kind == StripDiagKind.REMOVED
-    assert new2[0].lstrip("\ufeff").startswith("<?xml"), "XML declaration must remain (auto-detect)"
-    assert new2 == new1
-    assert span2 == (1, 3)
+    assert strip_result_2.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result_2.lines[0].lstrip("\ufeff").startswith("<?xml"), (
+        "XML declaration must remain (auto-detect)"
+    )
+    assert strip_result_2.lines == strip_result_1.lines
+    assert strip_result_2.removed_span == (1, 3)
 
 
 @mark_pipeline
@@ -562,18 +558,15 @@ def test_xml_processor_respects_prolog_and_removes_block() -> None:
         "<root/>\n",
     ]
 
-    new: list[str] = []
-    span: tuple[int, int] | None = None
-    diag: StripDiagnostic
-    new, span, diag = xp.strip_header_block(lines=lines, span=(1, 3))
+    strip_result: StripHeaderResult = xp.strip_header_block(lines=lines, span=(1, 3))
 
-    assert diag.kind == StripDiagKind.REMOVED
-    body: str = "".join(new)
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    body: str = "".join(strip_result.lines)
 
     assert body.startswith("<?xml")
     assert "<root/>" in body
     assert f"<!-- {TOPMARK_START_MARKER} -->" not in body
-    assert span == (1, 3)
+    assert strip_result.removed_span == (1, 3)
 
 
 def test_xml_strip_removes_exactly_one_policy_spacer_after_header() -> None:
@@ -591,20 +584,20 @@ def test_xml_strip_removes_exactly_one_policy_spacer_after_header() -> None:
         "<root/>\n",
     ]
 
-    updated, span, diag = processor.strip_header_block(
+    strip_result: StripHeaderResult = processor.strip_header_block(
         lines=lines,
         span=(1, 3),
         newline_style="\n",
         ends_with_newline=True,
     )
 
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span == (1, 3)
-    assert updated == [
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span == (1, 3)
+    assert strip_result.lines == [
         '<?xml version="1.0"?>\n',
         "<root/>\n",
     ]
-    assert diag.notes == ["xml: removed one trailing spacer per policy"]
+    assert strip_result.diagnostic.notes == ["xml: removed one trailing spacer per policy"]
 
 
 def test_xml_strip_preserves_pre_header_blank_while_trimming_policy_spacer() -> None:
@@ -622,16 +615,16 @@ def test_xml_strip_preserves_pre_header_blank_while_trimming_policy_spacer() -> 
         "<root/>\n",
     ]
 
-    updated, span, diag = processor.strip_header_block(
+    strip_result = processor.strip_header_block(
         lines=lines,
         span=(2, 4),
         newline_style="\n",
         ends_with_newline=True,
     )
 
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span == (2, 4)
-    assert updated == [
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span == (2, 4)
+    assert strip_result.lines == [
         '<?xml version="1.0"?>\n',
         "\n",
         "<root/>\n",
@@ -652,24 +645,24 @@ def test_xml_strip_disabled_blank_policy_preserves_trailing_spacer() -> None:
         "<root/>\n",
     ]
 
-    updated, span, diag = processor.strip_header_block(
+    strip_result: StripHeaderResult = processor.strip_header_block(
         lines=lines,
         span=(1, 3),
         newline_style="\n",
         ends_with_newline=True,
     )
 
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span == (1, 3)
-    assert updated == [
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span == (1, 3)
+    assert strip_result.lines == [
         '<?xml version="1.0"?>\n',
         "<root/>\n",
     ]
-    assert diag.notes == []
+    assert strip_result.diagnostic.notes == []
 
 
-def test_xml_strip_at_eof_does_not_over_trim() -> None:
-    """XML strip at EOF should not remove unrelated preceding content."""
+def test_xml_strip_at_eof_does_not_report_spacer_cleanup() -> None:
+    """XML strip at EOF should not report policy-spacer cleanup."""
     processor: XmlHeaderProcessor = _xml_processor_with_policy(ensure_blank_after_header=True)
     lines: list[str] = [
         "<root>\n",
@@ -678,21 +671,21 @@ def test_xml_strip_at_eof_does_not_over_trim() -> None:
         f"<!-- {TOPMARK_END_MARKER} -->\n",
     ]
 
-    updated, span, diag = processor.strip_header_block(
+    strip_result: StripHeaderResult = processor.strip_header_block(
         lines=lines,
         span=(1, 3),
         newline_style="\n",
         ends_with_newline=True,
     )
 
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span == (1, 3)
-    assert updated == ["<root>\n"]
-    assert diag.notes == ["xml: removed one trailing spacer per policy"]
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span == (1, 3)
+    assert strip_result.lines == ["<root>\n"]
+    assert strip_result.diagnostic.notes == []
 
 
-def test_xml_strip_auto_detect_path_trims_policy_spacer() -> None:
-    """XML strip auto-detect path should apply the same one-spacer cleanup."""
+def test_xml_strip_auto_detect_path_keeps_base_spacer_cleanup_notes() -> None:
+    """XML auto-detect strip should not claim extra XML spacer cleanup."""
     processor: XmlHeaderProcessor = _xml_processor_with_policy(ensure_blank_after_header=True)
     lines: list[str] = [
         '<?xml version="1.0"?>\n',
@@ -703,20 +696,20 @@ def test_xml_strip_auto_detect_path_trims_policy_spacer() -> None:
         "<root/>\n",
     ]
 
-    updated, span, diag = processor.strip_header_block(
+    strip_result: StripHeaderResult = processor.strip_header_block(
         lines=lines,
         span=None,
         newline_style="\n",
         ends_with_newline=True,
     )
 
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span == (1, 3)
-    assert updated == [
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span == (1, 3)
+    assert strip_result.lines == [
         '<?xml version="1.0"?>\n',
         "<root/>\n",
     ]
-    assert diag.notes == ["xml: removed one trailing spacer per policy"]
+    assert strip_result.diagnostic.notes == []
 
 
 def test_xml_strip_preserves_bom_and_declaration_while_trimming_policy_spacer() -> None:
@@ -733,16 +726,16 @@ def test_xml_strip_preserves_bom_and_declaration_while_trimming_policy_spacer() 
         "<root/>\n",
     ]
 
-    updated, span, diag = processor.strip_header_block(
+    strip_result = processor.strip_header_block(
         lines=lines,
         span=(1, 3),
         newline_style="\n",
         ends_with_newline=True,
     )
 
-    assert diag.kind == StripDiagKind.REMOVED
-    assert span == (1, 3)
-    assert updated == [
+    assert strip_result.diagnostic.kind == StripDiagKind.REMOVED
+    assert strip_result.removed_span == (1, 3)
+    assert strip_result.lines == [
         '\ufeff<?xml version="1.0"?>\n',
         "<root/>\n",
     ]
