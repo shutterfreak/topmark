@@ -50,7 +50,6 @@ from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_dump_files_from_options
 from topmark.cli.options import config_dump_provenance_options
-from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
@@ -60,7 +59,6 @@ from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.presentation.markdown.config import render_config_dump_markdown
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
-from topmark.presentation.shared.config import ConfigDumpHumanReport
 from topmark.presentation.shared.config import build_config_dump_human_report
 from topmark.presentation.text.config import render_config_dump_text
 from topmark.presentation.text.diagnostic import render_diagnostics_text
@@ -69,13 +67,16 @@ from topmark.utils.file import safe_unlink
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.cli.cmd_common import PreparedCliConfig
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
+    from topmark.cli.state import TopmarkCliState
     from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.presentation.shared.config import ConfigDumpHumanReport
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -237,7 +238,7 @@ def config_dump_command(
         allow_empty_paths=True,  # We ignore paths in `config dump`
     )
 
-    resolved_toml, draft_config = build_resolved_toml_sources_and_config_for_plan(
+    prepared_cli_config: PreparedCliConfig = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -273,7 +274,7 @@ def config_dump_command(
         enable_color=enable_color,
     )
 
-    config: FrozenConfig = draft_config.freeze()
+    config: FrozenConfig = prepared_cli_config.draft.freeze()
     logger.trace("Run config after layered CLI overrides: %s", config)
 
     # Render flattened config validation diagnostics before emitting the final dump.
@@ -297,7 +298,10 @@ def config_dump_command(
 
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
 
-    logger.trace("MutableConfig after merging CLI and discovered config: %s", draft_config)
+    logger.trace(
+        "MutableConfig after merging CLI and discovered config: %s",
+        prepared_cli_config.draft,
+    )
 
     def _exit() -> None:
         # Cleanup any temp file created by content-on-STDIN mode (defensive)
@@ -314,7 +318,7 @@ def config_dump_command(
             meta=meta,
             config=config,
             fmt=fmt,
-            resolved_toml=resolved_toml,
+            resolved_toml=prepared_cli_config.resolved_toml,
             show_config_layers=show_config_layers,
         )
         _exit()
@@ -322,7 +326,7 @@ def config_dump_command(
     # Human formats
     report: ConfigDumpHumanReport = build_config_dump_human_report(
         config=config,
-        resolved_toml=resolved_toml,
+        resolved_toml=prepared_cli_config.resolved_toml,
         show_config_layers=show_config_layers,
         verbosity_level=verbosity_level,
         styled=enable_color,

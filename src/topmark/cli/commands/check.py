@@ -122,6 +122,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.api.types import PipelineKindLiteral
+    from topmark.cli.cmd_common import PreparedCliConfig
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
@@ -361,7 +362,7 @@ def check_command(
         stdin_filename=stdin_filename,
     )
 
-    resolved_toml, draft_config = build_resolved_toml_sources_and_config_for_plan(
+    prepared_cli_config: PreparedCliConfig = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -398,7 +399,7 @@ def check_command(
         enable_color=enable_color,
     )
 
-    config: FrozenConfig = draft_config.freeze()
+    config: FrozenConfig = prepared_cli_config.draft.freeze()
 
     logger.trace("Run config after layered CLI overrides: %s", config)
 
@@ -406,7 +407,7 @@ def check_command(
     try:
         ensure_config_valid(
             config,
-            resolved=resolved_toml,
+            resolved=prepared_cli_config.resolved_toml,
         )
     except ConfigValidationError as exc:
         console.error(f"Processing stopped: {exc}")
@@ -499,7 +500,7 @@ def check_command(
             console=console,
             meta=meta,
             config=config,
-            resolved_toml=resolved_toml,
+            resolved_toml=prepared_cli_config.resolved_toml,
             results=results,
             fmt=fmt,
             summary_mode=summary_mode,

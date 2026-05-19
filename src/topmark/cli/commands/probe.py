@@ -48,6 +48,7 @@ from typing import TYPE_CHECKING
 import click
 
 from topmark.api.runtime import ensure_config_valid
+from topmark.cli.cmd_common import PreparedCliConfig
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
@@ -72,7 +73,6 @@ from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_strict_options
 from topmark.cli.options import shared_policy_options
-from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_common_forbidden_path_command_options_in_extra_args
@@ -84,7 +84,6 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
-from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
@@ -107,11 +106,13 @@ if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
+    from topmark.cli.state import TopmarkCliState
     from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.engine import PipelineExecution
     from topmark.pipeline.protocols import Step
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
@@ -314,7 +315,7 @@ def probe_command(
         stdin_filename=stdin_filename,
     )
 
-    resolved_toml, draft_config = build_resolved_toml_sources_and_config_for_plan(
+    prepared_cli_config: PreparedCliConfig = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=no_config,
@@ -351,7 +352,7 @@ def probe_command(
         enable_color=enable_color,
     )
 
-    config: FrozenConfig = draft_config.freeze()
+    config: FrozenConfig = prepared_cli_config.draft.freeze()
 
     logger.trace("Run config after layered CLI overrides: %s", config)
 
@@ -359,7 +360,7 @@ def probe_command(
     try:
         ensure_config_valid(
             config,
-            resolved=resolved_toml,
+            resolved=prepared_cli_config.resolved_toml,
         )
     except ConfigValidationError as exc:
         console.error(f"Processing stopped: {exc}")
@@ -455,7 +456,7 @@ def probe_command(
             console=console,
             meta=meta,
             config=config,
-            resolved_toml=resolved_toml,
+            resolved_toml=prepared_cli_config.resolved_toml,
             results=results,
             fmt=fmt,
         )

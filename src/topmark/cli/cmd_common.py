@@ -22,6 +22,7 @@ color, and related human-output controls rather than the root command group.
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -317,6 +318,19 @@ def build_cli_policy_overrides(state: TopmarkCliState) -> PolicyOverrides:
 # ---- Config/TOML preparation for a CLI run ----
 
 
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PreparedCliConfig:
+    """Prepared CLI config state for a command run.
+
+    Attributes:
+        resolved_toml: Resolved TOML-side state for the current invocation.
+        draft: Mutable config draft after layered CLI overrides.
+    """
+
+    resolved_toml: ResolvedTopmarkTomlSources
+    draft: MutableConfig
+
+
 def build_resolved_toml_sources_and_config_for_plan(
     *,
     ctx: click.Context,
@@ -328,10 +342,7 @@ def build_resolved_toml_sources_and_config_for_plan(
     exclude_file_types: list[str],
     align_fields: bool | None,
     relative_to: str | None,
-) -> tuple[
-    ResolvedTopmarkTomlSources,
-    MutableConfig,
-]:
+) -> PreparedCliConfig:
     """Build resolved TOML sources and a config draft for an input plan.
 
     This helper keeps the CLI layer intentionally thin:
@@ -365,9 +376,8 @@ def build_resolved_toml_sources_and_config_for_plan(
         relative_to: Optional CLI override for header-relative path rendering.
 
     Returns:
-        Resolved TOML-side state for the current run and a mutable config draft
-        ready to be frozen. The CLI command layer still receives these as a pair
-        for compatibility with existing command plumbing.
+        Prepared CLI config state containing the resolved TOML-side state and
+        mutable config draft after layered CLI overrides.
     """
 
     def _resolve_discovery_inputs() -> list[Path] | None:
@@ -377,7 +387,7 @@ def build_resolved_toml_sources_and_config_for_plan(
         (for example `pkg/module.py`). Otherwise, use the normal path list,
         or let the config layer fall back to CWD.
         """
-        if plan.stdin_mode is True:
+        if plan.stdin_mode:
             stdin_name: str | None = plan.stdin_filename
             if stdin_name:
                 sf: Path = Path(stdin_name)
@@ -421,6 +431,9 @@ def build_resolved_toml_sources_and_config_for_plan(
         relative_to=relative_to,
     )
 
-    draft = apply_config_overrides(draft, overrides=overrides)
+    overridden_draft: MutableConfig = apply_config_overrides(draft, overrides=overrides)
 
-    return resolved_toml, draft
+    return PreparedCliConfig(
+        resolved_toml=resolved_toml,
+        draft=overridden_draft,
+    )
