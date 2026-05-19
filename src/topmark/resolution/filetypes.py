@@ -78,6 +78,30 @@ class FileTypeCandidate:
     file_type: FileType
 
 
+# --- FileTypeCandidateOrderKey ---
+
+
+@dataclass(frozen=True, init=True, kw_only=True, order=True, slots=True)
+class FileTypeCandidateOrderKey:
+    """Deterministic ordering key for scored file type candidates.
+
+    The fields are ordered in comparison priority order so instances can be used
+    directly as `min()` or `sorted()` keys.
+
+    Attributes:
+        score_rank: Negated candidate score. Lower values sort first, so higher
+            scores win when this key is used with `min()` or ascending sort.
+        namespace: Candidate file type namespace used as a deterministic
+            tie-breaker.
+        local_key: Candidate file type local key used as a deterministic
+            tie-breaker.
+    """
+
+    score_rank: int
+    namespace: str
+    local_key: str
+
+
 # --- File type filter helper ---
 
 
@@ -120,7 +144,7 @@ class MatchSignals:
 
 def candidate_order_key(
     candidate: FileTypeCandidate,
-) -> tuple[int, str, str]:
+) -> FileTypeCandidateOrderKey:
     """Return the deterministic ordering key for a file type candidate.
 
     Candidates are ordered by:
@@ -128,20 +152,20 @@ def candidate_order_key(
       2) namespace (ascending)
       3) local key (ascending)
 
-    This key is intended to be used with `min()` so that the highest-scoring
-    candidate wins and exact score ties are resolved deterministically without
-    sorting the entire list.
+    The returned ordered value object is intended to be used with `min()` or
+    `sorted()` so that the highest-scoring candidate wins and exact score ties
+    are resolved deterministically.
 
     Args:
         candidate: Candidate being ranked.
 
     Returns:
-        The composite ordering key.
+        Ordered candidate ranking key.
     """
-    return (
-        -candidate.score,
-        candidate.namespace,
-        candidate.local_key,
+    return FileTypeCandidateOrderKey(
+        score_rank=-candidate.score,
+        namespace=candidate.namespace,
+        local_key=candidate.local_key,
     )
 
 
