@@ -29,6 +29,7 @@ partial defaults until that split is implemented.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
@@ -55,6 +56,20 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class DefaultTomlTemplateText:
+    """Loaded default TOML template text and fallback metadata.
+
+    Attributes:
+        toml_text: The TOML document text to emit.
+        error: The exception raised while reading the bundled template, if any.
+            Callers may surface this as a user-facing warning.
+    """
+
+    toml_text: str
+    error: Exception | None = None
 
 
 # ---- Private helpers ----
@@ -114,7 +129,7 @@ def _build_default_writer_toml() -> TomlTable:
 
 
 def _build_default_config_metadata_toml() -> TomlTable:
-    """Return only config section.
+    """Return only the config metadata section.
 
     Sections:
     - `[config]`
@@ -129,7 +144,7 @@ def _build_default_config_metadata_toml() -> TomlTable:
 # ---- Public template/default document helpers ----
 
 
-def load_default_topmark_template_toml_text() -> tuple[str, Exception | None]:
+def load_default_topmark_template_toml_text() -> DefaultTomlTemplateText:
     """Load the bundled default TOML config *template* as text.
 
     This reads the annotated template bundled with TopMark
@@ -140,15 +155,11 @@ def load_default_topmark_template_toml_text() -> tuple[str, Exception | None]:
 
     If the packaged template cannot be read, the function falls back to a
     generated TOML document built from TopMark's default TOML document
-    (`build_default_topmark_toml_table`). The returned ``error`` is the exception
-    raised while reading the packaged template.
+    (`build_default_topmark_toml_table`). The returned result includes the
+    exception raised while reading the packaged template.
 
     Returns:
-        A tuple ``(toml_text, error)`` where:
-
-        - ``toml_text`` is the TOML document text.
-        - ``error`` is the exception raised while reading the bundled template,
-            if any. Callers may surface this as a user-facing warning.
+        Loaded default TOML template text and fallback metadata.
 
     Notes:
         - This function performs I/O and logs a warning on fallback, but it does
@@ -193,7 +204,10 @@ def load_default_topmark_template_toml_text() -> tuple[str, Exception | None]:
         trailer: str = "\n# NOTE: End of generated defaults (template was missing/unreadable).\n"
         toml_text = f"{notice}{generated}{trailer}"
 
-    return toml_text, err
+    return DefaultTomlTemplateText(
+        toml_text=toml_text,
+        error=err,
+    )
 
 
 def build_default_topmark_toml_table() -> TomlTable:
@@ -212,7 +226,8 @@ def build_default_topmark_toml_table() -> TomlTable:
     domain-scoped helpers and then merge those partial TOML tables here.
 
     If you need the annotated template with comments and formatting preserved,
-    use `load_default_topmark_template_toml_text()`.
+    use `load_default_topmark_template_toml_text()` and read the returned
+    `DefaultTomlTemplateText.toml_text` field.
 
     Returns:
         A new TOML-table-compatible dictionary containing the default TopMark

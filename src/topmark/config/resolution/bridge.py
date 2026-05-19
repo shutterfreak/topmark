@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.config.model import MutableConfig
+    from topmark.toml.defaults import DefaultTomlTemplateText
     from topmark.toml.parse import ParsedTopmarkToml
     from topmark.toml.types import TomlTable
 
@@ -187,19 +188,26 @@ def resolve_default_template_and_build_mutable_config() -> tuple[
     """Resolve the bundled init template and build its config draft.
 
     This helper is intended for machine-readable `topmark config init` output.
-    Human output should continue to render the bundled template text directly
-    so comments and formatting are preserved.
+    It consumes the bundled template text, or the generated fallback text when
+    the bundled template cannot be read, and replays that fallback error into
+    the returned config draft diagnostics.
+
+    Human output should continue to render the template text directly so
+    comments and formatting are preserved.
 
     Returns:
         Tuple containing the resolved TOML-side state and mutable config draft
         built from the bundled init template.
     """
     diagnostics: MutableDiagnosticLog = MutableDiagnosticLog()
-    text, err = load_default_topmark_template_toml_text()
-    if err is not None:
-        diagnostics.add_error(str(err))
+    template_text: DefaultTomlTemplateText = load_default_topmark_template_toml_text()
+    toml_text: str = template_text.toml_text
+    template_error: Exception | None = template_text.error
 
-    doc: tomlkit.TOMLDocument = tomlkit.parse(text)
+    if template_error is not None:
+        diagnostics.add_error(str(template_error))
+
+    doc: tomlkit.TOMLDocument = tomlkit.parse(toml_text)
     table: TomlTable = toml_table_from_mapping(as_object_dict(doc.unwrap()))
     return _resolve_single_builtin_toml_table_and_build_mutable_config(
         table=table,

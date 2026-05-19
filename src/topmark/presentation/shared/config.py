@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.runtime.writer_options import WriterOptions
+    from topmark.toml.defaults import DefaultTomlTemplateText
     from topmark.toml.parse import ParsedTopmarkToml
     from topmark.toml.resolution import ResolvedTopmarkTomlSource
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -112,8 +113,9 @@ def build_config_init_human_report(
     Returns:
         Prepared TOML text plus optional template read error.
     """
-    toml_text, err = load_default_topmark_template_toml_text()
-
+    template_text: DefaultTomlTemplateText = load_default_topmark_template_toml_text()
+    toml_text: str = template_text.toml_text
+    template_error: Exception | None = template_text.error
     changed = False
 
     if root:
@@ -131,9 +133,9 @@ def build_config_init_human_report(
         )  # Raises ValueError, TomlParseError, TomlSurgeryError.
 
         changed: bool = changed or (nested_text != toml_text)
-        toml_text: str = nested_text
+        toml_text = nested_text
 
-    # TOML correctness backstop (raises )
+    # TOML correctness backstop. Raises TemplateValidationError.
     validate_toml_for_config_init(
         toml_text,
         for_pyproject=for_pyproject,
@@ -142,7 +144,7 @@ def build_config_init_human_report(
 
     return ConfigInitHumanReport(
         toml_text=toml_text,
-        error=err,
+        error=template_error,
         verbosity_level=verbosity_level,
         styled=styled,
     )
