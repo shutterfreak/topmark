@@ -46,12 +46,11 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.api.types import ApiPipelineRun
     from topmark.api.types import ProbeRunResult
     from topmark.api.types import PublicPolicy
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
-    from topmark.config.model import FrozenConfig
-    from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
 
@@ -136,17 +135,13 @@ def check(
 
     # Run the pipeline; runtime helpers handle config discovery, policy overlays,
     # file-list resolution, per-path config, and pipeline execution.
-    _cfg: FrozenConfig
-    file_list: list[Path]
-    results: list[ProcessingContext]
-    encountered_error_code: ExitCode | None
 
     run_options: RunOptions = RunOptions(
         apply_changes=apply,
         prune_views=prune_views,
     )
 
-    _cfg, file_list, results, encountered_error_code = run_pipeline(
+    api_run: ApiPipelineRun = run_pipeline(
         pipeline=pipeline,
         paths=paths,
         run_options=run_options,
@@ -167,13 +162,13 @@ def check(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=results,
-        file_list=file_list,
+        results=api_run.results,
+        file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
         would_change=effective_would_add_or_update,
         update_statuses=update_statuses,
-        encountered_error_code=encountered_error_code,
+        encountered_error_code=api_run.exit_code,
     )
 
 
@@ -214,7 +209,8 @@ def strip(
         prune_views: If `True`, trim heavy internal views after the run (keeps summaries).
 
     Returns:
-        Filtered per-file outcomes, counts, diagnostics, and write stats.
+        Resolved runtime config, selected file list, filtered results, and any
+        fatal pipeline-level exit code.
 
     Notes:
         Reporting/view filtering is handled by the public view layer and does not
@@ -229,17 +225,13 @@ def strip(
 
     # Run the pipeline; runtime helpers handle config discovery, policy overlays,
     # file-list resolution, per-path config, and pipeline execution.
-    _cfg: FrozenConfig
-    file_list: list[Path]
-    results: list[ProcessingContext]
-    encountered_error_code: ExitCode | None
 
     run_options: RunOptions = RunOptions(
         apply_changes=apply,
         prune_views=prune_views,
     )
 
-    _cfg, file_list, results, encountered_error_code = run_pipeline(
+    api_run: ApiPipelineRun = run_pipeline(
         pipeline=pipeline,
         paths=paths,
         run_options=run_options,
@@ -258,13 +250,13 @@ def strip(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=results,
-        file_list=file_list,
+        results=api_run.results,
+        file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
         would_change=effective_would_strip,
         update_statuses=update_statuses,
-        encountered_error_code=encountered_error_code,
+        encountered_error_code=api_run.exit_code,
     )
 
 
@@ -303,8 +295,8 @@ def probe(
             Probe results are built from resolution data, not presentation views.
 
     Returns:
-        Probe results containing one public result per returned path, summary counts,
-        and diagnostics.
+        Resolved runtime config, selected file list, probe results, and any
+        fatal pipeline-level exit code.
 
     Notes:
         `probe()` is always read-only. It has no `apply` or `diff` mode because it
@@ -318,17 +310,13 @@ def probe(
     )
     # Run the probe pipeline; runtime helpers also attach synthetic contexts for
     # missing literals and explicit inputs filtered before probing.
-    _cfg: FrozenConfig
-    file_list: list[Path]
-    results: list[ProcessingContext]
-    encountered_error_code: ExitCode | None
 
     run_options: RunOptions = RunOptions(
         apply_changes=False,
         prune_views=prune_views,
     )
 
-    _cfg, file_list, results, encountered_error_code = run_probe_pipeline(
+    api_run: ApiPipelineRun = run_probe_pipeline(
         pipeline=pipeline,
         paths=paths,
         run_options=run_options,
@@ -342,7 +330,7 @@ def probe(
     # Probe has a dedicated public result shape; do not route it through the
     # check/strip finalizer.
     return finalize_probe_result(
-        results=results,
-        file_list=file_list,
-        encountered_error_code=encountered_error_code,
+        results=api_run.results,
+        file_list=api_run.file_list,
+        encountered_error_code=api_run.exit_code,
     )

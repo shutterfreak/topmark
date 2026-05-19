@@ -34,6 +34,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from topmark.api.types import ApiPipelineRun
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_mapping
 from topmark.config.model import FrozenConfig
@@ -105,6 +106,42 @@ class PreparedApiRun:
     file_resolution: FileListResolution
     file_list: list[Path]
     discovered_layers: Sequence[ConfigLayer] | None
+
+
+# ---- API run prepared value objects ----
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PreparedTomlConfig:
+    """TOML-side resolved state prepared for an API run.
+
+    This value object replaces the private mixed tuple previously used while
+    preparing layered config discovery. Both fields are `None` when the caller
+    supplied an explicit `base_config`, because explicit config seeds
+    intentionally bypass layered TOML discovery.
+
+    Attributes:
+        resolved: Resolved TOML-side state used for config provenance and
+            writer-option discovery, or `None` when discovery was bypassed.
+        draft: Pre-merged mutable config draft built from `resolved`, or `None`
+            when discovery was bypassed.
+    """
+
+    resolved: ResolvedTopmarkTomlSources | None
+    draft: MutableConfig | None
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PipelineExecution:
+    """Result of executing a selected pipeline for prepared files.
+
+    Attributes:
+        contexts: Processing contexts produced by the pipeline engine.
+        exit_code: Fatal pipeline-engine exit code, if one was encountered.
+    """
+
+    contexts: list[ProcessingContext]
+    exit_code: ExitCode | None
 
 
 def ensure_mutable_config(
@@ -303,11 +340,12 @@ def _prepare_toml_and_mutable_config_for_api_run(
     paths: Iterable[Path | str],
     *,
     base_config: Mapping[str, object] | FrozenConfig | None,
-) -> tuple[ResolvedTopmarkTomlSources | None, MutableConfig | None]:
+) -> PreparedTomlConfig:
     """Resolve TOML sources once and prebuild the merged config draft.
 
-    Explicit `base_config` seeds intentionally bypass layered TOML discovery, so
-    this helper returns `(None, None)` in that mode.
+    Explicit `base_config` seeds intentionally bypass layered TOML discovery,
+    so this helper returns a result with both fields set to `None` in that
+    mode.
 
     In normal discovery mode, TOML schema validation has already happened before
     the merged draft is returned here.
@@ -318,20 +356,20 @@ def _prepare_toml_and_mutable_config_for_api_run(
         base_config: Optional explicit config seed supplied by the caller.
 
     Returns:
-        A tuple containing the resolved TOML-side state and the merged mutable
-        config draft built from it, or `(None, None)` when layered discovery is
-        intentionally bypassed.
+        Prepared TOML-side state and merged mutable config draft, or empty
+        fields when layered discovery is intentionally bypassed.
     """
     if base_config is not None:
-        return None, None
+        return PreparedTomlConfig(resolved=None, draft=None)
 
     path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
-    return resolve_toml_sources_and_build_mutable_config(
+    resolved, draft = resolve_toml_sources_and_build_mutable_config(
         input_paths=tuple(path_list),
         extra_config_files=(),
         strict=None,
         no_config=False,
     )
+    return PreparedTomlConfig(resolved=resolved, draft=draft)
 
 
 # ---- Per-path config helpers ----
@@ -586,18 +624,18 @@ def _prepare_api_pipeline_run(
     """
     path_inputs: list[Path | str] = list(paths)
 
-    resolved_toml, resolved_draft = _prepare_toml_and_mutable_config_for_api_run(
+    prepared_toml: PreparedTomlConfig = _prepare_toml_and_mutable_config_for_api_run(
         path_inputs,
         base_config=base_config,
     )
 
     discovered_layers: list[ConfigLayer] | None = (
-        build_config_layers_from_resolved_toml_sources(resolved_toml.sources)
-        if resolved_toml is not None
+        build_config_layers_from_resolved_toml_sources(prepared_toml.resolved.sources)
+        if prepared_toml.resolved is not None
         else None
     )
     resolved_writer_options: WriterOptions | None = (
-        resolved_toml.writer_options if resolved_toml is not None else None
+        prepared_toml.resolved.writer_options if prepared_toml.resolved is not None else None
     )
 
     # (1) Build the resolved config used for discovery from TOML-side resolved
@@ -607,7 +645,7 @@ def _prepare_api_pipeline_run(
     cfg: FrozenConfig = _build_resolved_config_for_run(
         path_inputs,
         base_config=base_config,
-        resolved_draft=resolved_draft,
+        resolved_draft=prepared_toml.draft,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
     )
@@ -648,7 +686,7 @@ def _execute_pipeline_for_file_list(
     *,
     prepared: PreparedApiRun,
     pipeline: Sequence[Step[ProcessingContext]],
-) -> tuple[list[ProcessingContext], ExitCode | None]:
+) -> PipelineExecution:
     """Execute pipeline steps for the selected files in a prepared API run.
 
     Args:
@@ -656,12 +694,15 @@ def _execute_pipeline_for_file_list(
         pipeline: Pipeline steps to execute.
 
     Returns:
-        Processing contexts and any fatal exit code reported by the pipeline
-        engine. If no files were selected, returns an empty result with no exit
-        code.
+        Pipeline execution result containing processing contexts and any fatal
+        exit code reported by the pipeline engine. If no files were selected,
+        returns an empty context list with no exit code.
     """
     if not prepared.file_list:
-        return [], None
+        return PipelineExecution(
+            contexts=[],
+            exit_code=None,
+        )
 
     # (1) Build per-path effective configs for layered discovery.
     path_configs: dict[Path, FrozenConfig] = _build_path_configs(
@@ -671,12 +712,16 @@ def _execute_pipeline_for_file_list(
     )
 
     # (2) Execute the selected pipeline for each resolved file.
-    return run_steps_for_files(
+    contexts, exit_code = run_steps_for_files(
         run_options=prepared.run_options,
         config=prepared.effective_cfg,
         path_configs=path_configs,
         pipeline=pipeline,
         file_list=prepared.file_list,
+    )
+    return PipelineExecution(
+        contexts=contexts,
+        exit_code=exit_code,
     )
 
 
@@ -691,7 +736,7 @@ def run_pipeline(
     # public-policy overlays (None = no override)
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
-) -> tuple[FrozenConfig, list[Path], list[ProcessingContext], ExitCode | None]:
+) -> ApiPipelineRun:
     """Resolve shared API runtime state and run a content-processing pipeline.
 
     Args:
@@ -725,16 +770,21 @@ def run_pipeline(
         policy_by_type=policy_by_type,
     )
 
-    results: list[ProcessingContext]
-    encountered_error_code: ExitCode | None
-    results, encountered_error_code = _execute_pipeline_for_file_list(
+    execution: PipelineExecution = _execute_pipeline_for_file_list(
         prepared=prepared,
         pipeline=pipeline,
     )
+    results: list[ProcessingContext] = execution.contexts
+    encountered_error_code: ExitCode | None = execution.exit_code
 
     logger.info("Processing %d file(s) with TopMark %s", len(prepared.file_list), TOPMARK_VERSION)
 
-    return prepared.effective_cfg, prepared.file_list, results, encountered_error_code
+    return ApiPipelineRun(
+        effective_cfg=prepared.effective_cfg,
+        file_list=prepared.file_list,
+        results=results,
+        exit_code=encountered_error_code,
+    )
 
 
 def run_probe_pipeline(
@@ -748,7 +798,7 @@ def run_probe_pipeline(
     # public-policy overlays (None = no override)
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
-) -> tuple[FrozenConfig, list[Path], list[ProcessingContext], ExitCode | None]:
+) -> ApiPipelineRun:
     """Resolve shared API runtime state and run the probe pipeline.
 
     Probe has one behavior beyond `run_pipeline()`: it preserves explicit inputs
@@ -809,12 +859,12 @@ def run_probe_pipeline(
         if selection.path not in missing_literal_paths
     )
 
-    results: list[ProcessingContext]
-    encountered_error_code: ExitCode | None
-    results, encountered_error_code = _execute_pipeline_for_file_list(
+    execution: PipelineExecution = _execute_pipeline_for_file_list(
         prepared=prepared,
         pipeline=pipeline,
     )
+    results: list[ProcessingContext] = execution.contexts
+    encountered_error_code: ExitCode | None = execution.exit_code
 
     # Missing explicit literals are hard resolver-level failures. Add them
     # before fatal precedence is derived so they can influence `had_errors`.
@@ -841,4 +891,9 @@ def run_probe_pipeline(
 
     logger.info("Probing %d result(s) with TopMark %s", len(results), TOPMARK_VERSION)
 
-    return prepared.effective_cfg, prepared.file_list, results, encountered_error_code
+    return ApiPipelineRun(
+        effective_cfg=prepared.effective_cfg,
+        file_list=prepared.file_list,
+        results=results,
+        exit_code=encountered_error_code,
+    )

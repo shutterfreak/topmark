@@ -44,7 +44,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.config.model import FrozenConfig
+    from topmark.core.exit_codes import ExitCode
     from topmark.core.outcomes import Outcome
+    from topmark.pipeline.context.model import ProcessingContext
 
 
 # ---- Public config input and token literals ----
@@ -280,6 +283,39 @@ class RunResult:
     diagnostics: dict[str, list[DiagnosticEntry]] | None = None
     diagnostic_totals: DiagnosticTotals | None = None
     diagnostic_totals_all: DiagnosticTotals | None = None
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ApiPipelineRun:
+    """Resolved runtime state and pipeline results for one API execution.
+
+    This value object is the low-level orchestration result returned by the
+    internal API runtime helpers. It exposes the fully resolved runtime config,
+    the selected file list, the produced processing contexts, and any fatal
+    pipeline-level exit code.
+
+    Attributes:
+        effective_cfg: Final runtime config after layered discovery, runtime
+            overlays, and execution-scoped adjustments.
+        file_list: Files selected for pipeline execution after discovery and
+            filtering.
+        results: Processing contexts produced by pipeline execution. For probe
+            runs, this may also include synthetic contexts representing missing
+            or filtered explicit inputs.
+        exit_code: Fatal pipeline-level exit code, if one was encountered.
+
+    Notes:
+        This object intentionally exposes internal processing contexts rather
+        than stable public DTOs. Higher-level public API helpers are expected
+        to normalize these contexts into stable machine-facing result objects
+        such as [`RunResult`][topmark.api.types.RunResult] and
+        [`ProbeRunResult`][topmark.api.types.ProbeRunResult].
+    """
+
+    effective_cfg: FrozenConfig
+    file_list: list[Path]
+    results: list[ProcessingContext]
+    exit_code: ExitCode | None
 
 
 # ---- Public registry / metadata shapes ----

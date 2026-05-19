@@ -24,8 +24,7 @@ from topmark.runtime.model import RunOptions
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.config.model import FrozenConfig
-    from topmark.core.exit_codes import ExitCode
+    from topmark.api.types import ApiPipelineRun
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -71,13 +70,8 @@ def test_nested_config_applies_only_within_its_subtree(tmp_path: Path) -> None:
     pkg_file.write_text("print('pkg')\n", encoding="utf-8")
     docs_file.write_text("print('docs')\n", encoding="utf-8")
 
-    _cfg: FrozenConfig
-    file_list: list[Path]
-    results: list[ProcessingContext]
-    exit_code: ExitCode | None
-
     run_options = RunOptions(apply_changes=False)
-    _cfg, file_list, results, exit_code = run_pipeline(
+    api_run: ApiPipelineRun = run_pipeline(
         pipeline=Pipeline.CHECK.steps,
         paths=[pkg_file, docs_file],
         run_options=run_options,
@@ -85,14 +79,14 @@ def test_nested_config_applies_only_within_its_subtree(tmp_path: Path) -> None:
         include_file_types=["python"],
     )
 
-    assert exit_code is None
+    assert api_run.exit_code is None
     assert run_options.apply_changes is False
     # Limit discovery to Python files so the config files themselves are not part
     # of the processed candidate set for this end-to-end behavior check.
-    assert set(file_list) == {pkg_file.resolve(), docs_file.resolve()}
-    assert len(results) == 2
+    assert set(api_run.file_list) == {pkg_file.resolve(), docs_file.resolve()}
+    assert len(api_run.results) == 2
 
-    by_path: dict[Path, ProcessingContext] = {ctx.path.resolve(): ctx for ctx in results}
+    by_path: dict[Path, ProcessingContext] = {ctx.path.resolve(): ctx for ctx in api_run.results}
 
     pkg_ctx: ProcessingContext = by_path[pkg_file.resolve()]
     docs_ctx: ProcessingContext = by_path[docs_file.resolve()]

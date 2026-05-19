@@ -22,6 +22,9 @@ Stability policy:
   including stable re-exports such as [`Outcome`][topmark.core.outcomes.Outcome].
 - Adding optional parameters with defaults is allowed in minor releases.
 - Removing/renaming symbols or changing return shapes is a breaking change.
+- Low-level runtime helpers may expose [`ApiPipelineRun`][topmark.api.types.ApiPipelineRun]
+  when callers need resolved config, selected files, processing contexts, and a
+  fatal pipeline-level exit code before conversion into public result DTOs.
 
 High-level concepts:
 - **Recognized** file types exist in the file type registry.
@@ -30,6 +33,11 @@ High-level concepts:
   ``"info"``, ``"warning"``, ``"error"``.
 - Pipeline outcome values are shared core primitives re-exported here as
   [`Outcome`][topmark.core.outcomes.Outcome] for public API convenience.
+- High-level commands return stable result DTOs such as
+  [`RunResult`][topmark.api.types.RunResult] and
+  [`ProbeRunResult`][topmark.api.types.ProbeRunResult]. Lower-level runtime
+  orchestration returns [`ApiPipelineRun`][topmark.api.types.ApiPipelineRun]
+  for integrations that intentionally work with processing contexts.
 
 Configuration contract:
 - Public pipeline functions (``probe()``, ``check()``, ``strip()``) accept an optional plain mapping
@@ -91,6 +99,7 @@ from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
 from topmark.api.commands.version import get_version_info
 from topmark.api.commands.version import get_version_text
+from topmark.api.types import ApiPipelineRun
 from topmark.api.types import DiagnosticEntry
 from topmark.api.types import FileResult
 from topmark.api.types import FileTypeInfo
@@ -103,6 +112,7 @@ from topmark.core.outcomes import Outcome
 from topmark.version.types import VersionInfo
 
 __all__ = (
+    "ApiPipelineRun",
     "DiagnosticEntry",
     "FileResult",
     "FileTypeInfo",
