@@ -58,7 +58,7 @@ mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
     ],
 )
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])  # LF and CRLF
-@mark_pipeline
+@pytest.mark.pipeline
 def test_insert_preserves_newline_style(
     tmp_path: Path, ext: str, pre: str, post: str, newline: str
 ) -> None:
@@ -106,7 +106,7 @@ def test_insert_preserves_newline_style(
     ],
 )
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])  # LF and CRLF
-@mark_pipeline
+@pytest.mark.pipeline
 def test_strip_preserves_newline_style(
     tmp_path: Path,
     ext: str,

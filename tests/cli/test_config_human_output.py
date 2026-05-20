@@ -29,7 +29,6 @@ from click.testing import Result
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
-from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 
@@ -41,7 +40,7 @@ pytestmark: pytest.MarkDecorator = pytest.mark.cli
 
 
 # --- Quiet mode: TEXT output ---
-@parametrize(
+@pytest.mark.parametrize(
     "cmd",
     [
         CliCmd.CONFIG_CHECK,
@@ -63,7 +62,7 @@ def test_config_status_and_inspection_commands_text_quiet_suppress_output(cmd: s
     assert result.output == ""
 
 
-@parametrize(
+@pytest.mark.parametrize(
     "cmd",
     [
         CliCmd.CONFIG_DEFAULTS,
@@ -87,7 +86,7 @@ def test_config_content_commands_reject_text_quiet_option(cmd: str) -> None:
 
 
 # --- Quiet mode: Markdown output ---
-@parametrize(
+@pytest.mark.parametrize(
     "cmd",
     [
         CliCmd.CONFIG_CHECK,
@@ -111,7 +110,7 @@ def test_config_status_and_inspection_commands_markdown_ignore_quiet(cmd: str) -
     assert result.output.strip() != ""
 
 
-@parametrize(
+@pytest.mark.parametrize(
     "cmd",
     [
         CliCmd.CONFIG_DEFAULTS,
@@ -137,7 +136,7 @@ def test_config_content_commands_reject_quiet_option_with_markdown_output(cmd: s
 
 
 # --- Verbosity: Markdown output ---
-@parametrize(
+@pytest.mark.parametrize(
     "cmd",
     [
         CliCmd.CONFIG_CHECK,

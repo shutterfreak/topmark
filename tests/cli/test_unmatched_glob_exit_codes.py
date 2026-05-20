@@ -28,7 +28,6 @@ import pytest
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from tests.cli.conftest import run_cli_in
-from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 
 if TYPE_CHECKING:
@@ -44,7 +43,7 @@ pytestmark: pytest.MarkDecorator = pytest.mark.exit_code
 # --- Unmatched glob patterns ---
 
 
-@parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
 def test_processing_command_unmatched_glob_pattern_exits_success(
     tmp_path: Path,
     command: str,

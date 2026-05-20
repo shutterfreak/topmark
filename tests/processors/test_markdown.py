@@ -17,7 +17,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.conftest import mark_pipeline
+import pytest
+
 from tests.helpers.pipeline import BlockSignatures
 from tests.helpers.pipeline import expected_block_lines_for
 from tests.helpers.pipeline import find_line
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
 
 
-@mark_pipeline
+@pytest.mark.pipeline
 def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     """Do not insert inside Markdown fenced code blocks.
 
@@ -57,7 +58,7 @@ def test_markdown_fenced_code_no_insertion_inside(tmp_path: Path) -> None:
     )
 
 
-@mark_pipeline
+@pytest.mark.pipeline
 def test_markdown_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     """Markdown supports HTML comments; insert at top with trailing blank.
 
@@ -81,7 +82,7 @@ def test_markdown_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
         assert lines[close_idx + 1].strip() == ""
 
 
-@mark_pipeline
+@pytest.mark.pipeline
 def test_markdown_with_existing_banner_comment(tmp_path: Path) -> None:
     """Markdown: header precedes any existing banner comment.
 

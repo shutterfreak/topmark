@@ -29,7 +29,6 @@ import pytest
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
-from tests.conftest import parametrize
 from tests.helpers.registry import make_file_type
 from tests.helpers.registry import patched_effective_registries
 from topmark.cli.keys import CliCmd
@@ -166,7 +165,7 @@ def test_registry_filetypes_text_long_shows_details(
 # --- Unsupported quiet mode ---
 
 
-@parametrize(
+@pytest.mark.parametrize(
     "cmd",
     [
         CliCmd.REGISTRY_FILETYPES,

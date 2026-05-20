@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import mark_dev_validation
 from topmark.filetypes.instances import get_base_file_type_registry
 from topmark.processors.base import NO_LINE_ANCHOR
 from topmark.processors.base import HeaderProcessor
@@ -27,7 +26,7 @@ if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
 
 
-@mark_dev_validation
+@pytest.mark.dev_validation
 def test_registered_processors_map_to_existing_filetypes() -> None:
     """Every registered processor references an existing FileType."""
     ft_registry: dict[str, FileType] = get_base_file_type_registry()
@@ -37,7 +36,7 @@ def test_registered_processors_map_to_existing_filetypes() -> None:
     assert missing == [], f"Processors registered for unknown file types: {missing!r}"
 
 
-@mark_dev_validation
+@pytest.mark.dev_validation
 def test_one_processor_per_filetype() -> None:
     """There is at most one processor registered per file type name."""
     hp_registry: dict[str, HeaderProcessor] = get_base_header_processor_registry()
@@ -73,7 +72,7 @@ def test_one_processor_per_filetype() -> None:
         "markdown",
     ],
 )
-@mark_dev_validation
+@pytest.mark.dev_validation
 def test_xml_like_types_report_no_line_anchor(ft_name: str) -> None:
     """XML-like processors indicate char-offset placement via NO_LINE_ANCHOR."""
     hp_registry: dict[str, HeaderProcessor] = get_base_header_processor_registry()

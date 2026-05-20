@@ -29,10 +29,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import pytest
 from click.shell_completion import CompletionItem
 
-from tests.conftest import mark_cli
-from tests.conftest import parametrize
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
@@ -80,8 +79,8 @@ def test_output_format_completion_lists_all_values() -> None:
 
 
 # adapt if enum values change
-@mark_cli
-@parametrize("prefix", ["t", "m", "j", "n"])
+@pytest.mark.cli
+@pytest.mark.parametrize("prefix", ["t", "m", "j", "n"])
 # adapt if enum values change
 def test_output_format_completion_filters_by_prefix(prefix: str) -> None:
     """Completion should be filtered by the typed prefix (case-insensitive)."""
@@ -97,14 +96,14 @@ def test_output_format_completion_filters_by_prefix(prefix: str) -> None:
         assert expected & values
 
 
-@mark_cli
+@pytest.mark.cli
 def test_output_format_completion_handles_nonmatching_prefix() -> None:
     """Non-matching prefixes should yield an empty suggestion list."""
     items: list[CompletionItem] = _complete("zzz")
     assert _values(items) == set()
 
 
-@mark_cli
+@pytest.mark.cli
 def test_output_format_completion_works_across_commands() -> None:
     """The same option type should complete in other commands that accept it."""
     # If another command (e.g., check) exposes --header-format, it should complete too.

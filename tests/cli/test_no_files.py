@@ -31,7 +31,6 @@ from click.testing import Result
 
 from tests.cli.conftest import assert_USAGE_ERROR
 from tests.cli.conftest import run_cli
-from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 
 if TYPE_CHECKING:
@@ -44,7 +43,7 @@ pytestmark: pytest.MarkDecorator = pytest.mark.exit_code
 # --- Missing input arguments ---
 
 
-@parametrize("command", [CliCmd.CHECK, CliCmd.STRIP, CliCmd.PROBE])
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP, CliCmd.PROBE])
 def test_commands_without_files_exit_usage_error(command: str) -> None:
     """Commands without file inputs should exit with USAGE_ERROR."""
     result: Result = run_cli([command])

@@ -95,7 +95,7 @@ Example:
 ```python
 from tests.conftest import mark_dev_validation
 
-@mark_dev_validation
+@pytest.mark.dev_validation
 def test_registered_processors_map_to_existing_filetypes() -> None:
     ...
 ```

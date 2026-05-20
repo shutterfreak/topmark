@@ -41,7 +41,6 @@ from collections.abc import Mapping
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Literal
 from typing import TypeAlias
 from typing import cast
 
@@ -58,88 +57,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
-
-AnyCallable = Callable[..., object]
-DecoratorType = Callable[[AnyCallable], AnyCallable]
-ScopeName = Literal["session", "package", "module", "class", "function"]
-
-
-# --- Typed Markers ---
-
-
-def as_typed_mark(mark: Any) -> DecoratorType:
-    """Wrap a pytest mark so static type checkers preserve the function type.
-
-    Args:
-        mark: A pytest mark decorator such as `pytest.mark.integration`.
-
-    Returns:
-        A decorator that preserves the wrapped function's type.
-    """
-
-    def _decorator(func: AnyCallable) -> AnyCallable:
-        return cast("AnyCallable", mark(func))
-
-    return _decorator
-
-
-mark_api: DecoratorType = as_typed_mark(pytest.mark.api)
-"""Marks tests that exercise the API."""
-
-mark_cli: DecoratorType = as_typed_mark(pytest.mark.cli)
-"""Marks tests that exercise the CLI."""
-
-mark_config: DecoratorType = as_typed_mark(pytest.mark.config)
-"""Marks tests for config deserialization, path normalization, strictness,
-and layer merge behavior."""
-
-mark_dev_validation: DecoratorType = as_typed_mark(pytest.mark.dev_validation)
-"""Marks developer validation tests (e.g., registry validation)."""
-
-mark_exit_code: DecoratorType = as_typed_mark(pytest.mark.exit_code)
-"""Marks tests that pin the public CLI exit-code contract."""
-
-mark_hypothesis_slow: DecoratorType = as_typed_mark(pytest.mark.hypothesis_slow)
-"""Marks long-running property tests (skipped in CI)."""
-
-mark_integration: DecoratorType = as_typed_mark(pytest.mark.integration)
-"""Marks environment-dependent integration checks (e.g., shell completion)."""
-
-mark_pipeline: DecoratorType = as_typed_mark(pytest.mark.pipeline)
-"""Marks tests that exercise the TopMark pipeline."""
-
-mark_toml: DecoratorType = as_typed_mark(pytest.mark.toml)
-"""Marks tests for TopMark TOML loading, extraction, schema validation, and
-source resolution."""
-
-# --- Typed Wrappers ---
-
-
-def parametrize(*args: Any, **kwargs: Any) -> DecoratorType:
-    """Typed wrapper for `pytest.mark.parametrize`.
-
-    Args:
-        *args: Positional arguments forwarded to `pytest.mark.parametrize`.
-        **kwargs: Keyword arguments forwarded to `pytest.mark.parametrize`.
-
-    Returns:
-        A decorator that preserves the wrapped function's type.
-    """
-    mark: pytest.MarkDecorator = pytest.mark.parametrize(*args, **kwargs)
-    return as_typed_mark(mark)
-
-
-def hookimpl(*args: Any, **kwargs: Any) -> DecoratorType:
-    """Typed wrapper for `pytest.hookimpl`.
-
-    Args:
-        *args: Positional arguments forwarded to `pytest.hookimpl`.
-        **kwargs: Keyword arguments forwarded to `pytest.hookimpl`.
-
-    Returns:
-        A decorator that preserves the wrapped function's type.
-    """
-    return as_typed_mark(pytest.hookimpl(*args, **kwargs))
 
 
 # --- Global Autouse Fixtures ---
@@ -202,7 +119,7 @@ def reset_registry_overlays() -> Iterator[None]:
 # --- Other Fixtures ---
 
 
-@hookimpl(tryfirst=True)
+@pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:  # pylint: disable=unused-argument
     """Configure pytest settings and customize logging for the test suite.
 

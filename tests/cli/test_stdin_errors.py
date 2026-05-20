@@ -30,7 +30,6 @@ from click.testing import Result
 from tests.cli.conftest import assert_USAGE_ERROR
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
-from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 
@@ -45,7 +44,7 @@ pytestmark: pytest.MarkDecorator = pytest.mark.exit_code
 
 
 # --- Content-on-STDIN mode: missing stdin filename ---
-@parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
 def test_content_stdin_without_filename_exits_usage_error(command: str) -> None:
     """Content-on-STDIN mode without a stdin filename should exit usage error."""
     result: Result = run_cli(

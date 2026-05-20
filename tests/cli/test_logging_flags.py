@@ -21,10 +21,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_USAGE_ERROR
 from tests.cli.conftest import run_cli
-from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 # --- Supported verbosity / quiet levels ---
 
 
-@parametrize("verbosity", ["-v", "-vv", "-vvv", "-q", "-qq", "-qqq"])
+@pytest.mark.parametrize("verbosity", ["-v", "-vv", "-vvv", "-q", "-qq", "-qqq"])
 def test_config_check_accepts_supported_verbose_and_quiet_levels(verbosity: str) -> None:
     """`config check` should accept supported TEXT verbosity and quiet levels."""
     result: Result = run_cli(

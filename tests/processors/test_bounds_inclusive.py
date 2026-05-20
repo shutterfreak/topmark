@@ -70,7 +70,7 @@ mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
         ),
     ],
 )
-@mark_pipeline
+@pytest.mark.pipeline
 def test_strip_bounds_are_inclusive(
     tmp_path: Path, ext: str, header_open: str, header_line: str, header_close: str, body: str
 ) -> None:

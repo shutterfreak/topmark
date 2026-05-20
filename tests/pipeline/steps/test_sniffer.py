@@ -28,7 +28,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.conftest import parametrize
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_resolver
 from tests.helpers.pipeline import run_sniffer
@@ -149,7 +148,7 @@ def test_sniff_strict_mixed_newlines(tmp_path: Path) -> None:
 # --- Exotic Unicode separator tests ---
 
 
-@parametrize(
+@pytest.mark.parametrize(
     "separator, label",
     [
         ("\x85", "nel"),

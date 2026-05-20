@@ -30,7 +30,6 @@ import pytest
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
-from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.constants import TOPMARK_END_MARKER
@@ -77,7 +76,7 @@ def _write_file_requiring_pipeline_change(tmp_path: Path, cmd: str) -> Path:
 # --- TEXT quiet mode ---
 
 
-@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
 def test_pipeline_text_quiet_suppresses_output_but_preserves_would_change_status(
     tmp_path: Path,
     cmd: str,
@@ -101,7 +100,7 @@ def test_pipeline_text_quiet_suppresses_output_but_preserves_would_change_status
 # --- Markdown output: quiet / verbosity controls ---
 
 
-@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
 def test_pipeline_markdown_output_ignores_text_quiet(
     tmp_path: Path,
     cmd: str,
@@ -123,7 +122,7 @@ def test_pipeline_markdown_output_ignores_text_quiet(
     assert result.output.strip() != ""
 
 
-@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
 def test_pipeline_markdown_output_ignores_text_verbosity(
     tmp_path: Path,
     cmd: str,
@@ -156,7 +155,7 @@ def test_pipeline_markdown_output_ignores_text_verbosity(
     assert verbose.output == base.output
 
 
-@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
 def test_pipeline_markdown_output_always_renders_document_banner(
     tmp_path: Path,
     cmd: str,
@@ -200,7 +199,7 @@ def test_check_markdown_output_shows_hints_without_text_verbosity(tmp_path: Path
 # --- TEXT verbosity ---
 
 
-@parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
 def test_pipeline_text_verbose_changes_console_output_shape(
     tmp_path: Path,
     cmd: str,

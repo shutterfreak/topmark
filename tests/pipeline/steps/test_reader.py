@@ -30,7 +30,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests.conftest import parametrize
+import pytest
+
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import materialize_image_lines
 from tests.helpers.pipeline import run_reader
@@ -80,7 +81,7 @@ def test_read_sets_skip_on_mixed_newlines_strict(tmp_path: Path) -> None:
     return
 
 
-@parametrize("line_end", ["\r\n", "\n", "\r", ""])
+@pytest.mark.parametrize("line_end", ["\r\n", "\n", "\r", ""])
 def test_read_detects_trailing_newline_presence_param(tmp_path: Path, line_end: str) -> None:
     """Reader must record whether the file ends with a newline (parametrized)."""
     # Compose content with (or without) a trailing newline based on the parameter.
@@ -110,7 +111,7 @@ def test_read_detects_trailing_newline_presence_param(tmp_path: Path, line_end: 
     assert ctx.ends_with_newline == expected
 
 
-@parametrize("line_end, expected", [("\n", "\n"), ("\r\n", "\r\n")])
+@pytest.mark.parametrize("line_end, expected", [("\n", "\n"), ("\r\n", "\r\n")])
 def test_read_detects_consistent_newline_style(
     tmp_path: Path, line_end: str, expected: str
 ) -> None:
@@ -183,7 +184,7 @@ def test_read_detects_cr_only_newlines(tmp_path: Path) -> None:
     assert set(ctx.newline_hist.keys()) == {"\r"}
 
 
-@parametrize("line_end, expected", [("\n", "\n"), ("\r\n", "\r\n")])
+@pytest.mark.parametrize("line_end, expected", [("\n", "\n"), ("\r\n", "\r\n")])
 def test_read_histogram_dominance_for_consistent_files(
     tmp_path: Path, line_end: str, expected: str
 ) -> None:
@@ -257,7 +258,7 @@ def test_read_accepts_unicode_rich_text(tmp_path: Path) -> None:
 # --- Exotic Unicode separator tests ---
 
 
-@parametrize(
+@pytest.mark.parametrize(
     "separator, label",
     [
         ("\x85", "nel"),
@@ -471,7 +472,7 @@ def test_read_dominance_ratio_none_when_no_terminators(tmp_path: Path) -> None:
 # --- Additional focused reader tests ---
 
 
-@parametrize("line_end, expected", [("\n", "\n"), ("\r\n", "\r\n")])
+@pytest.mark.parametrize("line_end, expected", [("\n", "\n"), ("\r\n", "\r\n")])
 def test_read_only_blank_lines(tmp_path: Path, line_end: str, expected: str) -> None:
     """Reader must resolve files that contain only blank lines with a consistent newline style."""
     content: str = f"{line_end}{line_end}{line_end}"  # three blank lines

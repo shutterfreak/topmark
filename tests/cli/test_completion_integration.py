@@ -34,8 +34,6 @@ import pytest
 from click.shell_completion import BashComplete
 from click.shell_completion import CompletionItem
 
-from tests.conftest import mark_integration
-from tests.conftest import parametrize
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
@@ -117,7 +115,7 @@ def _bash_complete(args: list[str], incomplete: str) -> set[str]:
     return _normalize_completion_output(raw)
 
 
-@mark_integration
+@pytest.mark.integration
 def test_output_format_bash_completion_lists_all_values() -> None:
     """End-to-end: `--output-format` should suggest enum values via Bash adapter."""
     suggestions: set[str] = _bash_complete(
@@ -130,8 +128,8 @@ def test_output_format_bash_completion_lists_all_values() -> None:
     assert expected <= suggestions
 
 
-@mark_integration
-@parametrize(
+@pytest.mark.integration
+@pytest.mark.parametrize(
     "prefix,expected_one",
     [
         ("t", "text"),
