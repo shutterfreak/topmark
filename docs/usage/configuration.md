@@ -12,15 +12,15 @@ topmark:header:end
 
 # User configuration
 
-TopMark configuration may be provided through:
+TopMark runtime configuration may be provided through:
 
 - `topmark.toml`
 - `pyproject.toml` (`[tool.topmark]`)
 - CLI overrides
 - API overlays
 
-Configuration is resolved through layered discovery and precedence rules. Higher-precedence layers
-override lower-precedence layers.
+Configuration is resolved through layered discovery, normalization, and precedence rules.
+Higher-precedence layers override lower-precedence layers.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -38,7 +38,7 @@ machine-readable output use *canonical underscore forms*.
 {% include-markdown "\_snippets/option-spelling.md" %}
 
 Unless otherwise noted, configuration and policy values shown throughout this page use the canonical
-TOML/API/machine-readable underscore spelling.
+TOML/API/machine-readable underscore form.
 
 ______________________________________________________________________
 
@@ -48,7 +48,7 @@ ______________________________________________________________________
 
 See [file-type filtering](filtering.md#file-type-filtering) for the full identifier contract.
 
-File type identifiers participate in:
+File type identifiers participate in stable runtime behavior such as:
 
 - `include_file_types`
 - `exclude_file_types`
@@ -60,7 +60,7 @@ ______________________________________________________________________
 
 ## File-type filters
 
-File-type filters allow restricting processing to a selected subset of file types.
+File-type filters allow restricting runtime processing to a selected subset of file types.
 
 Example using local identifiers:
 
@@ -83,8 +83,9 @@ Exclude filters work the same way:
 exclude_file_types = ["topmark:yaml"]
 ```
 
-Internally, TopMark normalizes configured file type identifiers to canonical qualified keys before
-filtering, resolution, policy evaluation, diagnostics, and registry lookup.
+> [NOTE] Internally, TopMark normalizes configured file type identifiers to canonical qualified
+> identities before filtering, runtime resolution, policy evaluation, diagnostics, and registry
+> lookup.
 
 ______________________________________________________________________
 
@@ -106,10 +107,10 @@ Equivalent configuration using canonical qualified keys:
 header_mutation_mode = "update_only"
 ```
 
-Both forms are accepted when the local identifier is unambiguous.
+Both forms are accepted when the local identifier resolves unambiguously.
 
 Internally, TopMark stores and resolves per-file-type policies using canonical qualified file type
-identifiers.
+identities.
 
 ### Example: Different policy per file type
 
@@ -128,7 +129,7 @@ In this example:
 
 - the global default policy uses `add_only`
 - Python files override this with `update_only`
-- Markdown files disable content probing
+- Markdown files disable runtime content probing
 
 ______________________________________________________________________
 
@@ -158,16 +159,18 @@ include_file_types = ["topmark:python"]
 
 instead.
 
-Ambiguous identifiers are ignored diagnostically during configuration normalization and validation.
+Ambiguous identifiers are ignored diagnostically during configuration normalization and staged
+configuration-loading validation.
 
 ______________________________________________________________________
 
 ## Unknown and malformed identifiers
 
-Unknown identifiers are ignored diagnostically during configuration normalization and validation.
+Unknown identifiers are ignored diagnostically during configuration normalization and staged
+configuration-loading validation.
 
 Malformed qualified identifiers are also ignored diagnostically during configuration normalization
-and validation.
+and staged configuration-loading validation.
 
 Examples of malformed identifiers:
 
@@ -182,7 +185,7 @@ ______________________________________________________________________
 ## CLI and API parity
 
 CLI options, TOML configuration, API overlays, and runtime policy evaluation all share the same file
-type identifier semantics.
+type identity semantics.
 
 Examples:
 
@@ -200,6 +203,25 @@ api.check(
     include_file_types=["topmark:python"],
 )
 ```
+
+______________________________________________________________________
+
+## Runtime configuration model
+
+TopMark intentionally separates:
+
+- TOML-source loading
+- layered configuration discovery
+- configuration normalization
+- staged configuration-loading validation
+- runtime configuration resolution
+- runtime policy evaluation
+
+Machine-readable diagnostics and runtime behavior expose a flattened compatibility view derived from
+these internal stages.
+
+This layered model keeps runtime behavior deterministic while preserving stable configuration,
+diagnostics, and machine-readable compatibility contracts.
 
 ______________________________________________________________________
 
