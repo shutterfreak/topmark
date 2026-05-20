@@ -48,7 +48,7 @@ make venv-sync-dev
 
 # Run core quality checks and tests
 make verify     # lint, formatting, docs, links
-make test       # tox default envs
+make test       # canonical nox validation matrix
 
 # Run tests locally (current interpreter only)
 make pytest     # supports PYTEST_PAR="-n auto"
@@ -287,7 +287,7 @@ ______________________________________________________________________
 
 ## API Stability
 
-TopMark enforces a **stable public API** across Python 3.10-3.14.
+TopMark maintains a stable public 1.x API across Python 3.10-3.14.
 
 ```bash
 make api-snapshot-dev         # quick local check
@@ -325,7 +325,7 @@ TopMark uses a two-stage release pipeline:
   context, downloads the CI-built artifacts, verifies version/tag consistency and checksums, and
   publishes prereleases to TestPyPI or final releases to PyPI.
 
-This design avoids executing repository build logic in the privileged release workflow.
+This design avoids executing repository-controlled build logic in the privileged release workflow.
 
 For detailed maintainer release guidance, release architecture, prerelease handling, and
 published-artifact validation behavior, see:
@@ -407,8 +407,8 @@ TopMark uses **Semantic Versioning (SemVer)** to describe compatibility intent:
 - `feat:` → minor
 - `feat!:` or `BREAKING CHANGE:` → major
 
-Stable API: `topmark.api` and `topmark.registry.registry.Registry`\
-Advanced/internal APIs may change between minor versions.
+Stable public API surface: `topmark.api` and `topmark.registry.registry.Registry`\
+Advanced and internal APIs may evolve outside the stable public 1.x compatibility surface.
 
 ### PEP 440 and Git-tag-based versioning
 
@@ -424,7 +424,7 @@ Instead, TopMark uses **Git tags as the single source of truth**:
 - runtime version reporting uses generated package version metadata
 - release automation validates the SCM-derived artifact version against the release tag
 
-Typical release tag forms used in this project are:
+Typical release tag forms used by TopMark are:
 
 - Final releases: `vX.Y.Z`
 - Alpha releases: `vX.Y.ZaN`
@@ -452,7 +452,7 @@ Between tags, development builds may report SCM-derived versions such as:
 
 1. Update `CHANGELOG.md`.
 
-1. Commit the release-ready changes.
+1. Commit the finalized release-ready changes.
 
 1. Create and push the intended release tag:
 

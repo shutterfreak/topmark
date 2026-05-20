@@ -68,10 +68,10 @@ Read the full contributor guide on GitHub:
 [CONTRIBUTING.md](https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md)
 
 TopMark package versioning is Git-tag-driven through `setuptools-scm`. Contributor-facing release
-guidance is summarized in the root `CONTRIBUTING.md` file.
+guidance for the stable 1.x line is summarized in the root `CONTRIBUTING.md` file.
 
-The detailed maintainer release process, including the artifact trust boundary, prerelease/final
-release workflow, and post-publication validation expectations, is documented in
+The detailed maintainer release process, including the artifact trust boundary, prerelease and final
+release workflows, and post-publication validation expectations, is documented in
 [Release process](./dev/release-process.md).
 
 If you are viewing this from the published documentation site, the link above opens the same
