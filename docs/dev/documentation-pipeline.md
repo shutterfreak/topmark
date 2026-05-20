@@ -12,20 +12,21 @@ topmark:header:end
 
 # Documentation pipeline and reference hygiene
 
-This page documents how TopMark's documentation is generated, validated, and kept consistent using
-the tooling under `tools/docs/`.
+This page documents how TopMark's stable documentation is generated, validated, and kept consistent
+using the tooling under `tools/docs/`.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
-It is intended for contributors working on:
+It is intended for contributors and maintainers working on:
 
 - API documentation
 - Internal architecture docs
 - Docstring quality and reference hygiene
 - MkDocs and `mkdocs-gen-files` integration
 
-This page focuses on the documentation-generation and validation pipeline itself. Detailed writing
-conventions, workflow-page structure, heading policy, and snippet usage rules are documented in
+This page focuses on the documentation-generation and validation pipeline itself rather than general
+documentation authoring conventions. Detailed writing conventions, workflow-page structure, heading
+policy, and snippet usage rules are documented in
 [Documentation Conventions](documentation-conventions.md).
 
 ______________________________________________________________________
@@ -55,7 +56,7 @@ This pipeline supports both:
 - the stable public API documentation (`topmark.api`)
 - internal module documentation (`topmark.*`)
 
-and is aligned with TopMark's layered architecture:
+and is aligned with TopMark's layered runtime and configuration architecture:
 
 - TOML → FrozenConfig → runtime → pipeline
 
@@ -83,7 +84,7 @@ tools/docs/
 and is executed only during documentation builds.
 
 Documentation validation is also integrated into local contributor workflows, CI verification, and
-release-readiness checks through `make verify`, `nox`, and GitHub Actions.
+stable-release validation through `make verify`, `nox`, and GitHub Actions.
 
 ______________________________________________________________________
 
@@ -165,13 +166,14 @@ via:
 python -m topmark ... --output-format markdown
 ```
 
-This guarantees version-accurate CLI reference documentation.
+Generated CLI reference pages are therefore treated as derived release artifacts rather than
+handwritten documentation.
 
 ______________________________________________________________________
 
 ## Relationship to documentation conventions
 
-The documentation pipeline enforces generated-page consistency and validation behavior, while
+The documentation pipeline enforces generated-page consistency and validation behavior, while stable
 writing and structure conventions are documented separately.
 
 Authoring conventions include:
@@ -214,7 +216,7 @@ and is used identically by:
 
 ### Why this matters
 
-This ensures that documentation remains navigable and that symbol references stay valid even as
+This helps ensure that documentation remains navigable and that symbol references stay valid even as
 internal modules evolve.
 
 - `mkdocs-autorefs` can only resolve symbols that are properly linked;
@@ -243,7 +245,7 @@ ______________________________________________________________________
 
 Some backticked identifiers are intentional and should **not** be linked.
 
-These are allowed through an exact-match whitelist:
+These are allowed through an explicit exact-match whitelist:
 
 ```bash
 export TOPMARK_DOCS_NONLINKED_SYMBOLS="topmark.toml,topmark.internal_thing"
@@ -280,7 +282,7 @@ When enabled:
 - failures are aggregated and reported after processing all pages;
 - `mkdocs.exceptions.Abort` is used for clean termination.
 
-Severity parity is enforced between:
+Severity behavior remains intentionally consistent between:
 
 - `hooks.py` (Markdown scanning)
 - `gen_api_pages.py` (docstring scanning)
@@ -322,7 +324,7 @@ are:
 - Ignored by MkDocs navigation
 - Ignored by version control
 - Safe for work-in-progress documentation
-- visible when serving documentation locally (marked as draft)
+- optionally visible when serving documentation locally (marked as draft)
 
 ### Markdown snippets
 
@@ -357,7 +359,7 @@ Python code-prose hygiene is validated separately through:
 python tools/docs/check_code_hygiene.py
 ```
 
-The Markdown hygiene validation performs deterministic repository-hygiene checks for:
+The Markdown hygiene validation performs repository-hygiene checks for:
 
 - broken include paths;
 - malformed docs-root-relative include paths;
@@ -384,7 +386,7 @@ docstrings, and prose-oriented string literals under `src/topmark/`, `tests/`, a
 currently enforces ASCII-oriented punctuation hygiene for terminal-safe, deterministic, and
 copy/paste-friendly generated documentation and CLI output.
 
-These checks intentionally remain lightweight and deterministic. They reinforce repository-wide
+These checks intentionally remain lightweight and repository-focused. They reinforce repository-wide
 documentation consistency without turning every style preference into a hard release blocker.
 
 ______________________________________________________________________
@@ -394,13 +396,11 @@ ______________________________________________________________________
 The documentation tooling follows a few strict principles:
 
 - **Deterministic** - no hidden state and no reliance on import order.
-
 - **Fail-late, report-all** - especially in strict mode.
-
 - **Shared logic, single source of truth** - no duplicated include semantics, prose-hygiene rules,
   or validation heuristics.
-
-- **Documentation is code** - docstrings and Markdown are held to the same standard.
+- **Documentation is code** - docstrings, Markdown, and generated reference material are held to the
+  same standard.
 
 ______________________________________________________________________
 
@@ -413,7 +413,7 @@ ______________________________________________________________________
 - debug and strict modes provide both flexibility and CI-grade guarantees.
 
 If you change how TopMark is structured, update the documentation pipeline accordingly - it is a
-first-class part of the project.
+stable and intentionally maintained part of the project architecture.
 
 ______________________________________________________________________
 

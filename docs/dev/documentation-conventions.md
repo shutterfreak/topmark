@@ -12,8 +12,8 @@ topmark:header:end
 
 # Documentation conventions
 
-This document defines TopMark's documentation structure, terminology, reuse rules, page templates,
-and validation expectations.
+This document defines TopMark's stable documentation structure, terminology, reuse rules, page
+templates, and validation expectations for the 1.x line.
 
 These conventions apply to:
 
@@ -31,18 +31,20 @@ They intentionally favor:
 - consistency over local stylistic variation;
 - explicit structure over clever abstraction;
 - stable terminology over synonym drift;
-- small, meaningful reuse over heavy content composition.
+- local clarity over unnecessary reuse;
+- small, meaningful snippets over heavy content composition.
 
-This page documents authoring and structure conventions. It does not redefine public CLI,
-machine-readable output, configuration schema, terminology, or API contracts. Those contracts belong
-in their dedicated reference pages.
+This page defines authoring and structure conventions only. It does not redefine public CLI,
+machine-readable output, configuration schema, terminology, API, release-process, or compatibility
+contracts. Those contracts belong in their dedicated reference pages.
 
 ______________________________________________________________________
 
 ## Documentation Surfaces
 
 TopMark documentation is split across repository-facing files, generated user documentation,
-development documentation, generated reference pages, and reusable snippets.
+development documentation, generated reference pages, CI/release documentation, and reusable
+snippets.
 
 | Surface                  | Location                                                     | Primary audience             | Role                                                             |
 | ------------------------ | ------------------------------------------------------------ | ---------------------------- | ---------------------------------------------------------------- |
@@ -56,8 +58,8 @@ development documentation, generated reference pages, and reusable snippets.
 Repository-level documentation may intentionally summarize information that also appears in the
 generated documentation site because these files are often read directly on GitHub or PyPI.
 
-Keep repository-level files concise. Link to the generated documentation site or to stable
-repository documentation for deeper reference material.
+Keep repository-level files concise and release-oriented. Link to the generated documentation site
+or stable repository documentation for deeper reference material.
 
 ______________________________________________________________________
 
@@ -77,7 +79,8 @@ ______________________________________________________________________
 ```
 
 The first level-2 section on a page does not need a preceding separator when it directly follows the
-page introduction. Subsequent level-2 sections are validated by `make docs-hygiene`.
+page introduction. Subsequent level-2 sections are validated by `make docs-hygiene` for files where
+this convention applies.
 
 This convention keeps long Markdown files easier to scan and gives generated and handwritten pages a
 consistent source rhythm.
@@ -181,8 +184,8 @@ Avoid:
 See [here](machine-output.md).
 ```
 
-Use the same terminology consistently across page titles, navigation labels, inline references, and
-related-links sections.
+Use the same terminology across page titles, navigation labels, inline references, and related-links
+sections. Prefer canonical project terms unless a local distinction is intentional and documented.
 
 Preferred terms include:
 
@@ -204,11 +207,11 @@ Preferred terms include:
 
 Avoid synonym drift unless the distinction is meaningful.
 
-### Canonical terminology
+### Canonical terminology and explanations
 
 Canonical terminology belongs in [Terminology and Canonical Vocabulary](../terminology.md).
 
-Use that page as the normative reference for stable project-wide terminology such as:
+Use that page as the normative reference for stable project-wide terms such as:
 
 - qualified and local identifiers;
 - canonical identity;
@@ -218,19 +221,9 @@ Use that page as the normative reference for stable project-wide terminology suc
 - public and internal API boundaries;
 - stable, frozen, internal, deferred, and post-1.0 scope language.
 
-Other pages should prefer concise local summaries with cross-references instead of duplicating
-long-form terminology explanations.
-
-Contextual interpretation should remain local. A page may briefly explain how a canonical concept
-applies to its workflow, command, API surface, or validation path without duplicating the canonical
-definition itself.
-
-### Canonical explanations
-
-Major architectural concepts should have one canonical explanation page.
-
-Other documentation should prefer concise summaries with cross-references instead of duplicating
-long-form explanations.
+Major architectural concepts should also have one canonical explanation page. Other documentation
+should prefer concise local summaries with cross-references instead of duplicating long-form
+explanations.
 
 Examples:
 
@@ -239,6 +232,10 @@ Examples:
 - machine-readable JSON and NDJSON schemas belong in [Machine-readable output](machine-output.md);
 - output-format conventions belong in [Machine-readable format conventions](machine-formats.md);
 - public/internal API boundaries belong in [API stability and snapshot policy](api-stability.md).
+
+Contextual interpretation should remain local. A page may briefly explain how a canonical concept
+applies to its workflow, command, API surface, or validation path without duplicating the canonical
+definition itself.
 
 ### Frozen terminology
 
@@ -251,7 +248,8 @@ When referring to release stabilization, prefer explicit wording such as:
 
 - "frozen for 1.0";
 - "contract frozen for 1.0";
-- "stabilized for the 1.x series".
+- "stabilized for the 1.x series";
+- "part of the stable 1.x compatibility surface".
 
 When referring to runtime mutability, prefer "immutable" in prose unless discussing concrete types
 or APIs whose names explicitly use `Frozen`.
@@ -271,7 +269,7 @@ Use relative links for repository-native contributor or development documents:
 
 ```md
 [Contributing](docs/contributing.md)
-[Release Process](docs/dev/release-process.md)
+[Release process](docs/dev/release-process.md)
 ```
 
 Use hosted documentation links for user-facing generated documentation, generated API references,
@@ -282,7 +280,7 @@ and deep canonical reference pages:
 ```
 
 Explicitly label hosted documentation links with `(hosted docs)` in repository-static files when
-doing so improves orientation.
+that improves orientation.
 
 ______________________________________________________________________
 
@@ -403,14 +401,14 @@ Changelog entries should:
 - avoid documenting internal implementation details unless they explain a user-visible release
   consequence or maintainer-facing workflow change.
 
-These conventions are intended to become enforceable through `tools/docs/check_docs_hygiene.py`.
+These conventions are enforced where practical through `tools/docs/check_docs_hygiene.py`.
 
 ______________________________________________________________________
 
 ## Command Documentation Template
 
 Command documentation should follow a predictable structure. Consistency is more important than
-local stylistic preference.
+local stylistic preference because command pages define stable user-facing behavior.
 
 Use the following section order whenever applicable:
 
@@ -440,7 +438,8 @@ internally consistent.
 ### User-facing implementation boundaries
 
 Command usage pages should describe observable behavior, stable semantics, compatibility contracts,
-and user-facing outcomes.
+and user-facing outcomes. They should avoid implementation details unless those details are part of
+the documented public contract.
 
 Avoid exposing implementation details such as:
 
@@ -517,11 +516,11 @@ ______________________________________________________________________
 ## Workflow Documentation Template
 
 Workflow documentation pages describe GitHub workflows, their trigger model, trust boundary,
-validation scope, and maintenance responsibility.
+validation scope, artifact behavior, and maintenance responsibility.
 
 Workflow pages should be contributor-facing. They should explain when a workflow runs, what it
-validates or performs, and how maintainers can reproduce or reason about failures. They should not
-merely restate YAML structure.
+validates or performs, what trust boundary it enforces, and how maintainers can reproduce or reason
+about failures. They should not merely restate YAML structure.
 
 Use the following section order whenever applicable:
 
@@ -579,8 +578,8 @@ ______________________________________________________________________
 
 ## Docstring and Public API Documentation
 
-TopMark treats public docstrings as part of the observable API documentation, especially for public
-façades exposed through `topmark.api` and stable registry surfaces.
+TopMark treats public docstrings as part of the observable stable 1.x API documentation, especially
+for public facades exposed through `topmark.api` and stable registry surfaces.
 
 Public module, class, and function docstrings should:
 
@@ -655,9 +654,13 @@ ______________________________________________________________________
 Documentation snippets exist to reduce duplication of stable contract language. They should not be
 used merely to reduce ordinary prose repetition or replace links to canonical reference pages.
 
-Snippets are appropriate when shared wording represents a stable semantic contract, warning,
-compatibility note, or short navigation block that would be risky or noisy to maintain independently
-across multiple pages.
+Use snippets when shared wording represents a stable semantic contract, warning, compatibility note,
+or short navigation block that would be risky or noisy to maintain independently across multiple
+pages.
+
+Keep prose local when it explains how a contract applies to a specific workflow, command, API
+surface, CI path, or troubleshooting scenario. Local context is usually more readable than excessive
+content composition.
 
 ### Snippet inventory
 
@@ -693,16 +696,6 @@ Good snippet candidates include:
 A snippet is usually justified when it is used in three or more pages, or when two closely related
 sibling pages share an exact behavioral contract.
 
-For 1.0, the following semantic areas are appropriate snippet candidates when repeated verbatim:
-
-- file type identifier semantics;
-- machine-readable output guarantees;
-- TEXT verbosity and quiet-mode behavior;
-- staged config-loading strictness behavior;
-- CLI/API/configuration spelling equivalence;
-- exact report-scope behavior shared by sibling mutation commands;
-- shared canonical terminology cross-reference notes.
-
 Avoid snippets for:
 
 - page summaries;
@@ -719,24 +712,7 @@ Avoid snippets for:
 - long reference documentation;
 - prose that benefits from local adaptation.
 
-Broad lifecycle semantics and long-form canonical definitions should live in canonical reference
-pages, not snippets.
-
-### Snippet centralization strategy
-
-Use snippets only for wording that represents a stable, repeated contract.
-
-Keep prose local when it explains how a contract applies to a specific workflow, command, API
-surface, CI path, or troubleshooting scenario. Local context is usually more readable than excessive
-content composition.
-
-Prefer this balance:
-
-- snippets centralize normative wording;
-- canonical reference pages centralize long-form definitions and architectural explanations;
-- local pages explain operational context, examples, rationale, and applicability.
-
-### Snippet naming and structure
+### Snippet structure and links
 
 Snippet names should:
 
@@ -746,24 +722,17 @@ Snippet names should:
 - avoid vague names such as `common.md`, `shared.md`, or `notes.md`.
 
 Snippets should generally be context-independent. They should not assume a specific heading level,
-preceding paragraph, or command page.
-
-Snippets should avoid headings. If reusable content needs its own heading, it usually belongs in a
-canonical reference page with local cross-references.
+preceding paragraph, or command page. Snippets should avoid headings; if reusable content needs its
+own heading, it usually belongs in a canonical reference page with local cross-references.
 
 Snippets must not include other snippets.
 
 ### Snippet links
 
 Snippets may contain relative Markdown links when those links are intended to resolve from the
-including page.
-
-TopMark uses `mkdocs-include-markdown-plugin`; during MkDocs rendering, relative links inside
-included snippets are resolved against the including page context. Depth-specific snippet variants
-are therefore usually unnecessary.
-
-This makes shared note snippets such as `_snippets/terminology.md` safe to include from pages at
-different directory depths, while still rendering links relative to each consuming page.
+including page. TopMark uses `mkdocs-include-markdown-plugin`; during MkDocs rendering, relative
+links inside included snippets are resolved against the including page context. Depth-specific
+snippet variants are therefore usually unnecessary.
 
 Shared navigation snippets named `related-pages*.md` are also allowed to contain relative links when
 they centralize navigation for a tightly scoped documentation family.
@@ -810,7 +779,7 @@ ______________________________________________________________________
 ## Documentation Validation
 
 Documentation validation should prioritize structural consistency, broken-reference detection,
-navigation integrity, command synchronization, and generated-page verification.
+navigation integrity, command synchronization, generated-page verification, and prose hygiene.
 
 Automated validation includes:
 
@@ -863,7 +832,8 @@ ______________________________________________________________________
 
 ## Documentation Reuse and Duplication
 
-Documentation reuse should remain understandable to contributors.
+Documentation reuse should remain understandable to contributors and should not make pages harder to
+read in source form.
 
 Prefer:
 
@@ -874,7 +844,7 @@ Prefer:
 - local contextual summaries that explain page-specific applicability;
 - concise summaries in repository-facing documents.
 
-Avoid abstraction layers that make pages difficult to follow.
+Avoid abstraction layers that make pages difficult to follow or review.
 
 Some duplication is intentional and acceptable when it improves discoverability, onboarding, local
 readability, or contributor ergonomics.
@@ -899,12 +869,13 @@ Avoid duplicating:
 
 Do not treat every repeated concept as a snippet candidate. Repetition is acceptable when it gives a
 page-specific explanation, workflow rationale, troubleshooting advice, or command-specific context.
+When in doubt, prefer local clarity over additional snippet abstraction.
 
 ______________________________________________________________________
 
 ## Stability Expectations
 
-Documentation conventions should evolve incrementally.
+Documentation conventions should evolve incrementally during the stable 1.x line.
 
 However:
 
@@ -915,8 +886,9 @@ However:
 - generated reference URLs should avoid unnecessary churn;
 - snippet semantics should remain stable across consuming pages.
 
-Major documentation reorganizations should be avoided unless they provide substantial
-discoverability or maintainability benefits.
+Major documentation reorganizations should be avoided during stable releases unless they provide
+substantial discoverability or maintainability benefits. Prefer small, reviewable changes that keep
+the documentation tree understandable in both rendered and source form.
 
 ______________________________________________________________________
 
@@ -926,5 +898,7 @@ ______________________________________________________________________
 - [Terminology and Canonical Vocabulary](../terminology.md)
 - [API stability and snapshot policy](api-stability.md)
 - [Machine-readable output](machine-output.md)
+- [Configuration schema](configuration-schema.md)
+- [Release process](release-process.md)
 - [Test and validation architecture](../ci/test-validation.md)
 - [Contributing](../contributing.md)
