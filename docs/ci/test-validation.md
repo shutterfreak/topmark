@@ -51,6 +51,7 @@ TopMark validation favors:
 - focused pytest markers over broad naming conventions;
 - dry-run and source-tree validation before mutation or publication;
 - intentionally redundant checks where they validate different compatibility contracts.
+- coverage reporting as a diagnostic confidence signal rather than a percentage-driven release gate.
 
 For example, CI artifact generation and published artifact validation may look related, but they
 validate different things. CI validates artifacts built from the repository source tree. Published
@@ -108,6 +109,12 @@ Run the full default test suite through nox:
 
 ```bash
 nox -s qa -p 3.13
+```
+
+Generate the canonical local coverage report:
+
+```bash
+nox -s coverage -p 3.13
 ```
 
 Run only developer-validation tests:
@@ -173,6 +180,7 @@ Common mappings are:
 | Need                              | Preferred command                  |
 | --------------------------------- | ---------------------------------- |
 | Run the main quality gate         | `nox -s qa -p 3.13`                |
+| Generate canonical coverage data  | `nox -s coverage -p 3.13`          |
 | Run a marker-specific test subset | `nox -s qa -p 3.13 -- -m <marker>` |
 | Build documentation               | `nox -s docs`                      |
 | Validate documentation links      | `nox -s links`                     |
@@ -207,6 +215,14 @@ Release validation and published-artifact validation are related but distinct.
 
 This distinction is intentional and should remain explicit even when commands or workflows appear
 similar.
+
+______________________________________________________________________
+
+## Coverage reporting
+
+Coverage reporting is intentionally separate from release validation and published-artifact
+validation. Coverage is used as a lightweight diagnostic signal for repository health and test
+effectiveness, not as a publication-time compatibility contract.
 
 ______________________________________________________________________
 

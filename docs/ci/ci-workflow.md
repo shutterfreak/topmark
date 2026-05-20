@@ -85,6 +85,7 @@ ______________________________________________________________________
 | `pre-commit`        | Run configured pre-commit hooks                                       | `pre-commit`                               |
 | `docs`              | Build the documentation site in strict mode                           | `nox`, `mkdocs`                            |
 | `tests`             | Run the supported Python test matrix                                  | `nox`, `pytest`                            |
+| `coverage`          | Generate and publish canonical coverage reports                       | `nox`, `coverage.py`, `pytest`             |
 | `api-snapshot`      | Check public API stability for source-changing pull requests          | `nox`, `tools/api_snapshot.py`             |
 | `links`             | Validate links in source Markdown files                               | `lycheeverse/lychee-action`, `lychee.toml` |
 | `links-site`        | Validate links in the rendered MkDocs site, including generated pages | `mkdocs`, `lycheeverse/lychee-action`      |
@@ -93,6 +94,10 @@ ______________________________________________________________________
 Most jobs delegate validation to nox sessions so local development and CI share the same validation
 contracts and execution semantics. The test matrix runs on Python 3.10 through 3.14 with `fail-fast`
 disabled so failures on one Python version do not hide failures on others.
+
+Coverage reporting runs in a dedicated canonical job on Ubuntu with Python 3.13 using the existing
+`nox -s coverage` session. Coverage intentionally runs outside the full test matrix to avoid
+duplicating expensive QA work that is already covered by the compatibility matrix.
 
 The API snapshot check is pull-request-only and runs when Python-relevant files change. It is a fast
 guardrail for unexpected stable public API surface changes, not a replacement for the full test
@@ -112,6 +117,15 @@ ______________________________________________________________________
 ## Artifact handling
 
 The CI workflow produces release artifacts only for tag pushes matching `v*`.
+
+The workflow also publishes coverage artifacts from the dedicated `coverage` job:
+
+- an HTML coverage report;
+- XML and JSON machine-readable reports;
+- a short GitHub Step Summary.
+
+Coverage artifacts are diagnostic CI outputs only. They are not release artifacts and are not
+consumed by the release workflow.
 
 On a version-tag push, the `release-artifacts` job:
 
@@ -140,6 +154,10 @@ nox -s lint
 nox -s docstring_links
 nox -s docs
 nox -s qa -p 3.13
+```
+
+```bash
+nox -s coverage -p 3.13
 ```
 
 Run link checks with:
@@ -176,6 +194,8 @@ When editing this workflow:
 
 - update path filters when adding new source, docs, tooling, or workflow-maintenance files;
 - keep nox sessions as the canonical validation contracts where practical;
+- keep coverage reporting lightweight and diagnostic rather than turning it into a percentage-driven
+  release gate;
 - keep release artifact building in CI unless the release trust model is deliberately redesigned;
 - avoid moving package publication into this workflow;
 - keep generated-site link validation separate from source Markdown link validation;

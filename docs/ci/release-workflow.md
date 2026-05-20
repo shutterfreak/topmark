@@ -31,6 +31,10 @@ This separation keeps package publication distinct from repository-source valida
 workflow runs repository code and builds artifacts in a lower-privilege context; the release
 workflow verifies and publishes those artifacts using Trusted Publishing through OIDC.
 
+Coverage reporting is intentionally separate from the release workflow. Coverage artifacts are
+published by the CI workflow as lightweight diagnostic outputs and are not consumed by release
+publication jobs.
+
 ______________________________________________________________________
 
 ## Trigger conditions
@@ -140,7 +144,7 @@ ______________________________________________________________________
 The release workflow consumes release artifacts produced by the CI workflow. It does not build
 artifacts.
 
-Required CI artifacts are:
+Required release artifacts from CI are:
 
 | Artifact               | Purpose                                                |
 | ---------------------- | ------------------------------------------------------ |
@@ -155,6 +159,10 @@ run-id: ${{ github.event.workflow_run.id }}
 
 This ensures the release workflow publishes the artifacts produced by the exact CI run that caused
 the release workflow to start.
+
+Coverage artifacts produced by the CI workflow are intentionally excluded from the release workflow.
+HTML coverage reports and machine-readable coverage outputs are diagnostic CI artifacts, not release
+publication inputs.
 
 Before publication, the workflow verifies:
 
@@ -220,6 +228,10 @@ When preparing a release:
 Do not move artifact building into the release workflow without deliberately revisiting the release
 trust boundary. The workflow is intentionally designed so package publication does not rebuild from
 repository source code.
+
+Do not couple release publication to coverage percentages or external coverage services unless the
+project deliberately adopts coverage as a formal release-governance contract in a future major
+workflow revision.
 
 Do not suppress GitHub prerelease creation for alpha, beta, or release-candidate tags unless the
 release visibility policy is deliberately revisited. GitHub prereleases provide the public
