@@ -12,12 +12,12 @@ topmark:header:end
 
 # TopMark documentation (%%TOPMARK_VERSION%%)
 
-TopMark inspects and manages per-file headers (project/license/copyright) across codebases. It is
+TopMark inspects, inserts, updates, removes, and validates per-file headers across codebases. It is
 comment-aware, file-type-aware, and **dry-run by default** for safe CI usage.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
-TopMark provides consistent behavior and terminology across:
+TopMark provides stable and consistent behavior across:
 
 - CLI execution
 - TOML configuration
@@ -58,6 +58,8 @@ topmark probe __pycache__/example.cpython-312.pyc
 
 ### Public API quickstart
 
+TopMark also exposes a stable public Python API:
+
 ```python
 from topmark import api
 
@@ -69,18 +71,21 @@ res3 = api.check(
 )
 ```
 
+The public Python API also supports querying the registry:
+
 ```python
 from topmark.registry.registry import Registry
 
 for binding in Registry.bindings():
-    print(binding.filetype.name, bool(binding.processor))
+    bound: str = f"bound ({binding.processor.local_key})" if binding.processor else "unbound"
+    print(f"{binding.filetype.local_key} ({binding.filetype.description}): {bound}")
 ```
 
 ______________________________________________________________________
 
 ## What it does
 
-- Detects, inserts, and updates per-file headers
+- Detects, inserts, updates, validates, and removes per-file headers
 - Honors shebangs, XML declarations, and native comment styles
 - Preserves newline style (LF/CRLF/CR) and BOM
 - Provides [`strip`](usage/commands/strip.md) to remove headers (also dry-run by default)
@@ -149,7 +154,7 @@ them as CLI usage errors before runtime processing begins.
 
 ### Exit codes (overview)
 
-TopMark uses a small, stable set of exit codes suitable for CI and scripting:
+TopMark uses a small stable set of exit codes suitable for CI and scripting:
 
 - `SUCCESS (0)` - success (no changes needed or changes applied)
 - `WOULD_CHANGE (2)` - dry-run indicates changes would be made ([`check`](usage/commands/check.md),
@@ -207,7 +212,7 @@ ______________________________________________________________________
 - **XML/HTML-style**: after XML declaration/DOCTYPE when present; otherwise at top. Uses native
   comment wrapper.
 
-> For full rules, supported file types, JSON vs JSONC handling, and resolver specifics, see the
+> For full rules, supported file types, JSON vs JSONC handling, and resolution behavior, see the
 > sections in the repository README.
 >
 > [`topmark probe`](usage/commands/probe.md) can be used to understand how file types are resolved
@@ -324,4 +329,4 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-Need the canonical project introduction? See the project README on GitHub.
+For the canonical project overview and release information, see the project README on GitHub.

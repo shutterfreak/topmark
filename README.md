@@ -18,15 +18,21 @@ topmark:header:end
 [![CI](https://github.com/shutterfreak/topmark/actions/workflows/ci.yml/badge.svg)](https://github.com/shutterfreak/topmark/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/topmark/badge/?version=latest)](https://topmark.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Development Status](https://img.shields.io/badge/status-beta-orange.svg)](https://pypi.org/project/topmark/)
+[![Development Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](https://pypi.org/project/topmark/)
 [![Downloads](https://static.pepy.tech/badge/topmark)](https://pepy.tech/project/topmark)
 
 **TopMark** is a Python command-line tool and library for inspecting, inserting, updating, removing,
 and validating project file headers across diverse codebases.
 
-It helps keep license, copyright, project, and file metadata consistent by supporting multiple
-comment styles, layered configuration, dry-run safety, CI-friendly exit codes, machine-readable
-output, and transparent file-type resolution diagnostics.
+It helps keep license, copyright, project, and file metadata consistent through:
+
+- comment-aware header rendering;
+- layered configuration and policy controls;
+- dry-run-by-default safety;
+- stable CI-friendly exit codes;
+- machine-readable output formats;
+- transparent file-type resolution diagnostics;
+- and a public Python API for automation and integration.
 
 ______________________________________________________________________
 
@@ -54,7 +60,7 @@ ______________________________________________________________________
 - Machine-readable JSON, NDJSON, and Markdown output where supported
 - Stable exit-code contracts for CI and scripting
 - Public Python API for programmatic access to all CLI commands
-- Plugin architecture which enables extending support for custom file types and header processors
+- Extensible registry and processor architecture for custom file types and header processors
 - Pre-commit, CI, and Git hook friendly
 - Preserves standard newline styles, shebangs, BOMs, and file-specific comment rules
 - Strictly typed Python implementation using Pyright
@@ -143,6 +149,8 @@ ______________________________________________________________________
 ```bash
 pip install topmark
 ```
+
+TopMark stable releases are published on PyPI.
 
 ### From source (development setup)
 
@@ -458,7 +466,7 @@ tags at build time rather than maintained manually in `pyproject.toml`.
 TopMark follows Semantic Versioning for compatibility intent while Python packaging uses SCM-derived
 PEP 440 versions.
 
-Typical release tag forms are:
+Typical stable-release tag forms are:
 
 - final releases: `vX.Y.Z`
 
@@ -474,8 +482,10 @@ Build and validate artifacts locally:
 make package-check
 ```
 
-Releases are published by GitHub Actions when matching Git tags are pushed. Prereleases are
-published to TestPyPI for validation before final releases are published to PyPI.
+Releases are published by GitHub Actions when matching Git tags are pushed.
+
+- prereleases are published to TestPyPI for validation;
+- stable releases are published to PyPI.
 
 For detailed release architecture and maintainer guidance, see:
 
