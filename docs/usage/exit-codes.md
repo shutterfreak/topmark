@@ -16,7 +16,7 @@ This page defines the stable CLI exit-code contract for TopMark. These codes are
 automation, subprocess orchestration, and scripting.
 
 TopMark follows a small, consistent set of exit codes across commands, with a few command-specific
-semantic signals (notably for dry-run differences and probe-resolution status).
+semantic signals (notably for dry-run change detection and runtime-resolution status).
 
 Exit codes define the stable command-line contract for:
 
@@ -25,7 +25,7 @@ Exit codes define the stable command-line contract for:
 - editor integration
 - pre-commit hooks
 - automation and orchestration
-- machine-readable automation and subprocess execution
+- machine-readable automation and subprocess orchestration
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -34,7 +34,7 @@ Exit-code behavior is intentionally deterministic and stable across:
 - normal CLI execution
 - pre-commit execution
 - CI environments
-- API-driven subprocess orchestration workflows
+- API-driven runtime orchestration workflows
 
 ______________________________________________________________________
 
@@ -48,11 +48,11 @@ ______________________________________________________________________
 |   64 | USAGE_ERROR              | Invalid CLI usage (invalid options, incompatible flags).                                                                           |
 |   65 | ENCODING_ERROR           | Text decoding/encoding error (e.g., Unicode issues).                                                                               |
 |   66 | FILE_NOT_FOUND           | Explicit input path does not exist.                                                                                                |
-|   69 | UNSUPPORTED_FILE_TYPE    | Unsupported, unresolved, or filtered semantic outcome (primarily used by [`probe`](commands/probe.md)).                            |
+|   69 | UNSUPPORTED_FILE_TYPE    | Unsupported, unresolved, filtered, or unavailable semantic outcome (primarily used by [`probe`](commands/probe.md)).               |
 |   70 | PIPELINE_ERROR           | Internal pipeline failure or missing required processing result.                                                                   |
 |   74 | IO_ERROR                 | Read/write failure (e.g., filesystem write error).                                                                                 |
 |   77 | PERMISSION_DENIED        | Insufficient permissions (read/write).                                                                                             |
-|   78 | CONFIG_ERROR             | Configuration could not be loaded or validated for execution.                                                                      |
+|   78 | CONFIG_ERROR             | Runtime configuration could not be loaded, resolved, or validated for execution.                                                   |
 |  100 | VERSION_CONVERSION_ERROR | Version information could not be determined or converted.                                                                          |
 |  255 | UNEXPECTED_ERROR         | Unhandled exception fallback.                                                                                                      |
 
@@ -63,9 +63,28 @@ Notes:
 - Commands may short-circuit on higher-severity errors (e.g., config errors before processing).
 - Canonical file-type identifier normalization does not affect exit-code semantics.
 - Ambiguous or malformed file-type identifiers are reported diagnostically and may contribute to
-  configuration-validation or semantic-resolution outcomes depending on command behavior.
+  configuration-loading or runtime-resolution outcomes depending on command behavior.
 - Explicit missing literal paths are treated as hard input errors (66). Unmatched glob patterns are
   soft diagnostics and do not produce 66.
+
+______________________________________________________________________
+
+## Exit codes vs machine-readable output
+
+Exit codes and machine-readable output intentionally represent different compatibility layers.
+
+Exit codes communicate:
+
+- process-level runtime outcome;
+- semantic change detection;
+- configuration-loading status;
+- runtime availability and environment failures.
+
+Machine-readable JSON and NDJSON output communicate structured diagnostics, semantic outcomes,
+runtime-resolution details, and processing metadata.
+
+This separation keeps automation deterministic while preserving stable machine-readable output
+contracts independently from process exit semantics.
 
 ______________________________________________________________________
 
@@ -82,11 +101,11 @@ ______________________________________________________________________
 | Write failure during apply               |        74 |
 | CLI usage error                          |        64 |
 | Missing explicit input                   |        66 |
-| Unexpected/internal error                |  70 / 255 |
+| Unexpected or internal error             |  70 / 255 |
 
 Notes:
 
-- `2` is a semantic change signal, not an execution failure: it indicates that files would change.
+- `2` is a semantic change signal, not a runtime failure: it indicates that files would change.
 - In CI, treat `2` as "diff detected".
 - Explicit missing input paths are reported as errors (66), even if no files are selected for
   processing.
@@ -105,7 +124,7 @@ ______________________________________________________________________
 | Write failure during apply               |        74 |
 | CLI usage error                          |        64 |
 | Missing explicit input                   |        66 |
-| Unexpected/internal error                |  70 / 255 |
+| Unexpected or internal error             |  70 / 255 |
 
 Notes:
 
@@ -127,7 +146,7 @@ ______________________________________________________________________
 
 Notes:
 
-- `69` indicates partial or unavailable semantic resolution, not a runtime failure.
+- `69` indicates partial, unavailable, or filtered semantic resolution, not a runtime failure.
 - This is useful for automation that requires full resolvability.
 - Missing explicit input paths are treated as hard errors (66) and take precedence over semantic
   probe outcomes.
@@ -147,8 +166,8 @@ ______________________________________________________________________
 
 Important distinction:
 
-- Exit code `1` is not a configuration-loading or runtime failure.
-- It indicates that validation completed and found issues.
+- Exit code `1` is not a runtime configuration-loading failure.
+- It indicates that configuration validation completed and found issues.
 - Errors that prevent validation entirely use `78` (not typically surfaced here).
 
 ______________________________________________________________________
@@ -185,7 +204,7 @@ ______________________________________________________________________
 
 Notes:
 
-- These commands are purely informational and do not perform runtime file processing.
+- These commands are informational-only and do not perform runtime file processing.
 
 ______________________________________________________________________
 
@@ -209,7 +228,8 @@ Recommended handling:
 
 - Treat `0` as success.
 - Treat `2` as **non-error change signal** (for `check`/`strip`).
-- Treat `1` (from `config check`) as a validation-failure result rather than a runtime failure.
+- Treat `1` (from `config check`) as a configuration-validation result rather than a runtime
+  failure.
 - Treat `64`, `66`, `69`, `70`, `74`, `78`, `255` as errors.
 - `66` indicates explicit literal input errors (e.g., missing paths), not unmatched glob patterns.
 
@@ -226,12 +246,12 @@ ______________________________________________________________________
 ## Exit code priority (mixed results)
 
 When multiple conditions occur during a single invocation, TopMark selects the exit code based on
-the highest-priority outcome.
+the highest-priority runtime outcome.
 
 Priority order (highest to lowest):
 
-This ordering ensures deterministic behavior even when multiple independent runtime conditions occur
-during a single invocation.
+This ordering ensures deterministic behavior even when multiple independent runtime conditions and
+semantic outcomes occur during a single invocation.
 
 1. Permission errors (`77`) and other filesystem access failures
 1. Missing explicit inputs (`66`)
@@ -240,8 +260,8 @@ during a single invocation.
 1. Semantic/availability signals (`69`)
 1. Generic failures (`1`)
 
-This ensures that hard runtime or environment failures take precedence over informational or
-semantic outcomes.
+This ensures that hard runtime or environment failures take precedence over informational, semantic,
+or availability-oriented outcomes.
 
 Example:
 
@@ -262,7 +282,7 @@ ______________________________________________________________________
 ## Relationship to `--quiet`
 
 - `--quiet` **does not affect exit codes**.
-- It only suppresses human-readable TEXT output.
+- It only suppresses human-readable TEXT rendering.
 - Machine-readable JSON and NDJSON output preserve identical exit-code behavior.
 - This ensures scripts remain reliable.
 
@@ -270,7 +290,8 @@ ______________________________________________________________________
 
 ## Stability guarantee
 
-The exit-code contract defined on this page is considered stable for 1.x releases.
+The exit-code contract defined on this page is part of TopMark's stable 1.x CLI compatibility
+surface.
 
 Future changes will:
 
