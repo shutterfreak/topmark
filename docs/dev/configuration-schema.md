@@ -12,8 +12,8 @@ topmark:header:end
 
 # Configuration schema summary
 
-This page is a machine-readable summary of TopMark's external configuration schema as consumed from
-`topmark.toml` and from `[tool.topmark]` in `pyproject.toml`.
+This page summarizes TopMark's stable external configuration schema as consumed from `topmark.toml`
+and `[tool.topmark]` in `pyproject.toml`.
 
 > [!NOTE]
 >
@@ -24,8 +24,11 @@ This page is a machine-readable summary of TopMark's external configuration sche
 > TopMark internally maintains staged validation diagnostics, but public reporting, machine-readable
 > output, and API surfaces expose a flattened compatibility view.
 >
-> For 1.0, this flattened compatibility view is the stable machine-readable and API contract.
->
+> For the stable 1.x line, this flattened compatibility view is the machine-readable and API
+> compatibility contract.
+
+\\
+
 > [!NOTE]
 >
 > Human-facing TEXT verbosity (`-v`) and quiet mode (`--quiet`) are presentation-layer concerns.
@@ -52,10 +55,10 @@ machine-readable output, canonical identity, applicability, and staged diagnosti
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
-At this layer, override handling is represented as plain mapping data.
+At the configuration-schema layer, override handling is represented as plain mapping data.
 
 Internal typed runtime override objects are introduced later during CLI/API orchestration and are
-not part of the public configuration schema.
+not part of the stable external configuration schema.
 
 File type identifiers in TOML configuration may use either:
 
@@ -105,11 +108,11 @@ This reporting boundary is independent of human presentation controls: TEXT verb
 quiet mode (`--quiet`) only influence how diagnostics are rendered in console output, not how they
 are produced, staged, or exposed through machine/API interfaces.
 
-For 1.0, staged validation remains internal, while public reporting and machine/API surfaces expose
-only the flattened compatibility diagnostics contract.
+For the stable 1.x line, staged validation remains internal, while public reporting and machine/API
+surfaces expose only the flattened compatibility diagnostics contract.
 
-At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
-known sections are emitted as INFO diagnostics.
+At the TOML layer, malformed known sections are handled as warning-and-ignore diagnostics, while
+missing known sections are emitted as INFO diagnostics.
 
 This allows callers to distinguish absent sections from malformed-present sections before staged
 config-validation semantics are applied.
@@ -350,7 +353,7 @@ ______________________________________________________________________
 
 The equivalent CLI values use hyphens for the non-default modes: `add-only` and `update-only`.
 
-This policy affects only the [`check`](../usage/commands/check.md) pipeline.
+This policy affects only the [`check`](../usage/commands/check.md) pipeline behavior.
 
 It affects dry-run reporting, apply behavior, API result views, and outcome bucketing.
 
@@ -370,4 +373,4 @@ The configuration schema intentionally does not support:
 - silent ambiguity resolution
 - plugin-specific schema mutation during config loading
 
-Identifier handling remains explicit, deterministic, and ambiguity-aware.
+Identifier handling intentionally remains explicit, deterministic, and ambiguity-aware.
