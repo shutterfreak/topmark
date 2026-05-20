@@ -19,7 +19,7 @@ configuration as TOML after applying built-in defaults, discovered project/user 
 and CLI overrides.
 
 During loading, TopMark first performs whole-source TOML validation before layered configuration
-merging and runtime-applicability evaluation. Only validated layered configuration fragments
+merging and runtime applicability evaluation. Only validated layered configuration fragments
 contribute to the final runtime output.
 
 It is file-agnostic: it does not resolve or process any files.
@@ -50,7 +50,7 @@ printf "*.py\n" | topmark config dump --include-from -
 ```
 
 ```bash
-# Suppress TEXT output and rely on the exit code
+# Suppress TEXT rendering and rely on the exit code
 topmark config dump --quiet
 
 # Render document-oriented Markdown output
@@ -79,7 +79,7 @@ ______________________________________________________________________
   - `--include-from` / `--exclude-from` are honored.
   - `--include-from -` / `--exclude-from -` read patterns from STDIN.
 
-- Output is plain TOML. In TEXT output, when run with higher verbosity (e.g., `-v`), the TOML is
+- Output is plain TOML. In TEXT rendering, when run with higher verbosity (e.g., `-v`), the TOML is
   wrapped between BEGIN/END markers for easy parsing. Markdown output is document-oriented and
   ignores TEXT-oriented verbosity and quiet controls:
 
@@ -162,7 +162,7 @@ ______________________________________________________________________
 | `--relative-to`   | Base directory for relative path handling in configuration.                                         |
 | `--align-fields`  | Whether to align header fields (captured in configuration).                                         |
 | `--header-format` | Header rendering format override (captured in configuration).                                       |
-| `-q`, `--quiet`   | Suppress TEXT output while preserving the command's exit status.                                    |
+| `-q`, `--quiet`   | Suppress TEXT rendering while preserving the command's exit status.                                 |
 
 > Run `topmark config dump -h` for the full list of options and help text.
 
@@ -179,13 +179,13 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
 Notes:
 
 - `config dump` is file-agnostic and emits the effective runtime configuration after applying
-  defaults → discovered configuratin → `--config` files → CLI overrides, with whole-source TOML
+  defaults -> discovered configuratin -> `--config` files -> CLI overrides, with whole-source TOML
   validation performed per source before layered configuration merging.
 - With `--show-layers`, machine-readable output also includes a `config_provenance` payload before
   the flattened runtime configuration snapshot.
@@ -259,8 +259,8 @@ Notes:
 - This command does not process files and does not use file-processing exit codes such as
   `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 - Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
-- `--quiet` is supported for TEXT output and suppresses the rendered TOML while preserving the exit
-  status.
+- `--quiet` is supported for TEXT rendering and suppresses the rendered TOML while preserving the
+  exit status.
 - Markdown and machine-readable JSON/NDJSON output ignore TEXT-oriented quiet and verbosity
   controls.
 
@@ -272,8 +272,8 @@ ______________________________________________________________________
 
 `config dump` prints configuration; it does not render program output with per-file diagnostics.
 
-- In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
-- `--quiet` suppresses TEXT output while preserving the exit status.
+- In TEXT rendering, `-v` adds BEGIN/END markers around the TOML output.
+- `--quiet` suppresses TEXT rendering while preserving the exit status.
 - Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls.
 - Machine-readable JSON and NDJSON output ignore TEXT-oriented verbosity and quiet controls.
 

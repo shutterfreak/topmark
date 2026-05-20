@@ -38,13 +38,13 @@ topmark check --diff src/
 # Summary-only view (CI-friendly)
 topmark check --summary src/
 
-# Suppress TEXT output and rely on the exit code
+# Suppress TEXT rendering and rely on the exit code
 topmark check --quiet src/
 
 # Render document-oriented Markdown output
 topmark check --output-format markdown src/
 
-# Treat staged config-loading validation warnings as errors for this run
+# Treat staged configuration-loading validation warnings as errors for this run
 topmark check --strict src/
 
 # Read targets from stdin (one path per line) and generate unified diff output
@@ -81,8 +81,8 @@ ______________________________________________________________________
 
 Before any file processing begins, TopMark performs whole-source TOML schema validation during
 configuration loading. TOML-source diagnostics (including missing-section INFO diagnostics) are
-evaluated together with merged-config and runtime-applicability diagnostics during staged
-config-loading validation for the run.
+evaluated together with merged-config and runtime applicability diagnostics during staged
+configuration-loading validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -140,8 +140,8 @@ Notes:
 - Path-based filters are evaluated **before** file-type filters.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
-- File-type filters are normalized to canonical qualified keys before filtering, resolution, policy
-  evaluation, diagnostics, and registry lookup.
+- File-type filters are normalized to canonical qualified file type identities before filtering,
+  runtime resolution, policy evaluation, diagnostics, and registry lookup.
 - Explicit missing literal paths (for example `fubar.py`) are reported as `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns (for example `missing/**/*.py`) are treated as soft discovery diagnostics
   and do not fail `check`.
@@ -175,8 +175,8 @@ Use `--header-mutation-mode` to control mutation behavior for `check`:
 - `add-only`: insert missing headers only; existing headers are not updated
 - `update-only`: update existing headers only; missing headers are not inserted
 
-This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic outcome
-bucketing. It is a check-only policy; [`strip`](strip.md) removes existing headers and
+This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic runtime
+outcome bucketing. It is a check-only policy; [`strip`](strip.md) removes existing headers and
 [`probe`](probe.md) is read-only.
 
 Safety gates still take precedence. Malformed headers, unreadable files, unsupported files, blocked
@@ -196,8 +196,8 @@ These options control how `check` classifies empty files and whether headers may
 - `logical_empty`: true 0-byte files plus logically empty placeholders
 - `whitespace_empty`: any decoded content containing only whitespace or newlines
 
-This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic outcome
-bucketing.
+This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic runtime
+outcome bucketing.
 
 This classification is evaluated together with `--allow-header-in-empty-files`:
 
@@ -249,11 +249,11 @@ documented in [shared options](../shared-options.md) and [exit codes](../exit-co
 
 ### Shared output controls
 
-TEXT output verbosity is separate from internal logging:
+TEXT verbosity is separate from internal logging:
 
 - `-v`, `--verbose` increases TEXT output detail for `check`, such as per-line diagnostics and
   additional hints.
-- `-q`, `--quiet` suppresses TEXT output while preserving the command's exit status.
+- `-q`, `--quiet` suppresses TEXT rendering while preserving the command's exit status.
 - Markdown output is document-oriented and renders diagnostics and hints when present without
   requiring `-v`.
 - Machine-readable JSON and NDJSON output ignore TEXT-oriented verbosity and quiet controls.
@@ -261,7 +261,7 @@ TEXT output verbosity is separate from internal logging:
 Notes:
 
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
-- In TEXT output, per-line diagnostics are shown with `-v` and above.
+- In TEXT rendering, per-line diagnostics are shown with `-v` and above.
 - Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
   contract; rely on exit codes and machine-readable output for automation.
 - Diffs (`--diff`) are always human-readable only and never included in JSON or NDJSON output.
@@ -285,15 +285,16 @@ For the canonical schema, stable `kind` values, and shared conventions, see:
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine-readable output emits resolved file type identities using canonical qualified keys when
-available. Configuration payloads also emit normalized file type filters and `policy_by_type` keys.
+Machine-readable output emits resolved file type identities using canonical qualified identity
+strings when available. Configuration payloads also emit normalized file type filters and
+`policy_by_type` keys.
 
 Notes:
 
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 - The `config` payload in JSON and NDJSON is the resolved runtime configuration snapshot after
-  per-source TOML validation, layered configuration merge, staged config-loading validation, and CLI
-  override application.
+  per-source TOML validation, layered configuration merge, staged configuration-loading validation,
+  and CLI override application.
 
 ### JSON schema (detail mode)
 
@@ -338,7 +339,7 @@ or per-bucket `summary` records (summary mode):
   1. `kind="config"` (effective runtime configuration snapshot)
   1. `kind="config_diagnostics"` (**counts-only**)
   1. zero or more `kind="diagnostic"` records (each with `domain="config"`; these may originate from
-     TOML-source, merged-config, or runtime-applicability diagnostics)
+     TOML-source, merged-config, or runtime applicability diagnostics)
 - Then:
   - detail mode (no `--summary`): one `kind="result"` record per file
   - summary mode (`--summary`): one `kind="summary"` record per `(outcome, reason)` bucket
@@ -355,25 +356,25 @@ ______________________________________________________________________
 
 ## Command-specific options
 
-| Option                        | Description                                                             |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| `--apply`                     | Write changes to files (off by default).                                |
-| `--diff`                      | Show unified diffs (human output only).                                 |
-| `--summary`                   | Show outcome counts instead of per-file details.                        |
-| `-q`, `--quiet`               | Suppress TEXT output while preserving the command's exit status.        |
-| `--files-from`                | Read newline-delimited paths from file (use '-' for STDIN).             |
-| `-` (PATH)                    | Read one virtual file from STDIN content (requires `--stdin-filename`). |
-| `--include`                   | Add paths by glob (can be used multiple times).                         |
-| `--include-from`              | File of patterns to include (one per line, `#` comments allowed).       |
-| `--exclude`                   | Exclude paths by glob (can be used multiple times).                     |
-| `--exclude-from`              | File of patterns to exclude.                                            |
-| `--include-file-types` / `-t` | Restrict to local or qualified TopMark file type identifiers.           |
-| `--exclude-file-types` / `-T` | Exclude local or qualified TopMark file type identifiers.               |
-| `--report`                    | Control reporting scope: actionable, noncompliant, or all.              |
-| `--header-mutation-mode`      | Check-only policy override: `all`, `add-only`, or `update-only`.        |
-| `--empty-insert-mode`         | Check-only policy override controlling empty-file classification.       |
-| `--strict` / `--no-strict`    | Override effective configuration-validation strictness for this run.    |
-| `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).                 |
+| Option                        | Description                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `--apply`                     | Write changes to files (off by default).                                     |
+| `--diff`                      | Show unified diffs (human output only).                                      |
+| `--summary`                   | Show outcome counts instead of per-file details.                             |
+| `-q`, `--quiet`               | Suppress TEXT rendering while preserving the command's exit status.          |
+| `--files-from`                | Read newline-delimited paths from file (use '-' for STDIN).                  |
+| `-` (PATH)                    | Read one virtual file from STDIN content (requires `--stdin-filename`).      |
+| `--include`                   | Add paths by glob (can be used multiple times).                              |
+| `--include-from`              | File of patterns to include (one per line, `#` comments allowed).            |
+| `--exclude`                   | Exclude paths by glob (can be used multiple times).                          |
+| `--exclude-from`              | File of patterns to exclude.                                                 |
+| `--include-file-types` / `-t` | Restrict to local or qualified TopMark file type identifiers.                |
+| `--exclude-file-types` / `-T` | Exclude local or qualified TopMark file type identifiers.                    |
+| `--report`                    | Control reporting scope: actionable, noncompliant, or all.                   |
+| `--header-mutation-mode`      | Check-only policy override: `all`, `add-only`, or `update-only`.             |
+| `--empty-insert-mode`         | Check-only policy override controlling empty-file classification.            |
+| `--strict` / `--no-strict`    | Override effective configuration-loading validation strictness for this run. |
+| `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).                      |
 
 > Run `topmark check -h` for the full list of options and help text.
 
@@ -433,8 +434,8 @@ topmark check --summary
 ### 4) Run with strict config checking
 
 ```bash
-# Fail when staged config-loading validation warnings are present
-# (for example TOML-source, merged-config, or runtime-applicability warnings)
+# Fail when staged configuration-loading validation warnings are present
+# (for example TOML-source, merged-config, or runtime applicability warnings)
 topmark check --strict src/
 ```
 
@@ -484,7 +485,7 @@ ______________________________________________________________________
 
 - **No files to process**: Ensure you passed positional paths, or selected the correct STDIN mode
   (`--files-from -` for list mode, or `-` with `--stdin-filename` for content mode). Use `-vv` for
-  detailed TEXT output; use logging options for internal debug logs.
+  detailed TEXT rendering; use logging options for internal debug logs.
 - **Patterns do not match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
 - **File type filter does not match**: use [`topmark probe`](probe.md) to inspect resolution

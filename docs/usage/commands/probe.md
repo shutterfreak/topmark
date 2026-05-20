@@ -22,7 +22,7 @@ Instead, it exposes the resolution decision process, including:
 
 - the selected file type and processor
 - canonical resolved file type identities and qualified keys
-- the resolution status and reason
+- the runtime-resolution status and reason
 - all scored candidate file types
 - match signals (extension, filename, pattern, content probing)
 - explicit inputs filtered during discovery before file-type resolution
@@ -80,8 +80,8 @@ ______________________________________________________________________
 
 Before any file processing begins, TopMark performs whole-source TOML schema validation during
 configuration loading. TOML-source diagnostics (including missing-section INFO diagnostics) are
-evaluated together with merged-config and runtime-applicability diagnostics during staged
-config-loading validation for the run.
+evaluated together with merged-config and runtime applicability diagnostics during staged
+configuration-loading validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -113,8 +113,8 @@ results instead of silently omitting them.
 - `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
   provided as a comma-separated list.
 
-File type identifiers are normalized to canonical qualified keys before filtering, diagnostics,
-policy evaluation, and registry resolution.
+File type identifiers are normalized to canonical qualified file type identities before filtering,
+diagnostics, policy evaluation, and registry resolution.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
@@ -158,16 +158,16 @@ ______________________________________________________________________
 - Shared runtime resolution: uses the same normalization, scoring, and runtime resolution logic as
   [`check`](check.md) and [`strip`](strip.md).
 - Candidate visibility: exposes selected file type, processor, candidate scores, match signals,
-  resolution status, and resolution reason.
+  runtime-resolution status, and runtime-resolution reason.
 - Idempotency: repeated runs produce identical output for unchanged inputs.
 
 ______________________________________________________________________
 
 ## Output behavior
 
-### TEXT output
+### TEXT rendering
 
-TEXT output provides a concise summary by default, with increasing detail via verbosity:
+TEXT rendering provides a concise summary by default, with increasing detail via verbosity:
 
 - default: one-line summary per file
 - `-v`: include selected file type and processor
@@ -197,18 +197,18 @@ For the canonical schema, see:
 - [Machine-readable output](../../dev/machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 
-Probe machine-readable output emits resolved file type identities using canonical qualified keys
-when available.
+Probe machine-readable output emits resolved file type identities using canonical qualified identity
+strings when available.
 
 ### Shared output controls
 
 Output format, TEXT verbosity, quiet mode, color output, and shared exit-code behavior are
 documented in [shared options](../shared-options.md) and [exit codes](../exit-codes.md).
 
-TEXT output verbosity is separate from internal logging:
+TEXT verbosity is separate from internal logging:
 
 - `-v`, `--verbose` increases TEXT output detail for probe diagnostics.
-- `-q`, `--quiet` suppresses TEXT output while preserving the command's exit status.
+- `-q`, `--quiet` suppresses TEXT rendering while preserving the command's exit status.
 - Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls.
 - Machine-readable JSON and NDJSON output are unaffected by TEXT-oriented verbosity and quiet
   controls.
@@ -261,7 +261,7 @@ Filtered probe results may use one of the following reasons:
 
 - `excluded_by_path_filter` - excluded by path-based include/exclude rules
 - `excluded_by_file_type_filter` - excluded by file-type include/exclude rules after identifier
-  normalization to canonical qualified keys
+  normalization to canonical qualified file type identities
 - `excluded_by_discovery_filter` - excluded before probing but exact category not identified
 
 ### NDJSON
@@ -282,7 +282,7 @@ ______________________________________________________________________
 
 | Option                                               | Description                                                             |
 | ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| `-q`, `--quiet`                                      | Suppress TEXT output while preserving exit status.                      |
+| `-q`, `--quiet`                                      | Suppress TEXT rendering while preserving exit status.                   |
 | `--files-from`                                       | Read newline-delimited paths from file (use '-' for STDIN).             |
 | `-` (PATH)                                           | Read one virtual file from STDIN content (requires `--stdin-filename`). |
 | `--include`                                          | Add paths by glob.                                                      |
@@ -315,13 +315,13 @@ Common `probe` exit codes:
 
 Notes:
 
-- `UNSUPPORTED_FILE_TYPE (69)` indicates semantic resolution failure (e.g., unsupported file type or
+- `UNSUPPORTED_FILE_TYPE (69)` indicates runtime-resolution failure (e.g., unsupported file type or
   filtered input), not a crash.
 - Explicit missing literal paths are treated as hard input errors and produce `FILE_NOT_FOUND (66)`.
-- Missing explicit inputs take precedence over semantic resolution outcomes (`69`).
+- Missing explicit inputs take precedence over runtime-resolution outcomes (`69`).
 - Unmatched glob patterns are reported as filtered probe results (e.g.,
   `filtered: excluded_by_discovery_filter`) and result in `UNSUPPORTED_FILE_TYPE (69)`.
-- Ambiguous local file type identifiers may also contribute to semantic resolution outcomes unless
+- Ambiguous local file type identifiers may also contribute to runtime-resolution outcomes unless
   callers use canonical qualified identifiers such as `topmark:python`.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.

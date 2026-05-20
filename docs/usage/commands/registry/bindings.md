@@ -110,7 +110,7 @@ ______________________________________________________________________
 
 ### Brief output (default)
 
-- File type → processor binding using canonical qualified identifiers
+- File type -> processor binding using canonical qualified identifiers
 
 ### Detailed output (`--long`)
 

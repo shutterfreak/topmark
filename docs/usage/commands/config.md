@@ -45,9 +45,9 @@ API overlays follow the same identifier normalization and runtime policy-resolut
 TOML configuration and CLI filtering.
 
 TopMark performs whole-source TOML validation during loading before layered configuration merging
-and runtime-applicability evaluation. Unknown sections or keys, malformed section shapes, and
-missing known sections are reported as configuration diagnostics before staged config-validation
-semantics are applied. Only validated layered configuration fragments are passed to the
+and runtime applicability evaluation. Unknown sections or keys, malformed section shapes, and
+missing known sections are reported as configuration diagnostics before staged configuration-loading
+validation semantics are applied. Only validated layered configuration fragments are passed to the
 configuration layer for merging.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
@@ -80,9 +80,9 @@ The `config` command family reflects the same stable configuration contract used
 
 - CLI processing commands
 - API overlays
-- resolution and filtering
+- runtime resolution and filtering
 - machine-readable output
-- policy lookup
+- runtime policy lookup
 
 Configuration handling intentionally does not support:
 
@@ -114,7 +114,7 @@ See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contrac
 
 Note on output controls:
 
-- `-v` / `--verbose` applies only to TEXT output across all `config` subcommands.
+- `-v` / `--verbose` applies only to TEXT rendering across all `config` subcommands.
 - `--quiet` is supported only for commands that provide a meaningful status or inspection signal
   ([`config check`](config/check.md), [`config dump`](config/dump.md)). Pure content-producing
   commands ([`config defaults`](config/defaults.md), [`config init`](config/init.md)) do not support
@@ -126,7 +126,7 @@ provenance view reflects how configuration was built from individual TOML source
 discovered config, CLI overrides) and includes source-local TOML fragments. This includes the
 original TOML fragments (after schema validation) that contributed to each layer.
 
-Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
 ### Strictness and provenance
@@ -139,9 +139,9 @@ When running [`config check`](config/check.md), effective validation strictness 
 
 Warnings are treated as errors only when strict config checking is enabled. Identifier ambiguity,
 malformed identifiers, and runtime applicability diagnostics participate in this staged validation
-flow. For 1.0, this evaluation occurs over staged config-loading validation, while only the
-flattened compatibility diagnostics surface is exposed at CLI, API, and machine-readable output
-boundaries.
+flow. For the stable 1.x line, this evaluation occurs over staged configuration-loading validation,
+while only the flattened compatibility diagnostics surface is exposed at CLI, API, and
+machine-readable output boundaries.
 
 Note that `strict` is a **source-local TOML option**, not a layered configuration field. It
 influences validation behavior but is not part of the final merged configuration; however, it is

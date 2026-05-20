@@ -57,8 +57,8 @@ ______________________________________________________________________
 
 > **How configuration is resolved**
 >
-> TopMark merges configuration from defaults → user → project chain → `--config` → CLI. Globs are
-> evaluated relative to the **workspace base** (`relative_to`). Paths to other files (like
+> TopMark merges configuration from defaults -> user -> project chain -> `--config` -> CLI. Globs
+> are evaluated relative to the **workspace base** (`relative_to`). Paths to other files (like
 > `exclude_from`) are resolved relative to the **config file** that declared them.
 >
 > See: [Configuration discovery, precedence, and policy](../../../configuration/discovery.md).
@@ -86,8 +86,8 @@ accept file-processing inputs:
 This ensures the output always reflects only the built-in defaults, independent of any workspace
 state.
 
-No configuration discovery, project traversal, resolution and filtering, or runtime policy overlay
-evaluation occurs for this command.
+No configuration discovery, project traversal, runtime resolution and filtering, or runtime policy
+overlay evaluation occurs for this command.
 
 ______________________________________________________________________
 
@@ -100,8 +100,9 @@ for any environment-specific flags that may be available in your build.
 `--pyproject`, `--root`, color controls, and TEXT verbosity. See `topmark config defaults -h` for
 the complete command help.
 
-Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
-support `--quiet`. Markdown and machine-readable formats ignore TEXT-oriented verbosity controls.
+Note: `-v` / `--verbose` applies only to TEXT rendering. This pure content-producing command does
+not support `--quiet`. Markdown and machine-readable formats ignore TEXT-oriented verbosity
+controls.
 
 ______________________________________________________________________
 
@@ -128,7 +129,7 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
-Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
 Notes:
@@ -195,7 +196,7 @@ ______________________________________________________________________
 - [`topmark config check`](./check.md) - validate the effective runtime configuration and staged
   configuration-loading diagnostics.
 - [`topmark config dump`](./dump.md) - show the effective runtime configuration, including
-  normalized canonical file type identifiers.
+  normalized canonical file type identities.
 - [`topmark config init`](./init.md) - print the bundled example TopMark TOML template.
 
 ______________________________________________________________________

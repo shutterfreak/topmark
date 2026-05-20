@@ -44,7 +44,7 @@ ______________________________________________________________________
 
 ```bash
 topmark version
-# → <package version>
+# -> <package version>
 ```
 
 ______________________________________________________________________
@@ -67,7 +67,7 @@ Example:
 
 ```bash
 topmark version --semver
-# → 0.11.2-dev.240+gbd10c27de.d20260418
+# -> 1.0.0-rc.2.dev.23+g79ab5e745.d20260520
 ```
 
 ### PEP 440 ↔ SemVer examples
@@ -88,9 +88,9 @@ Notes:
 
 - PEP 440 uses short pre-release markers: `a` (alpha), `b` (beta), and `rc` (release candidate).
   SemVer conventionally uses `alpha`, `beta`, and `rc` in the pre-release segment.
-- Pre-releases are mapped to SemVer using a dash and dot separator (for example `1.0.0a2` →
+- Pre-releases are mapped to SemVer using a dash and dot separator (for example `1.0.0a2` ->
   `1.0.0-alpha.2`).
-- Development releases (`.devN`) are mapped to `-dev.N` (for example `1.0.0.dev6` → `1.0.0-dev.6`).
+- Development releases (`.devN`) are mapped to `-dev.N` (for example `1.0.0.dev6` -> `1.0.0-dev.6`).
 - Development versions with local build metadata (for example commit identifiers) may require a
   project-specific SemVer rendering.
 - If a version cannot be converted cleanly, TopMark falls back to the original PEP 440 string.
@@ -101,10 +101,10 @@ ______________________________________________________________________
 
 ## Command-specific options
 
-| Option            | Description                                                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------------------- |
-| `--semver`        | Render the version as SemVer instead of PEP 440 when possible (for example `rcN → -rc.N`, `devN → -dev.N`). |
-| `--output-format` | Select output format (`json`, `ndjson`, Markdown, or default human-readable TEXT output).                   |
+| Option            | Description                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| `--semver`        | Render the version as SemVer instead of PEP 440 when possible (for example `rcN -> -rc.N`, `devN -> -dev.N`). |
+| `--output-format` | Select output format (`json`, `ndjson`, Markdown, or default human-readable TEXT output).                     |
 
 See `topmark version -h` for the full list of options supported by this command.
 

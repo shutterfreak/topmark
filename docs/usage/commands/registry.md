@@ -70,8 +70,8 @@ markdown
 
 in public CLI filters and configuration when unambiguous.
 
-Registry-oriented machine-readable output and effective runtime views use canonical qualified keys
-for deterministic identity handling.
+Registry-oriented machine-readable output and effective runtime views use canonical qualified file
+type identities for deterministic identity handling.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 

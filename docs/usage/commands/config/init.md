@@ -107,7 +107,7 @@ Notes:
   emitting the machine-readable snapshot. This preserves template semantics, including TOML-authored
   runtime sections such as `[writer]`, while omitting comments and formatting.
 
-- In TEXT output, `-v` adds BEGIN/END markers around the TOML output.
+- In TEXT rendering, `-v` adds BEGIN/END markers around the TOML output.
 
 - Markdown output is document-oriented and ignores TEXT-only verbosity controls.
 
@@ -121,8 +121,9 @@ ______________________________________________________________________
 `--root`, color controls, and TEXT verbosity. See `topmark config init -h` for the complete command
 help.
 
-Note: `-v` / `--verbose` applies only to TEXT output. This pure content-producing command does not
-support `--quiet`. Markdown and machine-readable formats ignore TEXT-oriented verbosity controls.
+Note: `-v` / `--verbose` applies only to TEXT rendering. This pure content-producing command does
+not support `--quiet`. Markdown and machine-readable formats ignore TEXT-oriented verbosity
+controls.
 
 ______________________________________________________________________
 
@@ -146,7 +147,7 @@ Notes:
 - The snapshot includes TOML-authored runtime sections such as `[writer]` when they are present in
   the bundled template, even though those sections are resolved outside the layered configuration
   model at runtime.
-- Machine-readable configuration snapshots emit normalized canonical qualified file type identifiers
+- Machine-readable configuration snapshots emit normalized canonical qualified file type identities
   after configuration normalization.
 - No diagnostics are emitted for this command.
 
@@ -205,7 +206,7 @@ ______________________________________________________________________
 - [`topmark config check`](./check.md) - validate the effective runtime configuration and staged
   configuration-loading diagnostics.
 - [`topmark config dump`](./dump.md) - show the effective runtime configuration, including
-  normalized canonical file type identifiers.
+  normalized canonical file type identities.
 - [`topmark config defaults`](./defaults.md) - show TopMark's canonical built-in default TOML
   document.
 
