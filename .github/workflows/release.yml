@@ -161,6 +161,8 @@ jobs:
       is_prerelease: ${{ needs.preflight.outputs.is_prerelease }}
       channel: ${{ needs.preflight.outputs.channel }}
       release_name: ${{ needs.preflight.outputs.release_name }}
+      python_canonical: ${{ steps.python-metadata.outputs.python_canonical }}
+      python_supported: ${{ steps.python-metadata.outputs.python_supported }}
     steps:
       - name: Download dist artifacts from CI
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -193,6 +195,36 @@ jobs:
           echo "resolved version : $WANT_VERSION"
           test "$HAVE_TAG" = "$WANT_TAG" || { echo "❌ Artifact tag mismatch"; exit 1; }
           test "$HAVE_VERSION" = "$WANT_VERSION" || { echo "❌ Artifact version mismatch"; exit 1; }
+
+      - id: python-metadata
+        name: Verify Python release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s release-meta/python_canonical.txt || { echo "❌ Missing python_canonical.txt"; exit 1; }
+          test -s release-meta/python_supported.json || { echo "❌ Missing python_supported.json"; exit 1; }
+
+          PYTHON_CANONICAL="$(tr -d '\n' < release-meta/python_canonical.txt)"
+          PYTHON_SUPPORTED="$(tr -d '\n' < release-meta/python_supported.json)"
+
+          echo "canonical Python : $PYTHON_CANONICAL"
+          echo "supported Python : $PYTHON_SUPPORTED"
+
+          PYTHON_SUPPORTED="$PYTHON_SUPPORTED" python - <<'PY'
+          import json
+          import os
+
+          supported = json.loads(os.environ["PYTHON_SUPPORTED"])
+          if not isinstance(supported, list) or not supported:
+              raise SystemExit("Supported Python metadata must be a non-empty JSON list")
+          if not all(isinstance(version, str) for version in supported):
+              raise SystemExit("Supported Python metadata must contain only strings")
+          PY
+
+          {
+            echo "python_canonical=$PYTHON_CANONICAL"
+            echo "python_supported=$PYTHON_SUPPORTED"
+          } >> "$GITHUB_OUTPUT"
 
       - id: check-version
         name: Ensure SCM-derived artifact version matches tag (PEP 440)
@@ -249,6 +281,8 @@ jobs:
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ needs.details.outputs.channel }} # 'testpypi' for rc/a/b, else 'pypi'
+    env:
+      RELEASE_TOOLING_PYTHON: "3.13"
     steps:
       - name: Download dist artifacts from CI
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -270,7 +304,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: "3.13"
+          python-version: ${{ env.RELEASE_TOOLING_PYTHON }}
 
       - name: Install packaging via pip
         run: python -m pip install packaging
@@ -290,6 +324,22 @@ jobs:
           echo "resolved version : $WANT_VERSION"
           test "$HAVE_TAG" = "$WANT_TAG" || { echo "❌ Artifact tag mismatch"; exit 1; }
           test "$HAVE_VERSION" = "$WANT_VERSION" || { echo "❌ Artifact version mismatch"; exit 1; }
+
+      - name: Report CI Python metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_PYTHON="${{ env.RELEASE_TOOLING_PYTHON }}"
+          CANONICAL_PYTHON="${{ needs.details.outputs.python_canonical }}"
+
+          echo "release tooling Python : $RELEASE_PYTHON"
+          echo "canonical CI Python    : $CANONICAL_PYTHON"
+          echo "supported Python       : ${{ needs.details.outputs.python_supported }}"
+
+          if [[ "$RELEASE_PYTHON" != "$CANONICAL_PYTHON" ]]; then
+            echo "::warning::Release workflow uses Python ${RELEASE_PYTHON}, but canonical CI Python is ${CANONICAL_PYTHON}."
+          fi
 
       - name: Verify checksums
         shell: bash

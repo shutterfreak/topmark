@@ -15,9 +15,11 @@ description: >-
 
 inputs:
   python-version:
-    description: Python version to install.
+    description: >-
+      Python version to install. Workflows should pass the resolved canonical Python version when
+      running project checks, or an explicit bootstrap version when resolving metadata.
     required: false
-    default: "3.13"
+    default: "3.x"
 
 runs:
   using: composite

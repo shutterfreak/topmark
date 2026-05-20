@@ -114,9 +114,56 @@ jobs:
       - run: echo "markdown_links_changed=${{ steps.filter.outputs.markdown_links }}"
       - run: echo "precommit_changed=${{ steps.filter.outputs.precommit }}"
 
+  python-metadata:
+    name: Resolve Python metadata
+    needs: changes
+    runs-on: ubuntu-latest
+    outputs:
+      supported: ${{ steps.python-matrix.outputs.supported }}
+      canonical: ${{ steps.python-matrix.outputs.canonical }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-python-nox
+        with:
+          python-version: "3.x"
+
+      - id: python-matrix
+        name: Resolve supported Python matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          nox -s print_python_matrix | tee python-matrix.log
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import re
+          from pathlib import Path
+
+          output = Path("python-matrix.log").read_text(encoding="utf-8")
+          payload = None
+          for match in re.finditer(r"\{[^\n]*\}", output):
+              try:
+                  candidate = json.loads(match.group(0))
+              except json.JSONDecodeError:
+                  continue
+              if "supported" in candidate and "canonical" in candidate:
+                  payload = candidate
+
+          if payload is None:
+              raise SystemExit("Could not find Python metadata JSON in nox output")
+
+          supported = json.dumps(payload["supported"], separators=(",", ":"))
+          canonical = payload["canonical"]
+
+          print(f"supported={supported}")
+          print(f"canonical={canonical}")
+          PY
+
   lint:
     name: Lint
-    needs: changes
+    needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -127,7 +174,7 @@ jobs:
 
       - uses: ./.github/actions/setup-python-nox
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Lint & type-check via nox
         run: |
@@ -137,7 +184,7 @@ jobs:
 
   pre-commit:
     name: Pre-commit
-    needs: changes
+    needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.precommit_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -149,7 +196,7 @@ jobs:
       - id: setup-python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
@@ -175,7 +222,7 @@ jobs:
 
   docs:
     name: Docs
-    needs: changes
+    needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -186,7 +233,7 @@ jobs:
 
       - uses: ./.github/actions/setup-python-nox
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Build docs (strict via nox)
         run: |
@@ -195,7 +242,7 @@ jobs:
   # Build release artifacts in unprivileged CI so privileged release workflow can publish without checking out/building repo code.
   release-artifacts:
     name: Build release artifacts
-    needs: [changes, lint, pre-commit, docs, tests, coverage, links, links-site]
+    needs: [changes, python-metadata, lint, pre-commit, docs, tests, coverage, links, links-site]
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -208,7 +255,7 @@ jobs:
 
       - uses: ./.github/actions/setup-python-nox
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Build artifacts
         run: |
@@ -237,6 +284,8 @@ jobs:
           printf '%s\n' "$TAG" > release-meta/tag.txt
           printf '%s\n' "$TAG_NO_V" > release-meta/tag_no_v.txt
           printf '%s\n' "$VERSION_PEP440" > release-meta/version_pep440.txt
+          printf '%s\n' '${{ needs.python-metadata.outputs.canonical }}' > release-meta/python_canonical.txt
+          printf '%s\n' '${{ needs.python-metadata.outputs.supported }}' > release-meta/python_supported.json
           sha256sum dist/* > release-meta/SHA256SUMS
 
       - name: Upload dist artifacts
@@ -255,13 +304,13 @@ jobs:
 
   tests:
     name: Tests (${{ matrix.python-version }})
-    needs: changes
+    needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ${{ fromJSON(needs.python-metadata.outputs.supported) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -296,7 +345,7 @@ jobs:
 
   coverage:
     name: Coverage
-    needs: [changes, tests]
+    needs: [changes, python-metadata, tests]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -307,11 +356,11 @@ jobs:
 
       - uses: ./.github/actions/setup-python-nox
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Run coverage session
         run: |
-          nox -s coverage -p 3.13
+          nox -s coverage -p ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Publish coverage summary
         shell: bash
@@ -352,7 +401,7 @@ jobs:
 
   api-snapshot:
     name: API Snapshot
-    needs: changes
+    needs: [changes, python-metadata]
     if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -363,11 +412,11 @@ jobs:
 
       - uses: ./.github/actions/setup-python-nox
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
 
-      - name: Run API snapshot check (py313)
+      - name: Run API snapshot check
         run: |
-          nox -s api_snapshot -p 3.13
+          nox -s api_snapshot -p ${{ needs.python-metadata.outputs.canonical }}
 
   links:
     name: Source link check
@@ -388,7 +437,7 @@ jobs:
 
   links-site:
     name: Site link check
-    needs: changes
+    needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -398,7 +447,7 @@ jobs:
 
       - uses: ./.github/actions/setup-python-nox
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Install docs requirements
         run: |
