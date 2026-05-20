@@ -47,7 +47,7 @@ ______________________________________________________________________
 | ------------------- | --------------------- | ----------------------------------------------------------- |
 | `workflow_dispatch` | Manual maintainer run | Validate an already published package from PyPI or TestPyPI |
 
-The workflow intentionally remains manual-only. Published-package validation is usually performed
+The workflow intentionally remains manual-only. Published-package validation is typically performed
 after a prerelease or final release has already been published.
 
 ______________________________________________________________________
@@ -90,7 +90,7 @@ ______________________________________________________________________
 Example manual run:
 
 ```text
-version: 1.0.0b3
+version: 1.0.0rc1
 index: testpypi
 platform: windows-latest
 python-version: 3.11
@@ -239,7 +239,7 @@ Instead, it validates packages already published to PyPI or TestPyPI.
 
 The workflow intentionally validates the package exactly as an external consumer would install it
 from a package index. This complements the CI and release workflows, which validate and publish
-release artifacts before package-index publication.
+release artifacts before PyPI/TestPyPI publication.
 
 For TestPyPI installs, the workflow uses:
 
@@ -301,7 +301,7 @@ ______________________________________________________________________
 
 ## Maintenance notes
 
-Prefer validating prereleases on TestPyPI before final releases.
+Final stable releases should additionally be validated from PyPI after publication.
 
 When using this workflow:
 
