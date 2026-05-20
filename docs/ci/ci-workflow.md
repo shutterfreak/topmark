@@ -111,6 +111,10 @@ Canonical single-version jobs such as linting, documentation builds, coverage, A
 and release-artifact construction use the same resolved canonical Python value rather than carrying
 separate hard-coded version literals in the workflow.
 
+> [!NOTE] Shared Python/bootstrap jobs intentionally use explicit `actions/cache` ownership while
+> keeping the `setup-uv` built-in cache integration disabled. This avoids cache-reservation race
+> warnings between concurrent jobs using identical bootstrap inputs.
+
 The API snapshot check is pull-request-only and runs when Python-relevant files change. It is a fast
 guardrail for unexpected stable public API surface changes, not a replacement for the full test
 matrix.
@@ -219,7 +223,9 @@ When editing this workflow:
 - keep release artifact building in CI unless the release trust model is deliberately redesigned;
 - avoid moving package publication into this workflow;
 - keep generated-site link validation separate from source Markdown link validation;
-- keep action pins synchronized across workflows and local composite actions.
+- keep action pins synchronized across workflows and local composite actions;
+- keep uv cache ownership explicit and centralized rather than mixing `setup-uv` cache management
+  with separate `actions/cache` ownership.
 
 GitHub Actions are pinned to commit SHAs. Use the [GitHub Action pin audit](./action-pin-audit.md)
 to detect drift between workflow files and local composite actions.

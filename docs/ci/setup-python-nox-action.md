@@ -27,7 +27,7 @@ duplicating Python and tooling setup logic in multiple workflow files.
 It intentionally remains lightweight and workflow-neutral:
 
 - it installs the requested Python version;
-- it configures `uv`;
+- it configures `uv` without enabling the built-in `setup-uv` cache integration;
 - it restores and populates the `uv` cache;
 - it installs `nox` and `nox-uv`;
 - it does not execute project validation logic itself.
@@ -105,7 +105,8 @@ ______________________________________________________________________
 
 ## Cache behavior
 
-The action uses `actions/cache` to cache the `uv` package cache directory:
+The action intentionally uses explicit `actions/cache` integration to cache the `uv` package cache
+while keeping the `setup-uv` built-in cache integration disabled:
 
 ```text
 ~/.cache/uv
@@ -113,6 +114,9 @@ The action uses `actions/cache` to cache the `uv` package cache directory:
 
 The cache key includes the resolved Python version so caches remain isolated across interpreter
 versions.
+
+> [!NOTE] Keeping a single explicit cache owner avoids noisy cache-reservation race warnings when
+> multiple CI jobs run concurrently with the same bootstrap inputs.
 
 The cache is intentionally scoped to dependency/bootstrap acceleration only. It is not used to cache
 project build artifacts or workflow outputs.
@@ -150,6 +154,7 @@ When editing this action:
 - avoid embedding project validation policy inside the action;
 - keep Python-version policy controlled by workflows and nox metadata;
 - keep cache keys aligned with dependency-resolution inputs;
+- keep `setup-uv` cache ownership disabled while explicit workflow cache steps remain authoritative;
 - keep action pins synchronized with the rest of the repository workflows;
 - avoid adding project-specific release logic to this shared bootstrap layer.
 
