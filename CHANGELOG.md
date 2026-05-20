@@ -18,6 +18,253 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0b7] - 2026-05-20
+
+This seventh **1.0 beta release** focuses on final late-beta CI/release workflow stabilization,
+canonical coverage reporting integration, metadata-driven Python-version management, workflow
+bootstrap hardening, and dependency-refresh validation ahead of `1.0.0rc1`.
+
+It does not reopen frozen CLI, API, configuration, registry, probe, machine-readable output, or
+pipeline behavior contracts. Instead, it strengthens the CI, release, validation, coverage,
+workflow-bootstrap, and operational-governance surfaces around those frozen contracts by finalizing
+coverage-reporting architecture, stabilizing Python-version provenance handling, centralizing CI
+bootstrap ownership, improving release metadata diagnostics, documenting workflow boundaries, and
+validating the resulting model through real GitHub workflow runs.
+
+> [!CAUTION] **Breaking changes**
+>
+> - CI Python-version metadata is now derived dynamically through `nox -s print_python_matrix`.
+> - Canonical single-version CI jobs now consume resolved metadata rather than duplicated version
+>   literals.
+> - Shared uv cache ownership is now centralized through explicit `actions/cache` integration.
+
+### Breaking Changes - 1.0.0b7
+
+- **Metadata-driven CI Python-version resolution**
+
+  - The CI workflow now derives supported and canonical Python versions dynamically through:
+    - `nox -s print_python_matrix`
+  - Compatibility-matrix jobs and canonical single-version jobs now consume resolved metadata rather
+    than duplicated version literals embedded directly in the workflow.
+  - The shared `setup-python-nox` composite action is now workflow-neutral and no longer hard-codes
+    the canonical TopMark Python version.
+
+- **Release-tooling provenance diagnostics**
+
+  - Release publication intentionally continues to use an explicit tooling/runtime Python version.
+  - The release workflow now emits non-blocking drift warnings when the explicit release-tooling
+    Python version differs from the canonical CI Python metadata.
+
+- **Explicit uv cache ownership**
+
+  - Disabled the built-in `setup-uv` cache integration.
+  - Centralized shared uv cache ownership through explicit `actions/cache` integration.
+  - Concurrent CI jobs no longer compete for implicit uv cache ownership.
+
+### Highlights - 1.0.0b7
+
+- Added canonical CI coverage reporting through the existing `nox -s coverage` session.
+- Added GitHub Step Summary coverage reporting and published HTML/XML/JSON coverage artifacts.
+- Stabilized coverage-summary generation after multiple GitHub Actions shell/YAML edge cases.
+- Integrated coverage reporting into the late-beta release-validation workflow model while keeping
+  coverage diagnostic rather than release-blocking.
+- Added metadata-driven CI Python-version management through `nox -s print_python_matrix`.
+- Simplified Python-version management by deriving supported interpreters directly from project
+  metadata.
+- Added CI/release provenance reporting for canonical vs explicit release-tooling Python versions.
+- Added dedicated documentation for:
+  - CI workflows;
+  - release workflows;
+  - test-validation layering;
+  - install-smoke validation;
+  - and the `setup-python-nox` composite action.
+- Eliminated noisy concurrent uv cache-reservation warnings by centralizing explicit cache
+  ownership.
+- Refreshed locked dependencies within the existing supported version ranges.
+
+### Added - 1.0.0b7
+
+- **Canonical CI coverage reporting**
+
+  - Added a dedicated coverage job to the main CI workflow.
+  - Coverage runs through the existing:
+    - `nox -s coverage`
+  - Coverage executes on Ubuntu using the canonical single-version Python runtime instead of the
+    full compatibility matrix.
+  - Added GitHub Step Summary coverage reporting including:
+    - coverage percentage;
+    - covered-line count;
+    - total-statement count;
+    - and links to workflow artifacts.
+  - Added published coverage artifacts for:
+    - HTML coverage output;
+    - XML coverage reports;
+    - JSON coverage reports.
+
+- **Python metadata resolution**
+
+  - Added:
+    - `nox -s print_python_matrix`
+  - The session emits:
+    - supported Python matrix metadata;
+    - canonical single-version metadata.
+  - Added a dedicated CI metadata-resolution job that:
+    - derives compatibility-matrix interpreters;
+    - derives canonical single-version interpreters;
+    - exports metadata to downstream jobs and release workflows.
+
+- **Workflow provenance reporting**
+
+  - Added release-workflow diagnostics for:
+    - canonical CI Python version;
+    - explicit release-tooling Python version;
+    - non-blocking drift warnings.
+
+- **Workflow/bootstrap documentation**
+
+  - Added:
+    - `docs/ci/setup-python-nox-action.md`
+  - Documented:
+    - bootstrap responsibilities;
+    - cache ownership;
+    - metadata resolution;
+    - workflow neutrality;
+    - maintenance expectations.
+
+### Changed - 1.0.0b7
+
+- **Coverage workflow architecture**
+
+  - Coverage reporting now runs only after the full compatibility test matrix succeeds.
+  - Kept coverage reporting informational rather than percentage-gated.
+  - Avoided full matrix-wide coverage execution to reduce duplicated CI cost and runtime.
+
+- **CI workflow structure**
+
+  - Added explicit job names across CI and release workflows.
+  - Clarified workflow naming and sequencing around:
+    - tests;
+    - coverage;
+    - release publication;
+    - metadata reporting.
+
+- **Nox metadata handling**
+
+  - Replaced custom TOML parsing with Nox's built-in pyproject helpers.
+  - Simplified noxfile metadata handling and reduced custom parsing logic substantially.
+  - Simplified GitHub Actions metadata parsing by emitting clean JSON directly from Nox.
+
+- **Cache ownership model**
+
+  - Standardized explicit uv cache ownership through:
+    - `actions/cache`
+  - Kept `setup-uv` cache integration disabled intentionally.
+  - Reduced CI noise from concurrent cache-reservation attempts.
+
+- **CI and release documentation**
+
+  - Expanded workflow documentation for:
+    - trigger semantics;
+    - trust boundaries;
+    - metadata handling;
+    - canonical vs compatibility Python runtimes;
+    - coverage architecture;
+    - artifact publication;
+    - bootstrap/cache ownership.
+  - Updated roadmap status to reflect:
+    - finalized workflow stabilization;
+    - metadata-driven CI architecture;
+    - canonical coverage reporting;
+    - explicit cache ownership;
+    - remaining README coverage-badge deferral.
+
+- **Dependency maintenance**
+
+  - Refreshed locked dependencies including:
+    - `click`
+    - `hypothesis`
+    - `mkdocs-include-markdown-plugin`
+    - `pydoclint`
+    - `uv`
+
+### Fixed - 1.0.0b7
+
+- **Coverage summary publication failures**
+
+  - Fixed GitHub Actions shell/heredoc parsing failures during coverage-summary publication.
+  - Fixed quoting/parsing issues caused by embedded Python inside GitHub Actions YAML.
+  - Stabilized coverage-summary generation using temporary-script execution.
+
+- **CI metadata parsing drift**
+
+  - Fixed GitHub Actions metadata parsing failing because Nox prefixes normal session output.
+  - Fixed fragile inline workflow parsing by emitting clean JSON directly from:
+    - `nox -s print_python_matrix`
+
+- **Workflow cache-reservation noise**
+
+  - Fixed repeated warnings such as:
+    - `Unable to reserve cache ... another job may be creating this cache`
+  - Eliminated concurrent implicit cache writers by centralizing cache ownership explicitly.
+
+- **Workflow naming clarity**
+
+  - Fixed ambiguous workflow/job naming around coverage sequencing and release publication behavior.
+
+### Documentation - 1.0.0b7
+
+- Added dedicated documentation for the `setup-python-nox` composite action.
+- Expanded CI workflow documentation for:
+  - canonical coverage reporting;
+  - metadata-driven Python resolution;
+  - explicit uv cache ownership;
+  - workflow sequencing;
+  - release provenance reporting.
+- Expanded release-workflow documentation for:
+  - canonical vs explicit release-tooling Python runtimes;
+  - provenance diagnostics;
+  - drift warnings.
+- Expanded test-validation documentation for:
+  - canonical coverage execution;
+  - local coverage reproduction;
+  - metadata-driven Python-version handling.
+- Updated roadmap status to record:
+  - finalized CI/release workflow stabilization;
+  - explicit cache-ownership governance;
+  - metadata-driven CI architecture;
+  - validated coverage reporting integration;
+  - remaining README coverage-badge deferral.
+
+### Internal - 1.0.0b7
+
+- Preserved the existing artifact-based release architecture while strengthening workflow metadata
+  provenance and diagnostics.
+- Kept coverage reporting diagnostic-only to avoid turning percentage targets into release
+  governance.
+- Preserved explicit release-tooling Python selection for deterministic release publication while
+  surfacing metadata drift non-fatally.
+- Reduced duplicated CI-version literals by centralizing metadata resolution through Nox.
+- Simplified workflow bootstrap ownership and cache behavior.
+- Validated the finalized late-beta workflow model through real GitHub Actions runs.
+
+### Notes - 1.0.0b7
+
+- This beta primarily finalizes CI/release workflow governance and operational stabilization rather
+  than introducing new user-facing functionality.
+- Frozen 1.0 contracts for CLI behavior, configuration semantics, registry/resolution, probe
+  behavior, machine-readable output, and public API surfaces remain unchanged.
+- Coverage reporting is intentionally informational rather than release-blocking.
+- README coverage badge integration remains intentionally deferred pending longer-term signal
+  stability review.
+- Remaining work before `1.0.0rc1` should now primarily consist of:
+  - final release validation;
+  - packaging checks;
+  - published-artifact validation;
+  - ecosystem observation across real CI/release runs;
+  - and any concrete final beta feedback.
+
+______________________________________________________________________
+
 ## [1.0.0b6] - 2026-05-20
 
 This sixth **1.0 beta release** focuses on pre-RC internal typing, ownership-boundary cleanup, and
