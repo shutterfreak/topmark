@@ -20,6 +20,7 @@ TopMark provides a deterministic command-line interface supporting:
 - inspecting effective runtime configuration
 - generating starter configuration files
 - inspecting registry state and resolution decisions
+- shell tab-completion via Click-generated completion scripts
 
 The CLI is intentionally conservative:
 
@@ -27,7 +28,7 @@ The CLI is intentionally conservative:
 - mutations require `--apply`
 - unsupported files are skipped diagnostically
 - repeated runs converge to stable results
-- command help is available via `--help` / `-h`
+- command help and shell completion are available across supported platforms
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -119,9 +120,101 @@ The short form `-h` is also supported.
 
 ______________________________________________________________________
 
+## Shell tab-completion
+
+TopMark supports shell tab-completion through Click's generated completion scripts.
+
+Shell completion helps with:
+
+- command discovery
+- subcommand navigation
+- option completion
+- filesystem path completion
+
+Completion support depends on the active shell environment.
+
+### Bash (Linux/macOS)
+
+Temporary session setup:
+
+```bash
+eval "$(_TOPMARK_COMPLETE=bash_source topmark)"
+```
+
+Persistent setup:
+
+```bash
+echo 'eval "$(_TOPMARK_COMPLETE=bash_source topmark)"' >> ~/.bashrc
+```
+
+Reload the shell configuration:
+
+```bash
+source ~/.bashrc
+```
+
+### Zsh (macOS/Linux)
+
+Temporary session setup:
+
+```zsh
+eval "$(_TOPMARK_COMPLETE=zsh_source topmark)"
+```
+
+Persistent setup:
+
+```zsh
+echo 'eval "$(_TOPMARK_COMPLETE=zsh_source topmark)"' >> ~/.zshrc
+```
+
+Reload the shell configuration:
+
+```zsh
+source ~/.zshrc
+```
+
+### Fish (Linux/macOS)
+
+Install the completion script:
+
+```fish
+_TOPMARK_COMPLETE=fish_source topmark > ~/.config/fish/completions/topmark.fish
+```
+
+Fish automatically loads completion files from this directory.
+
+### PowerShell (Windows)
+
+Register completion for the current PowerShell profile:
+
+```powershell
+_TOPMARK_COMPLETE=powershell_source topmark | Out-String | Invoke-Expression
+```
+
+To persist the setup across sessions, add the command to the PowerShell profile referenced by:
+
+```powershell
+$PROFILE
+```
+
+### Completion environment variable
+
+Click-based completion uses the `_TOPMARK_COMPLETE` environment variable.
+
+Supported values include:
+
+- `bash_source`
+- `zsh_source`
+- `fish_source`
+- `powershell_source`
+
+For additional Click shell-completion details, see the upstream Click documentation.
+
+______________________________________________________________________
+
 ## Shared options
 
-Common shared options include:
+Common shared options include the following, where supported by the selected command:
 
 | Option                                        | Description                                                      |
 | --------------------------------------------- | ---------------------------------------------------------------- |
@@ -161,7 +254,7 @@ topmark check --include-file-types topmark:python src/
 topmark check --exclude-file-types markdown docs/
 ```
 
-File type filters are supported consistently across:
+File type filters behave consistently across:
 
 - CLI options
 - TOML configuration
@@ -199,8 +292,8 @@ See also:
 
 | Command                                                          | Purpose                                                                                                 |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| [`topmark check`](commands/check.md)                             | Detect missing, malformed, or outdated headers. Dry-run by default; use `--apply` to write changes.     |
-| [`topmark strip`](commands/strip.md)                             | Remove existing TopMark headers. Dry-run by default; use `--apply` to write removals.                   |
+| [`topmark check`](commands/check.md)                             | Detect missing, malformed, or outdated headers. Dry-run by default; use `--apply` to mutate files.      |
+| [`topmark strip`](commands/strip.md)                             | Remove existing TopMark headers. Dry-run by default; use `--apply` to mutate files.                     |
 | [`topmark probe`](commands/probe.md)                             | Inspect file type resolution, processor binding, filtering, and probe decisions without mutating files. |
 | [`topmark config`](commands/config.md)                           | Inspect, validate, render, and initialize TopMark configuration.                                        |
 | [`topmark config check`](commands/config/check.md)               | Check the validity of the effective runtime configuration.                                              |
@@ -233,7 +326,8 @@ Apply changes explicitly:
 topmark check --apply src/
 ```
 
-This safety model helps prevent accidental large-scale repository mutations.
+This safety model helps prevent accidental large-scale repository mutations while preserving
+preview-oriented workflows.
 
 ______________________________________________________________________
 
@@ -261,5 +355,5 @@ The CLI reports:
 - configuration validation issues
 - ambiguous or malformed file type identifiers
 
-Diagnostics are designed to remain deterministic and compatible with machine-readable output
-contracts.
+Diagnostics are designed to remain deterministic and compatible with the stable machine-readable
+output contracts.
