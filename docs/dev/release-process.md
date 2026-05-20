@@ -44,13 +44,13 @@ TopMark uses Semantic Versioning to describe compatibility intent:
 | `feat:`                        | Minor release  |
 | `feat!:` or `BREAKING CHANGE:` | Major release  |
 
-Stable compatibility guarantees apply to:
+Stable 1.x compatibility guarantees apply to:
 
 - `topmark.api`
 - `topmark.registry.registry.Registry`
 - documented machine-readable JSON and NDJSON contracts
 
-Advanced and internal APIs may evolve between minor versions.
+Advanced and internal APIs may evolve outside the stable public 1.x compatibility surface.
 
 TopMark uses PEP 440 package versions and derives package versions from Git tags through
 `setuptools-scm`. Versions are not maintained manually in `pyproject.toml`.
@@ -87,7 +87,8 @@ ______________________________________________________________________
 
 ## Release channels
 
-TopMark routes releases through normalized PEP 440 version semantics.
+TopMark routes releases through normalized PEP 440 version semantics and separate publication
+channels.
 
 | Tag         | Channel  | Purpose                      |
 | ----------- | -------- | ---------------------------- |
@@ -128,7 +129,7 @@ On version-tag pushes, CI builds and uploads release artifacts:
 - `topmark-dist`
 - `topmark-release-meta`
 
-The release workflow is triggered later through `workflow_run`. It downloads artifacts from the
+The release workflow is triggered afterward through `workflow_run`. It downloads artifacts from the
 exact CI run that triggered publication and verifies:
 
 - the CI run completed successfully;
@@ -266,7 +267,7 @@ The workflow checks:
 - public API importability;
 - basic runtime behavior.
 
-This validation complements CI.
+This validation intentionally complements CI rather than replacing it.
 
 CI validates the source tree and release artifacts before publication; published artifact validation
 checks the package-index result after publication.
@@ -333,5 +334,5 @@ TopMark's release model separates:
 Git tags are the canonical source of truth for package versions, while CI-built artifacts are the
 only artifacts eligible for publication.
 
-This separation keeps release behavior deterministic, auditable, and aligned with TopMark's stable
-1.x compatibility model.
+This separation keeps release behavior deterministic, auditable, reproducible, and aligned with
+TopMark's stable 1.x compatibility model.

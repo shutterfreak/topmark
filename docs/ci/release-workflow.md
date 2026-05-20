@@ -17,7 +17,7 @@ This page documents `.github/workflows/release.yml`.
 The release workflow is TopMark's privileged package-publishing workflow. It is triggered by a
 completed CI workflow run, verifies that the CI run corresponds to exactly one release tag,
 downloads CI-built artifacts, publishes those artifacts to PyPI or TestPyPI, and creates the
-corresponding GitHub Release or prerelease.
+corresponding GitHub release or prerelease.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -135,7 +135,7 @@ The `publish-package` job repeats critical artifact and metadata checks before p
 checksums, confirms that the target version does not already exist on the selected package index,
 and publishes with Trusted Publishing.
 
-The release workflow uses an explicit release-tooling Python version for publication helpers. It
+The release workflow uses an explicit release-tooling Python version for publication tooling. It
 reports the canonical Python version recorded by CI and emits a non-blocking warning if the release
 tooling Python drifts from that canonical CI Python. That warning is maintenance guidance only; it
 is not a publication gate.
