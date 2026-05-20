@@ -12,7 +12,7 @@ topmark:header:end
 
 # Terminology and Canonical Vocabulary
 
-This page defines the canonical terminology used throughout the TopMark documentation,
+This page defines the canonical terminology used throughout TopMark's stable documentation,
 machine-readable compatibility contracts, CLI help, and public API surfaces.
 
 The goal is to ensure stable and consistent terminology across architecture, configuration,
@@ -34,7 +34,8 @@ explicitly documented otherwise.
 
 ### Frozen
 
-Behavior, terminology, or compatibility contracts considered finalized for the 1.0 release cycle.
+Behavior, terminology, or compatibility contracts considered finalized during the 1.0 stabilization
+cycle.
 
 "Frozen" refers to release-contract stabilization rather than long-term immutability.
 
@@ -54,11 +55,11 @@ contract.
 
 ### Deferred
 
-Intentionally postponed work that is not required for the 1.0 release.
+Intentionally postponed work that is not required for the stable 1.x release contract.
 
 ### Post-1.0
 
-Work intentionally scoped beyond the 1.0 release.
+Work intentionally scoped beyond the initial 1.0 stabilization effort.
 
 ### Experimental
 
@@ -78,7 +79,7 @@ Represented by \[`FileType`\][topmark.filetypes.model.FileType].
 ### Header processor
 
 A component responsible for detecting, rendering, inserting, updating, comparing, or stripping
-headers for one or more file types.
+headers for one or more resolved file types.
 
 Represented by \[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor].
 
@@ -121,7 +122,7 @@ python
 ### Canonical identity
 
 The normalized qualified-key representation used internally for comparison, storage,
-machine-readable output, filtering, runtime policy lookup, and registry resolution.
+machine-readable output, filtering, runtime policy lookup, registry composition, and resolution.
 
 ### Namespace
 
@@ -146,7 +147,8 @@ selected bindings.
 
 > [!NOTE]
 >
-> Probe does not perform header mutation, planning, comparison, or writing.
+> Probe does not perform header mutation, mutation planning, comparison, patch generation, or
+> writing.
 
 ### Resolution engine
 
@@ -176,8 +178,8 @@ layered configuration state.
 
 ### Runtime configuration
 
-The immutable resolved configuration state consumed by runtime execution, pipelines, and policy
-evaluation.
+The immutable resolved configuration state consumed by runtime execution, pipelines, registry
+composition, and policy evaluation.
 
 ### Runtime policy evaluation
 
@@ -229,7 +231,8 @@ A single-responsibility processing unit within a pipeline.
 
 ### Preview mode
 
-A non-mutating runtime execution mode that reports intended changes without writing files.
+A non-mutating runtime execution mode that reports intended changes without mutating filesystem
+content.
 
 ### Apply mode
 
@@ -238,6 +241,11 @@ A mutating execution mode that performs filesystem writes.
 ### Idempotence
 
 The guarantee that repeated runs without source changes converge to the same result.
+
+### Mutation planning
+
+The process of determining intended header insertions, replacements, removals, or filesystem writes
+before mutating content.
 
 ______________________________________________________________________
 
@@ -268,7 +276,7 @@ structure, and semantic stability.
 
 ### Payload
 
-A concrete emitted machine-readable JSON object.
+A concrete emitted machine-readable JSON-compatible object.
 
 ### Record kind
 
@@ -279,7 +287,7 @@ The stable discriminator identifying a machine-readable NDJSON record type.
 A stable runtime classification describing the result of processing, filtering, mutation planning,
 or resolution behavior.
 
-Examples include changed, unchanged, filtered, unsupported, or unresolved outcomes.
+Examples include changed, unchanged, filtered, unsupported, blocked-policy, or unresolved outcomes.
 
 ### Collection key
 
@@ -288,7 +296,7 @@ JSON document.
 
 ### Detail level
 
-The machine-readable projection depth selected by `--long` where supported.
+The machine-readable projection depth selected by `--long` where supported by a command.
 
 ### Verbosity
 
@@ -298,13 +306,22 @@ TEXT-oriented progressive-disclosure rendering behavior selected by `-v` / `--ve
 >
 > Verbosity is separate from machine-readable projection depth.
 
+### Flattened compatibility view
+
+The stable machine-readable and API-facing projection derived from staged internal validation,
+diagnostic, or runtime-processing state.
+
+The flattened compatibility view intentionally hides stage-local implementation structure while
+preserving stable caller-facing semantics.
+
 ______________________________________________________________________
 
 ## CLI terminology
 
 ### Applicability
 
-Whether a command or option is valid in a specific command context.
+Whether a command, option, override, or policy rule is valid in a specific runtime or command
+context.
 
 ### Usage error
 
@@ -333,7 +350,7 @@ Undocumented or explicitly internal implementation details outside the compatibi
 
 ### DTO
 
-A structured data-transfer object exposed through a documented public boundary.
+A structured data-transfer object exposed through a documented stable public boundary.
 
 ### Snapshot policy
 
