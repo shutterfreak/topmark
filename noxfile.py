@@ -49,6 +49,7 @@ Common invocations:
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import sys
@@ -180,8 +181,12 @@ def get_supported_pythons() -> list[str]:
     return [CURRENT_PYTHON_VERSION]
 
 
-# Resolve versions once at startup
-PYTHONS: list[str] = get_supported_pythons()
+# Resolve versions once at startup.
+PYTHONS: Final[list[str]] = get_supported_pythons()
+
+# Canonical single-version checks use the second most recent supported Python version.
+CANONICAL_PYTHON: Final[str] = PYTHONS[-2] if len(PYTHONS) > 1 else PYTHONS[0]
+
 
 # Global options
 # Keep defaults fast; run QA (multi-Python) explicitly or in CI.
@@ -241,7 +246,17 @@ def get_git_files(session: nox.Session, *specs: str) -> list[str]:
     return out_s.splitlines() if out_s else []
 
 
-@nox.session(python=CURRENT_PYTHON_VERSION)
+@nox.session(python=False)
+def print_python_matrix(session: nox.Session) -> None:
+    """Print supported and canonical Python versions as JSON."""
+    payload = {
+        "supported": PYTHONS,
+        "canonical": CANONICAL_PYTHON,
+    }
+    session.log(json.dumps(payload, sort_keys=True))
+
+
+@nox.session(python=CANONICAL_PYTHON)
 def package_check(session: nox.Session) -> None:
     """Build sdist/wheel and validate distribution metadata (twine).
 
@@ -444,7 +459,7 @@ def test_entrypoints(session: nox.Session) -> None:
     )
 
 
-@nox.session(python=CURRENT_PYTHON_VERSION)
+@nox.session(python=CANONICAL_PYTHON)
 def coverage(session: nox.Session) -> None:
     """Run tests with coverage and generate reports."""
     session.install("-e", DEPS_DEV)
@@ -723,7 +738,7 @@ def property_test(session: nox.Session) -> None:
     )
 
 
-@nox.session(python=CURRENT_PYTHON_VERSION)
+@nox.session(python=CANONICAL_PYTHON)
 def release_check(session: nox.Session) -> None:
     """Release gate: quality + docs + packaging checks (single Python, offline-friendly).
 
