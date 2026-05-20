@@ -63,7 +63,7 @@ Supported release tags include final and prerelease forms such as:
 
 | Tag          | Channel  | Notes                                   |
 | ------------ | -------- | --------------------------------------- |
-| `v1.0.0`     | PyPI     | Final release                           |
+| `v1.0.0`     | PyPI     | Stable release                          |
 | `v1.0.0rc1`  | TestPyPI | Release candidate                       |
 | `v1.0.0-rc1` | TestPyPI | Legacy compatibility form (with hyphen) |
 | `v1.0.0a1`   | TestPyPI | Alpha release                           |
@@ -140,9 +140,9 @@ reports the canonical Python version recorded by CI and emits a non-blocking war
 tooling Python drifts from that canonical CI Python. That warning is maintenance guidance only; it
 is not a publication gate.
 
-Final releases also check that the new version is newer than the latest final version on PyPI.
-Prereleases skip that final-version ordering check, publish to TestPyPI, and create GitHub
-prereleases; final releases publish to PyPI and create normal GitHub releases.
+Stable releases also check that the new version is newer than the latest stable version on PyPI.
+Prereleases skip that stable-version ordering check, publish to TestPyPI, and create GitHub
+prereleases; stable releases publish to PyPI and create normal GitHub releases.
 
 ______________________________________________________________________
 
@@ -185,6 +185,22 @@ The Python metadata is release provenance from the CI run that built the artifac
 by the release workflow, but it does not control the privileged release job's tooling runtime.
 
 This artifact-only design is a core part of the release security model.
+
+______________________________________________________________________
+
+## Release publication model
+
+TopMark intentionally separates:
+
+1. source-tree validation in CI;
+1. release artifact construction in CI;
+1. release metadata and checksum verification;
+1. package-index publication through Trusted Publishing;
+1. GitHub release or prerelease creation;
+1. post-publication validation through the published artifact validation workflow.
+
+This layered publication model keeps repository-source execution out of the privileged publishing
+context while preserving deterministic artifact provenance for the stable 1.x release line.
 
 ______________________________________________________________________
 
@@ -238,7 +254,7 @@ When preparing a release:
 
 For user-facing prerelease installation instructions, see
 [`INSTALL.md`](https://github.com/shutterfreak/topmark/blob/main/INSTALL.md). For post-publication
-matrix validation of prereleases from TestPyPI, use the
+matrix validation from TestPyPI or PyPI, use the
 [Published artifact validation workflow](./published-artifact-validation.md).
 
 Do not move artifact building into the release workflow without deliberately revisiting the release

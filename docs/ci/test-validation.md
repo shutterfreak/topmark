@@ -33,12 +33,28 @@ validation path.
 The preferred mental model is:
 
 ```text
-GitHub workflow → nox session → pytest selection or tool command
+GitHub workflow -> nox session -> pytest selection or tool command
 ```
 
 Some workflows intentionally duplicate setup steps instead of sharing a local composite action. This
 keeps security-sensitive workflow boundaries explicit, especially around release artifacts and
 privileged publishing.
+
+______________________________________________________________________
+
+## Validation model
+
+TopMark intentionally separates:
+
+1. local developer shortcuts;
+1. nox validation contracts;
+1. pytest marker selection;
+1. source-tree CI validation;
+1. release artifact validation;
+1. published-package validation.
+
+This layered validation model keeps stable local commands, CI workflows, release checks, and
+published-artifact validation aligned without collapsing them into one monolithic command.
 
 ______________________________________________________________________
 
@@ -65,17 +81,17 @@ ______________________________________________________________________
 
 Pytest markers are declared in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
-| Marker            | Purpose                                                                                     | CI expectation                                       |
-| ----------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `api`             | Tests that exercise the public API.                                                         | Included in normal test runs.                        |
-| `cli`             | Tests that exercise the command-line interface.                                             | Included in normal test runs.                        |
-| `config`          | Tests for config deserialization, path normalization, strictness, and layer merge behavior. | Included in normal test runs.                        |
-| `dev_validation`  | Developer validation tests for internal invariants such as registry consistency.            | Included in normal test runs.                        |
-| `exit_code`       | Tests that validate the CLI exit-code contract.                                             | Included in normal test runs.                        |
-| `hypothesis_slow` | Long-running property tests.                                                                | Skipped in CI unless explicitly selected.            |
-| `integration`     | Environment-dependent integration checks, such as shell completion.                         | Run selectively where the environment supports them. |
-| `pipeline`        | Tests that exercise the processing pipeline.                                                | Included in normal test runs.                        |
-| `toml`            | Tests for TopMark TOML loading, extraction, schema validation, and source resolution.       | Included in normal test runs.                        |
+| Marker            | Purpose                                                                                            | CI expectation                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `api`             | Tests that exercise the public API.                                                                | Included in normal test runs.                        |
+| `cli`             | Tests that exercise the command-line interface.                                                    | Included in normal test runs.                        |
+| `config`          | Tests for configuration deserialization, path normalization, strictness, and layer merge behavior. | Included in normal test runs.                        |
+| `dev_validation`  | Developer validation tests for internal invariants such as registry consistency.                   | Included in normal test runs.                        |
+| `exit_code`       | Tests that validate the CLI exit-code contract.                                                    | Included in normal test runs.                        |
+| `hypothesis_slow` | Long-running property tests.                                                                       | Skipped in CI unless explicitly selected.            |
+| `integration`     | Environment-dependent integration checks, such as shell completion.                                | Run selectively where the environment supports them. |
+| `pipeline`        | Tests that exercise the processing pipeline.                                                       | Included in normal test runs.                        |
+| `toml`            | Tests for TopMark TOML loading, extraction, schema validation, and source resolution.              | Included in normal test runs.                        |
 
 ______________________________________________________________________
 
@@ -93,7 +109,7 @@ Typical examples include:
 Example:
 
 ```python
-from tests.conftest import mark_dev_validation
+import pytest
 
 @pytest.mark.dev_validation
 def test_registered_processors_map_to_existing_filetypes() -> None:
@@ -172,7 +188,7 @@ ______________________________________________________________________
 
 Developer-validation checks include:
 
-- **Registry integrity**: every registered header processor maps to an existing canonical `FileType`
+- **Registry integrity**: every registered header processor maps to an existing canonical file type
   identity.
 - **Placement strategy for XML/HTML**: processors based on `XmlHeaderProcessor` must signal the
   character-offset strategy by returning `NO_LINE_ANCHOR` from `get_header_insertion_index()`.

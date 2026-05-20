@@ -15,7 +15,8 @@ topmark:header:end
 This page documents `.github/workflows/action-pin-audit.yml` and `tools/ci/audit_action_pins.py`.
 
 TopMark includes a dedicated maintenance workflow and repository tool for auditing GitHub Action
-version pin consistency across workflow files and local composite actions.
+version pin consistency across workflow files and local composite actions before the stable release
+path depends on them.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -46,7 +47,8 @@ The audit helps prevent:
 - accidental divergence after Dependabot updates;
 - hidden maintenance drift inside local actions.
 
-The workflow intentionally complements Dependabot rather than attempting to replace it.
+The workflow intentionally complements Dependabot rather than attempting to replace it, keeping
+manual review and CI validation as the final dependency-governance gate.
 
 ______________________________________________________________________
 
@@ -123,10 +125,10 @@ ______________________________________________________________________
 
 ## Artifact handling
 
-This workflow does not produce, consume, or publish build artifacts.
+This workflow does not produce, consume, or publish build or release artifacts.
 
-The audit validates repository consistency only and does not participate in package publication or
-artifact validation.
+The audit validates repository consistency only and does not participate in package publication,
+release artifact validation, or published artifact validation.
 
 ______________________________________________________________________
 
@@ -189,7 +191,7 @@ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 The SHA is the actual execution target. The trailing version comment is retained only for human
 readability and maintenance review.
 
-When updating pinned GitHub Actions:
+When updating pinned GitHub Actions for the stable release workflow set:
 
 1. update workflow files;
 1. update local composite actions;

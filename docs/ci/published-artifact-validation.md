@@ -37,7 +37,7 @@ This helps detect issues such as:
 - TestPyPI or PyPI dependency-resolution issues;
 - platform-specific installation failures;
 - missing console entry points;
-- public API import failures.
+- stable public API import failures.
 
 ______________________________________________________________________
 
@@ -90,8 +90,8 @@ ______________________________________________________________________
 Example manual run:
 
 ```text
-version: 1.0.0rc1
-index: testpypi
+version: 1.0.0
+index: pypi
 platform: windows-latest
 python-version: 3.11
 log-level: DEBUG
@@ -102,7 +102,7 @@ Supported package indexes are:
 | Value      | Meaning                                               |
 | ---------- | ----------------------------------------------------- |
 | `testpypi` | Validate prereleases or staged releases from TestPyPI |
-| `pypi`     | Validate final releases from PyPI                     |
+| `pypi`     | Validate stable releases from PyPI                    |
 
 Supported platform selections are:
 
@@ -227,13 +227,28 @@ These checks validate:
 - probe pipeline behavior;
 - basic pipeline execution;
 - importability of the installed package;
-- public API availability.
+- stable public API availability.
+
+______________________________________________________________________
+
+## Published package validation model
+
+TopMark intentionally separates:
+
+1. repository source-tree validation;
+1. CI-built release artifact validation;
+1. package-index publication;
+1. clean-environment installation from PyPI or TestPyPI;
+1. installed CLI and public API smoke validation.
+
+This layered model validates what users install without depending on repository-local source code,
+editable installs, or unpublished artifacts.
 
 ______________________________________________________________________
 
 ## Artifact handling
 
-This workflow does not produce, consume, or publish build artifacts.
+This workflow does not produce, consume, or publish build or release artifacts.
 
 Instead, it validates packages already published to PyPI or TestPyPI.
 
@@ -270,7 +285,7 @@ The closest local reproduction workflow is:
 python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  "topmark==1.0.0rc1"
+  "topmark==1.0.0"
 ```
 
 followed by representative CLI validation commands:
@@ -301,12 +316,12 @@ ______________________________________________________________________
 
 ## Maintenance notes
 
-Final stable releases should additionally be validated from PyPI after publication.
+Stable releases should be validated from PyPI after publication.
 
 When using this workflow:
 
 - use the exact version published by the release workflow;
-- validate prereleases from TestPyPI before publishing finals to PyPI;
+- validate prereleases from TestPyPI before publishing stable releases to PyPI;
 - use restricted platform or Python-version subsets when reproducing platform-specific failures;
 - temporarily enable `DEBUG` or `TRACE` runtime logging when diagnosing installed-package runtime
   behavior;

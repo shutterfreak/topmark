@@ -13,8 +13,8 @@ topmark:header:end
 # CI and validation
 
 TopMark uses a deliberately explicit CI and validation structure. GitHub workflows provide
-orchestration, nox sessions define reusable validation contracts, pytest markers describe validation
-intent, and Makefile targets provide local developer shortcuts.
+orchestration, nox sessions define stable reusable validation contracts, pytest markers describe
+validation intent, and Makefile targets provide local developer shortcuts.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -78,6 +78,21 @@ Use this family of pages as follows:
 | How do we validate packages after publication?                   | [Published artifact validation](./published-artifact-validation.md) |
 | How are dependency updates handled?                              | [Dependabot](./dependabot.md)                                       |
 | How do we audit GitHub Action pin consistency?                   | [GitHub Action pin audit](./action-pin-audit.md)                    |
+
+______________________________________________________________________
+
+## CI and release validation model
+
+TopMark intentionally separates:
+
+1. repository source-tree validation;
+1. dependency and GitHub Action maintenance;
+1. release artifact construction in CI;
+1. privileged artifact publication;
+1. post-publication package validation from PyPI or TestPyPI.
+
+This layered model keeps source validation, artifact production, package publication, and
+published-package validation in distinct trust boundaries for the stable 1.x release line.
 
 ______________________________________________________________________
 

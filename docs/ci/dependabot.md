@@ -15,7 +15,7 @@ topmark:header:end
 This page documents `.github/dependabot.yml`.
 
 TopMark uses Dependabot to keep GitHub Actions and Python dependencies current while preserving
-reproducibility, reviewability, and supply-chain safety.
+reproducibility, reviewability, and supply-chain safety for the stable release workflow set.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -174,11 +174,11 @@ The roles are:
 
 The committed lockfile remains the canonical dependency-resolution source.
 
-TopMark also uses Git-based versioning through `setuptools-scm`:
+TopMark also uses Git-tag-driven versioning through `setuptools-scm`:
 
 - package versions are derived from Git tags;
 - no manual package-version updates are performed in `pyproject.toml`;
-- dependency updates do not directly affect package versioning.
+- dependency updates do not directly affect published package versioning.
 
 When reviewing Dependabot PRs:
 

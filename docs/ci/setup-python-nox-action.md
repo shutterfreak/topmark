@@ -103,6 +103,21 @@ deriving its privileged runtime from repository-source metadata.
 
 ______________________________________________________________________
 
+## Bootstrap trust boundary
+
+TopMark intentionally keeps this composite action limited to:
+
+1. Python installation;
+1. uv installation;
+1. explicit uv cache restoration and persistence;
+1. nox/nox-uv bootstrap.
+
+Project validation, release artifact creation, package publication, and published-package validation
+remain owned by the calling workflows and nox sessions. This keeps the shared bootstrap layer stable
+without turning it into a hidden validation or release-policy surface.
+
+______________________________________________________________________
+
 ## Cache behavior
 
 The action intentionally uses explicit `actions/cache` integration to cache the `uv` package cache
@@ -119,7 +134,7 @@ versions.
 > multiple CI jobs run concurrently with the same bootstrap inputs.
 
 The cache is intentionally scoped to dependency/bootstrap acceleration only. It is not used to cache
-project build artifacts or workflow outputs.
+project build artifacts, release artifacts, or workflow outputs.
 
 ______________________________________________________________________
 

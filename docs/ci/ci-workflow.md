@@ -23,7 +23,7 @@ pushes to `main`, and version-tag pushes before release publication consumes CI-
 
 The CI workflow validates that the repository source tree is healthy before changes are merged or
 released. It checks formatting, linting, typing, documentation integrity, link integrity, test
-behavior, and public API stability.
+behavior, and stable public API compatibility.
 
 The workflow also builds release artifacts on version-tag pushes. This is intentional: release
 artifacts are built in the unprivileged CI workflow and later consumed by the privileged release
@@ -92,11 +92,11 @@ ______________________________________________________________________
 | `links-site`        | Validate links in the rendered MkDocs site, including generated pages | `mkdocs`, `lycheeverse/lychee-action`      |
 | `release-artifacts` | Build and upload release artifacts for version tags                   | `uv build`, `actions/upload-artifact`      |
 
-Most jobs delegate validation to nox sessions so local development and CI share the same validation
-contracts and execution semantics. The `python-metadata` job resolves supported Python versions and
-the canonical single-version Python from project metadata through `nox -s print_python_matrix`. The
-test matrix consumes that supported-version list with `fail-fast` disabled so failures on one Python
-version do not hide failures on others.
+Most jobs delegate validation to nox sessions so local development and CI share the same stable
+validation contracts and execution semantics. The `python-metadata` job resolves supported Python
+versions and the canonical single-version Python from project metadata through
+`nox -s print_python_matrix`. The test matrix consumes that supported-version list with `fail-fast`
+disabled so failures on one Python version do not hide failures on others.
 
 Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolved canonical Python
 version and the existing `nox -s coverage` session. Coverage intentionally runs outside the full
@@ -137,7 +137,7 @@ The CI workflow produces release artifacts only for tag pushes matching `v*`.
 The workflow also publishes coverage artifacts from the dedicated `coverage` job:
 
 - an HTML coverage report;
-- XML and JSON machine-readable reports;
+- XML and JSON machine-readable coverage reports;
 - a short GitHub Step Summary with a coverage overview and artifact notice.
 
 Coverage artifacts are diagnostic CI outputs only. They are not release artifacts and are not
@@ -158,6 +158,23 @@ tag context. CI does not publish the package itself.
 This artifact handoff is part of the release trust-boundary model. Artifact creation happens where
 repository code is already expected to run; publication happens later in a privileged workflow that
 does not rebuild the project from repository source code.
+
+______________________________________________________________________
+
+## CI validation model
+
+TopMark intentionally separates:
+
+1. source-tree validation;
+1. supported Python-version discovery;
+1. canonical single-version validation jobs;
+1. compatibility test-matrix execution;
+1. diagnostic coverage reporting;
+1. release artifact construction;
+1. privileged artifact publication in the downstream release workflow.
+
+This layered CI model keeps repository validation, release artifact creation, and package
+publication in separate trust boundaries while preserving stable local/CI validation contracts.
 
 ______________________________________________________________________
 
@@ -214,7 +231,7 @@ failed from the job name and log output.
 When editing this workflow:
 
 - update path filters when adding new source, docs, tooling, or workflow-maintenance files;
-- keep nox sessions as the canonical validation contracts where practical;
+- keep nox sessions as the canonical stable validation contracts where practical;
 - keep Python-version metadata sourced from `pyproject.toml` through `nox -s print_python_matrix`;
 - keep the coverage job canonical and lightweight rather than instrumenting the full compatibility
   matrix;
