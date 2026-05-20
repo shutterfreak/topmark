@@ -21,10 +21,12 @@ topmark:header:end
 [![Development Status](https://img.shields.io/badge/status-beta-orange.svg)](https://pypi.org/project/topmark/)
 [![Downloads](https://static.pepy.tech/badge/topmark)](https://pepy.tech/project/topmark)
 
-**TopMark** is a command-line tool to inspect, insert, validate, and manage file headers in diverse
-codebases.\
-It maintains consistent metadata across files by supporting multiple comment styles, configuration
-formats, dry-run safety, and transparent resolution diagnostics.
+**TopMark** is a Python command-line tool and library for inspecting, inserting, updating, removing,
+and validating project file headers across diverse codebases.
+
+It helps keep license, copyright, project, and file metadata consistent by supporting multiple
+comment styles, layered configuration, dry-run safety, CI-friendly exit codes, machine-readable
+output, and transparent file-type resolution diagnostics.
 
 ______________________________________________________________________
 
