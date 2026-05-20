@@ -30,7 +30,8 @@ ______________________________________________________________________
 
 ## Quick install (users)
 
-Install TopMark from PyPI:
+Stable releases are published on [PyPI](https://pypi.org/project/topmark/). Install TopMark from
+PyPI:
 
 ```bash
 pip install topmark
@@ -48,7 +49,8 @@ ______________________________________________________________________
 
 ## Install a prerelease from TestPyPI
 
-Prereleases are published to TestPyPI before final PyPI publication. To test a prerelease:
+Prereleases are published to [TestPyPI](https://test.pypi.org/project/topmark/) before stable PyPI
+publication. To test a prerelease:
 
 ```bash
 python -m pip install \
@@ -225,7 +227,7 @@ ______________________________________________________________________
 
 Releases are triggered by pushing a Git tag.
 
-**Release candidate:**
+**Release candidate / prerelease:**
 
 ```bash
 git tag vX.Y.ZrcN
@@ -281,10 +283,10 @@ twine upload dist/*
 twine upload --repository testpypi dist/*
 ```
 
-Releases are typically published by CI when you push a tag (see `CONTRIBUTING.md` for details).
+Releases are normally published by CI when you push a tag (see `CONTRIBUTING.md` for details).
 
-TopMark uses **Git tags as the single source of truth** for package versions. Versions are derived
-at build time via `setuptools-scm`, and built artifacts include generated version metadata.
+TopMark uses **Git tags as the single source of truth** for published package versions. Versions are
+derived at build time via `setuptools-scm`, and built artifacts include generated version metadata.
 
 ______________________________________________________________________
 

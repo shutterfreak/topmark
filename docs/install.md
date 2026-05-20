@@ -13,7 +13,8 @@ topmark:header:end
 # Installation guide
 
 This page exists to preserve internal documentation links when the MkDocs site is built in strict
-mode. The canonical installation guide lives at the repository root (`INSTALL.md`).
+mode. The canonical installation and development-environment guide lives at the repository root
+(`INSTALL.md`).
 
 👉 **Read the canonical installation guide on GitHub:**
 
