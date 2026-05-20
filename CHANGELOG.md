@@ -18,6 +18,187 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0rc1] - 2026-05-20
+
+This first **1.0 release candidate** marks the transition from late-beta stabilization into final
+release-candidate validation for TopMark's 1.0 release line.
+
+The release-candidate phase is now focused on compatibility preservation, packaging validation,
+published-artifact verification, ecosystem observation, and release-blocking fixes only. It does not
+reopen frozen CLI, API, configuration, registry, probe, machine-readable output, pipeline, or policy
+contracts.
+
+`1.0.0rc1` primarily consolidates the stabilization work completed across the beta series by:
+
+- finalizing the RC governance roadmap;
+- extracting the detailed 1.0 stabilization history into a dedicated historical document;
+- improving PyPI package discoverability and onboarding clarity;
+- simplifying pytest marker usage after improved typing support;
+- documenting prerelease installation guidance through TestPyPI;
+- and tightening final release-process documentation ahead of `1.0.0`.
+
+> [!CAUTION] **Breaking changes**
+>
+> - The temporary typed pytest marker/decorator wrapper layer has been removed.
+> - Tests now consistently use direct native `pytest.mark.*` decorators and pytest APIs.
+> - Project metadata, release documentation, and roadmap governance were finalized for the RC phase.
+
+### Breaking Changes - 1.0.0rc1
+
+- **Typed pytest wrapper removal**
+
+  - Removed the temporary typed pytest helper layer from:
+    - `tests/conftest.py`
+  - Tests now consistently use native pytest decorators directly:
+    - `pytest.mark.*`
+    - `pytest.mark.parametrize`
+    - `pytest.hookimpl`
+  - Removed the local typed wrapper helpers:
+    - `parametrize()`
+    - `hookimpl()`
+  - Existing pytest marker names and selection behavior remain unchanged.
+
+- **Roadmap and stabilization-document restructuring**
+
+  - Refactored `docs/dev/roadmap.md` into a concise RC-governance and release-readiness document.
+  - Extracted the historical alpha/beta stabilization narrative into:
+    - `docs/dev/road-to-1.0.md`
+  - Remaining roadmap scope is now explicitly limited to:
+    - compatibility preservation;
+    - release validation;
+    - ecosystem observation;
+    - release-blocking fixes.
+
+### Highlights - 1.0.0rc1
+
+- Finalized the split between active RC governance and historical stabilization documentation.
+- Added the dedicated:
+  - `docs/dev/road-to-1.0.md` historical stabilization narrative.
+- Refined project metadata and README onboarding/discoverability ahead of final release.
+- Simplified pytest marker/decorator usage after improved typing-environment support.
+- Added canonical prerelease installation guidance through TestPyPI.
+- Finalized RC-oriented release-process and published-artifact validation documentation.
+- Preserved all frozen 1.0 CLI, API, configuration, registry, probe, pipeline, and machine-readable
+  output contracts.
+
+### Added - 1.0.0rc1
+
+- **Historical stabilization reference**
+
+  - Added:
+    - `docs/dev/road-to-1.0.md`
+  - Documented:
+    - alpha stabilization themes;
+    - beta validation goals;
+    - contract-freeze philosophy;
+    - CI/release maturation;
+    - documentation-governance evolution;
+    - coverage-governance rationale;
+    - release-validation hardening.
+
+- **Prerelease installation guidance**
+
+  - Added canonical TestPyPI prerelease installation instructions to:
+    - `INSTALL.md`
+  - Added cross-references from release and validation documentation to the canonical install
+    guidance.
+
+### Changed - 1.0.0rc1
+
+- **RC governance posture**
+
+  - Condensed the roadmap's:
+    - breaking-changes ledger;
+    - remaining-work sections;
+    - readiness checklist;
+    - release-governance wording.
+  - Clarified the distinction between:
+    - stabilization history;
+    - RC governance;
+    - post-1.0 deferrals.
+
+- **PyPI package discoverability**
+
+  - Refined `pyproject.toml` metadata and classifiers.
+  - Expanded project keywords around:
+    - file-header management;
+    - CI automation;
+    - developer tooling;
+    - validation workflows.
+  - Improved README onboarding language and discoverability wording.
+
+- **Pytest usage consistency**
+
+  - Standardized tests on direct native pytest decorator usage.
+  - Removed obsolete local typing workarounds after improved typing-environment support.
+
+- **Release documentation**
+
+  - Updated release-process and published-artifact validation documentation for:
+    - RC terminology;
+    - prerelease installation;
+    - validation sequencing;
+    - release-governance clarity.
+
+### Fixed - 1.0.0rc1
+
+- **Typing-workaround drift**
+
+  - Removed obsolete typed pytest wrappers that were no longer needed after improved typing support.
+  - Reduced decorator indirection and simplified test readability.
+
+- **Roadmap/documentation drift**
+
+  - Fixed stale roadmap wording that still described future extraction of stabilization history
+    after the historical document had already been created.
+  - Clarified RC-phase wording around:
+    - contract freezes;
+    - compatibility preservation;
+    - release governance.
+
+- **Prerelease-installation discoverability**
+
+  - Fixed missing canonical user-facing guidance for installing prereleases from TestPyPI.
+
+### Documentation - 1.0.0rc1
+
+- Added the dedicated `Road to TopMark 1.0` historical stabilization document.
+- Refactored the active roadmap into a concise RC-governance reference.
+- Updated release-process documentation for prerelease installation and RC validation flow.
+- Updated published-artifact validation examples for the `1.0.0rc1` release-candidate path.
+- Expanded README onboarding and project-discovery wording.
+- Expanded package metadata and classifiers for improved PyPI discoverability.
+- Updated testing documentation to remove obsolete typed pytest wrapper examples.
+
+### Internal - 1.0.0rc1
+
+- Preserved all frozen 1.0 contracts established during the alpha and beta stabilization series.
+- Continued emphasizing coverage as a confidence-building signal rather than a release gate.
+- Preserved the existing artifact-based CI/release publication architecture.
+- Kept published-artifact validation external to release gating while maintaining it as a mandatory
+  RC-validation activity.
+- Reduced local testing indirection by removing obsolete pytest typing helper layers.
+
+### Notes - 1.0.0rc1
+
+- This release candidate intentionally avoids introducing new user-facing functionality.
+- The focus is final release validation, packaging verification, ecosystem observation, and
+  release-blocking fixes only.
+- CLI behavior, configuration semantics, registry/resolution behavior, probe semantics,
+  machine-readable output contracts, and pipeline behavior remain frozen.
+- Coverage reporting remains intentionally informational rather than percentage-gated.
+- Published-artifact validation should be executed against the `1.0.0rc1` TestPyPI artifacts before
+  final `1.0.0` release approval.
+- Unless concrete release blockers are identified, the remaining path to `1.0.0` should now be
+  limited to:
+  - release-candidate feedback;
+  - compatibility preservation;
+  - ecosystem observation;
+  - packaging validation;
+  - and narrowly scoped release-blocking fixes.
+
+______________________________________________________________________
+
 ## [1.0.0b7] - 2026-05-20
 
 This seventh **1.0 beta release** focuses on final late-beta CI/release workflow stabilization,
