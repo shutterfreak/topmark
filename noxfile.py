@@ -53,139 +53,22 @@ import json
 import os
 import pathlib
 import sys
-import warnings
-from typing import TYPE_CHECKING
 from typing import Any
 from typing import Final
-from typing import cast
 
 import nox
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+# Resolve supported Python versions once at startup from project metadata.
+PYPROJECT: Final[dict[str, Any]] = nox.project.load_toml("pyproject.toml")
+PYTHONS: Final[list[str]] = nox.project.python_versions(PYPROJECT)
 
-# Handle TOML parsing based on Python version or available libraries
-
-if sys.version_info >= (3, 11):
-    # tomllib is available since Python version 3.11
-    import tomllib
-
-    _toml_loads = cast("Callable[[str], dict[str, Any]]", tomllib.loads)  # type: ignore[assignment]
-else:
-    # Python < 3.11: no stdlib `tomllib`.
-    #
-    # This noxfile is imported by the *host interpreter* running `nox` (outside any session venv).
-    # `tomli` is a dependency of nox itself, so it is available in CI and in any environment where
-    # nox is installed. Some editors may still flag this import if their selected interpreter
-    # doesn’t have nox installed, so we silence Pyright for this line.
-    #
-    # This is not a TopMark runtime dependency, it’s a tooling/bootstrap dependency.
-    import tomli  # pyright: ignore[reportMissingImports]
-
-    _toml_loads = cast("Callable[[str], dict[str, Any]]", tomli.loads)  # type: ignore[assignment]
+# Canonical single-version checks use the second most recent supported Python version.
+CANONICAL_PYTHON: Final[str] = PYTHONS[-2] if len(PYTHONS) > 1 else PYTHONS[0]
 
 CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1]}"
 
 DEPS_DEV: Final[str] = ".[dev,typing,test]"
 DEPS_DOCS: Final[str] = ".[docs]"
-
-# --- Dynamic Python Version Resolution ---
-
-
-def _parse_pyproject_toml() -> dict[str, Any]:
-    """Parse `pyproject.toml` using stdlib TOML parsing.
-
-    This runs at **noxfile import time**, so it must not depend on project
-    runtime dependencies.
-
-    Returns:
-        dict[str, Any]: Parsed TOML document (top-level table).
-    """
-    path: pathlib.Path = pathlib.Path(__file__).parent / "pyproject.toml"
-    if not path.exists():
-        return {}
-
-    data: str = path.read_text(encoding="utf-8")
-
-    # Handle TOML parsing based on Python version or available libraries
-    try:
-        parsed: dict[str, Any] = _toml_loads(data)
-    except ValueError:
-        # tomllib.loads raises TOMLDecodeError, which is a subclass of ValueError
-        return {}
-
-    return parsed
-
-
-def get_supported_pythons() -> list[str]:
-    """Resolve supported Python versions from `pyproject.toml` classifiers.
-
-    Returns:
-        list[str]: Supported versions like ["3.10", "3.11", ...], sorted.
-    """
-    doc: dict[str, Any] = _parse_pyproject_toml()
-    project_any = doc.get("project")
-
-    # Error checking for missing project table
-    if not isinstance(project_any, dict):
-        warnings.warn(
-            "Could not find 'project' table in pyproject.toml. "
-            f"Falling back to Python {CURRENT_PYTHON_VERSION}.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return [CURRENT_PYTHON_VERSION]
-
-    project: dict[str, Any] = cast("dict[str, Any]", project_any)
-
-    classifiers_any = project.get("classifiers")
-    if not isinstance(classifiers_any, list):
-        warnings.warn(
-            "Could not find 'classifiers' in pyproject.toml. "
-            f"Falling back to Python {CURRENT_PYTHON_VERSION}.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return [CURRENT_PYTHON_VERSION]
-
-    classifiers: list[str] = cast("list[str]", classifiers_any)
-
-    prefix = "Programming Language :: Python :: "
-    versions: list[str] = []
-
-    for c in classifiers:
-        if not c.startswith(prefix):
-            continue
-        v: str = c.removeprefix(prefix).strip()
-        # Accept only X.Y numeric versions.
-        parts: list[str] = v.split(".")
-        if len(parts) != 2 or not all(p.isdigit() for p in parts):
-            continue
-        versions.append(f"{int(parts[0])}.{int(parts[1])}")
-
-    # Sort numerically ("3.10" after "3.9", etc.)
-    def _key(s: str) -> tuple[int, int]:
-        major_s, minor_s = s.split(".")
-        return int(major_s), int(minor_s)
-
-    out: list[str] = sorted(set(versions), key=_key)
-    if out:
-        return out
-
-    warnings.warn(
-        "No Python versions found in classifiers. "
-        f"Falling back to Python {CURRENT_PYTHON_VERSION}.",
-        RuntimeWarning,
-        stacklevel=2,
-    )
-    return [CURRENT_PYTHON_VERSION]
-
-
-# Resolve versions once at startup.
-PYTHONS: Final[list[str]] = get_supported_pythons()
-
-# Canonical single-version checks use the second most recent supported Python version.
-CANONICAL_PYTHON: Final[str] = PYTHONS[-2] if len(PYTHONS) > 1 else PYTHONS[0]
 
 
 # Global options
@@ -253,7 +136,7 @@ def print_python_matrix(session: nox.Session) -> None:
         "supported": PYTHONS,
         "canonical": CANONICAL_PYTHON,
     }
-    session.log(json.dumps(payload, sort_keys=True))
+    print(json.dumps(payload, sort_keys=True))  # noqa: T201
 
 
 @nox.session(python=CANONICAL_PYTHON)

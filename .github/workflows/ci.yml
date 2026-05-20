@@ -135,29 +135,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          nox -s print_python_matrix | tee python-matrix.log
-          python - <<'PY' >> "$GITHUB_OUTPUT"
+          MATRIX_JSON="$(nox -s print_python_matrix)"
+          MATRIX_JSON="$MATRIX_JSON" python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
-          import re
-          from pathlib import Path
+          import os
 
-          output = Path("python-matrix.log").read_text(encoding="utf-8")
-          payload = None
-          for match in re.finditer(r"\{[^\n]*\}", output):
-              try:
-                  candidate = json.loads(match.group(0))
-              except json.JSONDecodeError:
-                  continue
-              if "supported" in candidate and "canonical" in candidate:
-                  payload = candidate
-
-          if payload is None:
-              raise SystemExit("Could not find Python metadata JSON in nox output")
-
-          supported = json.dumps(payload["supported"], separators=(",", ":"))
+          payload = json.loads(os.environ["MATRIX_JSON"])
+          supported = payload["supported"]
           canonical = payload["canonical"]
 
-          print(f"supported={supported}")
+          if not isinstance(supported, list) or not supported:
+              raise SystemExit("Supported Python metadata must be a non-empty JSON list")
+          if not all(isinstance(version, str) for version in supported):
+              raise SystemExit("Supported Python metadata must contain only strings")
+          if not isinstance(canonical, str) or not canonical:
+              raise SystemExit("Canonical Python metadata must be a non-empty string")
+
+          print(f"supported={json.dumps(supported, separators=(',', ':'))}")
           print(f"canonical={canonical}")
           PY
 
