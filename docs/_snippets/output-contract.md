@@ -13,5 +13,5 @@ topmark:header:end
 > [!NOTE]
 >
 > - Verbosity (`-v` / `--verbose`) affects only TEXT rendering.
-> - Quiet mode (`-q` / `--quiet`) suppresses TEXT output for commands that support it.
+> - Quiet mode (`-q` / `--quiet`) suppresses TEXT rendering for commands that support it.
 > - Markdown and machine-readable output are not affected by TEXT verbosity controls.

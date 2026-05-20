@@ -10,8 +10,8 @@ topmark:header:start
 topmark:header:end
 -->
 
-- `--report` controls the scope of human per-file TEXT output only. It does not affect processing,
-  mutation behavior, summaries, machine-readable output, or exit-code selection.
+- `--report` controls the scope of human per-file TEXT rendering only. It does not affect
+  processing, mutation behavior, summaries, machine-readable output, or exit-code selection.
 
   Values:
 

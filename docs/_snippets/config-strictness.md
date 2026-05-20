@@ -12,13 +12,13 @@ topmark:header:end
 
 > [!NOTE]
 >
-> `[config].strict` is a TOML-source-local strictness preference controlling staged config-loading
-> validation for the current TOML source.
+> `[config].strict` is a TOML-source-local strictness preference controlling staged
+> configuration-loading validation for the current TOML source.
 >
 > Effective strictness is evaluated across:
 >
 > - TOML-source diagnostics;
 > - merged-config diagnostics;
-> - runtime-applicability diagnostics.
+> - runtime applicability diagnostics.
 >
 > `strict` is resolved during TOML loading and does not become a layered configuration field.
