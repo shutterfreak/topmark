@@ -196,10 +196,12 @@ Key outcomes included:
 - synthetic pipeline contexts for explicit missing literal inputs;
 - and typed value objects replacing ambiguous tuple-shaped return contracts.
 
-The user-facing policy/report contract was frozen:
+The user-facing policy/report contract was frozen.
 
 Public API callers continue using stable string policy tokens for 1.0. A dedicated public enum
 surface remains a possible post-1.0 follow-up.
+
+Key stabilized behaviors included:
 
 - `--report` controls human per-file output scope only;
 - `header_mutation_mode` controls `check` insertion/update intent;
@@ -294,6 +296,15 @@ structure, heading conventions, accidental macOS resource files, and changelog h
 Python code-prose hygiene was added through `tools/docs/check_code_hygiene.py`, covering comments,
 docstrings, and prose-oriented string literals.
 
+The stabilization effort also consolidated documentation conventions around:
+
+- command-page structure;
+- shared terminology governance;
+- snippet usage boundaries;
+- generated-reference expectations;
+- changelog heading/section rules;
+- and explicit implementation-boundary guidance for user-facing documentation.
+
 Result: documentation is convention-driven, validated, and aligned with the frozen 1.0 behavior.
 
 ______________________________________________________________________
@@ -318,6 +329,10 @@ a static project version.
 
 Install-smoke validation was added across Linux, macOS, and Windows, validating wheel and sdist
 installation from built artifacts in isolated environments.
+
+This became one of the most important late-beta hardening steps because it exposed implicit runtime
+and packaging assumptions that were not visible inside local development environments or standard CI
+jobs.
 
 CI was hardened through:
 
@@ -380,13 +395,44 @@ Focused coverage expansion improved confidence around:
 - config, pipeline, registry, version, and probe machine contracts.
 
 Canonical CI coverage reporting was added through the existing `nox -s coverage` session. CI now
-publishes a GitHub Step Summary plus HTML, XML, and JSON coverage artifacts. Coverage remains
-informational and is not a release-blocking percentage gate.
+publishes a GitHub Step Summary plus HTML, XML, and JSON coverage artifacts.
+
+A deliberate decision during stabilization was to keep coverage informational rather than
+percentage-gated. The project treats coverage primarily as a confidence-building and blind-spot
+identification signal instead of a release-governance metric.
 
 README coverage badge adoption remains deferred until the published signal proves stable,
 representative, and useful over time.
 
 Result: coverage now supports release confidence without becoming release governance.
+
+______________________________________________________________________
+
+## Beta stabilization phase
+
+The beta series shifted the project from architectural redesign toward contract validation,
+release-path rehearsal, ecosystem observation, and governance hardening.
+
+The beta stabilization series validated:
+
+- GitHub prerelease publication behavior;
+- TestPyPI prerelease publication;
+- artifact-based CI → release publication;
+- SCM-derived versioning through `setuptools-scm`;
+- install-smoke validation across Linux, macOS, and Windows;
+- documentation-governance enforcement;
+- changelog-governance enforcement;
+- prose/code-hygiene tooling;
+- CI metadata/bootstrap consistency;
+- explicit uv cache ownership in GitHub workflows;
+- and metadata-driven Python-version resolution through `nox -s print_python_matrix`.
+
+The beta series also served as the final release-path rehearsal phase before release candidates,
+allowing workflow, packaging, installation, and publication behavior to be validated repeatedly
+through real prerelease tags.
+
+Result: by the end of the beta line, the remaining work was primarily RC validation and focused
+hardening rather than architectural change.
 
 ______________________________________________________________________
 
@@ -407,8 +453,8 @@ By the end of the beta line, the following 1.0 contracts were frozen:
 - uv/nox dependency tooling;
 - documentation governance and hygiene checks.
 
-The 1.0 release candidate therefore represents a contract freeze rather than a feature-completion
-milestone.
+The 1.0 release-candidate phase therefore represents contract validation and compatibility
+preservation rather than feature completion.
 
 ______________________________________________________________________
 
