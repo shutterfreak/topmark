@@ -12,7 +12,8 @@ topmark:header:end
 
 # Machine-readable output
 
-This document describes the stable machine-readable JSON and NDJSON formats emitted by TopMark.
+This document describes the stable machine-readable JSON and NDJSON formats emitted by TopMark for
+the 1.x line.
 
 It is intended for integrators and tooling authors who consume TopMark programmatically.
 
@@ -50,7 +51,7 @@ See also:
 
 ## Output formats
 
-TopMark exposes four `--output-format` values:
+TopMark exposes four stable `--output-format` values:
 
 - human-oriented formats (not machine-stable):
   - `text`: default human-oriented text.
@@ -81,7 +82,7 @@ Machine-readable output (`json`, `ndjson`) is intentionally **decoupled from CLI
 
 Consumers must:
 
-- inspect the process exit code for success/failure semantics,
+- inspect the process exit code for success or failure semantics,
 - parse machine-readable output for detailed diagnostics and results.
 
 This design ensures a clean separation between:
@@ -174,7 +175,8 @@ package-local schema modules such as:
 
 ### Naming conventions
 
-The machine-readable output naming audit for 1.0 adopts the following conventions across domains:
+The machine-readable output naming audit for the stable 1.x line adopts the following conventions
+across domains:
 
 - Shared envelope and metadata keys are owned by
   \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
@@ -192,12 +194,12 @@ The machine-readable output naming audit for 1.0 adopts the following convention
   - `detail_level` is emitted only by command families whose machine-readable output exposes a brief
     vs long projection
 
-These conventions are frozen for 1.0 unless a final pre-release audit identifies a concrete naming
-defect worth correcting before release.
+These conventions are part of the stable 1.x machine-readable output contract.
 
 ### File type identity fields
 
-Machine-readable output uses the same canonical identity model as the runtime registry and resolver.
+Machine-readable output uses the same canonical identity model as the runtime registry and
+resolution system.
 
 When a file type identity is present, payloads expose:
 
@@ -216,9 +218,9 @@ ______________________________________________________________________
 
 ## Resolution diagnostics ([`probe`](../usage/commands/probe.md))
 
-The [`topmark probe`](../usage/commands/probe.md) command explains file-type and processor
-resolution. It is a diagnostic command, not a compliance or mutation command: it does not compute
-header changes, diffs, strip plans, or write plans.
+The [`topmark probe`](../usage/commands/probe.md) command exposes stable file-type and processor
+resolution diagnostics. It is a diagnostic command, not a compliance or mutation command: it does
+not compute header changes, diffs, strip plans, or write plans.
 
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
@@ -540,7 +542,7 @@ Each element of the JSON `results` array (detail mode) and each NDJSON `result` 
 The exact field set can evolve over time, but the payload is intended to be:
 
 - JSON-safe (no ANSI / terminal formatting),
-- stable enough for CI/tooling integration,
+- stable for CI and tooling integration,
 - tolerant of additive changes.
 
 The canonical builders and typing live under:
@@ -617,18 +619,18 @@ ______________________________________________________________________
 \[`ConfigDiagnosticsPayload`\][topmark.config.machine.schemas.ConfigDiagnosticsPayload] summarizes
 the flattened compatibility view derived from staged validation logs.
 
-Diagnostics may include runtime-applicability warnings for unknown, malformed, or ambiguous file
+Diagnostics may include runtime applicability warnings for unknown, malformed, or ambiguous file
 type identifiers encountered during configuration sanitation.
 
-These diagnostics may originate from staged validation logs for:
+These diagnostics may originate from staged config-loading validation logs for:
 
 - TOML-source diagnostics
 - merged-config diagnostics
-- runtime-applicability diagnostics
+- runtime applicability diagnostics
 
-For 1.0, the machine-readable contract for config-validation diagnostics is this flattened
-compatibility shape. Stage-local validation structure remains internal and is not serialized
-directly.
+For the stable 1.x line, the machine-readable contract for configuration-loading diagnostics is this
+flattened compatibility view. Stage-local validation structure remains internal and is not
+serialized directly.
 
 JSON shape:
 
@@ -642,7 +644,8 @@ JSON shape:
 }
 ```
 
-The individual diagnostic entry shape is intentionally fixed at `{level, message}` for 1.0.
+The individual diagnostic entry shape is intentionally fixed at `{level, message}` for the stable
+1.x line.
 
 Example JSON diagnostics payload:
 
@@ -835,8 +838,8 @@ from TOML source configuration (`[config].strict`) and may be overridden by CLI 
 strictness is evaluated across staged config-loading validation, while `config_diagnostics` remains
 the flattened compatibility view exposed in machine-readable output.
 
-For 1.0, this is the explicit contract decision: staged validation remains internal, and
-machine-readable output serializes only the flattened compatibility diagnostics surface.
+For the stable 1.x line, this is the explicit contract decision: staged config-loading validation
+remains internal, and machine-readable output serializes only the flattened compatibility view.
 
 Machine-readable output for [`config check`](../usage/commands/config/check.md) is unaffected by
 TEXT verbosity or quiet mode.
@@ -862,7 +865,7 @@ The NDJSON stream follows the same stable prefix pattern used by processing comm
 Notes:
 
 - NDJSON follows the same **counts-only + one diagnostic per line** model for the flattened
-  compatibility diagnostics view.
+  compatibility view.
 
 (See `topmark.config.machine.*` for canonical builders/serializers.)
 
@@ -1105,8 +1108,8 @@ ______________________________________________________________________
 
 ## Backwards compatibility and evolution
 
-TopMark's machine-readable output schema is part of its integration surface. For 1.0, documented
-JSON and NDJSON shapes are treated as stable machine-readable contracts.
+TopMark's machine-readable output schema is part of its stable integration surface. For the stable
+1.x line, documented JSON and NDJSON shapes are treated as machine-readable compatibility contracts.
 
 Consumers should:
 
@@ -1119,5 +1122,5 @@ Consumers should:
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names.
 
-Breaking machine-readable output changes should be signaled via Conventional Commits (using the `!`
-marker) and documented in the changelog.
+Breaking machine-readable output changes should be signaled through Conventional Commits using the
+`!` marker and documented in the changelog.

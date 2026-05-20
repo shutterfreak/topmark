@@ -12,7 +12,8 @@ topmark:header:end
 
 # Machine-readable formats
 
-This page documents TopMark's **machine-readable output conventions** across commands.
+This page documents TopMark's stable **machine-readable output conventions** across commands for the
+1.x line.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -36,7 +37,7 @@ payloads**.
 
 - Exit status is communicated exclusively via the process exit code.
 - Machine-readable payloads represent **structured results and diagnostics**, not process-level
-  success/failure.
+  success or failure.
 
 Implications for consumers:
 
@@ -46,15 +47,15 @@ Implications for consumers:
 
 This separation ensures that:
 
-- machine-readable payloads remain stable and composable,
-- exit-code semantics can evolve independently,
+- machine-readable payloads remain stable and composable;
+- exit-code semantics can evolve independently;
 - CI tooling can rely on standard process semantics.
 
 ______________________________________________________________________
 
 ## Output formats
 
-TopMark exposes four `--output-format` values:
+TopMark exposes four stable `--output-format` values:
 
 - human-oriented formats (not machine-stable):
   - `text`: default human-oriented text.
@@ -89,13 +90,13 @@ ______________________________________________________________________
 
 ## Machine-stable guarantees
 
-The `json` and `ndjson` formats are designed for CI and programmatic use.
+The `json` and `ndjson` formats are designed for CI, scripting, and programmatic use.
 
 Stability guarantees:
 
 - Machine-readable payloads contain no ANSI color codes.
 - Payload shapes are JSON-safe (no Python-specific objects).
-- New fields may be added over time (additive evolution).
+- New fields may be added over time as additive 1.x evolution.
 - Existing fields are not removed or renamed without a breaking-change signal.
 - Resolved file type identities are emitted using canonical qualified keys when available.
 
@@ -117,7 +118,8 @@ ______________________________________________________________________
 
 ## File type identifiers in machine-readable output
 
-Machine-readable formats use the same canonical identity model as the runtime registry and resolver.
+Machine-readable formats use the same canonical identity model as the runtime registry and
+resolution system.
 
 Public inputs may use local identifiers such as `python` when unambiguous, or qualified identifiers
 such as `topmark:python`. Machine-readable output emits resolved canonical identities when a file
@@ -178,7 +180,7 @@ ______________________________________________________________________
 
 ## NDJSON envelope contract
 
-Each NDJSON line is a JSON object with a stable envelope:
+Each NDJSON line is a JSON object with a stable 1.x envelope:
 
 ```jsonc
 {"kind": "<kind>", "meta": { ... }, "<kind>": { ... } }
@@ -201,7 +203,7 @@ ______________________________________________________________________
 ## JSON envelope conventions
 
 Unlike NDJSON, JSON output is **domain-specific and aggregated**. Each command defines its own
-stable top-level keys for collections.
+stable top-level collection keys.
 
 Examples:
 
@@ -348,11 +350,12 @@ warnings and errors. For machine-readable output:
 
 Diagnostics emitted in machine-readable output represent the flattened compatibility view derived
 from staged config-validation logs. Internally, these diagnostics may originate from TOML-source,
-merged-config, or runtime-applicability validation.
+merged-config, or runtime applicability validation.
 
-For 1.0, this flattened compatibility form is the stable machine-readable contract for config/TOML
-validation diagnostics. Machine-readable output does **not** serialize stage-local validation
-structure; the emitted diagnostic entry shape remains `{level, message}`.
+For the stable 1.x line, this flattened compatibility view is the machine-readable compatibility
+contract for configuration-loading diagnostics. Machine-readable output intentionally does **not**
+serialize stage-local validation structure; the emitted diagnostic entry shape remains
+`{level, message}`.
 
 Diagnostics may include warnings for unknown, malformed, or ambiguous file type identifiers detected
 during configuration sanitation and runtime applicability checks.
@@ -386,8 +389,8 @@ share conventions:
   - then either per-file `result` records (detail mode) or per-outcome **reason-preserving**
     `summary` records (summary mode)
 
-These diagnostics correspond to the flattened compatibility view derived from staged validation
-logs.
+These diagnostics correspond to the flattened compatibility view derived from staged config-loading
+validation logs.
 
 Machine-readable output for processing commands is unaffected by TEXT verbosity or quiet mode; these
 flags only influence human TEXT output.
@@ -446,7 +449,7 @@ ______________________________________________________________________
 
 ## Resolution diagnostics ([`probe`](../usage/commands/probe.md))
 
-[`topmark probe`](../usage/commands/probe.md) exposes file-type and processor resolution as a
+[`topmark probe`](../usage/commands/probe.md) exposes file-type and processor resolution as a stable
 machine-readable diagnostic surface.
 
 - JSON emits: `meta`, `config`, `config_diagnostics`, `probes`
@@ -491,7 +494,7 @@ ______________________________________________________________________
 
 ## Config commands
 
-Config commands are file-agnostic and emit config-centric payloads:
+Config commands are file-agnostic and emit runtime-configuration payloads:
 
 - [`config dump`](../usage/commands/config/dump.md): resolved runtime configuration snapshot (no
   diagnostics); when `--show-layers` is used in machine-readable formats, it also emits layered
@@ -513,7 +516,7 @@ same underlying default configuration snapshot shape.
 For [`config check`](../usage/commands/config/check.md), the machine-readable payload uses `strict`
 to report the effective config-validation strictness after applying CLI override precedence over
 resolved TOML strictness. This strictness is evaluated across staged config-loading validation
-(TOML-source, merged-config, and runtime-applicability diagnostics), while machine-readable output
+(TOML-source, merged-config, and runtime applicability diagnostics), while machine-readable output
 exposes the flattened compatibility diagnostics view.
 
 Resolved runtime configuration snapshots emit normalized file type identifiers. In particular,
@@ -540,8 +543,9 @@ Example [`config check`](../usage/commands/config/check.md) NDJSON prefix:
 }}
 ```
 
-For 1.0, this boundary is intentional: staged validation remains an internal representation, while
-machine-readable output exposes the flattened compatibility diagnostics contract.
+For the stable 1.x line, this boundary is intentional: staged validation remains an internal
+representation, while machine-readable output exposes the flattened compatibility diagnostics
+contract.
 
 For [`config dump --show-layers`](../usage/commands/config/dump.md), machine-readable output
 preserves the same logical ordering as the human-facing layered export:
@@ -563,7 +567,7 @@ ______________________________________________________________________
 
 ## Registry machine-readable output
 
-Registry commands expose the effective composed runtime view.
+Registry commands expose the effective composed runtime registry composition.
 
 Important identity fields:
 
