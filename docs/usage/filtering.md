@@ -12,11 +12,11 @@ topmark:header:end
 
 # Common filtering recipes
 
-Filtering controls determine:
+Filtering controls determine stable runtime behavior such as:
 
 - which paths participate in discovery
 - which file types are eligible for processing
-- how explicit inputs are classified semantically
+- how explicit inputs participate in semantic runtime outcomes
 - how probe diagnostics are reported
 
 TopMark determines which files to process using a combination of **path-based filters** and **file
@@ -33,13 +33,14 @@ Filtering and discovery semantics are shared consistently across:
 - [`topmark probe`](commands/probe.md)
 - TOML configuration
 - API overlays
-- resolution and probe filtering
+- runtime-resolution and probe filtering
 
 TopMark applies filtering in a deterministic order:
 
 1. Path-based discovery and filtering
 1. File-type filtering
-1. Applicability evaluation and processor resolution
+1. Runtime applicability evaluation
+1. Runtime processor resolution
 
 Exclude rules take precedence over include rules.
 
@@ -49,7 +50,24 @@ layered configuration behavior, see [Configuration](configuration.md).
 > [!NOTE]
 >
 > For [`topmark probe`](commands/probe.md), paths excluded during step 1 or 2 may still be reported
-> as `filtered` semantic outcomes if they were explicitly requested.
+> as `filtered` semantic outcomes when they were explicitly requested inputs.
+
+______________________________________________________________________
+
+## Runtime filtering boundaries
+
+TopMark intentionally separates:
+
+1. path discovery
+1. path filtering
+1. file-type filtering
+1. runtime applicability evaluation
+1. runtime probing and processor resolution
+
+Each stage consumes the finalized results of the previous stage.
+
+This layered filtering model keeps runtime behavior deterministic while preserving stable probe
+diagnostics and machine-readable filtering semantics.
 
 ______________________________________________________________________
 
@@ -59,12 +77,12 @@ TopMark distinguishes between **explicit literal paths** and **glob patterns**:
 
 - **Explicit missing literal paths** (e.g., `fubar.py`) are treated as **hard input errors** and
   result in `FILE_NOT_FOUND (66)`.
-- **Unmatched glob patterns** (e.g., `missing/**/*.py`) are treated as soft discovery diagnostics
-  and do **not** cause a failure for processing commands ([`check`](commands/check.md),
+- **Unmatched glob patterns** (e.g., `missing/**/*.py`) are treated as soft runtime-discovery
+  diagnostics and do **not** cause a failure for processing commands ([`check`](commands/check.md),
   [`strip`](commands/strip.md)) (exit `SUCCESS (0)`).
 
 This distinction ensures that typos in explicit inputs are surfaced, while flexible patterns that
-match nothing do not cause processing-command failures.
+match nothing do not cause runtime processing-command failures.
 
 ______________________________________________________________________
 
@@ -76,7 +94,7 @@ TopMark supports the following path-based filtering controls:
 - `--include-from`, `--exclude-from` Load patterns from files (one per line).
 - `--files-from` Provide an explicit list of files to process.
 
-Path semantics:
+Stable path-filtering semantics:
 
 - Positional arguments are resolved **relative to the current working directory** (CWD),
   Black-style.
@@ -96,8 +114,8 @@ File-processing commands support two STDIN modes when supplying file lists or co
   - `--files-from -`
   - `--include-from -`
   - `--exclude-from -`
-- **Content mode**: process a single virtual file from STDIN content by passing `-` as the sole PATH
-  together with `--stdin-filename NAME`
+- **Content mode**: process a single virtual runtime file from STDIN content by passing `-` as the
+  sole PATH together with `--stdin-filename NAME`
 
 See [shared input modes](shared-options.md#shared-input-modes) for the full STDIN contract,
 including why TopMark does not provide a `--stdin` option flag.
@@ -106,8 +124,8 @@ ______________________________________________________________________
 
 ## Interaction with [`topmark probe`](commands/probe.md)
 
-The [`topmark probe`](commands/probe.md) command uses the same filtering pipeline and discovery
-semantics described above.
+The [`topmark probe`](commands/probe.md) command uses the same runtime filtering pipeline and
+discovery semantics described above.
 
 This includes:
 
@@ -117,21 +135,22 @@ This includes:
 - ambiguity handling
 
 However, unlike processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md)),
-[`probe`](commands/probe.md) also reports **explicit inputs that were filtered out before file-type
-probing**.
+[`probe`](commands/probe.md) also reports \*\*explicit inputs that were filtered out before runtime
+file-type probing.
 
 Additionally, [`probe`](commands/probe.md) treats unmatched glob patterns as filtered semantic
-outcomes rather than silent no-ops. As a result:
+outcomes rather than silent runtime no-ops. As a result:
 
 - Unmatched glob patterns are reported as `filtered` probe results (e.g.,
   `filtered: excluded_by_discovery_filter`).
-- The command exits with `UNSUPPORTED_FILE_TYPE (69)`, reflecting incomplete semantic resolution.
+- The command exits with `UNSUPPORTED_FILE_TYPE (69)`, reflecting incomplete runtime semantic
+  resolution.
 
 This differs from processing commands, which treat unmatched patterns as non-fatal diagnostics.
 
 [`probe`](commands/probe.md) is read-only and diagnostic-only. It shares discovery and filtering
 behavior with [`check`](commands/check.md) and [`strip`](commands/strip.md), but rejects mutation,
-diff, reporting, and generated-header options that do not apply.
+diff, reporting, and header-generation options that do not apply.
 
 For example, when a path is excluded via `--exclude` or `exclude_patterns`,
 [`topmark probe`](commands/probe.md) will still show it in the output as:
@@ -140,7 +159,7 @@ For example, when a path is excluded via `--exclude` or `exclude_patterns`,
 <path>: <filtered> - filtered: excluded_by_path_filter
 ```
 
-In machine-readable JSON and NDJSON output, these are represented as probe results with:
+In machine-readable JSON and NDJSON output, these are represented as structured probe results with:
 
 ```jsonc
 {
@@ -156,11 +175,12 @@ Filtered probe results may use one of the following reasons:
 
 - `excluded_by_path_filter` - excluded by path-based include/exclude rules
 - `excluded_by_file_type_filter` - excluded by file-type include/exclude rules
-- `excluded_by_discovery_filter` - excluded before probing, but exact category not identified
+- `excluded_by_discovery_filter` - excluded before runtime probing, but exact category not
+  identified
 - `no_candidates` - no file-type candidates were found (e.g., unsupported extension)
 
-Only explicitly requested inputs (CLI paths or `--files-from`) are reported this way. Files excluded
-implicitly during recursive discovery are not enumerated.
+Only explicitly requested runtime inputs (CLI paths or `--files-from`) are reported this way. Files
+excluded implicitly during recursive discovery are not enumerated.
 
 ______________________________________________________________________
 
@@ -251,7 +271,7 @@ Equivalent canonical form:
 exclude_file_types = ["topmark:yaml"]
 ```
 
-### Recipe: Process only a known file list (from Git)
+### Recipe: Process only an explicit file list (from Git)
 
 Generate a file list:
 
@@ -300,8 +320,8 @@ File-type filters are evaluated after path-based filtering.
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 Plugins and integrations may declare file types in their own namespace, such as `acme:python`. This
-allows independent ecosystems to define custom file types and register independent header processors
-without colliding with built-in TopMark identifiers.
+allows independent ecosystems to define custom file types and register independent runtime header
+processors without colliding with built-in TopMark identifiers.
 
 Local identifiers are accepted only when they are unambiguous. If more than one registered file type
 has the same local identifier, the local form is considered ambiguous and TopMark requires the
@@ -317,9 +337,9 @@ Filtering decisions can influence exit codes indirectly:
 - Unmatched glob patterns → no failure ([`check`](commands/check.md) / [`strip`](commands/strip.md),
   `SUCCESS (0)`), or `UNSUPPORTED_FILE_TYPE (69)` in [`probe`](commands/probe.md)
 
-Missing explicit inputs take precedence over semantic probe outcomes.
+Missing explicit inputs take precedence over semantic runtime probe outcomes.
 
-When multiple conditions occur, TopMark applies an exit-code priority model (see
+When multiple conditions occur, TopMark applies a deterministic exit-code priority model (see
 [Exit Codes documentation](exit-codes.md)), where hard input and filesystem errors take precedence.
 
 Invalid CLI usage (for example, unsupported options or inappropriate STDIN modes) is reported as a
@@ -329,8 +349,8 @@ ______________________________________________________________________
 
 ## Notes on configuration strictness
 
-Filtering determines *which* files are processed, while staged config-loading validation determines
-whether a run is allowed to proceed.
+Filtering determines *which* runtime files participate in processing, while staged config-loading
+validation determines whether a run is allowed to proceed.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -340,8 +360,8 @@ Effective strictness is controlled by:
 1. TOML setting (`strict`)
 1. default non-strict behavior
 
-When strict config checking is enabled, configuration-validation warnings are treated as errors and
-may cause the command to fail before processing files.
+When strict config checking is enabled, configuration-loading validation warnings are treated as
+errors and may cause the command to fail before processing files.
 
 ______________________________________________________________________
 
