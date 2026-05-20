@@ -50,8 +50,10 @@ TopMark validation favors:
 - stable nox sessions over ad-hoc shell commands;
 - focused pytest markers over broad naming conventions;
 - dry-run and source-tree validation before mutation or publication;
-- intentionally redundant checks where they validate different compatibility contracts.
-- coverage reporting as a diagnostic confidence signal rather than a percentage-driven release gate.
+- intentionally redundant checks where they validate different compatibility contracts;
+- coverage reporting as a diagnostic confidence signal rather than a percentage-driven release gate;
+- Python-version metadata derived from project metadata rather than duplicated manually in CI where
+  practical.
 
 For example, CI artifact generation and published artifact validation may look related, but they
 validate different things. CI validates artifacts built from the repository source tree. Published
@@ -105,7 +107,11 @@ ______________________________________________________________________
 
 ## Local Test Selection
 
-Run the full default test suite through nox:
+Supported Python versions are resolved by `noxfile.py` from `pyproject.toml` using Nox's project
+metadata helpers. Matrix sessions run across the supported Python versions, while canonical
+single-version sessions use the second most recent supported Python version.
+
+Run the full default test suite through nox on the canonical Python version:
 
 ```bash
 nox -s qa -p 3.13
@@ -115,6 +121,12 @@ Generate the canonical local coverage report:
 
 ```bash
 nox -s coverage -p 3.13
+```
+
+Inspect the Python metadata consumed by CI:
+
+```bash
+nox -s print_python_matrix
 ```
 
 Run only developer-validation tests:
@@ -177,14 +189,20 @@ should remain convenience wrappers rather than a separate source of validation t
 
 Common mappings are:
 
-| Need                              | Preferred command                  |
-| --------------------------------- | ---------------------------------- |
-| Run the main quality gate         | `nox -s qa -p 3.13`                |
-| Generate canonical coverage data  | `nox -s coverage -p 3.13`          |
-| Run a marker-specific test subset | `nox -s qa -p 3.13 -- -m <marker>` |
-| Build documentation               | `nox -s docs`                      |
-| Validate documentation links      | `nox -s links`                     |
-| Run release checks                | `nox -s release_check`             |
+| Need                                              | Preferred command                  |
+| ------------------------------------------------- | ---------------------------------- |
+| Run the main quality gate on the canonical Python | `nox -s qa -p 3.13`                |
+| Generate canonical coverage data                  | `nox -s coverage -p 3.13`          |
+| Print CI Python metadata                          | `nox -s print_python_matrix`       |
+| Run a marker-specific test subset                 | `nox -s qa -p 3.13 -- -m <marker>` |
+| Build documentation                               | `nox -s docs`                      |
+| Validate documentation links                      | `nox -s links`                     |
+| Run release checks                                | `nox -s release_check`             |
+
+The concrete canonical version shown above is expected to move when the supported Python range
+moves. CI consumes the JSON output from `print_python_matrix` so the test matrix and canonical
+single-version jobs can follow `pyproject.toml` without duplicating version literals in the main CI
+workflow.
 
 If a Makefile target wraps one of these commands, the nox session remains the canonical validation
 contract.

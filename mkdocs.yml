@@ -211,6 +211,9 @@ nav:
           - Release workflow: ci/release-workflow.md
           - Dependabot: ci/dependabot.md
           - GitHub Action pin audit: ci/action-pin-audit.md
+      - Actions:
+          - Setup Python + nox action: ci/setup-python-nox-action.md
+
   - Contributing: contributing.md
   - API:
       - Public API: api/public.md

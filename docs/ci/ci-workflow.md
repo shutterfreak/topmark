@@ -70,7 +70,7 @@ The trust boundary is intentional:
 This separation keeps artifact production and package publication in separate trust boundaries.
 
 Some setup logic is shared through the local composite action
-`.github/actions/setup-python-nox/action.yml`, while other jobs keep explicit setup steps where
+[`setup-python-nox`](./setup-python-nox-action.md), while other jobs keep explicit setup steps where
 their caching or environment needs differ. This limited duplication is acceptable because it keeps
 job behavior and trust boundaries explicit.
 
@@ -81,6 +81,7 @@ ______________________________________________________________________
 | Job                 | Purpose                                                               | Main tools                                 |
 | ------------------- | --------------------------------------------------------------------- | ------------------------------------------ |
 | `changes`           | Detect changed file groups for PR job gating                          | `dorny/paths-filter`                       |
+| `python-metadata`   | Resolve supported and canonical Python versions for CI jobs           | `nox`, `pyproject.toml`                    |
 | `lint`              | Validate formatting, linting, typing, and docstring links             | `nox`, `ruff`, `pyright`                   |
 | `pre-commit`        | Run configured pre-commit hooks                                       | `pre-commit`                               |
 | `docs`              | Build the documentation site in strict mode                           | `nox`, `mkdocs`                            |
@@ -92,16 +93,23 @@ ______________________________________________________________________
 | `release-artifacts` | Build and upload release artifacts for version tags                   | `uv build`, `actions/upload-artifact`      |
 
 Most jobs delegate validation to nox sessions so local development and CI share the same validation
-contracts and execution semantics. The test matrix runs on Python 3.10 through 3.14 with `fail-fast`
-disabled so failures on one Python version do not hide failures on others.
+contracts and execution semantics. The `python-metadata` job resolves supported Python versions and
+the canonical single-version Python from project metadata through `nox -s print_python_matrix`. The
+test matrix consumes that supported-version list with `fail-fast` disabled so failures on one Python
+version do not hide failures on others.
 
-Coverage reporting runs in a dedicated canonical job on Ubuntu with Python 3.13 using the existing
-`nox -s coverage -p 3.13` session. Coverage intentionally runs outside the full test matrix to avoid
-duplicating expensive QA work that is already covered by the compatibility matrix.
+Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolved canonical Python
+version and the existing `nox -s coverage` session. Coverage intentionally runs outside the full
+test matrix to avoid duplicating expensive QA work that is already covered by the compatibility
+matrix.
 
 The coverage job depends on the full test matrix succeeding before coverage reports are generated.
 This keeps the compatibility matrix as the primary validation gate while avoiding additional
 coverage-processing noise after known test failures.
+
+Canonical single-version jobs such as linting, documentation builds, coverage, API snapshot checks,
+and release-artifact construction use the same resolved canonical Python value rather than carrying
+separate hard-coded version literals in the workflow.
 
 The API snapshot check is pull-request-only and runs when Python-relevant files change. It is a fast
 guardrail for unexpected stable public API surface changes, not a replacement for the full test
@@ -136,6 +144,7 @@ On a version-tag push, the `release-artifacts` job:
 - builds the source distribution and wheel with `uv build`;
 - derives release metadata from the tag;
 - normalizes the tag version with `packaging.version.Version`;
+- records the supported and canonical Python metadata used by the CI run;
 - writes checksum metadata with `sha256sum`;
 - uploads `topmark-dist` and `topmark-release-meta` artifacts.
 
@@ -153,6 +162,7 @@ ______________________________________________________________________
 The closest local equivalents are the nox sessions used by CI:
 
 ```bash
+nox -s print_python_matrix
 nox -s format_check
 nox -s lint
 nox -s docstring_links
@@ -160,6 +170,9 @@ nox -s docs
 nox -s qa -p 3.13
 nox -s coverage -p 3.13
 ```
+
+The concrete `3.13` commands shown here reflect the current canonical Python version. That value is
+resolved from project metadata and is expected to move when the supported Python range moves.
 
 Run link checks with:
 
@@ -173,6 +186,9 @@ Run the API snapshot check with:
 ```bash
 nox -s api_snapshot -p 3.13
 ```
+
+CI uses the resolved canonical Python value for this session rather than hard-coding the version in
+`.github/workflows/ci.yml`.
 
 Build release artifacts locally with:
 
@@ -195,6 +211,7 @@ When editing this workflow:
 
 - update path filters when adding new source, docs, tooling, or workflow-maintenance files;
 - keep nox sessions as the canonical validation contracts where practical;
+- keep Python-version metadata sourced from `pyproject.toml` through `nox -s print_python_matrix`;
 - keep the coverage job canonical and lightweight rather than instrumenting the full compatibility
   matrix;
 - keep coverage reporting lightweight and diagnostic rather than turning it into a percentage-driven

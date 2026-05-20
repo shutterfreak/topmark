@@ -104,6 +104,7 @@ The release trust boundary is intentionally strict, explicit, and deterministic:
 - release artifacts are built by the CI workflow;
 - the release workflow downloads artifacts from the triggering CI run;
 - release metadata is verified against the resolved tag;
+- CI Python metadata is verified and reported as release provenance;
 - checksums are verified before publication;
 - package indexes are checked before publishing;
 - repository build logic is not executed in the publishing jobs.
@@ -126,12 +127,18 @@ The `preflight` job decides whether publication should proceed. It emits release
 such as the resolved tag, PEP 440 version, prerelease flag, target channel, and release name.
 
 The `details` job downloads the `topmark-dist` and `topmark-release-meta` artifacts from the CI run
-that triggered the workflow. It verifies that the artifact metadata matches the resolved release tag
-and that the wheel and source distribution versions match the normalized tag version.
+that triggered the workflow. It verifies that the artifact metadata matches the resolved release
+tag, that the CI Python metadata is present and well-formed, and that the wheel and source
+distribution versions match the normalized tag version.
 
 The `publish-package` job repeats critical artifact and metadata checks before publication, verifies
 checksums, confirms that the target version does not already exist on the selected package index,
 and publishes with Trusted Publishing.
+
+The release workflow uses an explicit release-tooling Python version for publication helpers. It
+reports the canonical Python version recorded by CI and emits a non-blocking warning if the release
+tooling Python drifts from that canonical CI Python. That warning is maintenance guidance only; it
+is not a publication gate.
 
 Final releases also check that the new version is newer than the latest final version on PyPI.
 Prereleases skip that final-version ordering check, publish to TestPyPI, and create GitHub
@@ -146,10 +153,10 @@ artifacts.
 
 Required release artifacts from CI are:
 
-| Artifact               | Purpose                                                |
-| ---------------------- | ------------------------------------------------------ |
-| `topmark-dist`         | Source distribution and wheel built by CI              |
-| `topmark-release-meta` | Release tag, normalized version, and checksum metadata |
+| Artifact               | Purpose                                                              |
+| ---------------------- | -------------------------------------------------------------------- |
+| `topmark-dist`         | Source distribution and wheel built by CI                            |
+| `topmark-release-meta` | Release tag, normalized version, checksums, and CI Python provenance |
 
 The release workflow downloads those artifacts by using the triggering CI run ID:
 
@@ -168,10 +175,14 @@ Before publication, the workflow verifies:
 
 - artifact tag metadata matches the resolved release tag;
 - artifact version metadata matches the normalized tag version;
+- CI Python metadata exists and contains a non-empty supported-version list;
 - exactly one wheel and one source distribution are present where required;
 - wheel and sdist metadata versions match the tag;
 - checksums match `release-meta/SHA256SUMS`;
 - expected filenames include the normalized version.
+
+The Python metadata is release provenance from the CI run that built the artifacts. It is reported
+by the release workflow, but it does not control the privileged release job's tooling runtime.
 
 This artifact-only design is a core part of the release security model.
 
@@ -228,6 +239,10 @@ When preparing a release:
 Do not move artifact building into the release workflow without deliberately revisiting the release
 trust boundary. The workflow is intentionally designed so package publication does not rebuild from
 repository source code.
+
+Keep the release-tooling Python explicit unless the release trust model is deliberately revisited.
+CI records the supported and canonical Python versions as artifact metadata so the release workflow
+can report drift without deriving its privileged runtime from repository-source metadata.
 
 Do not couple release publication to coverage percentages or external coverage services unless the
 project deliberately adopts coverage as a formal release-governance contract in a future major

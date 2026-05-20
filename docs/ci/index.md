@@ -32,6 +32,8 @@ the intent and expected scope of each test group.
 
 - [CI workflow](./ci-workflow.md) - validates repository source trees, documentation, tests, typing,
   linting, API snapshots, and release artifacts produced from trusted CI runs.
+- [Setup Python + nox action](./setup-python-nox-action.md) - documents the shared Python, uv,
+  cache, and nox bootstrap layer used by CI jobs.
 - [Test validation](./test-validation.md) - explains pytest markers, validation categories, local
   test commands, CI inclusion rules, and how nox and Makefile targets map onto the test suite.
 - [Published artifact validation](./published-artifact-validation.md) - validates installation and
@@ -70,6 +72,7 @@ Use this family of pages as follows:
 | Question                                                         | Start here                                                          |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
 | What runs on pull requests and pushes?                           | [CI workflow](./ci-workflow.md)                                     |
+| How are Python, uv, and nox bootstrapped in CI jobs?             | [Setup Python + nox action](./setup-python-nox-action.md)           |
 | Which tests are included, skipped, slow, or integration-focused? | [Test validation](./test-validation.md)                             |
 | How are release artifacts produced and published?                | [Release workflow](./release-workflow.md)                           |
 | How do we validate packages after publication?                   | [Published artifact validation](./published-artifact-validation.md) |
