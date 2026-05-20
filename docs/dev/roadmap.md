@@ -27,10 +27,10 @@ This roadmap now serves two purposes:
 - a **historical stabilization ledger** for the architectural, documentation, CI/release, and
   testing decisions made during the 0.12 development line and 1.0 alpha/beta series.
 
-As the project moves from `1.0.0rc1` toward `1.0.0`, the roadmap should become progressively less of
-a working checklist and more of a concise governance reference. Detailed achievements and design
-decisions may be extracted later into a dedicated release-retrospective document or GitHub project
-page so this file can remain focused on release readiness and post-1.0 scope.
+As the project moves from `1.0.0rc1` toward `1.0.0`, this roadmap should remain a concise governance
+reference. Detailed achievements and design decisions are now tracked in
+[Road to TopMark 1.0](./road-to-1.0.md), so this file can remain focused on release readiness and
+post-1.0 scope.
 
 A key deferred post-1.0 opportunity remains support for data that is not naturally file-backed:
 generated code, editor buffers, CI-provided snippets, or API-driven integrations. Today, almost all
@@ -461,7 +461,7 @@ Accepted 1.0 behavior includes:
 
 - `report` replacing legacy `skip_*` behavior;
 - `header_mutation_mode` replacing legacy add/update flags;
-- the current default “all supported file types” processing model;
+- the current default "all supported file types" processing model;
 - probe-based resolution explainability;
 - and stable TEXT/Markdown/machine-output separation.
 

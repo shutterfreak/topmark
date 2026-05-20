@@ -236,6 +236,11 @@ When preparing a release:
 - let CI build release artifacts and let the release workflow publish them and create the matching
   GitHub Release or prerelease.
 
+For user-facing prerelease installation instructions, see
+[`INSTALL.md`](https://github.com/shutterfreak/topmark/blob/main/INSTALL.md). For post-publication
+matrix validation of prereleases from TestPyPI, use the
+[Published artifact validation workflow](./published-artifact-validation.md).
+
 Do not move artifact building into the release workflow without deliberately revisiting the release
 trust boundary. The workflow is intentionally designed so package publication does not rebuild from
 repository source code.

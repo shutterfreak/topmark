@@ -270,7 +270,7 @@ The closest local reproduction workflow is:
 python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  "topmark==1.0.0b2"
+  "topmark==1.0.0rc1"
 ```
 
 followed by representative CLI validation commands:

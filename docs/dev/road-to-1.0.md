@@ -14,9 +14,9 @@ topmark:header:end
 
 ## Purpose
 
-This page records the curated stabilization history behind TopMark 1.0. It extracts the historical
-achievement narrative from the active 1.0 roadmap so the roadmap can remain focused on release
-candidate governance, explicit deferrals, and final readiness.
+This page records the curated stabilization and contract-freeze history behind TopMark 1.0. It
+extracts the historical achievement narrative from the active 1.0 roadmap so the roadmap can remain
+focused on release candidate governance, explicit deferrals, and final readiness.
 
 The 0.12 development line and the 1.0 alpha/beta series transformed TopMark from a set of evolving
 header-processing components into a contract-oriented CLI and Python library with explicit runtime
@@ -30,7 +30,8 @@ ______________________________________________________________________
 
 ## Stabilization overview
 
-The stabilization effort focused on separating responsibilities that were previously entangled:
+The stabilization effort focused on separating responsibilities that had previously become
+entangled:
 
 - TOML parsing and validation;
 - layered configuration resolution;
@@ -235,7 +236,6 @@ The stabilization effort also froze several important naming and shape conventio
 
 - plural domain-specific JSON collection keys;
 - singular NDJSON record kinds;
-- explicit `(outcome, reason, count)` pipeline summary rows;
 - `qualified_key` plus `namespace` / `local_key` identity metadata;
 - and flattened domain-specific registry envelopes.
 
@@ -404,7 +404,7 @@ identification signal instead of a release-governance metric.
 README coverage badge adoption remains deferred until the published signal proves stable,
 representative, and useful over time.
 
-Result: coverage now supports release confidence without becoming release governance.
+Result: coverage now supports release confidence without becoming a release gate.
 
 ______________________________________________________________________
 

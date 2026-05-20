@@ -210,6 +210,9 @@ index: testpypi
 TestPyPI validation confirms the package can be installed and exercised from a consumer-like clean
 environment, but TestPyPI is not a complete mirror of PyPI dependency behavior.
 
+User-facing prerelease installation instructions are documented in
+[`INSTALL.md`](https://github.com/shutterfreak/topmark/blob/main/INSTALL.md).
+
 ______________________________________________________________________
 
 ## Final release flow

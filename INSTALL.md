@@ -46,6 +46,21 @@ topmark --help
 
 ______________________________________________________________________
 
+## Install a prerelease from TestPyPI
+
+Prereleases are published to TestPyPI before final PyPI publication. To test a prerelease:
+
+```bash
+python -m pip install \
+  --index-url https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ \
+  topmark==1.0.0rc1
+```
+
+The extra PyPI index is needed so dependencies can still resolve from PyPI.
+
+______________________________________________________________________
+
 ## Development setup (contributors)
 
 ### 1) Clone the repository

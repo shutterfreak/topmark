@@ -461,6 +461,9 @@ PEP 440 versions.
 Typical release tag forms are:
 
 - final releases: `vX.Y.Z`
+
+Typical pre-release tag forms are:
+
 - alpha releases: `vX.Y.ZaN`
 - beta releases: `vX.Y.ZbN`
 - release candidates: `vX.Y.ZrcN`

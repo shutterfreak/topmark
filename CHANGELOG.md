@@ -807,7 +807,7 @@ read-only pre-commit probe hook, and completing the canonical `MutableX` / `Froz
   - Renamed core mutable/immutable runtime support types to align with the finalized naming model.
   - Updated source, tests, public API references, generated API documentation, user docs, and
     developer docs.
-  - Normalized prose so “frozen” refers primarily to release-contract stabilization unless naming a
+  - Normalized prose so "frozen" refers primarily to release-contract stabilization unless naming a
     concrete `FrozenX` type.
 
 - **Documentation terminology**
@@ -882,7 +882,7 @@ read-only pre-commit probe hook, and completing the canonical `MutableX` / `Froz
 
 - **Documentation terminology drift**
 
-  - Fixed stale references to “effective merged configuration” in CLI help text, command examples,
+  - Fixed stale references to "effective merged configuration" in CLI help text, command examples,
     and source docstrings.
   - Fixed remaining `config-loading/preflight validation` wording.
   - Fixed remaining `resolver` wording where the intended concept is runtime resolution.
