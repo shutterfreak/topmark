@@ -312,29 +312,18 @@ jobs:
       - name: Publish coverage summary
         shell: bash
         run: |
-          {
-            echo "## Coverage"
-            echo
-            python - <<-'PY'
-            import json
-            from pathlib import Path
+          python -c 'import json, os
+          from pathlib import Path
 
-            coverage_json = Path("coverage.json")
-            if not coverage_json.exists():
-                raise SystemExit("coverage.json not found")
+          data = json.loads(Path("coverage.json").read_text())
+          totals = data["totals"]
 
-            data = json.loads(coverage_json.read_text())
-            totals = data["totals"]
-
-            covered = totals["covered_lines"]
-            total = totals["num_statements"]
-            percent = totals["percent_covered_display"]
-
-            print(f"- Coverage: {percent}%")
-            print(f"- Covered lines: {covered}")
-            print(f"- Total statements: {total}")
-            PY
-          } >> "$GITHUB_STEP_SUMMARY"
+          summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          with summary.open("a", encoding="utf-8") as f:
+              f.write("## Coverage\\n\\n")
+              f.write(f"- Coverage: {totals['percent_covered_display']}%\\n")
+              f.write(f"- Covered lines: {totals['covered_lines']}\\n")
+              f.write(f"- Total statements: {totals['num_statements']}\\n")'
 
       - name: Upload HTML coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
