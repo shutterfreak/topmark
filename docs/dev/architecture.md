@@ -20,11 +20,11 @@ usage.
 
 ## Canonical architecture invariants
 
-The following architectural contracts are frozen for 1.0:
+The following architectural contracts are part of the stable 1.x design:
 
 - CLI, API, presentation, runtime, configuration, registry, and pipeline concerns remain separated.
 - Runtime execution intent is kept separate from layered configuration state.
-- File type identity is normalized to canonical qualified keys.
+- File type identity is normalized to canonical qualified keys once resolved.
 - Registry mutation is represented as explicit overlay state.
 - Pipeline execution remains independent from presentation rendering.
 - Machine-readable output remains independent from human-facing TEXT and Markdown output.
@@ -64,8 +64,8 @@ flowchart TD
 ```
 
 Not all TOML-defined values become layered configuration fields. Source-local options such as
-`[config].root` and `strict` are resolved on the TOML side first, then applied to config discovery
-and staged config-loading validation without participating in layered config merging.
+`[config].root` and `[config].strict` are resolved on the TOML side first, then applied to config
+discovery and staged config-loading validation without participating in layered config merging.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -180,8 +180,8 @@ Practical consequences:
   types or dry-run would-change signals.
 - Missing explicit inputs are visible as per-file errors instead of being collapsed into "no files
   to process".
-- Machine payloads expose structured diagnostics/results, while process status remains external as
-  the CLI exit code.
+- Machine payloads expose structured diagnostics and results, while process status remains external
+  as the CLI exit code.
 - Public probe API payloads expose normalized strings and DTOs. Internal resolver enums,
   `ResolutionProbeResult`, and
   \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] remain implementation
@@ -365,7 +365,7 @@ validating command applicability before those report objects are built.
 
 Primary/headline hint selection is also a presentation concern. Hints and statuses are structured
 diagnostics, but the exact hint chosen as the headline, and the ordering of secondary hints in human
-output, are not part of the stable CLI contract for 1.0.
+output, are not part of the stable 1.x CLI contract.
 
 Practical consequences:
 
@@ -444,6 +444,6 @@ isolation, plugin extensibility, file type identifier semantics, and API stabili
 
 ______________________________________________________________________
 
-**Summary:** TopMark keeps user-facing behavior deterministic by separating configuration loading,
-registry composition, resolver decisions, policy resolution, pipeline execution, presentation, and
-machine-readable output into explicit layers.
+**Summary:** TopMark keeps stable user-facing behavior deterministic by separating configuration
+loading, registry composition, resolver decisions, policy resolution, pipeline execution,
+presentation, and machine-readable output into explicit layers.
