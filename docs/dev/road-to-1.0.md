@@ -77,6 +77,16 @@ Implicit registration through decorators or bootstrap scanning was replaced with
 This made registry behavior predictable, testable, and plugin-ready without import-time side
 effects.
 
+Legacy bootstrap-oriented entry points such as:
+
+- `topmark.processors.bootstrap`;
+- `topmark.processors.registry`;
+- `topmark.registry.resolver`;
+- `register_all_processors()`;
+- `Registry.ensure_processors_registered()`.
+
+were removed during stabilization in favor of explicit registration and binding ownership.
+
 The file-type identifier contract was frozen around qualified keys:
 
 - canonical identities use `<namespace>:<name>`, such as `topmark:python`;
@@ -137,9 +147,17 @@ The final model separates:
 - `topmark.runtime` for execution-time behavior.
 
 Runtime-only behavior, such as apply/preview and STDIN handling, moved into `RunOptions` instead of
-layered configuration. TOML-authored runtime sections such as `[writer]` remain outside layered
-configuration while still appearing in config dumps, config checks, and machine-readable
-configuration snapshots.
+layered configuration.
+
+Several user-facing policy/configuration behaviors were also normalized during stabilization:
+
+- `add_only` / `update_only` were replaced by `header_mutation_mode`;
+- `skip_compliant` / `skip_unsupported` were replaced by `report`;
+- `policy_by_type`, `include_file_types`, and `exclude_file_types` now share the same
+  qualified/local file-type identifier contract.
+
+Runtime-facing TOML sections such as `[writer]` remain outside layered configuration while still
+appearing in config dumps, config checks, and machine-readable configuration snapshots.
 
 Configuration validation was hardened through staged internal validation logs:
 
@@ -204,6 +222,14 @@ The final machine-output model is:
 Machine output now uses consistent envelope and metadata conventions across configuration, pipeline,
 registry, version, and probe command families.
 
+The stabilization effort also froze several important naming and shape conventions:
+
+- plural domain-specific JSON collection keys;
+- singular NDJSON record kinds;
+- explicit `(outcome, reason, count)` pipeline summary rows;
+- `qualified_key` plus `namespace` / `local_key` identity metadata;
+- and flattened domain-specific registry envelopes.
+
 Important frozen decisions included:
 
 - pipeline summaries use explicit `(outcome, reason, count)` rows;
@@ -251,6 +277,7 @@ Major outcomes included:
   override boundaries;
 - generated-site navigation and TOC-density improvements;
 - a project-wide terminology glossary;
+- terminology governance through reusable snippets and shared canonical wording;
 - and calmer starter-template prose.
 
 Documentation hygiene was added through `tools/docs/check_docs_hygiene.py`, exposed via nox and
@@ -267,6 +294,9 @@ ______________________________________________________________________
 ## CI, release, and dependency model
 
 The project migrated to a uv-first dependency model and replaced tox with nox.
+
+The contributor workflow also migrated away from tox toward uv-backed nox sessions with
+metadata-driven Python-version management.
 
 Release publication was redesigned around an artifact-based CI → release split:
 
@@ -289,6 +319,7 @@ CI was hardened through:
 - SHA-pinned actions;
 - explicit permissions;
 - metadata-driven Python-version resolution;
+- dynamic compatibility-matrix generation through `nox -s print_python_matrix`;
 - canonical CI coverage reporting;
 - and explicit uv cache ownership.
 
@@ -312,6 +343,8 @@ Key outcomes included:
 - tightening protocol/view contracts toward read-only semantics where mutation is not intended;
 - documenting public API snapshot exports vs public-adjacent integration surfaces;
 - preserving Python 3.10 compatibility;
+- replacing temporary typed pytest decorator wrappers with direct pytest marker/decorator usage once
+  typing support stabilized;
 - and removing obsolete or redundant helper layers where they no longer contributed to the frozen
   architecture.
 

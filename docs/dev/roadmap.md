@@ -85,307 +85,192 @@ ______________________________________________________________________
 
 ## Breaking changes introduced so far
 
-This section summarizes the **externally relevant breaking changes** introduced during the 0.12
-refactor series and the 1.0 alpha/beta stabilization line. The emphasis is on **frozen contract and
-workflow changes**, not internal implementation details.
+This section summarizes the externally relevant breaking changes introduced during the 0.12 refactor
+series and the 1.0 alpha/beta stabilization line. It is retained in the roadmap for RC validation
+because downstream users, plugin authors, documentation readers, and automation consumers may still
+need to compare older alpha/beta behavior with the frozen 1.0 contracts.
 
-### Registry / resolution model
+For the full historical stabilization narrative, see [Road to TopMark 1.0](./road-to-1.0.md).
 
-- Built-in processor registration no longer relies on decorator-based or bootstrap-style implicit
-  registration.
-  - Integrations must use the explicit binding/overlay model.
-- Legacy registry/bootstrap entry points were removed, including:
-  - `topmark.processors.bootstrap`
-  - `topmark.processors.registry`
-  - `topmark.registry.resolver`
-  - `register_all_processors()`
-  - `Registry.ensure_processors_registered()`
-- Registry mutation is now fully explicit and split by responsibility:
-  - processor registration → `HeaderProcessorRegistry.register(...)`
-  - file type registration → `FileTypeRegistry.register(...)`
-  - binding → `Registry.bind(...)` / `BindingRegistry.bind(...)`
-- Namespace-aware file type lookup now supports qualified identifiers and rejects ambiguous local
-  identifiers unless the caller uses the qualified form.
-- Registry machine and human outputs now expose canonical qualified identifiers and namespace
-  metadata, and add a first-class bindings view.
-- Local file type identifiers are accepted at public boundaries only when unambiguous; canonical
-  qualified keys are the stable comparison and storage form.
-- Public API registry metadata was reshaped to align with the split filetype / processor / binding
-  model.
-  - Downstream callers using older field names or processor-grouped binding views must update.
+### Registry, resolution, and file-type identity
 
-Result: registry behavior is now more explicit and deterministic, but downstream registry/plugin/API
-consumers must update to the canonical identity and explicit binding model.
+TopMark no longer relies on implicit processor registration, decorator-based bootstrap behavior, or
+legacy registry entry points. Registry behavior is now explicit and split by responsibility:
 
-### Config / TOML / runtime surface
+- file-type registration;
+- processor registration;
+- binding file types to processors.
 
-- Configuration is no longer treated as a single mixed layer.
-  - `topmark.toml` handles TOML parsing and whole-source schema validation
-  - `topmark.config` handles layered configuration merge and effective runtime configuration
-    resolution
-  - `topmark.runtime` handles execution-time behavior
-- Several older config/TOML helper entry points were removed or relocated.
-  - Callers using older helper locations must migrate to the new module layout.
-- Generic config/API mapping input is now represented as `ConfigMapping`.
-  - The legacy `ArgsLike` alias was removed.
-- Configuration-loading entry points were consolidated around TOML-first resolution.
-  - Callers needing provenance must explicitly handle resolved sources and mutable configuration
-    state.
-- Config-resolution bridge helpers now return typed result objects such as `ResolvedConfigDraft`
-  instead of `(resolved, draft)` tuples.
-  - Internal callers must consume named `resolved` and `draft` fields instead of positional tuple
-    slots.
-- Source-local TOML options such as `[config].root` and `[config].strict` now live outside layered
-  configuration merging.
-- The canonical mutable/frozen runtime naming model was finalized:
-  - mutable runtime/configuration dataclasses now consistently use `MutableX`
-  - immutable runtime/configuration dataclasses now consistently use `FrozenX`
-  - older mixed naming conventions were removed before the 1.0 freeze
-- Runtime-facing TOML sections such as `[writer]` are resolved outside layered configuration but
-  remain part of the effective TOML surface shown by config output commands and machine-readable
-  configuration snapshots.
-- Runtime-facing TOML options such as `[writer].strategy` remain outside layered configuration but
-  are resolved from TOML and preserved in human-readable and machine-readable configuration output.
-- TOML validation is now stricter and happens earlier:
-  - unknown top-level sections/keys, malformed known sections, and malformed nested policy sections
-    are reported during whole-source TOML loading
-  - these diagnostics now participate in shared CLI/API validation behavior
-- Policy/config surface changed:
-  - `add_only` / `update_only` → replaced by `header_mutation_mode`
-  - `skip_compliant` / `skip_unsupported` → replaced by `report`
-- Immutable runtime configuration `policy_by_type` keys are now canonical qualified file type
-  identifiers.
-  - Consumers that inspect resolved runtime configuration or call low-level effective-policy helpers
-    must use keys such as `topmark:python` instead of assuming local-only keys such as `python`.
-- `policy_by_type`, `include_file_types`, and `exclude_file_types` now share the same identifier
-  contract: qualified identifiers are accepted explicitly, and local identifiers are accepted only
-  when unambiguous.
-- Configuration merge semantics are no longer uniformly "last-wins":
-  - some fields accumulate
-  - some fields merge key-wise
-  - effective runtime configuration is now resolved per path rather than as a single flat snapshot
+Downstream integrations must use the explicit registry/binding model instead of older bootstrap
+helpers such as `register_all_processors()` or implicit processor discovery.
 
-Result: configuration behavior is clearer and more powerful, but callers relying on older helpers,
-older policy tokens, or older TOML layout/validation assumptions must update.
+File-type identity is now namespace-aware:
 
-### CLI / output / runtime behavior
+- canonical identity uses qualified keys such as `topmark:python`;
+- local identifiers such as `python` are accepted only when unambiguous;
+- ambiguous local identifiers require the qualified form;
+- machine output, registry output, diagnostics, configuration normalization, and policy lookup use
+  canonical qualified identifiers where a resolved identity is available.
 
-- Output format naming changed:
-  - legacy `DEFAULT` was removed
-  - `TEXT` is now the canonical plain human-output format
-- Human rendering is now split cleanly from CLI runtime/printing.
-  - Older emitter/import paths were removed or renamed.
-- Verbosity and color options moved from the root CLI group to individual commands.
-  - Existing invocation patterns may need updating.
-- Verbosity and quiet semantics were narrowed:
-  - `-v` / `--verbose` applies only to TEXT output.
-  - `-q` / `--quiet` applies only to TEXT output on commands that explicitly support output
-    suppression.
-  - Markdown output is document-oriented and ignores TEXT-oriented verbosity/quiet controls.
-  - JSON/NDJSON output is machine-readable and ignores TEXT-oriented presentation controls.
-  - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
-    registry commands) no longer expose `--quiet`.
-- Runtime-only execution intent is now modeled separately from layered configuration.
-  - `RunOptions` now carries runtime behavior such as apply/preview and stdin handling.
-- Low-level API runtime helpers now return typed runtime result objects instead of positional
-  tuples.
-  - `run_pipeline()` and `run_probe_pipeline()` return `ApiPipelineRun` instead of
-    `(FrozenConfig, list[Path], list[ProcessingContext], ExitCode | None)`.
-  - `ApiPipelineRun` is exposed through the public API snapshot for integrations that intentionally
-    work with low-level runtime state.
-- Pipeline engine execution now returns `PipelineExecution` instead of
-  `(list[ProcessingContext], ExitCode | None)`.
-- Dry-run / apply semantics are now explicit:
-  - preview runs report preview statuses
-  - apply runs report terminal write outcomes
-- Internal CLI input and preparation helpers now return typed result objects rather than positional
-  tuples where the returned values have distinct ownership semantics.
-- Summary output is now grouped by `(outcome, reason)` rather than by a single collapsed outcome
-  label.
-- CLI/report surface changes:
-  - `--skip-compliant` → replaced by `--report actionable`
-  - `--skip-unsupported` → replaced by `--report noncompliant`
-  - `--add-only` / `--update-only` → replaced by `--header-mutation-mode`
-- Command applicability rules are stricter and enforced at the CLI layer:
-  - `strip` rejects check-only mutation, insertion, and generated-header formatting options
-  - `probe` rejects mutation, write-mode, diff, summary/reporting, and generated-header controls
-  - path-processing commands intentionally do not expose a `--stdin` option flag; content STDIN uses
-    `-` plus `--stdin-filename`
-  - file-agnostic commands reject positional paths and file-processing STDIN modes as usage errors
-- CLI exit-code behavior is now implemented, tested, documented, and treated as a stable 1.0
-  contract:
-  - `check` / `strip` use `WOULD_CHANGE (2)` as the dry-run "would change" signal
-  - `config check` uses `FAILURE (1)` for completed validation with failing diagnostics
-  - explicit missing literal inputs produce `FILE_NOT_FOUND (66)`
-  - unmatched glob patterns are soft discovery diagnostics for `check` / `strip`
-  - `probe` reports unresolved, unsupported, filtered, and unmatched-glob semantic outcomes with
-    `UNSUPPORTED_FILE_TYPE (69)`
-  - filesystem, configuration, usage, and internal failures use the enum-backed CLI-wide exit-code
-    contract
+Result: registry and resolution behavior is deterministic and plugin-ready, but callers using older
+registry helpers, local-only identifiers, or processor-grouped binding views must update.
 
-Result: CLI behavior is now more explicit and consistent, but command-line invocation habits, output
-snapshots, and downstream automation may need adjustment.
+### Configuration, TOML, and runtime boundaries
 
-### Machine output contracts
+Configuration is no longer treated as a single mixed layer. The 1.0 architecture separates:
 
-- Machine output is now domain-scoped, schema-driven, and separated from CLI formatting.
+- TOML parsing and whole-source validation;
+- layered configuration merge and provenance;
+- per-path effective runtime configuration;
+- execution-time runtime options.
 
-- Pipeline summary payloads now use explicit flat rows with:
+Runtime-only behavior such as apply/preview and STDIN handling is modeled separately from layered
+configuration. TOML-authored runtime sections such as `[writer]` remain outside layered
+configuration while still appearing in configuration output snapshots.
 
-  - `outcome`
-  - `reason`
-  - `count`
+The public configuration surface changed in several important ways:
 
-- `config check` machine output now uses the explicit `config_check` payload/record kind rather than
-  a generic summary wrapper.
+- `[config].strict` is the finalized configuration-loading strictness option;
+- `add_only` / `update_only` were replaced by `header_mutation_mode`;
+- `skip_compliant` / `skip_unsupported` were replaced by `report`;
+- `policy_by_type`, `include_file_types`, and `exclude_file_types` share the same qualified/local
+  file-type identifier contract;
+- resolved runtime `policy_by_type` maps use canonical qualified file-type keys;
+- staged validation remains primarily internal, with flattened compatibility diagnostics exposed at
+  exception, presentation, and machine-readable output boundaries.
 
-- `config dump --show-layers` now adds layered provenance output (`config_provenance`) before the
-  final flattened runtime configuration payload.
+Result: configuration behavior is clearer, typed, and reproducible, but callers relying on older
+helper locations, older policy tokens, or local-only file-type keys must update.
 
-- Configuration machine-readable payloads include TOML-authored runtime sections such as `[writer]`
-  when present in the effective TOML source, even though those values are resolved outside the
-  layered configuration model.
+### CLI behavior, runtime execution, and human output
 
-- `detail_level` is now part of the machine-readable output contract for command families that emit
-  projection metadata (notably registry machine output).
+The CLI behavior contract was narrowed and stabilized for 1.0.
 
-- Registry JSON machine output was flattened for 1.0 contract stability:
+Important changes include:
 
-  - `registry filetypes` → `{meta, filetypes}`
-  - `registry processors` → `{meta, processors}`
-  - `registry bindings` → `{meta, bindings, unbound_filetypes, unused_processors}`
+- `TEXT` is the canonical plain human-output format; legacy `DEFAULT` output naming was removed;
+- human rendering is separated from CLI runtime and printing;
+- verbosity, quiet, and color controls are command-level concerns rather than root-only global
+  behavior;
+- `-v` / `--verbose` and `-q` / `--quiet` apply only to TEXT output where supported;
+- Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls;
+- JSON/NDJSON output is machine-readable and ignores human presentation controls;
+- pure informational commands such as `version`, `config defaults`, `config init`, and registry
+  commands do not expose `--quiet`.
 
-- Machine-output naming conventions are now explicitly frozen for 1.0, including:
+Command applicability is stricter:
 
-  - shared envelope/meta ownership in `topmark.core.machine.schemas`
-  - plural/domain-specific JSON collection keys
-  - singular NDJSON record kinds
-  - `qualified_key`, `namespace` + `local_key`, and `*_key` reference naming
+- `strip` rejects check-only mutation, insertion, and generated-header formatting options;
+- `probe` rejects mutation, write-mode, diff, summary/reporting, and generated-header controls;
+- path-processing commands intentionally do not expose a `--stdin` option flag;
+- content STDIN uses `-` plus `--stdin-filename`;
+- file-agnostic commands reject positional paths and file-processing STDIN modes.
 
-- Machine-readable configuration, registry, resolution, and probe payloads emit canonical qualified
-  file type identifiers when a resolved identity is available.
+The CLI exit-code contract is now enum-backed, documented, and tested. Notable stable outcomes
+include:
 
-- Probe machine output now treats probe records as per-path results and includes filtered explicit
-  inputs via `status="filtered"` with path-filter, file-type-filter, or generic discovery-filter
-  reasons.
+- `check` / `strip` use `WOULD_CHANGE (2)` for dry-run would-change results;
+- explicit missing literal inputs produce `FILE_NOT_FOUND (66)`;
+- unmatched globs are soft discovery diagnostics for `check` / `strip`;
+- `probe` reports unresolved, unsupported, filtered, and unmatched-glob semantic outcomes with
+  `UNSUPPORTED_FILE_TYPE (69)`.
 
-- Machine output no longer implies process status: consumers must inspect the CLI exit code
-  separately from JSON/NDJSON payloads.
+Several low-level runtime helpers now return typed result objects rather than positional tuples.
+Internal and advanced callers should consume named fields instead of relying on tuple positions.
 
-- Internal presentation helpers now use typed result objects for human diagnostics and
-  version/config preparation, without changing emitted human or machine output schemas.
+Result: CLI behavior is more explicit, scriptable, and stable, but existing invocation habits,
+output snapshots, and low-level runtime integrations may need adjustment.
 
-Result: machine-readable formats are much more stable and structured, but downstream consumers that
-relied on older payload naming or outcome-keyed summaries must update.
+### Machine-readable output contracts
 
-### Documentation / docs build behavior
+Machine-readable output is now schema-driven, domain-scoped, and separated from human presentation.
 
-- Documentation now assumes the TOML → layered configuration → runtime overlay architecture and the
-  new CLI/output model.
-- Generated API/reference pages are part of the docs build contract.
-  - missing or stale generated pages can now fail `mkdocs build --strict`
-- Documentation/tooling now relies on dedicated formatter config files:
-  - `.mdformat.toml`
-  - `.taplo.toml`
-- Built-site link checking (`links-site`) is now part of the CI path that gates release-artifact
-  creation on tag pushes.
-- Documentation hygiene and Python prose hygiene validation are now part of local verification and
-  release validation.
-  - broken snippet includes, malformed include paths, nested snippet includes, accidental macOS
-    `._*` files, missing level-2 section separators, and smart punctuation in Markdown prose can now
-    fail docs/tooling gates when warning-failure mode is enabled
-  - snippet-related maintainability issues may be reported as non-fatal warnings
-- Documentation and code-prose hygiene are now split across dedicated tooling:
-  - Markdown/MkDocs/snippet hygiene uses `tools/docs/check_docs_hygiene.py`, exposed through
-    `make docs-hygiene` and `nox -s docs_hygiene`
-  - Python comments, docstrings, and prose-oriented strings use `tools/docs/check_code_hygiene.py`,
-    exposed through `make code-hygiene` and `nox -s code_hygiene`
-- User and developer documentation now treats qualified file type identifiers as the canonical
-  internal representation and documents local identifiers as an unambiguous public-input
-  convenience.
-- The canonical terminology glossary moved from `docs/dev/terminology.md` to `docs/terminology.md`.
-  - Internal links and external references to the old developer-only glossary location must be
-    updated.
-- Repeated terminology cross-reference notes now use `_snippets/terminology.md`.
-- The canonical terminology glossary moved from a developer-only page to the project-wide
-  `docs/terminology.md` reference location.
+Breaking output-contract changes include:
 
-Result: documentation is more accurate and better validated, but docs generation, documentation
-hygiene, and code-prose hygiene are now stricter than before.
+- pipeline summaries use explicit flat `(outcome, reason, count)` rows;
+- `config check` uses the explicit `config_check` payload/record kind;
+- `config dump --show-layers` emits layered provenance before the final flattened runtime
+  configuration payload;
+- registry JSON output uses flattened domain-specific envelopes for file types, processors, and
+  bindings;
+- `detail_level` reflects projection depth in machine output where emitted;
+- registry, configuration, resolution, and probe payloads emit canonical qualified file-type
+  identifiers where a resolved identity is available;
+- probe machine output uses per-path probe records and includes filtered explicit inputs;
+- JSON/NDJSON payloads do not imply process status, which remains the CLI exit code.
 
-### Developer tooling / CI / release workflow
+Result: machine-readable formats are more stable and automation-friendly, but downstream consumers
+that relied on older payload names, outcome-keyed summaries, or older registry shapes must update.
 
-- tox was removed; contributors and CI now use `nox` with uv-backed environments.
+### Documentation and generated-site behavior
 
-- The project no longer uses committed `requirements*.txt` / `constraints.txt` as the primary
-  dependency-management model.
+Documentation validation is stricter than before. Generated API/reference pages, strict MkDocs
+builds, built-site link checks, documentation hygiene, code-prose hygiene, and changelog heading
+validation are now part of the local and release validation ecosystem.
 
-  - `uv.lock` is now the canonical lock artifact.
+Important behavior changes include:
 
-- Package versioning no longer uses a manually maintained static `[project].version`.
+- generated API/reference pages are part of the docs build contract;
+- built-site link checking gates release-artifact creation on tag pushes;
+- documentation hygiene validates snippet includes, include paths, section separators, heading
+  conventions, accidental macOS resource files, and changelog heading shape;
+- Python code-prose hygiene validates comments, docstrings, and prose-oriented string literals;
+- the terminology glossary moved from `docs/dev/terminology.md` to `docs/terminology.md`;
+- repeated terminology notes now use `_snippets/terminology.md`.
 
-  - versions are now derived from Git tags via `setuptools-scm`
+Result: documentation is more accurate and better governed, but docs contributors must follow the
+stricter generated-site, snippet, heading, and prose-hygiene rules.
 
-- Release workflow behavior changed significantly:
+### Developer tooling, dependency management, and release workflow
 
-  - release publishing no longer builds the repository in the privileged workflow
-  - CI now builds and uploads release artifacts on tag pushes
-  - the privileged release workflow downloads, verifies, and publishes those artifacts
+The contributor and release workflow changed significantly:
 
-- Release validation no longer compares tags to static `pyproject.toml` version metadata.
+- tox was removed; contributors and CI now use nox with uv-backed environments;
+- `uv.lock` is the canonical lock artifact;
+- committed `requirements*.txt` / `constraints.txt` files are no longer the primary dependency
+  management model;
+- package versions are derived from Git tags through `setuptools-scm`;
+- release publishing no longer builds from repository source in the privileged workflow;
+- CI builds release artifacts on tag pushes;
+- the privileged release workflow downloads, verifies, and publishes CI-built artifacts;
+- compact PEP 440 prerelease tags are preferred (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`).
 
-  - it now validates SCM-derived artifact versions against the resolved release tag
+CI behavior also changed:
 
-- Release/contributor workflow no longer includes a manual version-bump step.
+- pull-request jobs are gated more aggressively by changed-file buckets;
+- supported and canonical Python versions are derived through `nox -s print_python_matrix`;
+- compatibility-matrix and canonical single-version jobs consume resolved metadata rather than
+  duplicated workflow literals;
+- release workflows retain explicit release-tooling Python versions while reporting non-blocking
+  drift warnings against canonical CI metadata;
+- uv cache ownership is centralized through explicit `actions/cache` integration rather than mixed
+  ownership with `setup-uv` built-in caching.
 
-- Compact PEP 440 prerelease tags are now preferred (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`).
+Runtime dependency metadata was tightened after isolated-environment validation revealed implicit
+runtime imports. In particular, `typing-extensions` and `packaging` are now treated as runtime
+dependencies where required.
 
-- Dependencies and pre-commit hook revisions are refreshed as part of beta stabilization, and type
-  expectations may tighten as dependency metadata improves.
-
-- `typing-extensions` is now treated as a runtime dependency rather than an implicitly available
-  development-only/transitive dependency; packaging and isolated-environment installs now reflect
-  the actual runtime import surface.
-
-- Documentation hygiene and Python code-prose hygiene are exposed as first-class local/tooling gates
-  through `make docs-hygiene`, `make code-hygiene`, `nox -s docs_hygiene`, and
-  `nox -s code_hygiene`.
-
-  - `make verify`, `make release-check`, and `make release-full` now include documentation and
-    code-prose hygiene validation
-
-- GitHub Actions behavior is more aggressively gated by changed-file buckets on pull requests, so
-  some jobs may now be skipped unless relevant files changed.
-
-- CI Python-version metadata is now derived dynamically through `nox -s print_python_matrix` rather
-  than duplicated directly in the primary CI workflow.
-
-  - compatibility-matrix jobs and canonical single-version jobs now consume resolved metadata
-  - release workflows intentionally retain explicit release-tooling Python versions while reporting
-    non-blocking drift warnings against canonical CI metadata
-
-- uv cache ownership is now centralized through explicit `actions/cache` integration rather than
-  mixed cache ownership between workflow-local caches and `setup-uv` built-in caching.
-
-Result: contributor/release workflow is more secure and reproducible, but maintainers must update
-both their mental model and automation expectations for CI, publishing, dependency management, and
-versioning.
+Result: the workflow is more secure, reproducible, and observable, but maintainers and contributors
+must use the uv/nox/artifact-based release model rather than older tox, manual-version, or
+source-build-in-release assumptions.
 
 ### Overall impact
 
-The major breaking changes are no longer about isolated helper removals; they are about a **new
-system shape**:
+The 1.0 breaking changes are not isolated helper removals; they reflect a new system shape:
 
-- explicit registry/binding model
-- layered TOML/configuration/runtime boundaries
-- explicit preview/apply runtime model
-- schema-driven machine output with domain-specific JSON envelopes and stable NDJSON record kinds
-- uv/nox-based tooling and artifact-based release automation
-- stricter documentation governance with convention-backed documentation hygiene, changelog
-  validation, terminology governance, and code-prose hygiene validation
+- explicit registry and binding model;
+- namespace-aware file-type identity;
+- layered TOML/configuration/runtime boundaries;
+- explicit preview/apply runtime behavior;
+- schema-driven machine output;
+- separated human presentation;
+- stricter CLI applicability and exit-code contracts;
+- uv/nox-based tooling;
+- artifact-based release publication;
+- and stricter documentation/prose governance.
 
-The 1.0 task is therefore no longer large-scale redesign, but **contract freeze, documentation
-freeze, workflow stabilization, and final hardening** on top of these already-landed changes.
+These changes are now treated as frozen 1.0 contracts. The release-candidate phase should validate
+those contracts in realistic environments rather than introduce new breaking changes.
 
 ______________________________________________________________________
 
