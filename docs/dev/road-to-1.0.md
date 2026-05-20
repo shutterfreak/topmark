@@ -95,9 +95,10 @@ The file-type identifier contract was frozen around qualified keys:
 - fuzzy matching, aliases, and implicit namespace fallback are intentionally unsupported.
 
 Resolution was moved into `topmark.resolution.*`, and probe-backed resolution became the shared
-evidence model for diagnostics and effective pipeline resolution. The read-only `topmark probe`
-command and `topmark.api.probe()` API expose stable resolution DTOs without requiring callers to
-consume registry internals.
+explainability/evidence model for diagnostics and effective pipeline resolution. The read-only
+`topmark probe` command and `topmark.api.probe()` API were accepted as the supported 1.0 resolution
+explainability surfaces. They expose stable resolution DTOs without requiring callers to consume
+registry internals, resolver enums, or pipeline contexts.
 
 Result: registry and resolution behavior is explicit, deterministic, explainable, and ready for
 future plugin work.
@@ -168,6 +169,9 @@ Configuration validation was hardened through staged internal validation logs:
 Public compatibility surfaces continue to expose flattened diagnostics at exception, presentation,
 and machine-readable output boundaries.
 
+Broader staged-validation exposure and explicit configuration schema versioning were deliberately
+postponed beyond 1.0 to preserve release focus and avoid premature schema/version governance.
+
 The canonical mutable/frozen naming model was finalized across configuration, policy, diagnostics,
 and staged validation-log types. Public API inputs were standardized around mapping-based overlays,
 while typed override bridge types remain internal CLI/API orchestration details.
@@ -193,6 +197,9 @@ Key outcomes included:
 - and typed value objects replacing ambiguous tuple-shaped return contracts.
 
 The user-facing policy/report contract was frozen:
+
+Public API callers continue using stable string policy tokens for 1.0. A dedicated public enum
+surface remains a possible post-1.0 follow-up.
 
 - `--report` controls human per-file output scope only;
 - `header_mutation_mode` controls `check` insertion/update intent;

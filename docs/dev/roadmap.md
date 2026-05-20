@@ -276,309 +276,214 @@ ______________________________________________________________________
 
 ## Still undecided / still to do
 
-This section captures the remaining **post-beta stabilization, ecosystem validation, and targeted
-hardening work** before `1.0.0`.
+The large architectural redesign, contract-freeze work, documentation-governance effort,
+machine-output stabilization, CI/release workflow hardening, typing cleanup, and late-beta
+validation work are complete.
 
-The large structural refactors, contract-freeze decisions, beta validation gates,
-documentation-governance work, command-page freeze review, terminology alignment, TOML-template
-harmonization, prose-hygiene tooling work, late-beta typing/ownership cleanup, and CI/release
-workflow stabilization are complete.
+The remaining work before `1.0.0` is intentionally narrow:
 
-What remains is primarily:
+- release-candidate validation in realistic environments;
+- downstream ecosystem and automation compatibility observation;
+- targeted hardening from concrete findings;
+- preserving documentation and output-contract consistency;
+- monitoring the finalized CI/release metadata and uv-cache ownership model across real workflow
+  runs;
+- and maintaining explicit post-1.0 scope boundaries.
 
-- real-world beta feedback,
-- downstream ecosystem validation,
-- compatibility preservation,
-- targeted hardening from concrete findings,
-- monitoring the new coverage signal and explicit README badge deferral,
-- observing the finalized CI/release metadata and cache-ownership model across real runs,
-- and explicitly deferred post-1.0 scope.
+The release-candidate phase is therefore not expected to introduce further architectural redesign or
+new broad contract changes.
 
-### Registry / resolution freeze
+### Release-candidate validation posture
 
-The registry and resolution identifier contract is now frozen for 1.0.
+The following areas are considered frozen for 1.0 and should now primarily receive:
 
-Completed decisions:
+- compatibility validation;
+- wording/documentation clarification;
+- focused test additions;
+- downstream-consumer verification;
+- or concrete release-blocking fixes.
 
-- Canonical file type identity is the qualified key, for example `topmark:python`.
-- Local identifiers, such as `python`, remain accepted at public boundaries only when unambiguous.
-- Ambiguous local identifiers require the qualified form.
-- `include_file_types`, `exclude_file_types`, and `policy_by_type` all share the same identifier
-  semantics.
-- Effective runtime configuration and runtime policy lookup use canonical qualified keys.
-- `topmark probe` and `topmark.api.probe()` are the accepted 1.0 resolution explainability surfaces.
-- Low-level helpers such as `probe_resolution_for_path()` remain advanced/internal debugging
-  surfaces outside the `topmark.api` stability contract.
-- Registry discovery/query commands remain deferred beyond 1.0.
+Frozen areas include:
 
-Remaining work is limited to real-world beta validation, targeted hardening, downstream ecosystem
-validation, and ensuring generated API references continue reflecting the frozen public/internal
-boundary as the code evolves.
+- registry and file-type identity semantics;
+- CLI applicability, STDIN, verbosity, quiet, and exit-code behavior;
+- TOML/config/runtime layering and staged-validation boundaries;
+- machine-readable output schemas and naming conventions;
+- TEXT and Markdown human-output behavior;
+- artifact-based CI → release publication;
+- uv/nox-based tooling and metadata-driven CI Python-version handling;
+- and documentation/prose-governance validation.
 
-### In-memory pipeline: implement or defer
+### Registry and resolution
 
-This was the largest remaining product/architecture decision before 1.0 and is now resolved.
+Registry and resolution behavior are frozen for 1.0.
 
-- In-memory pipeline support is **explicitly deferred beyond 1.0**.
+The accepted 1.0 model includes:
 
-Current status:
+- canonical qualified file-type identifiers;
+- unambiguous local identifiers at public boundaries;
+- explicit registry bindings;
+- deterministic ambiguity handling;
+- and `topmark probe` plus `topmark.api.probe()` as the supported explainability surfaces.
 
-- design drafted
-- implementation not started
-- architecture direction understood
-- explicitly deferred for 1.0 contract freeze
+Registry query/filter commands, richer discovery tooling, and broader registry introspection remain
+explicitly deferred beyond 1.0.
 
-Recorded decision:
+Remaining work is limited to downstream validation, compatibility preservation, generated-reference
+consistency, and targeted hardening.
 
-- defer in-memory pipeline support to post-1.0
-- future design considerations retained for post-1.0 work:
-  - whether mixed file + memory inputs are allowed in one run
-  - how synthetic paths/display names should be represented
-  - whether stdin should be modeled through the same abstraction
+### In-memory pipeline support
 
-For 1.0:
+In-memory pipeline support is explicitly deferred beyond 1.0.
 
-- the existing file-based pipeline remains the only supported execution model
-- stdin continues to be handled via the existing runtime mechanisms
+The 1.0 release continues using the filesystem-backed execution model together with the existing
+STDIN runtime mechanisms.
 
-Post-1.0:
+Future post-1.0 work may introduce:
 
-- introduce an `InputSource` abstraction
-- enable memory-backed pipeline execution
-- revisit test strategy to split between memory-based unit tests and filesystem integration tests
+- an `InputSource` abstraction;
+- memory-backed execution;
+- mixed file/memory input models;
+- and lighter-weight memory-oriented test strategies.
 
-### API / CLI / presentation boundary freeze
+This is an intentional scope deferral rather than unfinished 1.0 work.
 
-The separation is frozen for 1.0. Remaining work is limited to stability monitoring, consistency
-validation, and targeted hardening rather than boundary redesign:
+### API, CLI, and presentation boundaries
 
-- Keep monitoring for any remaining Click-facing concerns in non-CLI modules.
-- Keep formatting, TEXT verbosity/quiet, and color decisions strictly split between:
-  - CLI policy/orchestration
-  - pure presentation rendering
-  - core/domain logic
-- Confirm that TOML validation diagnostics surface consistently in CLI and API flows without leaking
-  CLI-specific formatting concerns into shared validation logic.
-- Keep `topmark.api.runtime` internal; public callers should use `topmark.api.probe()`,
-  `topmark.api.check()`, and `topmark.api.strip()` rather than runtime helpers.
-- Keep `topmark.config.overrides.PolicyOverrides` and `topmark.config.overrides.ConfigOverrides`
-  internal; public callers use mapping-based API inputs instead.
-- Confirm that provenance inspection (`config dump --show-layers`) remains an inspection concern and
-  does not leak into validation-oriented commands or stable public API contracts.
-- Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
-  public Python API surfaces.
-- Keep CI/release Python metadata and release-tooling provenance reporting as workflow concerns, not
-  public Python API surfaces.
-- Treat the late-beta internal typing/ownership cleanup as substantially complete for RC:
-  - protocol/view surfaces were tightened toward read-only semantics where mutation is not intended
-  - ambiguous tuple-shaped internal return contracts were replaced with explicit typed result
-    objects or DTO-style models where they materially improved clarity
-  - further protocol/DTO cleanup should now be incremental and justified by concrete findings rather
-    than reopened as broad pre-1.0 refactoring scope
+The API/CLI/presentation separation is frozen for 1.0.
 
-### Config / validation contract freeze
+Remaining work is limited to:
 
-The architecture is stable, and the main public configuration, validation, provenance, and
-identifier semantics are frozen. Remaining work is limited to real-world beta validation and
-explicit post-1.0 deferrals.
+- consistency validation;
+- release-candidate wording cleanup;
+- preserving Click isolation from presentation/core modules;
+- preserving presentation isolation from domain/runtime logic;
+- and maintaining the documented public/internal API boundaries.
 
-Frozen decisions:
+The following remain intentionally internal:
 
-- Typed override boundary is now frozen:
-  - `PolicyOverrides` and `ConfigOverrides` are internal CLI/API orchestration bridge types
-  - public Python callers use plain mapping-based `config`, `policy`, and `policy_by_type` inputs
-- Qualified/local file type identifier semantics are now frozen:
-  - public inputs may use qualified identifiers or unambiguous local identifiers
-  - config freeze normalizes file type filters and `policy_by_type` keys to canonical qualified keys
-  - runtime policy lookup uses canonical qualified keys
-- Freeze and document the staged configuration-validation model now implemented internally:
-  - TOML-source diagnostics
-  - merged-config diagnostics
-  - runtime-applicability diagnostics
-- Project-wide terminology and validation-stage wording are now aligned across CLI help,
-  machine-readable output, command pages, API documentation, and generated developer references.
-- Keep staged validation primarily internal for 1.0, with only the flattened compatibility
-  diagnostics contract exposed at exception, presentation, and machine-readable output boundaries.
-- `[config].strict` is now the frozen public configuration-loading strictness knob for 1.0.
-- Confirm that sanitization/runtime-applicability warnings intentionally remain inside the effective
-  `[config].strict` gate for 1.0.
-- TOML validation, config validation, runtime overlay, and typed layered provenance remain clearly
-  separated responsibilities.
-- Explicit configuration schema versioning is deferred beyond 1.0:
-  - no `[config].version` or equivalent schema-version key is added for 1.0
-  - schema versioning will be introduced only when a future non-additive schema change requires it
+- `topmark.api.runtime`;
+- low-level runtime orchestration helpers;
+- `PolicyOverrides` / `ConfigOverrides`;
+- low-level resolver/probe implementation helpers;
+- and staged-validation implementation details.
 
-Recommended direction:
+### Configuration and validation
 
-- keep the current TOML → layered configuration → runtime overlay split,
-- keep canonical qualified file type identifiers as the internal frozen representation,
-- keep `[config].strict` as the public configuration-loading strictness knob for 1.0,
-- keep runtime-facing TOML sections such as `[writer]` outside layered configuration while
-  preserving them in configuration output snapshots,
-- freeze the staged validation semantics now implemented internally,
-- keep flattened diagnostics as a derived compatibility/reporting surface only at exception,
-  presentation, and machine-readable output boundaries,
-- defer broader staged-gate exposure in CLI/API/machine output unless clearly justified before final
-  freeze,
-- keep explicit config schema versioning deferred until a future non-additive schema change requires
-  it.
+The TOML → layered configuration → runtime overlay architecture is frozen for 1.0.
 
-### Output contract freeze
+The accepted 1.0 behavior includes:
 
-Output architecture work is complete. Machine-readable implementation, human-output rendering,
-tests, reference documentation, CLI/help wording, warning/error wording, command-page wording,
-terminology alignment, and beta-semantics reviews are frozen for the beta line.
+- `[config].strict` as the configuration-loading strictness control;
+- canonical qualified file-type identifiers as the normalized internal representation;
+- flattened compatibility diagnostics at public boundaries;
+- internal staged validation logs;
+- and runtime-facing TOML sections such as `[writer]` remaining outside layered configuration.
 
-Machine-readable output decisions:
+Explicit configuration schema versioning and broader staged-validation exposure remain deferred
+beyond 1.0.
 
-- Keep flattened `{level, message}` config diagnostics as the accepted 1.0 machine contract. Richer
-  TOML-specific structure is explicitly deferred beyond 1.0.
-- Registry machine-readable output contract frozen after the flattened JSON-envelope cleanup
-  (`filetypes`, `processors`, `bindings`, `unbound_filetypes`, `unused_processors`).
-- Probe machine-readable output contract added and covered with focused JSON/NDJSON tests (per-path
-  `probes` JSON collection and `probe` NDJSON records, including filtered explicit inputs).
-- `detail_level` semantics frozen:
-  - `--long` controls projection/data depth across formats where supported
-  - `detail_level` reflects projection in machine output when present
-  - TEXT verbosity remains independent and presentation-only
-- Field naming consistency audited across domains and documented in the machine-readable output
-  reference.
-- Keep `docs/dev/machine-formats.md` and `docs/dev/machine-output.md` aligned as the canonical
-  machine-readable output reference documentation.
+Remaining work is limited to validation, compatibility preservation, and focused documentation or
+warning/error clarification.
 
-Human output decisions:
+### Output contracts
 
-- TEXT and Markdown output contracts reviewed across command groups.
-  - TEXT remains compact/console-oriented and may use `-v` / `-vv` for progressive disclosure and
-    `--quiet` only where the command exposes meaningful status, inspection, or mutation semantics.
-  - Markdown is explicitly document-oriented and ignores TEXT-oriented verbosity/quiet controls.
-  - `--long` remains the data/detail-depth control where supported.
-- Verbosity semantics (`default`, `-v`, `-vv`, `--quiet`) are frozen for 1.0.
-  - `-v` / `-vv` are TEXT-oriented progressive-disclosure controls.
-  - `--quiet` is TEXT-oriented and only exposed where suppressing output still leaves a useful
-    status, inspection, or mutation signal.
-  - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
-    registry commands) intentionally do not support `--quiet`.
-- Focused human-output tests added for version, diagnostics, config, registry, and pipeline command
-  groups.
-- Color backend decision frozen for 1.0:
-  - keep `yachalk` as an internal CLI presentation dependency
-  - keep semantic styling routed through `StyleRole`, `Theme`, `TextStyler`, and `maybe_style()`
-  - defer Rich / `rich-click` migration until after 1.0 unless a concrete release blocker appears
-- Hint-ordering strategy is frozen for 1.0.
-  - Continue keeping presentation logic fully out of CLI command functions.
+Output-contract work is complete and frozen for 1.0.
 
-CLI exit-code work is now complete for the 1.0 contract freeze: `docs/usage/exit-codes.md` is the
-canonical contract, implementation is centralized around pipeline/result prioritization, focused
-`pytest.mark.exit_code` coverage enforces the contract, and README, docs index, shared options,
-filtering, pre-commit, command-group pages, command pages, API docs, architecture docs, and
-machine-readable output docs link or summarize the same behavior. The CLI command-applicability,
-usage-error, and user-facing policy/report contracts are also frozen and documented; remaining CLI
-work is now limited to any last warning/error wording cleanup discovered during release validation.
+Machine-readable output:
 
-### Tooling / CI / release follow-up
+- remains schema driven;
+- uses flattened domain-specific envelopes;
+- emits canonical qualified identifiers where available;
+- and treats process status as the CLI exit code rather than JSON payload state.
 
-The security, workflow, release, tooling-parity, documentation-hygiene, changelog-hygiene, and
-Python prose-hygiene work is functionally complete. What remains is primarily follow-up validation,
-ecosystem monitoring, and explicitly deferred post-1.0 tooling decisions.
+Human output:
 
-Remaining follow-up:
+- keeps TEXT as the console-oriented format;
+- keeps Markdown document-oriented;
+- keeps verbosity/quiet behavior TEXT-specific;
+- and keeps semantic styling routed through the current `yachalk`-based presentation layer.
 
-- The current **artifact-based CI → release split** is accepted as the stable 1.0 release
-  architecture, with any further factoring deferred post-1.0.
-- Keep validating that:
-  - changed-file buckets remain correct
-  - tag-push artifact creation remains aligned with release expectations
-  - artifact verification continues to match publish behavior
-- The CI Python-version model is accepted for 1.0:
-  - supported and canonical Python versions are resolved through `nox -s print_python_matrix`
-  - the main CI workflow consumes the resolved metadata for compatibility-matrix and canonical
-    single-version jobs
-  - release publication keeps an explicit release-tooling Python runtime and reports non-blocking
-    drift warnings against canonical CI metadata
-- Workflow formatting/style rules are governed by checked-in tool configuration and release
-  validation gates; broader editor-style guidance remains non-blocking for 1.0.
-- Keep validating that Nox, pre-commit, local `.venv`, editor integrations, CI jobs, and the
-  artifact-based release workflow all consume the same formatter/tool configuration.
-- Keep documentation hygiene validation integrated in local and release gates as the documentation
-  conventions evolve.
-- Keep Python code-prose hygiene validation integrated in local and release gates as comments,
-  docstrings, tooling prose, and generated documentation conventions evolve.
-- Keep validating that explicit uv cache ownership remains quiet and deterministic across concurrent
-  CI jobs.
-- Keep monitoring the canonical CI coverage reporting signal now integrated during late-beta
-  stabilization:
-  - coverage runs through the existing `nox -s coverage` session on Ubuntu using the resolved
-    canonical Python version
-  - coverage publishes a GitHub Step Summary plus HTML and XML/JSON workflow artifacts
-  - coverage remains diagnostic and is not a release-blocking percentage gate
-  - README coverage badge adoption remains intentionally deferred until the published signal proves
-    stable, representative, and useful over time
-- Keep MkDocs 1.x as the accepted documentation generator through the `v1.0.0` beta stabilization
-  releases because the current strict docs build, link checks, generated API pages, release
-  validation, and cross-platform packaging/install validation are green. Evaluate ProperDocs as a
-  post-beta / post-1.0 tooling follow-up unless MkDocs becomes a concrete release blocker before
-  final `1.0.0`.
+Rich or `rich-click` migration remains explicitly deferred beyond 1.0 unless a concrete release
+blocker appears.
 
-### Human-facing policy / behavior questions
+Remaining work is limited to compatibility validation, wording consistency, and downstream consumer
+verification.
 
-The main user-facing policy, reporting, terminology, and behavior questions are frozen for 1.0.
-Remaining work is limited to monitoring real-world beta feedback, preserving compatibility, and
-keeping documentation/help output aligned:
+### Tooling, CI, and release workflow
 
-- The default processing mode remains **"all supported file types"** for 1.0.
-- A stricter whitelist-first default remains a possible post-1.0 design question, not a 1.0 blocker.
-- Public API callers continue using stable string literals for policy tokens in 1.0; a dedicated
-  public enum may be revisited later.
-- Summary reason strings remain presentation-facing labels rather than a separate stable integration
-  contract.
-- Keep confirming that API, CLI, and generated documentation consistently use the `report` model and
-  no longer reference legacy `skip_*` filters.
-- Keep CLI help examples aligned with canonical option/command constants to avoid drift between
-  documentation and implementation.
-- Keep Markdown documentation and examples aligned with the document-oriented output contract rather
-  than treating Markdown as layout-equivalent TEXT output.
-- File-recognition / resolution explainability is now accepted for 1.0 via the read-only
-  `topmark probe` command and `topmark.api.probe()`.
-  - explicit inputs filtered during discovery are reported as `filtered` probe results with broad
-    path-filter, file-type-filter, or generic discovery-filter reasons
-  - registry query/filter commands remain deferred
-  - probe is distinct from `check` / `strip` and does not perform header comparison, planning, or
-    write/apply semantics
-  - public API probe results expose stable DTOs rather than resolver enums, pipeline contexts, or
-    registry internals
-  - file type identifiers in probe filters follow the frozen qualified/local identifier contract
-- User-facing policy/report flag semantics are now accepted for 1.0:
-  - `--report` is a human per-file output filter for `check` and `strip`
-  - `header_mutation_mode` controls `check` insertion/update intent
-  - `empty_insert_mode` classifies empty/empty-like files for insertion eligibility and does not by
-    itself permit insertion
-  - safety gates remain authoritative over all policy options
+The uv/nox tooling model and artifact-based release workflow are frozen for 1.0.
 
-### Overall status (undecided / to do)
+Accepted 1.0 behavior includes:
 
-The remaining work is no longer broad architectural redesign or contract freeze.
+- `uv.lock` as the canonical lock artifact;
+- metadata-driven CI Python-version resolution through `nox -s print_python_matrix`;
+- explicit uv cache ownership through `actions/cache`;
+- artifact creation in CI on tag pushes;
+- and privileged release publication consuming CI-built artifacts.
 
-What is left is mainly:
+Remaining work is limited to:
 
-- **real-world beta feedback**
-- **ecosystem compatibility validation**
-- **downstream machine-readable output consumer validation**
-- **targeted hardening from concrete beta findings**
-- **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
-- **coverage-signal monitoring and README badge deferral now that canonical CI coverage reporting is
-  integrated**
-- **observation of the finalized CI Python metadata, release-provenance, and uv cache-ownership
-  model across real GitHub workflow runs**
-- **ongoing coverage expansion for complex orchestration and integration-heavy paths where
-  additional confidence is still valuable despite the frozen 1.0 architecture**
-- **explicit post-1.0 follow-up for deferred scope**
+- observing the finalized workflow model in real runs;
+- validating metadata/reporting consistency;
+- monitoring cache behavior;
+- validating downstream packaging/install behavior;
+- and targeted hardening from concrete findings.
 
-That means TopMark is now in the late beta stabilization stage of the 1.0 effort: validating the
-frozen contracts in realistic environments, preserving compatibility, maintaining documentation and
-prose-governance quality, validating downstream ecosystem behavior, observing the finalized workflow
-metadata/cache model in real CI runs, and avoiding new scope unless a concrete release blocker
-appears.
+Broader workflow factoring and infrastructure extraction remain deferred beyond 1.0.
+
+### Coverage and validation posture
+
+Coverage remains a confidence-building signal rather than a release gate.
+
+The canonical CI coverage workflow is now integrated and validated through real GitHub workflow
+runs. Coverage reporting remains informational and publishes:
+
+- GitHub Step Summary output;
+- HTML artifacts;
+- XML artifacts;
+- and JSON artifacts.
+
+README coverage-badge publication remains intentionally deferred until the published signal proves
+stable and meaningful over time.
+
+Additional coverage expansion before `1.0.0` should remain focused on:
+
+- orchestration-heavy paths;
+- integration-heavy behavior;
+- or concrete confidence gaps discovered during RC validation.
+
+### Human-facing policy and behavior
+
+The user-facing policy, terminology, reporting, and command-behavior decisions are frozen for 1.0.
+
+Accepted 1.0 behavior includes:
+
+- `report` replacing legacy `skip_*` behavior;
+- `header_mutation_mode` replacing legacy add/update flags;
+- the current default “all supported file types” processing model;
+- probe-based resolution explainability;
+- and stable TEXT/Markdown/machine-output separation.
+
+Public API callers continue using stable string policy tokens for 1.0. A dedicated public enum
+surface may be reconsidered after the final release.
+
+### Overall status
+
+TopMark is now in the release-candidate stabilization phase.
+
+The remaining work is primarily:
+
+- real-world RC validation;
+- ecosystem compatibility verification;
+- downstream machine-readable output validation;
+- documentation consistency preservation;
+- coverage-confidence monitoring;
+- workflow/release observation;
+- and explicit post-1.0 follow-up management.
+
+The project should avoid introducing new broad scope or contract changes unless a concrete
+release-blocking issue is discovered.
 
 ______________________________________________________________________
 
