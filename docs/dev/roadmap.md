@@ -406,6 +406,11 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   - documentation hygiene checks
   - permissions model
   - SHA-pinned actions
+- Added canonical CI coverage reporting through the existing `nox -s coverage` session:
+  - runs on Ubuntu with Python 3.13 outside the full compatibility matrix
+  - publishes a GitHub Step Summary
+  - uploads HTML coverage output and XML/JSON machine-readable coverage reports
+  - keeps coverage diagnostic rather than percentage-gated
 
 Result: release and installation validation are now secure, reproducible, automated, and validated
 across multiple platforms through dedicated artifact-install smoke testing.
@@ -448,8 +453,8 @@ At this point:
   - XML strip diagnostics were tightened to avoid claiming spacer cleanup when no XML-specific
     spacer was removed
   - Python 3.10 compatibility and Pyright strict-mode guarantees were preserved
-  - remaining follow-up is limited to targeted incremental confidence-building, including future
-    coverage workflow/reporting integration
+  - remaining follow-up is limited to targeted incremental confidence-building, with canonical CI
+    coverage reporting now integrated as a diagnostic signal
 
 The project is now in a **late beta stabilization phase**, with broad architecture complete,
 in-memory pipeline support explicitly deferred, documentation governance and prose hygiene
@@ -754,7 +759,7 @@ What remains is primarily:
 - downstream ecosystem validation,
 - compatibility preservation,
 - targeted hardening from concrete findings,
-- coverage workflow/reporting follow-up,
+- coverage-signal monitoring and README badge deferral,
 - and explicitly deferred post-1.0 scope.
 
 ### Registry / resolution freeze
@@ -961,10 +966,12 @@ Remaining follow-up:
   conventions evolve.
 - Keep Python code-prose hygiene validation integrated in local and release gates as comments,
   docstrings, tooling prose, and generated documentation conventions evolve.
-- Add coverage testing to GitHub workflows and decide how to surface coverage results in project
-  documentation.
-  - A README coverage badge remains an open follow-up once coverage reporting is integrated and the
-    resulting signal is stable enough to be useful.
+- Keep monitoring the new canonical CI coverage reporting signal:
+  - coverage runs through the existing `nox -s coverage` session on Ubuntu with Python 3.13
+  - coverage publishes a GitHub Step Summary plus HTML and XML/JSON workflow artifacts
+  - coverage remains diagnostic and is not a release-blocking percentage gate
+  - a README coverage badge remains deferred until the published signal is stable enough to be
+    meaningful
 - Keep MkDocs 1.x as the accepted documentation generator through the `v1.0.0` beta stabilization
   releases because the current strict docs build, link checks, generated API pages, release
   validation, and cross-platform packaging/install validation are green. Evaluate ProperDocs as a
@@ -1017,10 +1024,9 @@ What is left is mainly:
 - **downstream machine-readable output consumer validation**
 - **targeted hardening from concrete beta findings**
 - **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
-- **coverage workflow/reporting follow-up identified during late-beta stabilization work**
-- **ongoing coverage expansion and CI coverage reporting for complex orchestration and
-  integration-heavy paths where additional confidence is still valuable despite the frozen 1.0
-  architecture**
+- **coverage-signal monitoring now that canonical CI coverage reporting is integrated**
+- **ongoing coverage expansion for complex orchestration and integration-heavy paths where
+  additional confidence is still valuable despite the frozen 1.0 architecture**
 - **explicit post-1.0 follow-up for deferred scope**
 
 That means TopMark is now in the late beta stabilization stage of the 1.0 effort: validating the
@@ -1366,10 +1372,12 @@ GitHub workflows, and release workflow checks rather than dedicated pytest tests
   - [x] `make test` (runs `nox -s qa`)
   - [x] `make release-check`
   - [x] `make release-full`, or an equivalent CI-backed full release gate, passes
-- [ ] Coverage workflow/reporting follow-up evaluated
-  - [ ] GitHub workflow coverage reporting added or explicitly deferred with rationale
-  - [ ] README coverage badge decision recorded after coverage reporting output is available and
-    stable enough to be meaningful
+- [x] Coverage workflow/reporting follow-up evaluated
+  - [x] GitHub workflow coverage reporting added through the canonical `nox -s coverage` session
+  - [x] Coverage reports are published as workflow artifacts with a GitHub Step Summary
+  - [x] Coverage remains diagnostic and is not a release-blocking percentage gate
+  - [x] README coverage badge decision recorded: defer until the published signal is stable enough
+    to be meaningful
 - [x] Tooling parity validation completed
   - [x] nox formatter/linter behavior matches pre-commit behavior
   - [x] local `.venv` behavior matches nox expectations where documented
@@ -1512,8 +1520,8 @@ beta feedback identifies a release blocker.
   current lightweight hygiene checks
 - [ ] Further refactor GitHub workflow structure into reusable workflow/release-infra patterns if
   still worthwhile
-- [ ] Add GitHub workflow coverage reporting and revisit whether a public README coverage badge adds
-  meaningful signal once the reporting output is stable.
+- [ ] Revisit whether a public README coverage badge adds meaningful signal once the CI coverage
+  reporting output has stabilized.
 
 ______________________________________________________________________
 
@@ -1523,6 +1531,6 @@ contract-stabilization and release-path rehearsal phase, while the beta stabiliz
 validated the frozen contracts, release pipeline, GitHub prerelease visibility, documentation
 governance, changelog hygiene, prose hygiene, terminology stability, and cross-platform installation
 behavior. The remaining path to final `1.0.0` is now focused on preserving compatibility, collecting
-final real-world beta feedback, validating downstream ecosystem behavior, completing or explicitly
-deferring coverage workflow/reporting follow-up, continuing targeted post-freeze hardening where
+final real-world beta feedback, validating downstream ecosystem behavior, monitoring the newly
+integrated CI coverage reporting signal, continuing targeted post-freeze hardening where
 appropriate, and avoiding new scope unless concrete release-blocking issues are identified.
