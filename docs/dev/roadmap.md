@@ -31,8 +31,9 @@ Future in-memory pipeline support would enable:
 - Future integrations (editors, LSPs, CI bots) without temporary files
 - Clearer separation between what TopMark does and how input is obtained
 
-For 1.0 itself, the priority is to keep the already-refactored system stable, predictable, and
-well-documented while deferring new integration scope until after the final release.
+For 1.0 itself, the priority is to keep the already-refactored system stable, predictable,
+well-documented, reproducible in CI/release environments, and operationally transparent while
+continuing to defer new integration scope until after the final release.
 
 ______________________________________________________________________
 
@@ -373,38 +374,69 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
 ### CI / release / dependency model (completed)
 
 - Migrated to **uv-first dependency model**
+
 - Replaced tox with **nox**
+
 - Implemented **artifact-based CI → release pipeline**
+
 - Added a dedicated multi-platform install-smoke GitHub Actions workflow:
+
   - validates wheel and sdist installation from built artifacts on Linux, macOS, and Windows
   - verifies isolated installation behavior using clean virtual environments
   - performs lightweight CLI smoke checks from installed artifacts
   - helps detect packaging, dependency, entry-point, and platform-specific installation regressions
+
 - Added dedicated install-smoke workflow documentation covering:
+
   - workflow purpose and scope
   - artifact-install validation strategy
   - relationship with release and CI workflows
   - supported platforms and Python versions
   - expected smoke-test coverage
+
 - Adopted **SCM-based versioning (setuptools-scm)**
+
 - Corrected the runtime dependency model by promoting `typing-extensions` to core dependencies after
   isolated-environment failures revealed it was still required at runtime.
+
 - Corrected additional implicit dependency by promoting `packaging` to core dependencies after
   pre-commit/isolated-environment usage revealed it is required at runtime.
+
 - Added `deptry` configuration in `pyproject.toml` so optional dependency groups used for
   development and documentation are modeled explicitly during dependency-audit checks.
+
 - Refreshed dependencies and pre-commit hooks during beta stabilization, including removal of an
   obsolete Pyright ignore after improved `tomlkit` typing.
+
 - Hardened CI with:
+
   - link checks
   - documentation hygiene checks
   - permissions model
   - SHA-pinned actions
+
 - Added canonical CI coverage reporting through the existing `nox -s coverage` session:
+
   - runs on Ubuntu with Python 3.13 outside the full compatibility matrix
   - publishes a GitHub Step Summary
   - uploads HTML coverage output and XML/JSON machine-readable coverage reports
   - keeps coverage diagnostic rather than percentage-gated
+
+- Centralized CI Python-version metadata through `nox -s print_python_matrix`:
+
+  - supported compatibility-matrix versions are derived from `pyproject.toml`
+  - canonical single-version jobs consume resolved metadata rather than duplicated literals
+  - release workflows report non-blocking drift warnings when explicit release-tooling Python
+    versions differ from canonical CI metadata
+
+- Added dedicated documentation for CI workflows, release workflows, install-smoke validation, and
+  the shared `setup-python-nox` composite action.
+
+- Standardized explicit uv cache ownership in CI:
+
+  - disabled the `setup-uv` built-in cache integration
+  - centralized cache ownership through explicit `actions/cache` steps
+  - eliminated noisy concurrent cache-reservation race warnings between jobs
 
 Result: release and installation validation are now secure, reproducible, automated, and validated
 across multiple platforms through dedicated artifact-install smoke testing.
@@ -449,6 +481,8 @@ At this point:
   - Python 3.10 compatibility and Pyright strict-mode guarantees were preserved
   - remaining follow-up is limited to targeted incremental confidence-building, with canonical CI
     coverage reporting now integrated as a diagnostic signal
+  - CI Python-version metadata, coverage reporting, install-smoke validation, and release-tooling
+    provenance reporting are now aligned with the frozen late-beta workflow model
 
 The project is now in a **late beta stabilization phase**, with broad architecture complete,
 in-memory pipeline support explicitly deferred, documentation governance and prose hygiene
@@ -690,31 +724,56 @@ hygiene, and code-prose hygiene are now stricter than before.
 ### Developer tooling / CI / release workflow
 
 - tox was removed; contributors and CI now use `nox` with uv-backed environments.
+
 - The project no longer uses committed `requirements*.txt` / `constraints.txt` as the primary
   dependency-management model.
+
   - `uv.lock` is now the canonical lock artifact.
+
 - Package versioning no longer uses a manually maintained static `[project].version`.
+
   - versions are now derived from Git tags via `setuptools-scm`
+
 - Release workflow behavior changed significantly:
+
   - release publishing no longer builds the repository in the privileged workflow
   - CI now builds and uploads release artifacts on tag pushes
   - the privileged release workflow downloads, verifies, and publishes those artifacts
+
 - Release validation no longer compares tags to static `pyproject.toml` version metadata.
+
   - it now validates SCM-derived artifact versions against the resolved release tag
+
 - Release/contributor workflow no longer includes a manual version-bump step.
+
 - Compact PEP 440 prerelease tags are now preferred (`vX.Y.ZaN`, `vX.Y.ZbN`, `vX.Y.ZrcN`).
+
 - Dependencies and pre-commit hook revisions are refreshed as part of beta stabilization, and type
   expectations may tighten as dependency metadata improves.
+
 - `typing-extensions` is now treated as a runtime dependency rather than an implicitly available
   development-only/transitive dependency; packaging and isolated-environment installs now reflect
   the actual runtime import surface.
+
 - Documentation hygiene and Python code-prose hygiene are exposed as first-class local/tooling gates
   through `make docs-hygiene`, `make code-hygiene`, `nox -s docs_hygiene`, and
   `nox -s code_hygiene`.
+
   - `make verify`, `make release-check`, and `make release-full` now include documentation and
     code-prose hygiene validation
+
 - GitHub Actions behavior is more aggressively gated by changed-file buckets on pull requests, so
   some jobs may now be skipped unless relevant files changed.
+
+- CI Python-version metadata is now derived dynamically through `nox -s print_python_matrix` rather
+  than duplicated directly in the primary CI workflow.
+
+  - compatibility-matrix jobs and canonical single-version jobs now consume resolved metadata
+  - release workflows intentionally retain explicit release-tooling Python versions while reporting
+    non-blocking drift warnings against canonical CI metadata
+
+- uv cache ownership is now centralized through explicit `actions/cache` integration rather than
+  mixed cache ownership between workflow-local caches and `setup-uv` built-in caching.
 
 Result: contributor/release workflow is more secure and reproducible, but maintainers must update
 both their mental model and automation expectations for CI, publishing, dependency management, and
@@ -745,7 +804,8 @@ hardening work** before `1.0.0`.
 
 The large structural refactors, contract-freeze decisions, beta validation gates,
 documentation-governance work, command-page freeze review, terminology alignment, TOML-template
-harmonization, prose-hygiene tooling work, and late-beta typing/ownership cleanup are complete.
+harmonization, prose-hygiene tooling work, late-beta typing/ownership cleanup, and CI/release
+workflow stabilization are complete.
 
 What remains is primarily:
 
@@ -753,7 +813,8 @@ What remains is primarily:
 - downstream ecosystem validation,
 - compatibility preservation,
 - targeted hardening from concrete findings,
-- coverage-signal monitoring and README badge deferral,
+- monitoring the new coverage signal and explicit README badge deferral,
+- observing the finalized CI/release metadata and cache-ownership model across real runs,
 - and explicitly deferred post-1.0 scope.
 
 ### Registry / resolution freeze
@@ -828,6 +889,8 @@ validation, and targeted hardening rather than boundary redesign:
 - Confirm that provenance inspection (`config dump --show-layers`) remains an inspection concern and
   does not leak into validation-oriented commands or stable public API contracts.
 - Keep release-automation concerns artifact/download-oriented and scoped to CLI/automation, not to
+  public Python API surfaces.
+- Keep CI/release Python metadata and release-tooling provenance reporting as workflow concerns, not
   public Python API surfaces.
 - Treat the late-beta internal typing/ownership cleanup as substantially complete for RC:
   - protocol/view surfaces were tightened toward read-only semantics where mutation is not intended
@@ -950,8 +1013,12 @@ Remaining follow-up:
   - changed-file buckets remain correct
   - tag-push artifact creation remains aligned with release expectations
   - artifact verification continues to match publish behavior
-- The current explicit `tests` matrix setup remains accepted for 1.0; further factoring around the
-  shared setup composite action is deferred post-1.0.
+- The CI Python-version model is accepted for 1.0:
+  - supported and canonical Python versions are resolved through `nox -s print_python_matrix`
+  - the main CI workflow consumes the resolved metadata for compatibility-matrix and canonical
+    single-version jobs
+  - release publication keeps an explicit release-tooling Python runtime and reports non-blocking
+    drift warnings against canonical CI metadata
 - Workflow formatting/style rules are governed by checked-in tool configuration and release
   validation gates; broader editor-style guidance remains non-blocking for 1.0.
 - Keep validating that Nox, pre-commit, local `.venv`, editor integrations, CI jobs, and the
@@ -960,9 +1027,12 @@ Remaining follow-up:
   conventions evolve.
 - Keep Python code-prose hygiene validation integrated in local and release gates as comments,
   docstrings, tooling prose, and generated documentation conventions evolve.
+- Keep validating that explicit uv cache ownership remains quiet and deterministic across concurrent
+  CI jobs.
 - Keep monitoring the canonical CI coverage reporting signal now integrated during late-beta
   stabilization:
-  - coverage runs through the existing `nox -s coverage` session on Ubuntu with Python 3.13
+  - coverage runs through the existing `nox -s coverage` session on Ubuntu using the resolved
+    canonical Python version
   - coverage publishes a GitHub Step Summary plus HTML and XML/JSON workflow artifacts
   - coverage remains diagnostic and is not a release-blocking percentage gate
   - README coverage badge adoption remains intentionally deferred until the published signal proves
@@ -1021,14 +1091,17 @@ What is left is mainly:
 - **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
 - **coverage-signal monitoring and README badge deferral now that canonical CI coverage reporting is
   integrated**
+- **observation of the finalized CI Python metadata, release-provenance, and uv cache-ownership
+  model across real GitHub workflow runs**
 - **ongoing coverage expansion for complex orchestration and integration-heavy paths where
   additional confidence is still valuable despite the frozen 1.0 architecture**
 - **explicit post-1.0 follow-up for deferred scope**
 
 That means TopMark is now in the late beta stabilization stage of the 1.0 effort: validating the
 frozen contracts in realistic environments, preserving compatibility, maintaining documentation and
-prose-governance quality, validating downstream ecosystem behavior, and avoiding new scope unless a
-concrete release blocker appears.
+prose-governance quality, validating downstream ecosystem behavior, observing the finalized workflow
+metadata/cache model in real CI runs, and avoiding new scope unless a concrete release blocker
+appears.
 
 ______________________________________________________________________
 
@@ -1259,10 +1332,13 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] identified read-only protocol tightening and tuple-shaped internal return contract follow-up
     substantially completed before RC using focused frozen value objects and documentation updates
   - [x] Canonical CI coverage reporting integrated as a non-blocking stabilization signal
-    - [x] coverage runs through the existing `nox -s coverage` session on Ubuntu with Python 3.13
+    - [x] coverage runs through the existing `nox -s coverage` session on Ubuntu using the resolved
+      canonical Python version
     - [x] GitHub Actions publishes Step Summary, HTML, XML, and JSON coverage artifacts
     - [x] coverage remains diagnostic rather than percentage-gated for the 1.0 line
     - [x] README coverage badge intentionally deferred pending longer-term signal stability review
+    - [x] coverage-reporting behavior validated across real GitHub workflow runs during the beta
+      stabilization line
 
 #### [Must] Tooling / dependency / release ecosystem
 
@@ -1281,7 +1357,21 @@ These are release blockers unless explicitly deferred with a documented rational
   - [x] editor integrations
   - [x] CI
   - [x] artifact-based release workflow
+- [x] Explicit uv cache ownership stabilized across shared CI bootstrap paths
+  - [x] `setup-uv` built-in cache integration disabled in favor of explicit `actions/cache`
+    ownership
+  - [x] concurrent cache-reservation race warnings eliminated during beta stabilization
+  - [x] cache ownership/documentation aligned across workflows and composite bootstrap actions
 - [x] Artifact-based CI → release pipeline implemented and documented
+- [x] CI/release Python metadata and workflow bootstrap model stabilized and documented
+  - [x] supported and canonical Python versions are resolved from `pyproject.toml` through
+    `nox -s print_python_matrix`
+  - [x] compatibility-matrix and canonical single-version jobs consume resolved metadata rather than
+    duplicated version literals
+  - [x] release publication intentionally retains an explicit release-tooling Python runtime while
+    reporting non-blocking drift warnings against canonical CI metadata
+  - [x] shared Python/uv/nox bootstrap behavior documented through the `setup-python-nox`
+    composite-action documentation
 - [x] GitHub prerelease publication enabled for prerelease tags while preserving TestPyPI package
   publication for prerelease artifacts
 - [x] Dedicated multi-platform install-smoke workflow implemented and documented
@@ -1352,6 +1442,11 @@ through standalone pytest-only packaging tests.
   - [x] coverage reporting remains informational rather than release-blocking
   - [x] README coverage badge decision recorded: defer until the published signal is stable enough
     to be meaningful
+- [x] CI metadata/bootstrap follow-up validated during the beta stabilization line
+  - [x] metadata-driven Python-version resolution validated in real GitHub workflow runs
+  - [x] release-tooling provenance drift warnings validated as non-blocking diagnostics
+  - [x] explicit uv cache ownership validated across concurrent CI jobs
+  - [x] CI and release workflow documentation aligned with the finalized bootstrap/cache model
 - [x] published `v1.0.0b3` artifacts validated successfully on Windows, macOS, and Ubuntu through
   real installation and execution testing
 - [x] uv-managed development environment works with the documented development extras
@@ -1456,12 +1551,14 @@ as a record of recommended freeze work that has now been closed.
   - formatter behavior is governed by checked-in tool configuration and release validation gates
   - broader editor-style guidance remains non-blocking for 1.0
 - [x] Decide how CI Python-version metadata should be managed for the frozen 1.0 workflow model
-  - supported and canonical Python versions are derived from `pyproject.toml` through
+  - [x] supported and canonical Python versions are derived from `pyproject.toml` through
     `nox -s print_python_matrix`
-  - the compatibility matrix and canonical single-version jobs consume the resolved metadata rather
-    than duplicating version literals in the main CI workflow
-  - release publication intentionally retains an explicit release-tooling Python runtime while
+  - [x] the compatibility matrix and canonical single-version jobs consume the resolved metadata
+    rather than duplicating version literals in the main CI workflow
+  - [x] release publication intentionally retains an explicit release-tooling Python runtime while
     reporting non-blocking drift warnings against canonical CI metadata
+  - [x] explicit uv cache ownership remains centralized through `actions/cache` rather than mixed
+    cache ownership models
 
 #### [Recommended] Documentation governance
 
@@ -1535,9 +1632,11 @@ ______________________________________________________________________
 Only when all items in the "Must finish before 1.0" section are completed or explicitly deferred
 with rationale should `1.0.0` final be cut. The 1.0 alpha series served as the
 contract-stabilization and release-path rehearsal phase, while the beta stabilization series
-validated the frozen contracts, release pipeline, GitHub prerelease visibility, documentation
-governance, changelog hygiene, prose hygiene, terminology stability, and cross-platform installation
-behavior. The remaining path to final `1.0.0` is now focused on preserving compatibility, collecting
-final real-world beta feedback, validating downstream ecosystem behavior, monitoring the newly
-integrated CI coverage reporting signal, continuing targeted post-freeze hardening where
-appropriate, and avoiding new scope unless concrete release-blocking issues are identified.
+validated the frozen contracts, release pipeline, GitHub prerelease visibility, CI/release metadata
+handling, coverage-reporting behavior, documentation governance, changelog hygiene, prose hygiene,
+terminology stability, and cross-platform installation behavior. The remaining path to final `1.0.0`
+is now focused on preserving compatibility, collecting final real-world beta feedback, validating
+downstream ecosystem behavior, monitoring the newly integrated CI coverage reporting signal,
+observing the finalized CI/release metadata and cache-ownership model across real workflow runs,
+continuing targeted post-freeze hardening where appropriate, and avoiding new scope unless concrete
+release-blocking issues are identified.
