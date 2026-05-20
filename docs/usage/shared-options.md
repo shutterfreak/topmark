@@ -12,14 +12,14 @@ topmark:header:end
 
 # Shared output and rendering options
 
-Shared options control:
+Shared options control stable user-facing runtime behavior such as:
 
 - output rendering
 - verbosity
 - diagnostics visibility
-- machine-readable JSON and NDJSON output
+- machine-readable JSON and NDJSON rendering
 - color behavior
-- command applicability semantics and input modes
+- command applicability behavior and runtime input modes
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -28,25 +28,38 @@ For CLI/configuration/API spelling conventions for multi-word option values, see
 
 ## Output format
 
-TopMark supports four output formats:
-
-These formats apply consistently across all commands that support machine-readable output.
+TopMark supports four stable output formats:
 
 ```bash
---output-format text        # Text output on interactive terminal (default)
---output-format markdown    # Markdown format
+--output-format text        # Interactive terminal-oriented TEXT output (default)
+--output-format markdown    # Markdown document output
 # Machine-readable formats:
 --output-format json        # JSON object (formatted)
 --output-format ndjson      # NDJSON records (1 per line)
 ```
 
+These formats behave consistently across commands that support machine-readable output.
+
 - Human-facing output:
   - `text` (default): intended for interactive terminal use; when color is enabled, output is
     rendered in color by default (disable with `--color never`).
-  - `markdown`: document-oriented Markdown output; ignores TEXT-oriented verbosity controls.
+  - `markdown`: document-oriented Markdown output; ignores TEXT-specific verbosity rendering.
 - Machine-readable formats:
-  - `json`: emits a single machine-readable JSON document formatted for readability.
+  - `json`: emits a single machine-readable JSON document formatted for readability and tooling.
   - `ndjson`: emits one machine-readable NDJSON record per line.
+
+______________________________________________________________________
+
+### TEXT vs machine-readable rendering
+
+TopMark intentionally separates:
+
+- TEXT-oriented interactive rendering;
+- Markdown-oriented document rendering;
+- machine-readable JSON and NDJSON serialization;
+- process exit-code semantics.
+
+> [!NOTE] Verbosity, quiet mode and color rendering affect only human-facing TEXT rendering.
 
 ______________________________________________________________________
 
@@ -68,7 +81,7 @@ Color output applies only to the `text` output format.
 
 Color has no effect on `markdown` or machine-readable output formats (`json` or `ndjson`).
 
-TopMark also respects the standard `NO_COLOR` environment variable.
+TopMark also respects the standard `NO_COLOR` environment variable for TEXT rendering.
 
 ### Verbosity
 
@@ -88,7 +101,7 @@ In TEXT output, verbosity affects:
 
 ### Quiet mode
 
-TopMark supports quiet mode for TEXT-oriented human-readable output.
+TopMark supports quiet mode for TEXT-oriented human-readable rendering.
 
 ```bash
 --quiet         # Suppress TEXT output (only for supported commands)
@@ -110,7 +123,7 @@ ______________________________________________________________________
 ## Exit-code behavior
 
 - Exit codes are not affected by verbosity or `--quiet`.
-- `--quiet` suppresses human-readable output while preserving CLI semantic status behavior.
+- `--quiet` suppresses human-readable rendering while preserving CLI semantic status behavior.
 
 See also:
 
@@ -122,8 +135,8 @@ ______________________________________________________________________
 
 ## Command applicability
 
-TopMark commands expose only options applicable to that command family. Known but inapplicable
-options are rejected as explicit CLI usage errors rather than silently ignored.
+TopMark commands expose only options applicable to the selected command family. Known but
+inapplicable options are rejected as explicit CLI usage errors rather than ignored silently.
 
 Related docs:
 
@@ -144,7 +157,7 @@ Related docs:
 
 ### Shared input modes
 
-File-processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md), and
+Runtime file-processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md), and
 [`probe`](commands/probe.md)) support the same input modes:
 
 - **Path mode**: process positional paths and/or paths loaded from `--files-from FILE`.
@@ -152,8 +165,8 @@ File-processing commands ([`check`](commands/check.md), [`strip`](commands/strip
   - `--files-from -`
   - `--include-from -`
   - `--exclude-from -`
-- **Content STDIN mode**: process one virtual file from STDIN content by passing `-` as the sole
-  PATH and providing `--stdin-filename NAME`.
+- **Content STDIN mode**: process one virtual runtime file from STDIN content by passing `-` as the
+  sole PATH and providing `--stdin-filename NAME`.
 
 These modes are mutually exclusive: do not mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
@@ -168,18 +181,18 @@ These modes are mutually exclusive: do not mix `-` (content mode) with `--files-
 In content STDIN mode, `--stdin-filename` is required so TopMark can resolve file type, processor
 binding, and path-sensitive policy exactly as it would for a real file path.
 
-For mutation commands (`check` and `strip`), `--apply` in content mode writes the transformed
-content to STDOUT and routes diagnostics to STDERR. This ensures consistent file-type resolution and
-runtime header-policy behavior between path-based and STDIN inputs without writing to an unknown
+For mutation commands (`check` and `strip`), `--apply` in content mode writes transformed content to
+STDOUT and routes diagnostics to STDERR. This ensures consistent file-type resolution and runtime
+header-policy evaluation behavior between path-based and STDIN inputs without writing to an unknown
 filesystem location.
 
 ### Configuration-loading applicability
 
-Layered configuration loading and discovery apply to [`check`](commands/check.md),
+Layered configuration loading and discovery behavior apply to [`check`](commands/check.md),
 [`strip`](commands/strip.md), [`probe`](commands/probe.md),
 [`config check`](commands/config/check.md), and [`config dump`](commands/config/dump.md).
 
-Layered configuration loading and discovery do not apply to:
+Layered configuration loading and discovery behavior do not apply to:
 
 - [`config defaults`](commands/config/defaults.md)
 - [`config init`](commands/config/init.md)
