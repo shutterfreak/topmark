@@ -96,8 +96,12 @@ contracts and execution semantics. The test matrix runs on Python 3.10 through 3
 disabled so failures on one Python version do not hide failures on others.
 
 Coverage reporting runs in a dedicated canonical job on Ubuntu with Python 3.13 using the existing
-`nox -s coverage` session. Coverage intentionally runs outside the full test matrix to avoid
+`nox -s coverage -p 3.13` session. Coverage intentionally runs outside the full test matrix to avoid
 duplicating expensive QA work that is already covered by the compatibility matrix.
+
+The coverage job depends on the full test matrix succeeding before coverage reports are generated.
+This keeps the compatibility matrix as the primary validation gate while avoiding additional
+coverage-processing noise after known test failures.
 
 The API snapshot check is pull-request-only and runs when Python-relevant files change. It is a fast
 guardrail for unexpected stable public API surface changes, not a replacement for the full test
@@ -122,7 +126,7 @@ The workflow also publishes coverage artifacts from the dedicated `coverage` job
 
 - an HTML coverage report;
 - XML and JSON machine-readable reports;
-- a short GitHub Step Summary.
+- a short GitHub Step Summary with a coverage overview and artifact notice.
 
 Coverage artifacts are diagnostic CI outputs only. They are not release artifacts and are not
 consumed by the release workflow.
@@ -154,9 +158,6 @@ nox -s lint
 nox -s docstring_links
 nox -s docs
 nox -s qa -p 3.13
-```
-
-```bash
 nox -s coverage -p 3.13
 ```
 
@@ -194,6 +195,8 @@ When editing this workflow:
 
 - update path filters when adding new source, docs, tooling, or workflow-maintenance files;
 - keep nox sessions as the canonical validation contracts where practical;
+- keep the coverage job canonical and lightweight rather than instrumenting the full compatibility
+  matrix;
 - keep coverage reporting lightweight and diagnostic rather than turning it into a percentage-driven
   release gate;
 - keep release artifact building in CI unless the release trust model is deliberately redesigned;

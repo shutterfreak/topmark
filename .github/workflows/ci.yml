@@ -115,6 +115,7 @@ jobs:
       - run: echo "precommit_changed=${{ steps.filter.outputs.precommit }}"
 
   lint:
+    name: Lint
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
@@ -135,6 +136,7 @@ jobs:
           nox -s docstring_links
 
   pre-commit:
+    name: Pre-commit
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.precommit_changed == 'true' }}
     runs-on: ubuntu-latest
@@ -172,6 +174,7 @@ jobs:
         run: pre-commit run --all-files --show-diff-on-failure
 
   docs:
+    name: Docs
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest
@@ -251,6 +254,7 @@ jobs:
           if-no-files-found: error
 
   tests:
+    name: Tests (${{ matrix.python-version }})
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
@@ -292,7 +296,7 @@ jobs:
 
   coverage:
     name: Coverage
-    needs: changes
+    needs: [changes, tests]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -326,6 +330,7 @@ jobs:
               f.write(f"- Coverage: {totals['percent_covered_display']}%\n")
               f.write(f"- Covered lines: {totals['covered_lines']}\n")
               f.write(f"- Total statements: {totals['num_statements']}\n")
+              f.write("\n> [!NOTE]\n> Detailed HTML/XML/JSON reports are available as workflow artifacts.\n")
           PY
           python coverage_summary.py
 
@@ -365,6 +370,7 @@ jobs:
           nox -s api_snapshot -p 3.13
 
   links:
+    name: Source link check
     # Use official lychee Action; no cargo needed
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.markdown_links_changed == 'true' }}
@@ -381,6 +387,7 @@ jobs:
             --config lychee.toml --no-progress --quiet docs README.md INSTALL.md CONTRIBUTING.md
 
   links-site:
+    name: Site link check
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest

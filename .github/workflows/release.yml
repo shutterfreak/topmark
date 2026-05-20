@@ -394,6 +394,7 @@ jobs:
           # (optionally omit skip-existing to fail on reuse; or set skip-existing: true if you prefer idempotency)
 
   github-release:
+    name: Create GitHub Release
     needs: [preflight, details, publish-package]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
