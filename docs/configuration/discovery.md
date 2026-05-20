@@ -12,21 +12,23 @@ topmark:header:end
 
 # Configuration discovery, precedence, and policy
 
-TopMark merges configuration from multiple sources with clear precedence and supports policy-based
-control over header insertion and updates.
+TopMark resolves runtime configuration from multiple sources with clear precedence and supports
+policy-based control over header insertion and updates.
 
-TopMark distinguishes between:
+TopMark intentionally separates:
 
 - whole-source TOML validation, which validates unknown sections/keys, malformed section shapes, and
-  emits INFO diagnostics for missing known sections per TOML source
+  emits INFO diagnostics for missing known sections per TOML source;
 - layered configuration deserialization and merge, which consumes only the validated layered
-  fragment and performs value parsing, normalization, and merge semantics
+  fragment and performs value parsing, normalization, and merge semantics;
+- runtime configuration resolution, which applies CLI/API overlays and execution intent after
+  layered configuration has been built.
 
 ______________________________________________________________________
 
 ## Discovery order
 
-Configuration is discovered as follows (lowest → highest precedence):
+Configuration sources are discovered as follows, from lowest to highest precedence:
 
 1. **Built-in defaults**\
    Built-in runtime defaults.
@@ -59,23 +61,23 @@ Configuration is discovered as follows (lowest → highest precedence):
 1. **CLI overrides (highest)**\
    Options and flags on the command line.
 
-> **Summary:** defaults → user → project chain (root→current, stop on `[config].root = true`) →
-> `--config` (in order) → CLI.\
-> Use `--no-config` to skip discovery.
+> **Summary:** defaults -> user -> project chain (root -> current, stop on `[config].root = true`)
+> -> `--config` (in order) -> CLI.\
+> Use `--no-config` to skip project/user discovery.
 
 ### Layered provenance (inspection)
 
 When using [`topmark config dump --show-layers`](../usage/commands/config/dump.md), this discovery
-and merge process is exposed as a **layered provenance view**. Each layer corresponds to one of the
-sources described above (defaults, user config, project configs, `--config`, CLI) and includes the
-original source-local TOML fragment.
+and merge process is exposed as a **layered provenance view** for inspection. Each layer corresponds
+to one of the sources described above (defaults, user config, project configs, `--config`, CLI) and
+includes the original source-local TOML fragment.
 
 This layered view is inspection-oriented and does not change merge semantics; it makes the effective
 precedence and contributions of each layer explicit.
 
 The stored TOML fragments correspond to the source-local TOML view after TOML-layer validation.
 TOML-layer diagnostics may therefore already distinguish unknown entries, malformed-present
-sections, and missing known sections before layered configuration merge begins.
+sections, and missing known sections before layered configuration merging begins.
 
 ### Summary table
 
@@ -105,8 +107,8 @@ ______________________________________________________________________
 
 ## Merge semantics overview
 
-The following tables describe how individual configuration fields behave when multiple config layers
-apply. The distinction between layered configuration and runtime overlays is important:
+The following tables describe how individual configuration fields behave when multiple configuration
+layers apply. The distinction between layered configuration and runtime overlays is important:
 
 - [**Layered configuration settings**](#layered-configuration-settings) participate in layered
   merging across config files.
@@ -115,10 +117,10 @@ apply. The distinction between layered configuration and runtime overlays is imp
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
-At this configuration layer, all override intent is expressed as plain mapping data.
+At the layered-configuration surface, all override intent is expressed as plain mapping data.
 
 Internal typed runtime override objects are introduced later during CLI/API orchestration and are
-not part of the public configuration surface.
+not part of the stable public configuration surface.
 
 ### Layered configuration settings
 
@@ -128,20 +130,20 @@ configuration scopes.
 These fields determine how TopMark behaves for a given file and participate in layered configuration
 merging.
 
-| Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                                                             |
-| ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                                                           |
-| Diagnostics       | `validation_logs`                                  | Stage-aware append                                     | Preserve staged logs                 | Staged validation logs accumulate per validation stage; flattening is performed only at reporting, API, and machine-readable output boundaries.   |
-| Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                                                           |
-| Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                                                                    |
-| Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                                                               |
-| Policy            | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                                                          |
-| Policy            | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats. Keys normalize to canonical qualified file type identifiers. |
-| Field values      | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values.                                           |
-| Discovery inputs  | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                                                                    |
-| Discovery inputs  | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                                                                    |
-| Discovery inputs  | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                                                           |
-| Discovery filters | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union. Values normalize to canonical qualified file type identifiers.          |
+| Semantic group    | Field(s)                                           | Current merge behavior                                 | Recommended long-term behavior       | Notes                                                                                                                                            |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Provenance        | `config_files`                                     | Append                                                 | Append                               | Keep all contributing config origins for observability and diagnostics.                                                                          |
+| Diagnostics       | `validation_logs`                                  | Stage-aware append                                     | Preserve staged logs                 | Staged validation logs accumulate per validation stage; flattening is performed only at reporting, API, and machine-readable output boundaries.  |
+| Behavioral config | `header_fields`                                    | Replace                                                | Replace                              | The nearest applicable config defines the effective header field order.                                                                          |
+| Behavioral config | `align_fields`                                     | Replace if explicitly set                              | Replace                              | Scalar formatting choice; nearest applicable value should win.                                                                                   |
+| Behavioral config | `relative_to_raw`, `relative_to`                   | Replace if explicitly set                              | Replace                              | Path base decisions should come from the nearest applicable config.                                                                              |
+| Policy            | `policy`                                           | Tri-state field merge via `MutablePolicy.merge_with()` | Replace or tri-state merge           | Field-wise tri-state merging allows layered policy refinement while preserving defaults.                                                         |
+| Policy            | `policy_by_type`                                   | Key-wise merge + tri-state per field                   | Key-wise merge + tri-state per field | Per-file-type policies overlay the global policy and refine it for specific formats. Keys normalize to canonical qualified file type identities. |
+| Field values      | `field_values`                                     | Key-wise merge (overlay)                               | Key-wise merge                       | Future direction: child keys override matching parent keys while preserving unrelated inherited values.                                          |
+| Discovery inputs  | `include_pattern_groups`, `exclude_pattern_groups` | Append                                                 | Append                               | Pattern sources accumulate across layers and remain active within their scope.                                                                   |
+| Discovery inputs  | `include_from`, `exclude_from`, `files_from`       | Replace-wholesale when non-empty                       | Append                               | Future direction: path-based discovery sources accumulate rather than replace.                                                                   |
+| Discovery inputs  | `files`                                            | Replace-wholesale when non-empty                       | Replace                              | Explicit file lists are authoritative and should not silently accumulate across layers.                                                          |
+| Discovery filters | `include_file_types`, `exclude_file_types`         | Replace-wholesale when non-empty                       | Replace                              | File-type filters represent a nearest-scope decision rather than a union. Values normalize to canonical qualified file type identities.          |
 
 ### Runtime overlays
 
@@ -155,11 +157,11 @@ CLI or API entrypoints. They represent execution intent rather than layered conf
 | Execution mode   | `apply_changes`                        | Replace if explicitly set | Runtime-only                   | Defines dry-run vs apply; always determined at runtime.          |
 | Runtime metadata | `timestamp`                            | Preserve base timestamp   | Runtime-only                   | Metadata for a run; not part of layered configuration semantics. |
 
-### Config-loading behaviour (TOML-level)
+### Config-loading behavior (TOML-level)
 
 Some options defined under `[config]` (or `[tool.topmark.config]`) do **not** participate in layered
-config merging. Instead, they are resolved once during TOML source discovery and applied after
-layered merging.
+configuration merging. Instead, they are resolved once during TOML source discovery and applied
+after layered merging.
 
 These TOML-source-local options are still validated as part of whole-source TOML loading, but they
 do not become layered configuration fields.
@@ -175,15 +177,16 @@ TopMark evaluates configuration validity across staged config-loading diagnostic
 - merged-config diagnostics
 - runtime-applicability diagnostics
 
-For 1.0, this staged form remains internal. Reporting, API, and machine-readable output expose only
-the flattened compatibility diagnostics contract, using the stable entry shape `{level, message}`
-where applicable.
+For the stable 1.x line, this staged form remains internal. Reporting, API, and machine-readable
+output expose only the flattened compatibility view, using the stable diagnostic entry shape
+`{level, message}` where applicable.
 
 This includes:
 
-| Field    | Description                                                                           |
-| -------- | ------------------------------------------------------------------------------------- |
-| `strict` | Controls how config validation treats warnings (warnings become errors when enabled). |
+| Field    | Description                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------- |
+| `strict` | Controls how staged configuration-loading validation treats warnings; warnings become errors when |
+| enabled. |                                                                                                   |
 
 Key properties:
 
@@ -216,16 +219,16 @@ This distinction is also visible in layered provenance output:
 - In machine-readable output, the same validated source-local fragments are exposed under
   `config_provenance.layers[].toml`.
 
-This enables strict configuration validation for the current project scope, causing warnings to be
-treated as errors during configuration checking. This strictness applies to staged config-loading
-validation as a whole, not only to TOML parsing in isolation.
+This enables strict configuration-loading validation for the current project scope, causing warnings
+to be treated as errors during configuration checking. This strictness applies to staged
+config-loading validation as a whole, not only to TOML parsing in isolation.
 
 For the full generated reference configuration document, see
 [Example TOML document](./generated/example-config.md).
 
 File type identifiers in configuration may use either local identifiers such as `python` or
 canonical qualified identifiers such as `topmark:python`. TopMark normalizes these identifiers to
-canonical qualified keys during configuration normalization. See
+canonical qualified file type identities during configuration normalization. See
 [Usage configuration](../usage/configuration.md#file-type-identifiers) for the public contract.
 
 ### Reading the tables
@@ -237,7 +240,7 @@ The tables distinguish between **current** behavior and **recommended long-term*
 - **Recommended long-term behavior** describes the more explicit layered mental model TopMark is
   moving toward as configuration provenance and per-path effective runtime configuration evolve.
 
-In practice, this means TopMark is converging toward the following rule of thumb:
+In practice, this means TopMark follows the following rule of thumb for the stable 1.x line:
 
 > **Closest config wins for behavior, but discovery inputs accumulate.** **Empty lists are treated
 > as "not set" for nearest-wins fields.**
@@ -259,7 +262,7 @@ ______________________________________________________________________
 
 ## Root semantics
 
-`[config].root = true` stops traversal above the directory where it's defined.\
+`[config].root = true` stops traversal above the directory where it is defined.\
 This defines a discovery boundary similar to tools like **Black**, **isort**, or **ruff**.
 
 - Where to put it:
@@ -320,7 +323,7 @@ ______________________________________________________________________
 
 ## Policy resolution
 
-TopMark applies **effective policies** by merging global and per-file-type rules:
+TopMark applies **effective runtime policies** by merging global and per-file-type rules:
 
 See also: [Policy guide](../usage/policies.md).
 
@@ -342,7 +345,7 @@ canonical qualified keys such as `topmark:python`. Example using local key:
 allow_header_in_empty_files = true
 ```
 
-The effective policy is computed as:
+The effective runtime policy is computed as:
 
 ```text
 effective = merge(global_policy, policy_by_type[file_type])
@@ -364,7 +367,7 @@ This classification is evaluated together with `allow_header_in_empty_files`:
 - When `allow_header_in_empty_files = false` (default), files classified as empty for insertion are
   treated as unchanged/compliant by default.
 - When `allow_header_in_empty_files = true`, files classified as empty for insertion may receive
-  generated headers, subject to normal safety gates.
+  generated headers, subject to normal runtime safety gates.
 
 For `topmark check`, these policy values may also be overridden from the CLI via
 `--header-mutation-mode`, `--allow-header-in-empty-files`, `--empty-insert-mode`,
@@ -376,8 +379,9 @@ option.
 `render_empty_header_when_no_fields` is separate. It controls whether TopMark may render an
 otherwise empty header when no header fields are configured.
 
-Safety gates still take precedence. Unreadable files, unsupported files, malformed headers, blocked
-filesystem states, and other non-mutable conditions are not made mutable by these settings.
+Runtime safety gates still take precedence. Unreadable files, unsupported files, malformed headers,
+blocked filesystem states, and other non-mutable runtime conditions are not made mutable by these
+settings.
 
 ### Policy keys
 
@@ -387,15 +391,16 @@ filesystem states, and other non-mutable conditions are not made mutable by thes
 | `allow_header_in_empty_files`        | Permit header insertion in empty-like files                                                                                                                                          |
 | `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)                                                                                                                                       |
 | `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined                                                                                                                             |
-| `allow_reflow`                       | Allow content reflow (may break idempotence)                                                                                                                                         |
-| `allow_content_probe`                | Allow resolver to inspect file contents for type detection                                                                                                                           |
+| `allow_reflow`                       | Allow content reflow; may break strict idempotent runtime rendering                                                                                                                  |
+| `allow_content_probe`                | Allow runtime file-type detection to inspect file contents                                                                                                                           |
 
 `header_mutation_mode` applies only to the [`check`](../usage/commands/check.md) pipeline. It
-affects dry-run reporting, apply behavior, API result views, and outcome bucketing.
+affects dry-run reporting, apply behavior, API result views, and semantic runtime outcome bucketing.
 
 It does not apply to [`strip`](../usage/commands/strip.md) or [`probe`](../usage/commands/probe.md),
-and safety gates still take precedence: malformed headers, unreadable files, unsupported files,
-blocked filesystem states, and other non-mutable conditions are not made mutable by this policy.
+and runtime safety gates still take precedence: malformed headers, unreadable files, unsupported
+files, blocked filesystem states, and other non-mutable runtime conditions are not made mutable by
+this policy.
 
 ______________________________________________________________________
 
@@ -415,16 +420,16 @@ Each pipeline step (\[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep],
 \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]) is protected by a `may_proceed(ctx)`
 gating helper.
 
-These gates consider:
+These runtime gates consider:
 
 - File system status (including empty vs empty-like classification)
 - Content status (readability, encoding, newline policy)
 - Comparison result and update intent
-- Policy permissions (for example `allow_insert_into_empty_like`)
+- Runtime policy permissions (for example `allow_insert_into_empty_like`)
 - Feasibility (\[`can_change`\][topmark.pipeline.context.policy.can_change])
 
-This ensures TopMark only mutates files when explicitly permitted by both policy and pipeline
-feasibility rules.
+This ensures TopMark only mutates files when explicitly permitted by both runtime policy and
+pipeline feasibility rules.
 
 ______________________________________________________________________
 
@@ -436,7 +441,7 @@ Run with `-v` or `--verbose` to increase **TEXT output** detail and observe:
 - Configuration chain (root → current)
 - Normalization of pattern-file paths
 - Active policy and per-file-type overrides
-- Canonical file type identifiers used by filters and policy lookup
+- Canonical file type identities used by filters and policy lookup
 
 Notes:
 
@@ -456,6 +461,26 @@ allow_header_in_empty_files = true
 ```
 
 Now, even an empty `__init__.py` or `placeholder.py` can receive a header.
+
+______________________________________________________________________
+
+## Runtime configuration model
+
+TopMark intentionally separates:
+
+1. TOML-source loading
+1. staged configuration-loading validation
+1. layered configuration deserialization and merging
+1. runtime configuration resolution
+1. runtime overlay application
+1. runtime policy evaluation
+1. runtime pipeline gatekeeping and mutation planning
+
+Reporting, API surfaces, and machine-readable output expose a flattened compatibility view derived
+from these internal stages.
+
+This layered runtime configuration model keeps behavior deterministic while preserving stable
+configuration, policy, diagnostics, and machine-readable compatibility contracts.
 
 ______________________________________________________________________
 
