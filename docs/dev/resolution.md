@@ -16,7 +16,7 @@ This page documents how TopMark resolves a concrete filesystem path to the most 
 \[`FileType`\][topmark.filetypes.model.FileType], and then to the bound
 \[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor] registered for that file type.
 
-Resolver behavior is deterministic and operates on canonical qualified file type identifiers such as
+Resolver behavior is deterministic and operates on canonical qualified file type identities such as
 `topmark:python`.
 
 {% include-markdown "\_snippets/terminology.md" %}
@@ -28,20 +28,20 @@ It complements the registry architecture described in [`registry-model.md`](regi
 
 This resolver operates within the broader TOML →
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig] → runtime architecture (see
-[`architecture.md`](architecture.md)). It consumes the effective registry state and does not perform
-configuration discovery, layered configuration provenance export, or staged config-loading
-validation strictness resolution itself.
+[`architecture.md`](architecture.md)). It consumes the effective composed runtime registry state and
+does not perform configuration discovery, layered configuration provenance export, or staged
+config-loading validation strictness resolution itself.
 
-In particular, source-local TOML options such as `[config].root` and `strict` are resolved before
-runtime file-type resolution begins. They influence discovery and staged config-loading validation
-behavior, but are not part of the resolver's matching or tie-break logic.
+In particular, source-local TOML options such as `[config].root` and `[config].strict` are resolved
+before runtime file-type resolution and probing begin. They influence discovery and staged
+config-loading validation behavior, but are not part of the resolver's matching or tie-break logic.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 This distinction is also visible in
 [`topmark config dump --show-layers`](../usage/commands/config/dump.md): layered provenance exports
-are produced earlier from resolved TOML sources and flattened configuration state, while file-type
-resolution happens later against the already-validated effective runtime configuration.
+are produced earlier from resolved TOML sources and the flattened compatibility view, while
+file-type resolution happens later against the already-validated effective runtime configuration.
 
 ______________________________________________________________________
 
@@ -63,7 +63,7 @@ that stage do not participate in candidate generation or scoring.
 File-type filters accept both local identifiers such as `python` and canonical qualified identifiers
 such as `topmark:python`.
 
-Resolver filtering operates on canonical qualified keys.
+Resolver filtering operates on canonical qualified file type identities.
 
 Path-based resolution is implemented in
 \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] and consumed by
@@ -73,16 +73,17 @@ The main public entry points are:
 
 - \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
 
-These entry points participate only in **path-based runtime resolution**. They do not surface or
-consume layered config provenance payloads such as the human-facing `[[layers]]` export or the
-machine-readable `config_provenance` payload used by `topmark config dump --show-layers`.
+These entry points participate only in **path-based runtime resolution and probing**. They do not
+surface or consume layered config provenance payloads such as the human-facing `[[layers]]` export
+or the machine-readable `config_provenance` payload used by `topmark config dump --show-layers`.
 
 They operate after staged config-loading validation has completed and the effective runtime
 configuration is finalized.
 
 {% include-markdown "\_snippets/api-internal-overrides.md" %}
 
-At this layer, path-based resolution consumes the already-finalized effective runtime configuration.
+At this layer, path-based resolution consumes the already-finalized runtime configuration and
+effective composed runtime registry state.
 
 Public API callers provide mapping-based inputs; internal typed runtime override objects are
 introduced earlier by CLI/API orchestration and are not part of the resolver contract.
@@ -98,6 +99,24 @@ See also:
 - [`Configuration`](../usage/configuration.md)
 - [`Filtering`](../usage/filtering.md)
 - [`CLI overview`](../usage/cli.md)
+
+______________________________________________________________________
+
+### Resolution pipeline boundaries
+
+TopMark intentionally separates:
+
+1. discovery filtering
+1. runtime configuration resolution
+1. registry composition
+1. runtime file-type probing
+1. deterministic winner selection
+1. pipeline execution
+
+Each stage operates on the finalized outputs of the previous stage.
+
+This layered architecture keeps runtime resolution deterministic while preserving observability,
+stable machine-readable diagnostics, and explicit configuration/runtime boundaries.
 
 ______________________________________________________________________
 
@@ -118,21 +137,18 @@ containing:
 - match signals used during resolution
 - filtered explicit inputs that did not reach file-type probing
 
-The probe result is the canonical source of truth for resolution decisions once a path reaches
-file-type probing. Explicit inputs may be filtered earlier during discovery; those cases are
+The probe result is the canonical source of truth for runtime resolution decisions once a path
+reaches file-type probing. Explicit inputs may be filtered earlier during discovery; those cases are
 represented as synthetic probe results with `status="filtered"` and one of:
 
 - `reason="excluded_by_path_filter"`
-
 - `reason="excluded_by_file_type_filter"`
 
-  This includes canonicalized file-type filtering using normalized qualified identifiers.
+This includes canonicalized file-type filtering using normalized qualified identifiers.
 
 - `reason="excluded_by_discovery_filter"` (fallback when the exact category is not identified)
-
 - \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] consumes `ctx.resolution_probe`
   and maps it to pipeline state
-
 - \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] exposes the same data for
   [`topmark probe`](../usage/commands/probe.md)
 
@@ -140,7 +156,7 @@ This unifies:
 
 - human output (TEXT / Markdown)
 - machine-readable output (JSON / NDJSON)
-- pipeline resolution behaviour
+- pipeline runtime-resolution behavior
 
 Callers should use
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] when they
@@ -150,7 +166,7 @@ For stable integrations, prefer \[`topmark.api.probe()`\][topmark.api.probe], wh
 normalized public DTOs.
 
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path] is an
-advanced helper that exposes internal probe structures and is not part of the
+advanced helper that exposes internal runtime probe structures and is not part of the
 \[`topmark.api`\][topmark.api] compatibility contract.
 
 Note that \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path]
@@ -168,7 +184,7 @@ Candidate generation is performed by
 For each effective \[`FileType`\][topmark.filetypes.model.FileType], the resolver evaluates
 name-based signals and, when allowed, optional content-based signals.
 
-Candidate generation operates on the effective composed runtime registry.
+Candidate generation operates against the effective composed runtime registry.
 
 ### Name-based signals
 
@@ -186,7 +202,7 @@ These signals are represented by \[`MatchSignals`\][topmark.resolution.filetypes
 
 Content probing is controlled by the file type's
 \[`ContentGate`\][topmark.filetypes.model.ContentGate]. This prevents unrelated files from being
-probed unnecessarily and allows overlay-style file types to refine generic matches.
+probed unnecessarily and allows specialized overlay-style file types to refine generic matches.
 
 Examples:
 
@@ -200,7 +216,8 @@ Examples:
 
 ### Candidate inclusion
 
-A file type becomes a candidate when its evaluated signals satisfy the resolver's inclusion rules.
+A file type becomes a candidate when its evaluated signals satisfy the runtime resolver's inclusion
+rules.
 
 This means that:
 
@@ -259,7 +276,7 @@ Candidates are ordered by:
 
 The winning file type is therefore stable for a given:
 
-- effective registry composition
+- effective composed runtime registry state
 - path and filename
 - file content
 - configuration and filtering state
@@ -282,7 +299,7 @@ ______________________________________________________________________
 Resolution may produce multiple matching file type candidates. This is **not** considered a registry
 error.
 
-This runtime ambiguity policy is distinct from identifier ambiguity handling.
+This runtime resolution ambiguity policy is distinct from identifier ambiguity handling.
 
 Identifier ambiguity occurs when a local identifier such as `python` resolves to multiple file types
 in the effective registry. In those situations, callers must use canonical qualified identifiers
@@ -299,7 +316,7 @@ TopMark's ambiguity policy is therefore:
 - multiple candidates are allowed during candidate generation
 - the resolver must return **at most one** effective winner
 - the winner is selected deterministically using the documented precedence and tie-break policy
-- ambiguity does **not** raise an exception in the 1.0 resolution model
+- ambiguity does **not** raise an exception in the stable 1.x resolution model
 
 This keeps resolution stable and practical while still allowing rich, overlapping file type
 ecosystems.
@@ -319,14 +336,14 @@ observable without relying on debug logging alone.
 
 For explicitly requested paths that were filtered before probing, observability is provided through
 synthetic probe results emitted by [`topmark probe`](../usage/commands/probe.md), rather than
-through candidate-level data. The reported reason distinguishes whether the path was excluded by
+through candidate-scoring data. The reported reason distinguishes whether the path was excluded by
 path filters, file-type filters, or a generic discovery-filter fallback.
 
 This makes ambiguous-but-resolvable situations observable during development and debugging without
 turning them into hard failures.
 
 Identifier normalization and file-type filter decisions are also observable through probe and
-resolver diagnostics.
+runtime-resolution diagnostics.
 
 The log includes:
 
@@ -334,7 +351,7 @@ The log includes:
 - the shared top score
 - the qualified keys of the tied top candidates
 
-This helps explain why a particular file type won when multiple strong candidates existed.
+This helps explain why a particular file type identity won when multiple strong candidates existed.
 
 ______________________________________________________________________
 
@@ -350,13 +367,13 @@ This separation keeps responsibilities clear:
   processor identities
 - \[`BindingRegistry`\][topmark.registry.bindings.BindingRegistry] stores effective
   file-type-to-processor relationships
-- the resolver decides which file type best matches a **concrete path**
+- the runtime resolver decides which file type best matches a **concrete filesystem path**
 
 This design has several advantages:
 
 - registries remain simple and declarative
 - overlapping file types remain legal
-- resolution remains deterministic and testable
+- runtime resolution remains deterministic and testable
 - plugin authors can define specialized file types without needing a separate override system in the
   registries
 
@@ -373,7 +390,7 @@ The current resolver deliberately does **not** provide:
 - pluggable custom precedence strategies
 
 These may be introduced post-1.0 if there is a strong use case, but they are not part of the current
-TopMark resolution contract.
+TopMark stable 1.x runtime-resolution contract.
 
 ______________________________________________________________________
 
@@ -387,7 +404,7 @@ Possible future improvements include:
 - plugin-defined precedence policies layered on top of the default scoring model
 - richer probe diagnostics and scoring transparency in machine-readable output
 
-For 1.0, the documented deterministic policy on this page is the source of truth.
+For the stable 1.x line, the documented deterministic policy on this page is the source of truth.
 
 ______________________________________________________________________
 
