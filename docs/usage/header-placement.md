@@ -12,34 +12,58 @@ topmark:header:end
 
 # Header placement rules
 
-TopMark is comment-aware and places header blocks according to file type and processor semantics.
+TopMark is comment-aware and places header blocks according to resolved file type identities and
+header-processor semantics.
 
-Configuration-validation strictness (for example through `--strict` or `strict`) does not affect
-header-placement semantics. It controls only whether a run proceeds when configuration-validation
-warnings are present.
+Configuration-loading strictness (for example through `--strict` or `strict`) does not affect
+header-placement semantics. It controls only whether a run proceeds when staged
+configuration-loading validation warnings are present.
 
-Header placement rules apply only after a file has passed applicability evaluation and processor
-resolution. File-type-specific policy overrides configured through `policy_by_type` may influence
-runtime mutation eligibility and insertion behavior, but the selected header processor controls the
-concrete comment syntax and placement behavior.
+Header placement rules apply only after a file has passed runtime applicability evaluation and
+runtime processor resolution. File-type-specific runtime policy overrides configured through
+`policy_by_type` may influence runtime mutation eligibility and insertion behavior, but the selected
+header processor controls the concrete comment syntax and placement behavior.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
 > [!NOTE]
 >
-> File types are bound to header processors, and each processor defines how headers are detected,
-> inserted, updated, and stripped for the file types bound to it. The generated registry pages list
-> the file types, processors, and bindings supported by TopMark %%TOPMARK_VERSION%%:
+> File type identities are bound to header processors, and each processor defines how headers are
+> detected, inserted, updated, and stripped for the file types bound to it. The generated registry
+> pages list the file types, processors, and bindings supported by TopMark %%TOPMARK_VERSION%%:
 >
 > - [Supported file types](./generated/filetypes.md)
 > - [Registered processors](./generated/processors.md)
 > - [Registered bindings](./generated/bindings.md)
 
+______________________________________________________________________
+
+## Runtime placement model
+
+TopMark intentionally separates:
+
+1. runtime file discovery
+1. runtime applicability evaluation
+1. runtime file-type probing
+1. runtime processor resolution
+1. runtime policy evaluation
+1. runtime mutation planning
+1. concrete header rendering and placement
+
+Header placement semantics are determined by the selected header processor after runtime probing,
+policy evaluation, and processor resolution have completed.
+
+This layered runtime model keeps placement behavior deterministic while preserving stable
+processor-specific comment syntax and insertion semantics.
+
+______________________________________________________________________
+
 ## Pound-style files
 
 The `topmark:pound` processor is used for pound-prefixed line-comment formats such as Python, Python
 stub files, shell scripts, Ruby, Perl, R, Julia, Makefile, Dockerfile, TOML, YAML, INI-style
-configuration files, environment files, Git metadata files, and Python dependency/constraints files.
+configuration files, environment files, Git metadata files, and Python requirements/constraints
+files.
 
 Rules:
 
@@ -126,7 +150,7 @@ ______________________________________________________________________
 
 ## XML-style files
 
-The `topmark:xml` processor is used for HTML/XML-style block-comment formats such as XML, XHTML,
+The `topmark:xml` processor is used for XML/HTML-style block-comment formats such as XML, XHTML,
 HTML, SVG, XSL, XSLT, Vue, and Svelte.
 
 Rules:
@@ -134,7 +158,8 @@ Rules:
 - If present, place the header after the XML declaration and DOCTYPE, with one blank line before the
   header block.
 - Otherwise, place the header at the top of the file.
-- The header uses the file's native comment syntax; for XML/HTML this is a block comment wrapper:
+- The header uses the file's native comment syntax; for XML/HTML this is an XML-style block comment
+  wrapper:
 
 ```html
 <!--
@@ -153,8 +178,8 @@ ______________________________________________________________________
 
 ## Markdown files
 
-The `topmark:markdown` processor is used for Markdown files. It uses HTML comments like the XML
-processor, but handles Markdown as a line-oriented documentation format.
+The `topmark:markdown` processor is used for Markdown files. It uses HTML comments like the
+`topmark:xml` processor, but handles Markdown as a line-oriented documentation format.
 
 Rules:
 
@@ -183,10 +208,10 @@ ______________________________________________________________________
 
 - Newline preservation: the inserted header uses the same newline style as the file (LF/CRLF/CR).
 - BOM preservation: if a UTF-8 BOM is present, it is preserved.
-- Idempotency: re-running TopMark on a file with a correct header produces no changes.
-- Unheaderable file types: some recognized file types intentionally have no effective processor
-  binding and are skipped rather than headered, such as JSON files without comments, license text
-  files, and single-token marker files.
+- Idempotency: re-running TopMark on a file with a correct header produces no runtime changes.
+- Unheaderable file types: some recognized file type identities intentionally have no effective
+  processor binding and are skipped rather than headered, such as JSON files without comments,
+  license text files, and single-token marker files.
 
 ______________________________________________________________________
 
