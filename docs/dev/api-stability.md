@@ -12,8 +12,8 @@ topmark:header:end
 
 # API stability and snapshot policy
 
-TopMark enforces a stable public Python API across all supported Python versions (3.10-3.14) using a
-JSON-based snapshot test.
+TopMark maintains a stable public 1.x Python API across all supported Python versions (3.10-3.14)
+using a JSON-based snapshot test.
 
 The snapshot system protects the documented public execution surface exposed through `topmark.api`,
 helping downstream users rely on stable symbols, signatures, and machine-readable behavior contracts
@@ -56,11 +56,12 @@ TopMark defines its **stable programmatic API** as the set of symbols exported b
 
 In practice this means:
 
-- Anything exported from \[`topmark.api`\][topmark.api] is considered **public and versioned**.
+- Anything exported from \[`topmark.api`\][topmark.api] is considered part of the stable public 1.x
+  API surface.
 - Symbols not exported via `topmark.api.__all__` are **internal implementation details** and may
   change without notice.
-- Registry internals (\[`topmark.registry.*`\][topmark.registry]) are documented for maintainers and
-  advanced integrations but are **not part of the snapshot stability contract**.
+- Registry internals (`topmark.registry.*`) are documented for maintainers and advanced integrations
+  but are **not part of the stable snapshot compatibility contract**.
 
 The API snapshot test therefore derives its reference surface directly from `topmark.api.__all__`
 and verifies that this public façade remains stable across Python versions.
@@ -91,8 +92,8 @@ including:
   - Classes → `"<class>"`
   - Functions → real signatures are preserved
 
-This includes read-only diagnostic APIs such as \[`topmark.api.probe()`\][topmark.api.probe] in
-addition to content-processing commands.
+This includes stable read-only diagnostic APIs such as \[`topmark.api.probe()`\][topmark.api.probe]
+in addition to content-processing commands.
 
 The snapshot intentionally **does not include internal registries or implementation modules**. Only
 the public façade defined by `topmark.api.__all__` is considered part of the stable surface.
@@ -230,14 +231,10 @@ Registry internals, overlay mutation helpers, and composed registry implementati
 evolve independently as long as:
 
 - the documented public API remains stable;
-
 - documented machine-readable output contracts remain stable;
-
 - canonical identifier semantics remain stable.
-
-- **Supported Python range:** 3.10-3.14 (`nox` matrix). Future minor Python releases will be added
-  once supported by CI.
-
+- **Supported Python range:** 3.10-3.14 (`nox` matrix). Future Python minor releases will be added
+  once validated by CI and release tooling.
 - **File under version control:**\
   `tests/api/public_api_snapshot.json` must always be checked in and tracked.
 
@@ -266,7 +263,7 @@ Intentional public API changes should:
 
 1. update the snapshot;
 1. update `CHANGELOG.md`;
-1. align with the intended release-version semantics.
+1. align with the intended release-version and compatibility semantics.
 
 TopMark derives package versions from Git tags through `setuptools-scm`.
 
@@ -290,7 +287,8 @@ The snapshot contract intentionally does not guarantee stability for:
 - internal resolver scoring heuristics;
 - private helper modules outside \[`topmark.api`\][topmark.api].
 
-Only documented public APIs and machine-readable output contracts are considered stable.
+Only documented public APIs and machine-readable output contracts are considered part of the stable
+1.x compatibility surface.
 
 ______________________________________________________________________
 
@@ -336,5 +334,5 @@ ______________________________________________________________________
 TopMark separates stable public execution APIs, machine-readable output contracts, and canonical
 identifier semantics from more flexible internal registry and orchestration details.
 
-The snapshot system protects the documented public surface while still allowing controlled internal
-evolution under the project's Git-tag-driven release and versioning model.
+The snapshot system protects the documented stable public surface while still allowing controlled
+internal evolution under the project's Git-tag-driven release and versioning model.
