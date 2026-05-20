@@ -16,7 +16,7 @@ topmark:header:end
 
 This page records the curated stabilization and contract-freeze history behind TopMark 1.0. It
 extracts the historical achievement narrative from the active 1.0 roadmap so the roadmap can remain
-focused on release candidate governance, explicit deferrals, and final readiness.
+focused on stable 1.x governance, explicit deferrals, and post-1.0 evolution.
 
 The 0.12 development line and the 1.0 alpha/beta series transformed TopMark from a set of evolving
 header-processing components into a contract-oriented CLI and Python library with explicit runtime
@@ -427,9 +427,9 @@ The beta stabilization series validated:
 - explicit uv cache ownership in GitHub workflows;
 - and metadata-driven Python-version resolution through `nox -s print_python_matrix`.
 
-The beta series also served as the final release-path rehearsal phase before release candidates,
-allowing workflow, packaging, installation, and publication behavior to be validated repeatedly
-through real prerelease tags.
+The beta series also served as the final release-path rehearsal phase before the 1.0 release
+candidates, allowing workflow, packaging, installation, and publication behavior to be validated
+repeatedly through real prerelease tags.
 
 Result: by the end of the beta line, the remaining work was primarily RC validation and focused
 hardening rather than architectural change.
@@ -453,8 +453,12 @@ By the end of the beta line, the following 1.0 contracts were frozen:
 - uv/nox dependency tooling;
 - documentation governance and hygiene checks.
 
-The 1.0 release-candidate phase therefore represents contract validation and compatibility
-preservation rather than feature completion.
+The 1.0 release-candidate phase therefore served as a contract-validation and compatibility-
+preservation phase rather than a feature-completion phase.
+
+The validated `1.0.0rc1` release candidate confirmed these contracts across local validation,
+CI/release workflows, TestPyPI publication, GitHub prerelease publication, and published-artifact
+verification.
 
 ______________________________________________________________________
 
@@ -487,4 +491,5 @@ The 1.0 stabilization effort reinforced several project-level lessons:
   separated;
 - documentation governance needs lightweight automated checks to remain sustainable;
 - coverage is most useful as a confidence signal when it avoids percentage chasing;
-- and explicit deferrals are healthier than forcing architectural ideas into a release candidate.
+- and explicit deferrals are healthier than forcing architectural ideas into a stabilization or
+  release-candidate cycle.

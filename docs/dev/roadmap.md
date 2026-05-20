@@ -14,23 +14,23 @@ topmark:header:end
 
 ## Motivation / Why this matters
 
-TopMark 1.0 is now entering the release-candidate phase. The major architecture refactors,
-contract-freeze decisions, CI/release workflow stabilization, documentation governance work, and
-late-beta validation passes are complete. The remaining work is focused on preserving stable
-behavior, validating the frozen release candidate in realistic environments, and addressing only
-concrete release-blocking findings.
+TopMark 1.0 is now in the final release-readiness phase. The major architecture refactors,
+contract-freeze decisions, CI/release workflow stabilization, documentation governance work,
+late-beta validation passes, and first release-candidate validation have been completed. The
+remaining work is focused on preserving stable behavior, validating final published artifacts, and
+addressing only concrete release-blocking findings.
 
 This roadmap now serves two purposes:
 
-- a **release-governance record** for the frozen 1.0 contracts, explicit deferrals, and remaining
-  release-candidate validation posture;
+- a **release-governance record** for the frozen 1.0 contracts, explicit deferrals, and final
+  release-readiness posture;
 - a **historical stabilization ledger** for the architectural, documentation, CI/release, and
   testing decisions made during the 0.12 development line and 1.0 alpha/beta series.
 
-As the project moves from `1.0.0rc1` toward `1.0.0`, this roadmap should remain a concise governance
-reference. Detailed achievements and design decisions are now tracked in
-[Road to TopMark 1.0](./road-to-1.0.md), so this file can remain focused on release readiness and
-post-1.0 scope.
+As the project moves from the validated `1.0.0rc1` prerelease toward final `1.0.0`, this roadmap
+should remain a concise governance reference. Detailed achievements and design decisions are now
+tracked in [Road to TopMark 1.0](./road-to-1.0.md), so this file can remain focused on release
+readiness and post-1.0 scope.
 
 A key deferred post-1.0 opportunity remains support for data that is not naturally file-backed:
 generated code, editor buffers, CI-provided snippets, or API-driven integrations. Today, almost all
@@ -52,15 +52,15 @@ ______________________________________________________________________
 
 ## Done so far
 
-The 0.12 development line and 1.0 alpha/beta series completed the major stabilization work needed
-for the 1.0 release-candidate phase. The system is now aligned around a clean *TOML → Configuration
-→ Runtime → Pipeline → Presentation* model, with explicit registry bindings, separated
-CLI/presentation layers, schema-driven machine output, documented CLI behavior, hardened
+The 0.12 development line, 1.0 alpha/beta series, and `1.0.0rc1` validation completed the major
+stabilization work needed for the final 1.0 release. The system is now aligned around a clean *TOML
+→ Configuration → Runtime → Pipeline → Presentation* model, with explicit registry bindings,
+separated CLI/presentation layers, schema-driven machine output, documented CLI behavior, hardened
 configuration validation, and artifact-based release automation.
 
 Detailed historical achievements and design decisions have been extracted to
 [Road to TopMark 1.0](./road-to-1.0.md). This roadmap now keeps only the release-governance summary
-needed for `1.0.0rc1` and final `1.0.0` readiness.
+needed for final `1.0.0` readiness.
 
 Completed stabilization themes:
 
@@ -77,8 +77,8 @@ Completed stabilization themes:
   schema versioning, Rich migration, and broader workflow factoring are explicitly deferred beyond
   1.0.
 
-At RC time, remaining work is no longer broad architectural redesign. It is limited to release
-candidate validation, ecosystem observation, downstream compatibility checks, documentation
+At final-release time, remaining work is no longer broad architectural redesign. It is limited to
+published-artifact validation, ecosystem observation, downstream compatibility checks, documentation
 clarifications, and concrete release-blocking fixes.
 
 ______________________________________________________________________
@@ -86,9 +86,9 @@ ______________________________________________________________________
 ## Breaking changes introduced so far
 
 This section summarizes the externally relevant breaking changes introduced during the 0.12 refactor
-series and the 1.0 alpha/beta stabilization line. It is retained in the roadmap for RC validation
-because downstream users, plugin authors, documentation readers, and automation consumers may still
-need to compare older alpha/beta behavior with the frozen 1.0 contracts.
+series and the 1.0 alpha/beta stabilization line. It is retained in the roadmap for final 1.0
+release validation because downstream users, plugin authors, documentation readers, and automation
+consumers may still need to compare older alpha/beta behavior with the frozen 1.0 contracts.
 
 For the full historical stabilization narrative, see [Road to TopMark 1.0](./road-to-1.0.md).
 
@@ -269,8 +269,8 @@ The 1.0 breaking changes are not isolated helper removals; they reflect a new sy
 - artifact-based release publication;
 - and stricter documentation/prose governance.
 
-These changes are now treated as frozen 1.0 contracts. The release-candidate phase should validate
-those contracts in realistic environments rather than introduce new breaking changes.
+These changes are now treated as frozen 1.0 contracts. Final release preparation should preserve and
+validate those contracts rather than introduce new breaking changes.
 
 ______________________________________________________________________
 
@@ -290,16 +290,16 @@ The remaining work before `1.0.0` is intentionally narrow:
   runs;
 - and maintaining explicit post-1.0 scope boundaries.
 
-The release-candidate phase is therefore not expected to introduce further architectural redesign or
+Final release preparation is therefore not expected to introduce further architectural redesign or
 new broad contract changes.
 
-### Release-candidate validation posture
+### Final release validation posture
 
 The following areas are considered frozen for 1.0 and should now primarily receive:
 
 - compatibility validation;
 - wording/documentation clarification;
-- focused test additions;
+- focused confidence-building tests;
 - downstream-consumer verification;
 - or concrete release-blocking fixes.
 
@@ -447,7 +447,7 @@ runs. Coverage reporting remains informational and publishes:
 README coverage-badge publication remains intentionally deferred until the published signal proves
 stable and meaningful over time.
 
-Additional coverage expansion before `1.0.0` should remain focused on:
+Any additional coverage expansion before `1.0.0` should remain focused on:
 
 - orchestration-heavy paths;
 - integration-heavy behavior;
@@ -470,11 +470,11 @@ surface may be reconsidered after the final release.
 
 ### Overall status
 
-TopMark is now in the release-candidate stabilization phase.
+TopMark is now in the final 1.0 release-readiness phase.
 
 The remaining work is primarily:
 
-- real-world RC validation;
+- final release validation;
 - ecosystem compatibility verification;
 - downstream machine-readable output validation;
 - documentation consistency preservation;
@@ -500,7 +500,7 @@ This checklist now records:
 
 - the frozen 1.0 contract surface;
 - explicit post-1.0 deferrals;
-- and the remaining RC-validation posture before the final `1.0.0` release.
+- and the remaining final-validation posture before the final `1.0.0` release.
 
 ### Frozen 1.0 contract areas
 
@@ -581,16 +581,16 @@ required by a concrete release blocker:
 - [x] coverage reporting integrated as a non-blocking confidence signal
 - [x] README coverage badge intentionally deferred pending longer-term signal stability
 
-### Remaining RC-validation posture
+### Remaining final-validation posture
 
-Before cutting final `1.0.0`, continue validating the frozen contracts through:
+Before cutting final `1.0.0`, confirm the frozen contracts remain validated through:
 
-- real-world release-candidate usage;
+- final published-artifact validation;
 - downstream ecosystem compatibility observation;
 - install/release workflow observation;
 - machine-readable output validation;
 - documentation consistency preservation;
-- targeted confidence-building tests;
+- any targeted confidence-building checks needed for concrete findings;
 - and focused release-blocking fixes where necessary.
 
 The remaining path to final `1.0.0` should avoid introducing new broad scope, architectural churn,
@@ -598,16 +598,15 @@ or output-contract redesign unless a concrete release blocker is discovered.
 
 ______________________________________________________________________
 
-`1.0.0rc1` should be cut only after the frozen contract areas above remain green through the local
-and CI release-validation gates. The alpha series served as the contract-stabilization and
-release-path rehearsal phase, while the beta series validated the frozen contracts, release
-pipeline, GitHub prerelease visibility, CI/release metadata handling, coverage-reporting behavior,
-documentation governance, changelog hygiene, prose hygiene, terminology stability, and
-cross-platform installation behavior.
+`1.0.0rc1` has validated the frozen contract areas through local and CI release-validation gates,
+TestPyPI publication, GitHub prerelease publication, and published-artifact validation. The alpha
+series served as the contract-stabilization and release-path rehearsal phase, while the beta series
+validated the frozen contracts, release pipeline, GitHub prerelease visibility, CI/release metadata
+handling, coverage-reporting behavior, documentation governance, changelog hygiene, prose hygiene,
+terminology stability, and cross-platform installation behavior.
 
-After `1.0.0rc1`, the path to final `1.0.0` should be limited to preserving compatibility,
-collecting release-candidate feedback, validating downstream ecosystem behavior, monitoring the CI
-coverage signal, observing the finalized CI/release metadata and cache-ownership model across real
-workflow runs, and applying focused release-blocking fixes only. New broad scope, architectural
-churn, and output-contract redesign remain out of scope unless required by a concrete release
-blocker.
+The path to final `1.0.0` should now be limited to preserving compatibility, validating the final
+PyPI publication, monitoring the CI coverage signal, observing the finalized CI/release metadata and
+cache-ownership model across real workflow runs, and applying focused release-blocking fixes only.
+New broad scope, architectural churn, and output-contract redesign remain out of scope unless
+required by a concrete release blocker.
