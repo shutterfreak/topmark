@@ -17,8 +17,8 @@ Policies control:
 - whether headers may be inserted or updated
 - how empty files are classified
 - whether file-content probing is allowed
-- how resolution behavior interacts with safety gates
-- how file-type-specific policy overrides interact with global policy
+- how runtime-resolution behavior interacts with safety gates
+- how file-type-specific runtime policy overrides interact with global policy
 
 See also:
 
@@ -27,23 +27,23 @@ See also:
 - [CLI overview](cli.md)
 - [Shared options](shared-options.md)
 
-TopMark policies control how the runtime pipeline detects file types, classifies empty files, and
-determines whether headers may be inserted or updated.
+TopMark policies control how the runtime pipeline detects file types, classifies empty files,
+evaluates runtime safety gates, and determines whether headers may be inserted or updated.
 
-Policy settings are part of the layered configuration
-(\[`FrozenConfig`\][topmark.config.model.FrozenConfig]) and are merged according to discovery and
-precedence and layering rules. See:
+Policy settings are part of the layered runtime configuration
+(\[`FrozenConfig`\][topmark.config.model.FrozenConfig]) and are merged according to layered
+discovery, normalization, precedence, and runtime overlay rules. See:
 
 - [`Configuration overview`](../configuration/index.md)
 - [`Discovery & Precedence`](../configuration/discovery.md)
 
-Policy semantics are shared consistently across:
+Policy semantics behave consistently across:
 
 - discovered config files (`topmark.toml` or `[tool.topmark]` in `pyproject.toml`)
 - TOML configuration overlays
 - command-specific CLI options
 - API overlays
-- effective runtime policy evaluation and resolution
+- effective runtime policy evaluation and runtime resolution
 
 Policy values shown here are part of the public configuration surface.
 
@@ -62,9 +62,9 @@ In `topmark.toml`, policy is defined under `[policy]` and `[policy_by_type.<file
 For canonical file-type identifier semantics, see
 [Configuration discovery, precedence, and policy](configuration.md#file-type-identifiers).
 
-During configuration loading, TopMark first validates each whole-source TOML fragment (unknown
-sections, unknown keys, malformed section shapes, etc.). Only validated layered configuration
-fragments contribute to runtime policy resolution.
+During staged configuration-loading validation, TopMark first validates each whole-source TOML
+fragment (unknown sections, unknown keys, malformed section shapes, etc.). Only validated layered
+configuration fragments contribute to runtime policy resolution.
 
 Command-line policy options override resolved config for the current run only.
 
@@ -79,8 +79,8 @@ TopMark resolves policy in this order:
 1. explicit config overlays
 1. CLI or API overrides
 
-These runtime policy layers are constructed after TOML-layer validation. Source-local TOML sections
-(e.g. `[config]`) do not participate in policy layering.
+These runtime policy layers are constructed after staged TOML-layer validation. Source-local TOML
+sections (e.g. `[config]`) do not participate in runtime policy layering.
 
 Per-file-type policy in `policy_by_type` is evaluated on top of the global `policy` section.
 
@@ -98,7 +98,7 @@ machine-readable output use canonical underscore forms.
 {% include-markdown "\_snippets/option-spelling.md" %}
 
 Unless otherwise noted, policy values shown throughout this page use the canonical
-TOML/API/machine-readable spelling.
+TOML/API/machine-readable underscore form.
 
 ______________________________________________________________________
 
@@ -114,12 +114,12 @@ Allowed TOML/API values:
 - `add_only`: insert missing headers only; existing headers are not updated
 - `update_only`: update existing headers only; missing headers are not inserted
 
-This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic outcome
-bucketing. It applies only to [`check`](commands/check.md); [`strip`](commands/strip.md) and
+This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic runtime
+outcome bucketing. It applies only to [`check`](commands/check.md); [`strip`](commands/strip.md) and
 [`probe`](commands/probe.md) reject generated-header mutation controls.
 
-Safety gates still take precedence. Malformed headers, unreadable files, unsupported files, blocked
-filesystem states, and other non-mutable runtime conditions are not made mutable by
+Runtime safety gates still take precedence. Malformed headers, unreadable files, unsupported files,
+blocked filesystem states, and other non-mutable runtime conditions are not made mutable by
 `header_mutation_mode`.
 
 Example:
@@ -143,14 +143,15 @@ allow_header_in_empty_files = true
 
 Controls which empty or empty-like files are classified as empty for insertion.
 
-This policy affects dry-run reporting, `--apply` behavior, API result views, and outcome bucketing.
+This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic runtime
+outcome bucketing.
 
 This setting is evaluated together with `allow_header_in_empty_files`:
 
 - If `allow_header_in_empty_files = false` (default), files classified as empty for insertion are
   treated as unchanged and compliant by default.
 - If `allow_header_in_empty_files = true`, files classified as empty for insertion may receive
-  generated headers, subject to normal safety gates.
+  generated headers, subject to normal runtime safety gates.
 
 Allowed values:
 
@@ -168,8 +169,9 @@ empty_insert_mode = "whitespace_empty"
 `render_empty_header_when_no_fields` is separate. It controls whether TopMark may render an
 otherwise empty header when no header fields are configured.
 
-Safety gates still take precedence. Unreadable files, unsupported files, malformed headers, blocked
-filesystem states, and other non-mutable conditions are not made mutable by `empty_insert_mode`.
+Runtime safety gates still take precedence. Unreadable files, unsupported files, malformed headers,
+blocked filesystem states, and other non-mutable runtime conditions are not made mutable by
+`empty_insert_mode`.
 
 ### `render_empty_header_when_no_fields`
 
@@ -184,7 +186,7 @@ render_empty_header_when_no_fields = true
 
 Controls whether TopMark may reflow content while inserting or updating a header.
 
-This can reduce strict idempotent rendering behavior in some cases.
+This can reduce strict idempotent runtime rendering behavior in some cases.
 
 ```toml
 [policy]
@@ -193,7 +195,7 @@ allow_reflow = true
 
 ### `allow_content_probe`
 
-Controls whether file-type detection may inspect file contents when needed.
+Controls whether runtime file-type detection may inspect file contents when needed.
 
 This policy applies to both [`check`](commands/check.md) and [`strip`](commands/strip.md).
 
@@ -247,7 +249,8 @@ and canonical qualified identifiers:
 
 are supported when the local identifier is unambiguous.
 
-Internally, TopMark resolves per-file-type policy using canonical qualified file type identifiers.
+Internally, TopMark resolves per-file-type runtime policy using canonical qualified file type
+identities.
 
 Example:
 
@@ -279,7 +282,7 @@ ______________________________________________________________________
 
 ## Ambiguous, unknown, and malformed identifiers
 
-Per-file-type policy identifiers follow the same rules as filtering and runtime resolution.
+Per-file-type runtime policy identifiers follow the same rules as filtering and runtime resolution.
 
 Ambiguous local identifiers require the canonical qualified form.
 
@@ -290,7 +293,8 @@ python                # accepted when unambiguous
 topmark:python        # canonical qualified form
 ```
 
-Malformed identifiers are ignored diagnostically during configuration normalization and validation.
+Malformed identifiers are ignored diagnostically during configuration normalization and staged
+configuration-loading validation.
 
 Examples:
 
@@ -333,15 +337,15 @@ ______________________________________________________________________
 
 ## Reporting vs policy
 
-Reporting controls human-readable CLI output. Policy controls what the runtime pipeline is allowed
-to do.
+Reporting controls human-readable CLI rendering. Policy controls what the runtime pipeline is
+allowed to do.
 
 Reporting examples:
 
 - `--report actionable`: show human-readable per-file entries that would change, changed, failed, or
   otherwise need attention
-- `--report noncompliant`: include actionable files plus unsupported file types in human per-file
-  output
+- `--report noncompliant`: include actionable files plus unsupported file types in human-readable
+  per-file output
 
 Policy example:
 
@@ -349,6 +353,26 @@ Policy example:
   but not update existing headers
 
 These settings are independent and may be combined.
+
+______________________________________________________________________
+
+## Runtime policy model
+
+TopMark intentionally separates:
+
+1. staged configuration-loading validation
+1. layered runtime configuration resolution
+1. runtime policy evaluation
+1. runtime applicability evaluation
+1. runtime probing and processor resolution
+1. runtime safety-gate enforcement
+1. runtime mutation planning and execution
+
+Machine-readable diagnostics and runtime behavior expose a flattened compatibility view derived from
+these internal stages.
+
+This layered runtime policy model keeps behavior deterministic while preserving stable policy,
+diagnostics, and machine-readable compatibility contracts.
 
 ______________________________________________________________________
 
