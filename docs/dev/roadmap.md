@@ -364,12 +364,6 @@ Result: human output is now **consistent, composable, and decoupled from CLI**.
   docs-root-relative include paths, include targets outside `docs/`, nested snippet includes,
   accidental macOS `._*` files, level-2 section separators, heading emoji/decorative-symbol policy,
   and `CHANGELOG.md` heading conventions.
-- Integrated documentation hygiene validation into local verification and release gates, including
-  `make verify`, `make release-check`, and `make release-full`.
-- Enforced objective documentation hygiene checks for broken snippet includes, malformed
-  docs-root-relative include paths, include targets outside `docs/`, nested snippet includes,
-  accidental macOS `._*` files, level-2 section separators, heading emoji/decorative-symbol policy,
-  and `CHANGELOG.md` heading conventions.
 - Added smart-punctuation hygiene for Markdown prose and normalized documentation prose to ASCII
   punctuation where appropriate.
 - Added `tools/docs/check_code_hygiene.py` to validate Python comments, docstrings, and
@@ -966,12 +960,13 @@ Remaining follow-up:
   conventions evolve.
 - Keep Python code-prose hygiene validation integrated in local and release gates as comments,
   docstrings, tooling prose, and generated documentation conventions evolve.
-- Keep monitoring the new canonical CI coverage reporting signal:
+- Keep monitoring the canonical CI coverage reporting signal now integrated during late-beta
+  stabilization:
   - coverage runs through the existing `nox -s coverage` session on Ubuntu with Python 3.13
   - coverage publishes a GitHub Step Summary plus HTML and XML/JSON workflow artifacts
   - coverage remains diagnostic and is not a release-blocking percentage gate
-  - a README coverage badge remains deferred until the published signal is stable enough to be
-    meaningful
+  - README coverage badge adoption remains intentionally deferred until the published signal proves
+    stable, representative, and useful over time
 - Keep MkDocs 1.x as the accepted documentation generator through the `v1.0.0` beta stabilization
   releases because the current strict docs build, link checks, generated API pages, release
   validation, and cross-platform packaging/install validation are green. Evaluate ProperDocs as a
@@ -1024,7 +1019,8 @@ What is left is mainly:
 - **downstream machine-readable output consumer validation**
 - **targeted hardening from concrete beta findings**
 - **ongoing documentation-governance, changelog-governance, and prose-hygiene validation**
-- **coverage-signal monitoring now that canonical CI coverage reporting is integrated**
+- **coverage-signal monitoring and README badge deferral now that canonical CI coverage reporting is
+  integrated**
 - **ongoing coverage expansion for complex orchestration and integration-heavy paths where
   additional confidence is still valuable despite the frozen 1.0 architecture**
 - **explicit post-1.0 follow-up for deferred scope**
@@ -1262,6 +1258,11 @@ These are release blockers unless explicitly deferred with a documented rational
     resolved without weakening Pyright strict-mode guarantees
   - [x] identified read-only protocol tightening and tuple-shaped internal return contract follow-up
     substantially completed before RC using focused frozen value objects and documentation updates
+  - [x] Canonical CI coverage reporting integrated as a non-blocking stabilization signal
+    - [x] coverage runs through the existing `nox -s coverage` session on Ubuntu with Python 3.13
+    - [x] GitHub Actions publishes Step Summary, HTML, XML, and JSON coverage artifacts
+    - [x] coverage remains diagnostic rather than percentage-gated for the 1.0 line
+    - [x] README coverage badge intentionally deferred pending longer-term signal stability review
 
 #### [Must] Tooling / dependency / release ecosystem
 
@@ -1330,7 +1331,8 @@ These are release blockers unless explicitly deferred with a documented rational
 
 Before cutting the final `1.0.0` release, maintain and record positive validation passes across the
 beta stabilization series. Packaging validation is intentionally handled through nox sessions,
-GitHub workflows, and release workflow checks rather than dedicated pytest tests.
+GitHub workflows, release workflow checks, and dedicated install-smoke validation rather than
+through standalone pytest-only packaging tests.
 
 - [x] Packaging validation completed
 - [x] GitHub prerelease visibility validated for the beta line
@@ -1340,8 +1342,16 @@ GitHub workflows, and release workflow checks rather than dedicated pytest tests
 - [x] `nox -s package_check` builds wheel and sdist artifacts and passes `twine check`
 - [x] wheel artifact installs into a clean environment and exposes the `topmark` console script
 - [x] sdist artifact installs into a clean environment and exposes the `topmark` console script
-- [x] dedicated install-smoke workflow validates installation and lightweight CLI execution on
-  Linux, macOS, and Windows
+- [x] Dedicated install-smoke workflow validates installation and lightweight CLI smoke behavior
+  across Linux, macOS, and Windows using built wheel and sdist artifacts
+- [x] Coverage workflow/reporting follow-up evaluated and validated during the beta stabilization
+  line
+  - [x] GitHub workflow coverage reporting added through the canonical `nox -s coverage` session
+  - [x] GitHub Step Summary coverage reporting validated
+  - [x] HTML and XML/JSON coverage artifacts validated
+  - [x] coverage reporting remains informational rather than release-blocking
+  - [x] README coverage badge decision recorded: defer until the published signal is stable enough
+    to be meaningful
 - [x] published `v1.0.0b3` artifacts validated successfully on Windows, macOS, and Ubuntu through
   real installation and execution testing
 - [x] uv-managed development environment works with the documented development extras
@@ -1372,12 +1382,6 @@ GitHub workflows, and release workflow checks rather than dedicated pytest tests
   - [x] `make test` (runs `nox -s qa`)
   - [x] `make release-check`
   - [x] `make release-full`, or an equivalent CI-backed full release gate, passes
-- [x] Coverage workflow/reporting follow-up evaluated
-  - [x] GitHub workflow coverage reporting added through the canonical `nox -s coverage` session
-  - [x] Coverage reports are published as workflow artifacts with a GitHub Step Summary
-  - [x] Coverage remains diagnostic and is not a release-blocking percentage gate
-  - [x] README coverage badge decision recorded: defer until the published signal is stable enough
-    to be meaningful
 - [x] Tooling parity validation completed
   - [x] nox formatter/linter behavior matches pre-commit behavior
   - [x] local `.venv` behavior matches nox expectations where documented
@@ -1451,10 +1455,13 @@ as a record of recommended freeze work that has now been closed.
   documented explicitly in contributor-facing CI guidance
   - formatter behavior is governed by checked-in tool configuration and release validation gates
   - broader editor-style guidance remains non-blocking for 1.0
-- [x] Decide whether the explicit `tests` matrix setup should remain as-is or later reuse more of
-  the shared CI bootstrap model
-  - the explicit matrix remains accepted for 1.0
-  - further reuse of shared CI bootstrap models is deferred post-1.0
+- [x] Decide how CI Python-version metadata should be managed for the frozen 1.0 workflow model
+  - supported and canonical Python versions are derived from `pyproject.toml` through
+    `nox -s print_python_matrix`
+  - the compatibility matrix and canonical single-version jobs consume the resolved metadata rather
+    than duplicating version literals in the main CI workflow
+  - release publication intentionally retains an explicit release-tooling Python runtime while
+    reporting non-blocking drift warnings against canonical CI metadata
 
 #### [Recommended] Documentation governance
 
