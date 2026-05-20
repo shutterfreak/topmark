@@ -237,6 +237,7 @@ nav:
       - Documentation pipeline and reference hygiene: dev/documentation-pipeline.md
       - Documentation conventions: dev/documentation-conventions.md
       - Release process: dev/release-process.md
+      - Road to 1.0: dev/road-to-1.0.md
       - Roadmap: dev/roadmap.md
 
 # --- Development Server ---

@@ -14,10 +14,23 @@ topmark:header:end
 
 ## Motivation / Why this matters
 
-TopMark 1.0 is now primarily a contract-stabilization effort. The major architecture refactors are
-complete, and the remaining work is focused on preserving stable behavior across CLI usage,
-configuration loading, machine-readable output, documentation, release validation, and finalized
-public/runtime naming.
+TopMark 1.0 is now entering the release-candidate phase. The major architecture refactors,
+contract-freeze decisions, CI/release workflow stabilization, documentation governance work, and
+late-beta validation passes are complete. The remaining work is focused on preserving stable
+behavior, validating the frozen release candidate in realistic environments, and addressing only
+concrete release-blocking findings.
+
+This roadmap now serves two purposes:
+
+- a **release-governance record** for the frozen 1.0 contracts, explicit deferrals, and remaining
+  release-candidate validation posture;
+- a **historical stabilization ledger** for the architectural, documentation, CI/release, and
+  testing decisions made during the 0.12 development line and 1.0 alpha/beta series.
+
+As the project moves from `1.0.0rc1` toward `1.0.0`, the roadmap should become progressively less of
+a working checklist and more of a concise governance reference. Detailed achievements and design
+decisions may be extracted later into a dedicated release-retrospective document or GitHub project
+page so this file can remain focused on release readiness and post-1.0 scope.
 
 A key deferred post-1.0 opportunity remains support for data that is not naturally file-backed:
 generated code, editor buffers, CI-provided snippets, or API-driven integrations. Today, almost all
@@ -39,455 +52,34 @@ ______________________________________________________________________
 
 ## Done so far
 
-This section tracks work completed during the 0.12 development series and the 1.0 alpha/beta
-stabilization line. The focus has been on **architectural separation, deterministic behavior, strict
-typing, documentation governance, validation hygiene, canonical public/runtime naming, internal
-ownership clarity, and removal of legacy implicit behavior**. The system is now largely aligned with
-a clean *TOML → Configuration → Runtime → Pipeline → Presentation* model and is in late beta
-stabilization.
+The 0.12 development line and 1.0 alpha/beta series completed the major stabilization work needed
+for the 1.0 release-candidate phase. The system is now aligned around a clean *TOML → Configuration
+→ Runtime → Pipeline → Presentation* model, with explicit registry bindings, separated
+CLI/presentation layers, schema-driven machine output, documented CLI behavior, hardened
+configuration validation, and artifact-based release automation.
 
-### Registry architecture (completed)
+Detailed historical achievements and design decisions have been extracted to
+[Road to TopMark 1.0](./road-to-1.0.md). This roadmap now keeps only the release-governance summary
+needed for `1.0.0rc1` and final `1.0.0` readiness.
 
-The registry system has been fully refactored into a **deterministic, explicit, namespace-aware
-model**:
+Completed stabilization themes:
 
-- Introduced a strict **three-registry architecture**:
-  - `filetypes` → identity of file types
-  - `processors` → identity of processors
-  - `bindings` → relationships between file types and processors
-- Added a thin façade (`registry.registry`) to compose these concerns without hiding behavior.
-- Replaced all implicit registration (decorators, bootstrap scanning) with **explicit bindings**.
-- Introduced **namespace-aware identities**:
-  - `qualified_key = "<namespace>:<name>"`
-  - canonical keys are now the default across APIs and outputs
-- Froze the qualified-vs-local file type identifier semantics for 1.0:
-  - canonical internal identity is the qualified key, such as `topmark:python`
-  - public inputs may use local identifiers, such as `python`, only when unambiguous
-  - ambiguous local identifiers require the qualified form
-  - fuzzy matching, aliases, and implicit namespace fallback are intentionally unsupported
-- Implemented **ambiguity-aware resolution** with explicit error types.
-- Moved resolution logic into `topmark.resolution.*` and removed legacy resolution paths.
-- Established **canonical identity semantics** across machine output, CLI, and API.
-- Introduced probe-based resolution via `ResolutionProbeResult` as the shared evidence model for
-  runtime-resolution diagnostics and effective pipeline resolution.
-- Added the read-only `topmark probe` command and matching `topmark.api.probe()` public API to
-  expose file-type candidates, selected file type, selected processor, scores, match signals, and
-  explicit inputs filtered before probing through stable DTOs at the API boundary.
-- Refactored `ResolverStep` and `ProberStep` so normal pipelines and the probe pipeline share the
-  same probe-backed resolution mapping.
-- Replaced the positional file type candidate ordering tuple with `FileTypeCandidateOrderKey`,
-  preserving deterministic ranking while making score and tie-break fields explicit.
+- registry, resolution, and file-type identity contracts are explicit and namespace-aware;
+- CLI behavior, exit codes, command applicability, STDIN handling, and human/machine output
+  contracts are frozen for 1.0;
+- configuration loading follows the TOML → layered configuration → runtime overlay split;
+- pipeline behavior is deterministic, idempotent, preview/apply aware, and policy driven;
+- documentation governance, terminology, command-page structure, snippets, and prose hygiene are
+  established and validated;
+- CI, release, packaging, install-smoke validation, coverage reporting, and uv/nox-based tooling are
+  automated, documented, and validated through real workflow runs;
+- in-memory pipeline support, richer staged diagnostics exposure, registry query/filter commands,
+  schema versioning, Rich migration, and broader workflow factoring are explicitly deferred beyond
+  1.0.
 
-Result: the registry is now **predictable, testable, and plugin-ready**, with no import-time side
-effects.
-
-### CLI & presentation architecture (completed)
-
-The CLI and output system has been restructured into **strictly separated layers**:
-
-- `topmark.presentation.*` → pure rendering (no I/O, no Click)
-- `topmark.cli.console.*` → runtime/console concerns
-- `topmark.cli.commands.*` → orchestration only
-
-Key improvements:
-
-- Removed emitter confusion and replaced with:
-  - **serializers** (machine output)
-  - **renderers** (human output)
-- Enforced **Click-free rendering**
-- Introduced **semantic styling (StyleRole)** instead of inline coloring
-- Froze the 1.0 color-backend decision: keep `yachalk` because styling is confined to CLI
-  presentation internals through `StyleRole`, `Theme`, and string-in/string-out styling helpers;
-  defer any Rich migration until after 1.0.
-- Standardized TEXT verbosity model (`default`, `-v`, `-vv`).
-- Unified summary generation via pipeline outcomes instead of ad-hoc hint logic.
-- Introduced a strongly typed `TopmarkCliState` for Click invocation state.
-- Removed raw `ctx.obj` dictionary access from CLI command/runtime paths.
-- Removed implicit active-console resolution from CLI emitters and helpers.
-- Standardized explicit console passing for human and machine CLI output.
-- Split shared CLI option decorators so commands opt into TEXT verbosity and TEXT quiet mode
-  independently.
-- Clarified the final human-output contract:
-  - TEXT output is console-oriented and may use `-v` / `-vv` for progressive disclosure.
-  - `-q` / `--quiet` suppresses TEXT output only where the command still has a useful status,
-    inspection, or mutation signal.
-  - Markdown output is document-oriented and ignores TEXT-oriented verbosity, quiet, and styling
-    controls.
-  - JSON/NDJSON output is machine-readable and ignores TEXT-oriented presentation controls.
-  - Pure informational content-producing commands (`version`, `config defaults`, `config init`, and
-    registry commands) intentionally do not support `--quiet`.
-- Added Click-free shared human report models across config, registry, version, diagnostics, and
-  pipeline presentation surfaces.
-- Aligned command help text, epilogs, and developer docstrings across CLI entry-point, command
-  groups and commands.
-- Replaced lingering "global options" wording with the finalized shared-options terminology.
-- Documented the public spelling contract for CLI option names, CLI value aliases, and canonical
-  TOML/API/machine-readable values.
-- Completed a final help/epilog reflow and wording pass for command groups and subcommands.
-- Aligned config command help, source docstrings, and examples with the finalized “effective runtime
-  configuration” terminology.
-- Expanded focused human-output tests for version, diagnostics, config, registry, and pipeline
-  commands.
-- Replaced mixed CLI option-helper and presentation-helper tuple returns with typed result objects,
-  including `FromOptionValues`, `FromOptionStdinText`, `ComputedVersion`, `DefaultTomlTemplateText`,
-  and `HumanDiagnostics`, and simplified `plan_cli_inputs()` so dash-sentinel cleanup is performed
-  once after mode-specific input routing.
-- Documented and enforced the stable CLI exit-code contract across implementation, tests, the
-  canonical usage page, command pages, command-group pages, README, documentation index, pre-commit
-  guidance, and developer-facing machine/API documentation.
-- Documented and enforced the CLI command-applicability contract across implementation, focused
-  tests, command pages, command-group pages, README, documentation index, filtering guidance,
-  architecture documentation, and public API documentation.
-- Froze the path-command STDIN contract:
-  - content STDIN uses the POSIX-style `-` PATH sentinel plus `--stdin-filename`
-  - TopMark intentionally does not expose a `--stdin` option flag
-  - unsupported `--stdin` spellings are rejected as CLI usage errors before input planning
-
-Result: output is now **fully deterministic, testable, and reusable outside CLI contexts**.
-
-### Runtime vs config separation (completed)
-
-A strict separation between **configuration and execution intent** is now in place:
-
-- Introduced `RunOptions` for runtime-only behavior (apply, stdin, etc.)
-- Removed runtime concerns from layered configuration
-- Ensured CLI and API both follow:
-  - TOML → layered configuration → runtime overlay
-- Kept TOML-authored runtime sections such as `[writer]` outside layered configuration while
-  preserving them in config dumps, config checks, and machine-readable configuration snapshots.
-- Aligned `config defaults` and `config init` so machine-readable output is generated through TOML
-  parsing/resolution rather than by shortcutting directly to configuration defaults.
-- Replaced mixed TOML/config bridge tuples with typed result objects, including
-  `ResolvedConfigDraft` and `PreparedCliConfig`, so TOML provenance, mutable config drafts, and CLI
-  override ownership are passed through named fields instead of positional tuple slots.
-
-Result: config is now **pure, layered, and reproducible**, while runtime behavior is explicit.
-
-### TOML / config system (completed)
-
-The configuration system has been fully restructured:
-
-- Clear split:
-  - `topmark.toml` → parsing + validation
-  - `topmark.config` → layered configuration merge + resolution
-  - `topmark.runtime` → execution behavior
-- Implemented **layered configuration with provenance**
-- Introduced typed synthetic config provenance for built-in defaults, bundled templates, CLI/API
-  overrides, and other non-filesystem config sources.
-- Finalized the canonical `MutableX` / `FrozenX` naming model across configuration, policy,
-  diagnostics, and staged validation-log types.
-- Added **per-path effective runtime configuration resolution**
-- Introduced **strict validation model** with diagnostics + strict mode
-- Introduced **staged configuration-loading validation logs**:
-  - TOML-source diagnostics
-  - merged-config diagnostics
-  - runtime-applicability diagnostics
-- Renamed the alpha-only `[config].strict_config_checking` key to `[config].strict` before the 1.0
-  config contract freeze.
-- Removed stored flattened diagnostics from `Config` / `MutableConfig`
-  - flattening is now performed only at exception, presentation, and machine-readable output
-    boundaries
-- Removed legacy helpers and compatibility layers
-- Standardized API inputs via `ConfigMapping`
-- Normalized file type identifier handling across configuration normalization and runtime policy
-  lookup:
-  - `include_file_types` and `exclude_file_types` normalize to canonical qualified keys
-  - `policy_by_type` accepts both qualified identifiers and unambiguous local identifiers
-  - frozen `policy_by_type` maps are keyed by canonical qualified file type identifiers
-  - runtime policy lookup uses `ctx.file_type.qualified_key`
-- Classified `PolicyOverrides` and `ConfigOverrides` as internal CLI/API orchestration bridge types,
-  with public callers using plain mapping-based `config`, `policy`, and `policy_by_type` inputs.
-
-Result: configuration is now **typed, layered, validated, normalized, and consistent across
-CLI/API**.
-
-### Pipeline semantics & policy model (completed)
-
-The pipeline has been stabilized with clearer semantics:
-
-- Introduced **preview vs apply split**
-- Normalized write statuses (PREVIEWED vs INSERTED/REPLACED/REMOVED)
-- Introduced **empty-file classification model**
-- Refactored policy handling:
-  - `HeaderMutationMode` replaces boolean flags
-- Froze the user-facing policy/report flag semantics for 1.0:
-  - `--report` controls human per-file output scope only and does not affect processing, summaries,
-    machine output, or exit-code selection
-  - `header_mutation_mode` controls `check` mutation intent (`all`, `add_only`, `update_only`) while
-    safety gates still take precedence
-  - `empty_insert_mode` controls empty/empty-like classification only and is evaluated together with
-    `allow_header_in_empty_files`
-  - `render_empty_header_when_no_fields` remains separate from empty-file insertion permission
-- Standardized summary output:
-  - grouped by `(outcome, reason)`
-- Ensured **idempotence and deterministic behavior**
-- Audited and froze the 1.0 line-ending support contract:
-  - LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are the only recognized physical newline styles
-  - non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and Paragraph
-    Separator (`U+2029`) are treated as ordinary content, not line endings
-  - XML-specific insertion checks may conservatively skip mutation near such characters as a local
-    idempotence guard, not as extended newline support
-- Centralized standard newline constants and aligned reader, sniffer, whitespace, XML, and property
-  tests with the frozen newline contract.
-- Centralized pipeline-result-to-exit-code derivation with explicit priority ordering for mixed
-  result runs.
-- Added resolution-level synthetic pipeline contexts for explicit missing literal inputs so missing
-  files appear in human output, machine output, summaries, and exit-code selection.
-- Replaced mixed pipeline and processor result tuples with typed value objects, including
-  `PipelineExecution`, `ApiPipelineRun`, `StripHeaderResult`, and `HumanDiagnostics`, clarifying
-  runtime, pipeline, processor, and presentation ownership boundaries under Pyright strict mode.
-- Tightened XML strip diagnostics so XML-specific spacer-cleanup notes are emitted only when the XML
-  override actually removes an additional policy spacer.
-
-Result: pipeline behavior is now **explicit, consistent, and predictable**.
-
-### Machine output system (completed)
-
-Machine formats are now:
-
-- **Domain-scoped** (`config`, `pipeline`, `registry`, `core`, `version`)
-- **Schema-driven (TypedDict)**
-- Fully separated from CLI
-- Using consistent JSON/NDJSON envelope conventions
-- Supporting JSON and NDJSON
-- Backed by focused JSON + NDJSON contract tests for:
-  - config commands
-  - pipeline commands
-  - version command
-  - registry commands
-  - probe command
-- Supported by shared JSON/NDJSON test helpers for machine-readable output parsing and record/meta
-  assertions
-- Documented with aligned machine-format and machine-readable output reference pages, plus registry
-  command usage pages
-- Added probe-specific JSON and NDJSON machine output with a per-path `probes` JSON collection and
-  `probe` NDJSON records, including filtered explicit inputs.
-- Clarified that machine payloads are decoupled from process exit codes: JSON/NDJSON expose
-  structured results and diagnostics, while process status remains the CLI exit code.
-- Aligned config machine-readable output so `[writer]` and other TOML-authored runtime sections are
-  included when present in the effective TOML source.
-- Clarified `config defaults` vs `config init` machine-readable semantics:
-  - `config defaults` emits a canonical built-in defaults snapshot.
-  - `config init` emits a bundled starter-template snapshot parsed through the TOML resolution
-    pipeline.
-
-Result: machine output is now **schema-driven, documented, and separated from human presentation**.
-Remaining work is limited to beta feedback and targeted hardening, not architecture.
-
-### Human output system (completed)
-
-- Consolidated human formats: TEXT + MARKDOWN.
-- Introduced `topmark.presentation` as canonical rendering layer.
-- Established the final presentation contract:
-  - TEXT is console-oriented and owns verbosity/quiet semantics.
-  - Markdown is document-oriented and ignores TEXT-oriented verbosity/quiet controls.
-  - Machine formats are not part of the human-output layer.
-- Ensured all renderers are:
-  - pure (no I/O)
-  - reusable
-  - testable
-- Added direct presentation tests for shared diagnostic rendering.
-- Added CLI-level human-output tests for version, config, registry, pipeline, and probe command
-  groups.
-
-Result: human output is now **consistent, composable, and decoupled from CLI**.
-
-### Documentation & developer tooling (completed)
-
-- Major documentation alignment with new architecture
-- Added pipeline docs and registry documentation
-- Enforced docstring standards and validation
-- Introduced link-checking and stricter docs CI
-- Reorganized tests and helpers for clarity
-- Added shared JSON/NDJSON parsing and assertion helpers for machine-readable output tests
-- Recorded machine-readable output naming conventions in the canonical machine-readable output
-  reference
-- Updated usage, configuration, architecture, machine-output, API, README, and index documentation
-  to reflect the finalized TEXT / Markdown / machine output contract.
-- Updated exit-code, filtering, command, command-group, pre-commit, architecture, API, machine
-  output, README, and index documentation to reflect the finalized exit-code contract, including
-  missing-vs-unmatched input behavior and mixed-result priority.
-- Documented probe-based resolution and filtered explicit-input reporting in the resolution,
-  pipeline, filtering, machine-output, machine-format, and `topmark probe` usage pages.
-- Documented `topmark.api.probe()` as the stable public probe surface, with internal resolution
-  objects, synthetic contexts, and low-level probe helpers kept outside the 1.0 public API contract.
-- Updated policy, command, configuration discovery, schema, and roadmap documentation to reflect the
-  frozen `--report`, `header_mutation_mode`, and `empty_insert_mode` contracts.
-- Added a shared documentation snippet for the public/internal override boundary and reused it
-  across API, configuration, architecture, schema, and resolution documentation.
-- Added a shared documentation snippet for qualified vs local file type identifiers and reused it
-  across usage, configuration, command, API, registry, plugin, resolution, and machine-output
-  documentation.
-- Added a shared documentation snippet for `[config].strict` and reused it across the configuration,
-  command, usage, architecture, resolution, and pipeline documentation.
-- Added dedicated user-facing CLI and configuration overview pages.
-- Added a dedicated registry model developer page covering registry layers, bindings, overlays,
-  canonical identities, plugin integration, and registry CLI inspection.
-- Completed the documentation consistency and generated-site freeze review for `v1.0.0b1`.
-- Established canonical documentation conventions in `docs/dev/documentation-conventions.md`,
-  covering command-page structure, navigation, cross-references, related links, emoji use,
-  generated-doc expectations, TOC density, and snippet governance.
-- Harmonized CLI command-page structure across command and command-group documentation, including
-  consistent sections for quick starts, applicability, output behavior, machine-readable output,
-  exit codes, related commands, related docs, and troubleshooting.
-- Improved generated-site discoverability by reducing navigation and TOC density, simplifying
-  generated API internals navigation, and relying on package indexes, breadcrumbs, search, and
-  cross-references for deeper internals.
-- Renamed the former global-options documentation to shared-options documentation and aligned
-  command, configuration, and generated-site references.
-- Harmonized machine-readable output terminology across usage docs, developer docs, source
-  docstrings, and tests while preserving formal machine-output contract terminology where needed.
-- Documented the intentional distinction between canonical built-in defaults and the bundled starter
-  template for `config defaults` and `config init`.
-- Reviewed and reduced the `docs/_snippets/` inventory to stable reusable contracts, retiring
-  over-abstracted snippets and centralizing conceptual semantics into canonical reference pages.
-- Promoted the canonical terminology glossary from `docs/dev/terminology.md` to
-  `docs/terminology.md` as a project-wide vocabulary reference.
-- Added `_snippets/terminology.md` as the shared terminology cross-reference note and reused it
-  across command, usage, API, CI, configuration, and developer documentation.
-- Completed the command documentation consistency pass across pipeline, config, registry, and
-  version commands, including user-facing/runtime terminology, related links, machine-readable
-  wording, and troubleshooting sections.
-- Updated documentation conventions to clarify user-facing implementation boundaries for command
-  pages, including avoiding internal dataclass names, `freeze()` / `thaw()` mechanics, and internal
-  DTO names in usage documentation.
-- Harmonized the bundled `topmark-example.toml` template into a calmer reference-style starter
-  configuration with normalized runtime-policy, configuration-discovery, and TOML-source-local
-  wording.
-- Added lightweight documentation hygiene validation through `tools/docs/check_docs_hygiene.py`,
-  exposed as `nox -s docs_hygiene` and `make docs-hygiene`.
-- Added changelog-specific hygiene validation for release heading shape, enforcing
-  Keep-a-Changelog-compatible level-3 section structure and heading conventions, disallowed deeper
-  headings, and decorative-symbol-free headings.
-- Integrated documentation hygiene validation into local verification and release gates, including
-  `make verify`, `make release-check`, and `make release-full`.
-- Enforced objective documentation hygiene checks for broken snippet includes, malformed
-  docs-root-relative include paths, include targets outside `docs/`, nested snippet includes,
-  accidental macOS `._*` files, level-2 section separators, heading emoji/decorative-symbol policy,
-  and `CHANGELOG.md` heading conventions.
-- Added smart-punctuation hygiene for Markdown prose and normalized documentation prose to ASCII
-  punctuation where appropriate.
-- Added `tools/docs/check_code_hygiene.py` to validate Python comments, docstrings, and
-  prose-oriented string literals for ASCII-oriented punctuation hygiene.
-- Wired Python prose hygiene into nox, Makefile, verification, and release validation paths.
-
-### CI / release / dependency model (completed)
-
-- Migrated to **uv-first dependency model**
-
-- Replaced tox with **nox**
-
-- Implemented **artifact-based CI → release pipeline**
-
-- Added a dedicated multi-platform install-smoke GitHub Actions workflow:
-
-  - validates wheel and sdist installation from built artifacts on Linux, macOS, and Windows
-  - verifies isolated installation behavior using clean virtual environments
-  - performs lightweight CLI smoke checks from installed artifacts
-  - helps detect packaging, dependency, entry-point, and platform-specific installation regressions
-
-- Added dedicated install-smoke workflow documentation covering:
-
-  - workflow purpose and scope
-  - artifact-install validation strategy
-  - relationship with release and CI workflows
-  - supported platforms and Python versions
-  - expected smoke-test coverage
-
-- Adopted **SCM-based versioning (setuptools-scm)**
-
-- Corrected the runtime dependency model by promoting `typing-extensions` to core dependencies after
-  isolated-environment failures revealed it was still required at runtime.
-
-- Corrected additional implicit dependency by promoting `packaging` to core dependencies after
-  pre-commit/isolated-environment usage revealed it is required at runtime.
-
-- Added `deptry` configuration in `pyproject.toml` so optional dependency groups used for
-  development and documentation are modeled explicitly during dependency-audit checks.
-
-- Refreshed dependencies and pre-commit hooks during beta stabilization, including removal of an
-  obsolete Pyright ignore after improved `tomlkit` typing.
-
-- Hardened CI with:
-
-  - link checks
-  - documentation hygiene checks
-  - permissions model
-  - SHA-pinned actions
-
-- Added canonical CI coverage reporting through the existing `nox -s coverage` session:
-
-  - runs on Ubuntu with Python 3.13 outside the full compatibility matrix
-  - publishes a GitHub Step Summary
-  - uploads HTML coverage output and XML/JSON machine-readable coverage reports
-  - keeps coverage diagnostic rather than percentage-gated
-
-- Centralized CI Python-version metadata through `nox -s print_python_matrix`:
-
-  - supported compatibility-matrix versions are derived from `pyproject.toml`
-  - canonical single-version jobs consume resolved metadata rather than duplicated literals
-  - release workflows report non-blocking drift warnings when explicit release-tooling Python
-    versions differ from canonical CI metadata
-
-- Added dedicated documentation for CI workflows, release workflows, install-smoke validation, and
-  the shared `setup-python-nox` composite action.
-
-- Standardized explicit uv cache ownership in CI:
-
-  - disabled the `setup-uv` built-in cache integration
-  - centralized cache ownership through explicit `actions/cache` steps
-  - eliminated noisy concurrent cache-reservation race warnings between jobs
-
-Result: release and installation validation are now secure, reproducible, automated, and validated
-across multiple platforms through dedicated artifact-install smoke testing.
-
-### Overall status (done)
-
-At this point:
-
-- Core architecture is **fully refactored**
-- Legacy implicit behavior is **eliminated**
-- System boundaries are **clear and enforced**
-- Remaining work is **focused and incremental**, not structural
-- Machine-output contract coverage is now strong for config, pipeline, version, registry, and probe
-  commands
-- The public probe API is now aligned with the CLI probe command while preserving the
-  public/internal boundary around resolution internals
-- Qualified-vs-local file type identifier semantics are now frozen, implemented, tested, and
-  documented across CLI, TOML configuration, API overlays, resolution and filtering, policy lookup,
-  registry-facing APIs, diagnostics, and machine output
-- Final documentation, generated-site, CLI/help, warning/error wording, beta-semantics,
-  command-page, terminology, and machine-readable output terminology reviews have been completed
-  through the beta stabilization releases
-- Documentation UX, command-page structure, cross-reference conventions, snippet governance, and
-  generated-site navigation are now convention-driven and validated through the documentation
-  hygiene tooling
-- Project-wide terminology, reusable terminology notes, command documentation, TOML template prose,
-  Markdown prose hygiene, and Python code-prose hygiene are now aligned with the 1.0 documentation
-  governance model
-- The canonical `MutableX` / `FrozenX` naming model is finalized across configuration, policy,
-  diagnostics, and staged validation-log types.
-- Late-beta typing and API-hardening follow-up work identified during the `v1.0.0b4` stabilization
-  cycle has been substantially completed before RC:
-  - protocol/view contracts were tightened toward read-only semantics where mutation is not intended
-  - ambiguous mixed-type tuple return values were replaced with frozen typed value objects or
-    DTO-style result models across version, TOML/config, CLI input, runtime, pipeline, processor,
-    diagnostics, glob-rebasing, and file-type-resolution paths
-  - plugin-facing and internal protocol documentation now distinguishes public API snapshot exports,
-    public-adjacent integration surfaces, intentional mutable registry bindings, and read-only
-    observation protocols
-  - XML strip diagnostics were tightened to avoid claiming spacer cleanup when no XML-specific
-    spacer was removed
-  - Python 3.10 compatibility and Pyright strict-mode guarantees were preserved
-  - remaining follow-up is limited to targeted incremental confidence-building, with canonical CI
-    coverage reporting now integrated as a diagnostic signal
-  - CI Python-version metadata, coverage reporting, install-smoke validation, and release-tooling
-    provenance reporting are now aligned with the frozen late-beta workflow model
-
-The project is now in a **late beta stabilization phase**, with broad architecture complete,
-in-memory pipeline support explicitly deferred, documentation governance and prose hygiene
-established, and the remaining work focused primarily on real-world beta feedback, downstream
-ecosystem validation, and final targeted hardening before `1.0.0`.
+At RC time, remaining work is no longer broad architectural redesign. It is limited to release
+candidate validation, ecosystem observation, downstream compatibility checks, documentation
+clarifications, and concrete release-blocking fixes.
 
 ______________________________________________________________________
 
