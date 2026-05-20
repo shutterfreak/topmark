@@ -15,10 +15,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "topmark"
 dynamic = ["version"]
-description = "A Python CLI to inspect, validate, and manage license and copyright headers."
+description = "Inspect, insert, update, remove, and validate project file headers across codebases."
 readme = { file = "README.md", content-type = "text/markdown" }
 keywords = [
   "headers",
+  "file-headers",
   "license-header",
   "copyright-header",
   "source-code",
@@ -26,7 +27,10 @@ keywords = [
   "code-quality",
   "project-maintenance",
   "compliance",
-  "formatting",
+  "automation",
+  "pre-commit",
+  "ci",
+  "developer-tools",
 ]
 license = "MIT"
 license-files = ["LICENSE"]
@@ -47,10 +51,14 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 
-  "Topic :: Software Development :: Quality Assurance",
   "Topic :: Software Development :: Build Tools",
-  "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Software Development :: Documentation",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Version Control :: Git",
+
+  "Topic :: System :: Systems Administration",
+
   "Topic :: Text Processing",
   "Topic :: Utilities",
 
