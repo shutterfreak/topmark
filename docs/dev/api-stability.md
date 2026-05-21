@@ -70,7 +70,7 @@ This boundary intentionally separates:
 
 - stable user-facing execution APIs;
 - stable machine-readable output contracts;
-- stable configuration and identifier semantics;
+- stable configuration and file type identity semantics;
 - evolving registry internals and overlay helpers.
 
 ______________________________________________________________________
@@ -104,7 +104,7 @@ signatures exported via \[`topmark.api`\][topmark.api] are tracked.
 Configuration layering and TOML source resolution are internal implementation details and are not
 part of the public API contract.
 
-However, canonical file type identifier semantics are part of the stable public behavior contract
+However, canonical file type identity semantics are part of the stable public behavior contract
 shared across:
 
 - CLI filtering;
@@ -245,8 +245,8 @@ ______________________________________________________________________
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
 - Normalization ensures consistent diffing across OSes and Python builds.
-- Canonical file type identifier normalization ensures stable identity handling across
-  configuration, resolver, registry, and machine-readable output boundaries.
+- Canonical file type identity normalization ensures stable identity handling across configuration,
+  resolver, registry, and machine-readable output boundaries.
 - The snapshot is derived from `topmark.api.__all__`, ensuring the stable façade remains small and
   explicitly defined.
 - Internal helpers such as

@@ -63,7 +63,7 @@ not part of the stable external configuration schema.
 File type identifiers in TOML configuration may use either:
 
 - local identifiers such as `python`
-- canonical qualified identifiers such as `topmark:python`
+- canonical qualified file type identities such as `topmark:python`
 
 TopMark normalizes identifiers to canonical qualified keys during configuration normalization before
 resolver, filtering, policy, and binding evaluation.

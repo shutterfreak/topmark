@@ -60,7 +60,7 @@ The generated internals span multiple architectural layers:
 
 See [`Architecture`](../dev/architecture.md) for the conceptual overview.
 
-Canonical file type identifier semantics are documented in
+Canonical file type identity semantics are documented in
 [Registry model](../dev/registry-model.md#qualified-vs-local-identifiers) and
 [Terminology and Canonical Vocabulary](../terminology.md).
 
@@ -79,7 +79,7 @@ evolve more flexibly than:
 - `topmark.api`
 - CLI contracts
 - machine-readable JSON and NDJSON contracts
-- canonical identifier semantics
+- canonical file type identity semantics
 
 You can also browse the full generated tree from the sidebar under **API → Internals → Reference
 (generated)**.

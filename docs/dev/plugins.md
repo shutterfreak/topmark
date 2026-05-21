@@ -118,8 +118,8 @@ TopMark reserves the namespace `topmark` (the internal constant
 - Set `namespace` to your package or organization identifier, for example `"acme"` or
   `"my_company"`.
 - Choose a clear local `name`, for example `"django_html"` or `"my_lang"`.
-- Use the qualified identifier, such as `"acme:django_html"`, in shared configuration, processor
-  bindings, and documentation.
+- Use qualified file type identities, such as `"acme:django_html"`, in shared configuration,
+  processor bindings, and documentation.
 
 Note: `namespace` is **mandatory** for both file types and processors. The built-in namespace
 `topmark` is reserved for TopMark-provided types.

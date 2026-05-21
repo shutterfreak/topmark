@@ -133,8 +133,8 @@ run: api.RunResult = api.check(
 ```
 
 API overlays, TOML configuration, CLI filters, and effective runtime policy resolution all share
-identical file-type identifier semantics. Local identifiers such as `"python"` are also accepted
-when unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
+identical file-type identity semantics. Local identifiers such as `"python"` are also accepted when
+unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
 `"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
 
 For the public API, the returned view is controlled via
