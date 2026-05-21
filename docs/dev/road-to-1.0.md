@@ -23,8 +23,11 @@ header-processing components into a contract-oriented CLI and Python library wit
 boundaries, deterministic processing, documented output contracts, strict typing, and reproducible
 CI/release automation.
 
-This page is historical and explanatory. For current stable 1.x governance, post-1.0 deferrals, and
-future evolution tracking, see [TopMark 1.0 Roadmap](./roadmap.md).
+This page is historical and explanatory. It records the stabilization and contract-freeze work that
+produced the stable 1.0 release line.
+
+For current stable 1.x governance, post-1.0 deferrals, and future evolution tracking, see
+[TopMark 1.0 Roadmap](./roadmap.md).
 
 ______________________________________________________________________
 
@@ -429,7 +432,7 @@ The beta stabilization series validated:
 
 The beta series also served as the final release-path rehearsal phase before the 1.0 release
 candidates, allowing workflow, packaging, installation, and publication behavior to be validated
-repeatedly through real prerelease tags.
+repeatedly through real prerelease tags and published artifacts.
 
 Result: by the end of the beta line, the remaining work had narrowed to RC validation and focused
 hardening rather than architectural change.
@@ -460,6 +463,8 @@ The validated `1.0.0rc1` release candidate confirmed these contracts across loca
 CI/release workflows, TestPyPI publication, GitHub prerelease publication, and published-artifact
 verification.
 
+The final `1.0.0` release then promoted those validated contracts into the stable 1.x release line.
+
 ______________________________________________________________________
 
 ## Deferred post-1.0 scope
@@ -476,7 +481,8 @@ Several items were explicitly deferred beyond 1.0 to preserve release focus:
 - deeper documentation-structure validation;
 - and README coverage badge publication.
 
-These deferrals were deliberate scope decisions rather than incomplete 1.0 requirements.
+These deferrals were deliberate scope decisions rather than incomplete 1.0 requirements, helping
+preserve stabilization focus during the final release cycle.
 
 ______________________________________________________________________
 
@@ -488,7 +494,7 @@ The 1.0 stabilization effort reinforced several project-level lessons:
 - machine-readable output should be treated as a schema contract, not a CLI formatting variant;
 - human output needs a separate presentation model from automation output;
 - release workflows are easier to trust when artifact creation and privileged publication are
-  separated;
+  separated and validated through published-artifact verification;
 - documentation governance needs lightweight automated checks to remain sustainable;
 - coverage is most useful as a confidence signal when it avoids percentage chasing;
 - and explicit deferrals are healthier than forcing architectural ideas into a stabilization or
