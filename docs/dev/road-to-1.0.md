@@ -14,7 +14,7 @@ topmark:header:end
 
 ## Purpose
 
-This page records the curated stabilization and contract-freeze history behind TopMark 1.0. It
+This page records the curated stabilization and contract-freeze history that led to TopMark 1.0. It
 extracts the historical achievement narrative from the active 1.0 roadmap so the roadmap can remain
 focused on stable 1.x governance, explicit deferrals, and post-1.0 evolution.
 
@@ -23,14 +23,14 @@ header-processing components into a contract-oriented CLI and Python library wit
 boundaries, deterministic processing, documented output contracts, strict typing, and reproducible
 CI/release automation.
 
-This page is historical and explanatory. For current release status, remaining validation work, and
-post-1.0 deferrals, see [TopMark 1.0 Roadmap](./roadmap.md).
+This page is historical and explanatory. For current stable 1.x governance, post-1.0 deferrals, and
+future evolution tracking, see [TopMark 1.0 Roadmap](./roadmap.md).
 
 ______________________________________________________________________
 
 ## Stabilization overview
 
-The stabilization effort focused on separating responsibilities that had previously become
+The stabilization effort focused on separating responsibilities that had previously become tightly
 entangled:
 
 - TOML parsing and validation;
@@ -101,7 +101,7 @@ explainability/evidence model for diagnostics and effective pipeline resolution.
 explainability surfaces. They expose stable resolution DTOs without requiring callers to consume
 registry internals, resolver enums, or pipeline contexts.
 
-Result: registry and resolution behavior is explicit, deterministic, explainable, and ready for
+Result: registry and resolution behavior became explicit, deterministic, explainable, and ready for
 future plugin work.
 
 ______________________________________________________________________
@@ -134,7 +134,7 @@ The path-command STDIN contract was also frozen:
 - TopMark intentionally does not expose a `--stdin` option flag;
 - unsupported `--stdin` spellings are rejected as CLI usage errors.
 
-Result: CLI behavior is stable, explicit, scriptable, and separated from presentation internals.
+Result: CLI behavior became stable, explicit, scriptable, and separated from presentation internals.
 
 ______________________________________________________________________
 
@@ -177,8 +177,8 @@ The canonical mutable/frozen naming model was finalized across configuration, po
 and staged validation-log types. Public API inputs were standardized around mapping-based overlays,
 while typed override bridge types remain internal CLI/API orchestration details.
 
-Result: configuration is typed, layered, validated, normalized, and reproducible, while runtime
-behavior is explicit.
+Result: configuration became typed, layered, validated, normalized, and reproducible, while runtime
+behavior became explicit.
 
 ______________________________________________________________________
 
@@ -213,7 +213,7 @@ Line-ending support was also audited and frozen. TopMark recognizes LF, CRLF, an
 newline styles. Non-standard Unicode separators are treated as ordinary content rather than line
 endings.
 
-Result: pipeline behavior is explicit, consistent, idempotent, and policy driven.
+Result: pipeline behavior became explicit, consistent, idempotent, and policy driven.
 
 ______________________________________________________________________
 
@@ -250,7 +250,7 @@ Important frozen decisions included:
 
 Probe machine output was added with per-path probe results and filtered explicit-input reporting.
 
-Result: machine-readable formats are stable, documented, and suitable for downstream automation.
+Result: machine-readable formats became stable, documented, and suitable for downstream automation.
 
 ______________________________________________________________________
 
@@ -269,7 +269,7 @@ Semantic styling was routed through `StyleRole`, `Theme`, `TextStyler`, and `may
 decision was to keep `yachalk` because styling is confined to CLI presentation internals, while
 deferring any Rich or `rich-click` migration until after 1.0 unless a concrete blocker appears.
 
-Result: human output is consistent, composable, and decoupled from CLI command functions.
+Result: human output became consistent, composable, and decoupled from CLI command functions.
 
 ______________________________________________________________________
 
@@ -305,7 +305,7 @@ The stabilization effort also consolidated documentation conventions around:
 - changelog heading/section rules;
 - and explicit implementation-boundary guidance for user-facing documentation.
 
-Result: documentation is convention-driven, validated, and aligned with the frozen 1.0 behavior.
+Result: documentation became convention-driven, validated, and aligned with the frozen 1.0 behavior.
 
 ______________________________________________________________________
 
@@ -349,8 +349,8 @@ The `nox -s print_python_matrix` session centralizes Python-version metadata for
 matrix jobs and canonical single-version jobs consume resolved metadata, while release publication
 keeps an explicit release-tooling Python runtime and reports non-blocking drift warnings.
 
-Result: release and installation validation are reproducible, automated, documented, and validated
-across real workflow runs.
+Result: release and installation validation became reproducible, automated, documented, and
+validated across real workflow runs.
 
 ______________________________________________________________________
 
@@ -374,7 +374,7 @@ Examples of typed result-object cleanup included version/config preparation, TOM
 CLI input planning, runtime execution, pipeline execution, processor results, diagnostics,
 glob-rebasing, and file-type resolution paths.
 
-Result: the implementation is clearer, better typed, and less dependent on positional ownership
+Result: the implementation became clearer, better typed, and less dependent on positional ownership
 contracts.
 
 ______________________________________________________________________
@@ -404,7 +404,7 @@ identification signal instead of a release-governance metric.
 README coverage badge adoption remains deferred until the published signal proves stable,
 representative, and useful over time.
 
-Result: coverage now supports release confidence without becoming a release gate.
+Result: coverage became a release-confidence signal without becoming a release gate.
 
 ______________________________________________________________________
 
@@ -431,7 +431,7 @@ The beta series also served as the final release-path rehearsal phase before the
 candidates, allowing workflow, packaging, installation, and publication behavior to be validated
 repeatedly through real prerelease tags.
 
-Result: by the end of the beta line, the remaining work was primarily RC validation and focused
+Result: by the end of the beta line, the remaining work had narrowed to RC validation and focused
 hardening rather than architectural change.
 
 ______________________________________________________________________
@@ -453,8 +453,8 @@ By the end of the beta line, the following 1.0 contracts were frozen:
 - uv/nox dependency tooling;
 - documentation governance and hygiene checks.
 
-The 1.0 release-candidate phase therefore served as a contract-validation and compatibility-
-preservation phase rather than a feature-completion phase.
+The 1.0 release-candidate phase therefore served primarily as a contract-validation and
+compatibility-preservation phase rather than a feature-completion phase.
 
 The validated `1.0.0rc1` release candidate confirmed these contracts across local validation,
 CI/release workflows, TestPyPI publication, GitHub prerelease publication, and published-artifact
@@ -476,7 +476,7 @@ Several items were explicitly deferred beyond 1.0 to preserve release focus:
 - deeper documentation-structure validation;
 - and README coverage badge publication.
 
-These deferrals are deliberate scope decisions rather than incomplete 1.0 requirements.
+These deferrals were deliberate scope decisions rather than incomplete 1.0 requirements.
 
 ______________________________________________________________________
 
@@ -492,4 +492,4 @@ The 1.0 stabilization effort reinforced several project-level lessons:
 - documentation governance needs lightweight automated checks to remain sustainable;
 - coverage is most useful as a confidence signal when it avoids percentage chasing;
 - and explicit deferrals are healthier than forcing architectural ideas into a stabilization or
-  release-candidate cycle.
+  release-candidate cycle under release pressure.

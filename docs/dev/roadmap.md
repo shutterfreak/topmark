@@ -282,7 +282,7 @@ validation work are complete.
 
 The remaining work before `1.0.0` is intentionally narrow:
 
-- release-candidate validation in realistic environments;
+- final validation in realistic environments;
 - downstream ecosystem and automation compatibility observation;
 - targeted hardening from concrete findings;
 - preserving documentation and output-contract consistency;
@@ -451,7 +451,7 @@ Any additional coverage expansion before `1.0.0` should remain focused on:
 
 - orchestration-heavy paths;
 - integration-heavy behavior;
-- or concrete confidence gaps discovered during RC validation.
+- or concrete confidence gaps discovered during final release validation.
 
 ### Human-facing policy and behavior
 
@@ -470,7 +470,8 @@ surface may be reconsidered after the final release.
 
 ### Overall status
 
-TopMark is now in the final 1.0 release-readiness phase.
+TopMark is now ready for final 1.0 release validation and tagging, assuming the remaining local, CI,
+and published-artifact checks stay green.
 
 The remaining work is primarily:
 
@@ -583,7 +584,7 @@ required by a concrete release blocker:
 
 ### Remaining final-validation posture
 
-Before cutting final `1.0.0`, confirm the frozen contracts remain validated through:
+Before tagging final `1.0.0`, confirm the frozen contracts remain validated through:
 
 - final published-artifact validation;
 - downstream ecosystem compatibility observation;
@@ -606,7 +607,7 @@ handling, coverage-reporting behavior, documentation governance, changelog hygie
 terminology stability, and cross-platform installation behavior.
 
 The path to final `1.0.0` should now be limited to preserving compatibility, validating the final
-PyPI publication, monitoring the CI coverage signal, observing the finalized CI/release metadata and
-cache-ownership model across real workflow runs, and applying focused release-blocking fixes only.
-New broad scope, architectural churn, and output-contract redesign remain out of scope unless
-required by a concrete release blocker.
+PyPI publication after release, monitoring the CI coverage signal, observing the finalized
+CI/release metadata and cache-ownership model across real workflow runs, and applying focused
+release-blocking fixes only. New broad scope, architectural churn, and output-contract redesign
+remain out of scope unless required by a concrete release blocker.
