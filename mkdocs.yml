@@ -188,6 +188,7 @@ nav:
               - bindings: usage/commands/registry/bindings.md
           - version: usage/commands/version.md
       - Guides:
+          - Upgrading to 1.0: usage/upgrading-to-1.0.md
           - Filtering recipes: usage/filtering.md
           - Header placement: usage/header-placement.md
           - Policies: usage/policies.md
