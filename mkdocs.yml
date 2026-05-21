@@ -168,6 +168,7 @@ nav:
   - Home: index.md
   - Installation: install.md
   - Usage:
+      - Overview: usage/index.md
       - Command overview: usage/cli.md
       - Configuration discovery, precedence, and policy: usage/configuration.md
       - Shared options: usage/shared-options.md
@@ -214,9 +215,9 @@ nav:
           - GitHub Action pin audit: ci/action-pin-audit.md
       - Actions:
           - Setup Python + nox action: ci/setup-python-nox-action.md
-
   - Contributing: contributing.md
   - API:
+      - Overview: api/index.md
       - Public API: api/public.md
       - topmark.api: api/reference/topmark.api.md
       - topmark.registry: api/reference/topmark.registry.md
@@ -224,6 +225,7 @@ nav:
           - Overview: api/internals.md
           - Reference (generated): api/internals/
   - Development:
+      - Overview: dev/index.md
       - Terminology: terminology.md
       - Architecture: dev/architecture.md
       - Registry model: dev/registry-model.md
