@@ -152,6 +152,11 @@ pip install topmark
 
 TopMark stable releases are published on PyPI.
 
+If you are upgrading from TopMark 0.11.x or earlier, review the migration guide before changing
+existing configuration, CI jobs, or pre-commit hooks:
+
+- [Upgrading to TopMark 1.0 (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/upgrading-to-1.0/)
+
 ### From source (development setup)
 
 ```bash

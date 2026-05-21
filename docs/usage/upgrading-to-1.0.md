@@ -16,8 +16,8 @@ TopMark 1.0 is a stable release, but it is not a drop-in replacement for the old
 configuration, and output contracts.
 
 This guide summarizes the changes most likely to affect users upgrading from the latest stable
-0.11.x release to 1.0. It focuses on practical migration steps for CLI usage, pre-commit hooks, TOML
-configuration, output snapshots, and automation.
+0.11.x release (or earlier) to 1.0. It focuses on practical migration steps for CLI usage,
+pre-commit hooks, TOML configuration, output snapshots, and automation.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -45,35 +45,23 @@ Use the upgrade as a validation pass rather than immediately applying changes.
 
 1. Install TopMark 1.0 in a clean environment.
 
-1. Review your `topmark.toml` or `[tool.topmark]` configuration.
+1. Review your `topmark.toml` or `[tool.topmark]` configuration in `pyproject.toml`.
 
-1. Validate the configuration strictly:
+1. Validate the configuration strictly: \
+   `topmark config check --strict -v`
 
-   ```bash
-   topmark config check --strict -v
-   ```
+1. Inspect the discovered and resolved runtime configuration: \
+   `topmark config dump --show-layers -v`
 
-1. Inspect the discovered and resolved runtime configuration:
-
-   ```bash
-   topmark config dump --show-layers -v
-   ```
-
-1. Run a dry-run compliance check:
-
-   ```bash
-   topmark check --report noncompliant .
-   ```
+1. Run a dry-run compliance check: \
+   `topmark check --report noncompliant .`
 
 1. Update shell scripts, CI jobs, and pre-commit hook arguments.
 
 1. Regenerate expected output snapshots if your tests assert human or machine-readable output.
 
-1. Apply changes only after the dry-run output is understood:
-
-   ```bash
-   topmark check --apply .
-   ```
+1. Apply changes only after the dry-run output is understood: \
+   `topmark check --apply .`
 
 ______________________________________________________________________
 

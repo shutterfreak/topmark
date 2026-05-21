@@ -158,6 +158,15 @@ Before tagging a release:
 
 1. Update `CHANGELOG.md`.
 
+1. Review upgrade and migration guidance ([Upgrading to TopMark 1.0](../usage/upgrading-to-1.0.md))
+   if the release changes:
+
+   - CLI behavior or options;
+   - runtime configuration structure or policy semantics;
+   - machine-readable JSON or NDJSON contracts;
+   - pre-commit hook behavior;
+   - stable runtime or reporting contracts.
+
 1. Ensure release notes match the intended semantic-versioning impact.
 
 1. Run local verification:

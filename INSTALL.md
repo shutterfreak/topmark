@@ -63,6 +63,22 @@ The extra PyPI index is needed so dependencies can still resolve from PyPI.
 
 ______________________________________________________________________
 
+## Upgrading from TopMark 0.11.x
+
+TopMark 1.0 introduces breaking changes to:
+
+- CLI options and reporting behavior;
+- pre-commit hook arguments;
+- TOML configuration structure and policy settings;
+- TEXT, Markdown, JSON, and NDJSON output formats;
+- machine-readable runtime diagnostics and reporting contracts.
+
+Before upgrading an existing repository, review the migration guide:
+
+- [Upgrading to TopMark 1.0 (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/upgrading-to-1.0/)
+
+______________________________________________________________________
+
 ## Development setup (contributors)
 
 ### 1) Clone the repository

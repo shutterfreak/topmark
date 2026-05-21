@@ -36,6 +36,7 @@ TopMark provides stable and consistent behavior across:
 | Understand file type resolution         | `topmark probe README.md`                               | [`topmark probe`](usage/commands/probe.md), [Filtering](usage/filtering.md), [Policies](usage/policies.md)                                                                     |
 | Inspect effective runtime configuration | `topmark config dump --show-layers`                     | [`topmark config dump`](usage/commands/config/dump.md), [Configuration](usage/configuration.md), [Configuration discovery, precedence, and policy](configuration/discovery.md) |
 | Generate a starter TOML configuration   | `topmark config init > topmark.toml`                    | [`topmark config init`](usage/commands/config/init.md), [Configuration](usage/configuration.md), [Configuration discovery, precedence, and policy](configuration/discovery.md) |
+| Upgrade from TopMark 0.11.x or earlier  | `topmark config check --strict -v`                      | [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md), [`topmark config check`](usage/commands/config/check.md), [`topmark config dump`](usage/commands/config/dump.md)        |
 | Inspect the built-in defaults           | `topmark config defaults`                               | [`topmark config defaults`](usage/commands/config/defaults.md), [Default TOML settings](configuration/generated/config-defaults.md), [Configuration](usage/configuration.md)   |
 
 ______________________________________________________________________
@@ -308,6 +309,7 @@ ______________________________________________________________________
 
 - **Install:** [Installation guide](install.md)
 - **Usage:**
+  - [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md)
   - [Command overview](usage/cli.md)
   - [Configuration](usage/configuration.md)
   - [Filtering](usage/filtering.md)
