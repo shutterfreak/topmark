@@ -18,6 +18,182 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.0] - 2026-05-21
+
+This first stable **TopMark 1.0 release** finalizes the long-running stabilization, contract-freeze,
+documentation-governance, CI/release-hardening, and published-artifact validation work completed
+through the alpha, beta, and release-candidate series.
+
+TopMark 1.0 establishes the stable 1.x release line with frozen contracts for:
+
+- CLI behavior and exit-code semantics;
+- layered runtime configuration behavior and policy evaluation;
+- registry composition and runtime resolution;
+- probe semantics and runtime applicability behavior;
+- machine-readable JSON and NDJSON output contracts;
+- pipeline execution and semantic outcome reporting;
+- public API compatibility governance;
+- and deterministic CI/release validation behavior.
+
+The final stabilization cycle validated these contracts through:
+
+- local validation and reproducible release workflows;
+- GitHub Actions CI and release orchestration;
+- TestPyPI prerelease publication;
+- GitHub prerelease publication;
+- cross-platform published-artifact validation;
+- ecosystem and compatibility observation;
+- and focused late-stage correctness and portability fixes.
+
+`1.0.0` itself primarily promotes the validated `1.0.0rc1` contracts into the stable 1.x release
+line and finalizes the user-facing migration, governance, onboarding, installation, release, and
+documentation posture for long-term maintenance.
+
+> [!IMPORTANT]
+>
+> TopMark 1.0 introduces stable 1.x compatibility governance for:
+>
+> - CLI behavior and semantic exit-code handling;
+> - runtime configuration structure and layered resolution behavior;
+> - machine-readable JSON and NDJSON output contracts;
+> - public API compatibility expectations;
+> - registry identity and runtime resolution behavior;
+> - deterministic CI/release validation architecture.
+
+\\
+
+> [!CAUTION] **Upgrade guidance**
+>
+> Users upgrading from TopMark `0.11.x` or earlier should review:
+>
+> - `docs/usage/upgrading-to-1.0.md`
+>
+> before migrating existing repositories, CI workflows, or pre-commit hooks.
+
+### Highlights - 1.0.0
+
+- Finalized the stable 1.x compatibility and governance model.
+- Promoted the validated `1.0.0rc1` contracts into the stable release line.
+- Added a dedicated user-facing migration guide for upgrading from TopMark `0.11.x` and earlier.
+- Finalized stable release wording across installation, contributor, release, API, CI, runtime,
+  configuration, terminology, and architecture documentation.
+- Finalized the roadmap transition from release-candidate readiness toward stable 1.x governance and
+  maintenance posture.
+- Finalized hosted documentation linking and onboarding flow for the published documentation site.
+- Preserved the stabilized artifact-based CI/release publication architecture and published-artifact
+  validation workflow.
+
+### Added - 1.0.0
+
+- **TopMark 1.0 migration guidance**
+
+  - Added:
+    - `docs/usage/upgrading-to-1.0.md`
+  - Documented:
+    - CLI migration considerations;
+    - configuration restructuring;
+    - pre-commit hook migration;
+    - machine-readable output migration;
+    - runtime policy changes;
+    - staged validation and upgrade workflows.
+
+- **Upgrade-guide integration**
+
+  - Added upgrade-guide references across:
+    - `README.md`
+    - `INSTALL.md`
+    - `docs/install.md`
+    - `docs/index.md`
+    - `docs/dev/release-process.md`
+
+### Changed - 1.0.0
+
+- **Stable 1.x governance posture**
+
+  - Transitioned roadmap and governance documentation from:
+    - release-candidate readiness;
+    - final validation posture;
+    - prerelease governance.
+  - Toward:
+    - stable 1.x maintenance;
+    - compatibility preservation;
+    - post-1.0 deferral tracking;
+    - long-term governance posture.
+
+- **Stable release wording**
+
+  - Finalized stable-release wording across:
+    - installation documentation;
+    - contributor documentation;
+    - API governance documentation;
+    - CI/release documentation;
+    - runtime architecture documentation;
+    - terminology and configuration documentation.
+
+- **Hosted documentation integration**
+
+  - Replaced repository-local links to published documentation pages with stable hosted
+    documentation URLs where appropriate.
+  - Preserved repository-local references for:
+    - `CHANGELOG.md`
+    - `LICENSE`
+    - contributor workflow files;
+    - repository-owned resources.
+
+### Fixed - 1.0.0
+
+- **Release-governance wording drift**
+
+  - Fixed remaining prerelease-oriented wording after successful `1.0.0rc1` validation.
+  - Clarified stable 1.x compatibility guarantees and maintenance posture across roadmap, release,
+    installation, API, CI, and contributor documentation.
+
+- **Migration discoverability**
+
+  - Fixed missing centralized upgrade guidance for users migrating from pre-1.0 releases.
+
+### Documentation - 1.0.0
+
+- Finalized stable 1.x wording throughout the documentation set.
+- Added and integrated the dedicated TopMark 1.0 migration guide.
+- Finalized hosted documentation navigation and onboarding references.
+- Finalized roadmap/governance separation between:
+  - historical stabilization narrative;
+  - stable 1.x governance;
+  - explicit post-1.0 deferrals.
+- Finalized terminology and compatibility wording around:
+  - runtime configuration;
+  - registry composition;
+  - runtime resolution;
+  - machine-readable compatibility contracts;
+  - CI/release validation behavior.
+
+### Internal - 1.0.0
+
+- Preserved the stabilized artifact-based CI/release publication architecture.
+- Preserved published-artifact validation as an external validation surface separate from release
+  gating.
+- Preserved frozen 1.0 CLI, API, configuration, registry, probe, machine-readable output, and
+  pipeline contracts established during the alpha/beta/RC stabilization cycle.
+- Continued emphasizing semantic validation and compatibility preservation over metric-based release
+  governance.
+
+### Notes - 1.0.0
+
+- This release intentionally avoids reopening frozen 1.0 contracts established during the prerelease
+  stabilization cycle.
+- The stable 1.x maintenance path is intentionally focused on:
+  - compatibility preservation;
+  - ecosystem observation;
+  - focused correctness fixes;
+  - documentation clarity;
+  - and explicit post-1.0 evolution tracking.
+- Broad architectural redesign, output-contract churn, and large new integration scope remain
+  intentionally deferred unless required by a concrete stable 1.x compatibility or correctness
+  issue.
+
+______________________________________________________________________
+
 ## [1.0.0rc1] - 2026-05-20
 
 This first **1.0 release candidate** marks the transition from late-beta stabilization into final
