@@ -454,7 +454,7 @@ For API details, see:
 
 - [Public API (hosted docs)](https://topmark.readthedocs.io/en/latest/api/public/)
 - [API reference (hosted docs)](https://topmark.readthedocs.io/en/latest/api/internals/topmark/)
-- [Registry model](docs/dev/registry-model.md)
+- [Registry model (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/registry-model/)
 
 ______________________________________________________________________
 
@@ -489,7 +489,7 @@ Releases are published by GitHub Actions when matching Git tags are pushed.
 
 For detailed release architecture and maintainer guidance, see:
 
-- [Release Process](docs/dev/release-process.md)
+- [Release Process (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/release-process/)
 - [CI/CD documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
 
 ______________________________________________________________________
@@ -528,9 +528,9 @@ make verify            # formatting, linting, docs, links
 
 For contributor setup and validation details, see:
 
-- [Contributing](docs/contributing.md)
+- [Contributing (hosted docs)](https://topmark.readthedocs.io/en/latest/contributing/)
 - [CI/CD and validation documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
-- [Documentation conventions](docs/dev/documentation-conventions.md)
+- [Documentation conventions (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/documentation-conventions/)
 
 ______________________________________________________________________
 

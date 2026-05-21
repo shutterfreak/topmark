@@ -14,7 +14,7 @@ topmark:header:end
 
 This guide covers how to **install** TopMark for regular use, and how to set up a **development**
 environment that matches our current tooling (`uv`, `noxfile.py`, `Makefile`, and
-`CONTRIBUTING.md`).
+[`CONTRIBUTING.md`](./CONTRIBUTING.md)).
 
 ______________________________________________________________________
 
@@ -216,10 +216,10 @@ TopMark enforces a stable public API using a JSON snapshot (`tests/api/public_ap
   make api-snapshot-ensure-clean
   ```
 
-If you **intentionally** changed the public API, commit the updated snapshot, update `CHANGELOG.md`,
-and ensure the next release tag reflects the intended version stage. TopMark uses Git tags as the
-single source of truth for versioning via `setuptools-scm`, so there is no manual version bump in
-`pyproject.toml`.
+If you **intentionally** changed the public API, commit the updated snapshot, update
+[`CHANGELOG.md`](./CHANGELOG.md), and ensure the next release tag reflects the intended version
+stage. TopMark uses Git tags as the single source of truth for versioning via `setuptools-scm`, so
+there is no manual version bump in `pyproject.toml`.
 
 ______________________________________________________________________
 
@@ -283,7 +283,8 @@ twine upload dist/*
 twine upload --repository testpypi dist/*
 ```
 
-Releases are normally published by CI when you push a tag (see `CONTRIBUTING.md` for details).
+Releases are normally published by CI when you push a tag (see
+[`CONTRIBUTING.md`](./CONTRIBUTING.md) for details).
 
 TopMark uses **Git tags as the single source of truth** for published package versions. Versions are
 derived at build time via `setuptools-scm`, and built artifacts include generated version metadata.
@@ -323,4 +324,6 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-For contribution guidelines, testing strategies, and release policies, see **`CONTRIBUTING.md`**.
+For contribution guidelines, testing strategies, and release policies, see:
+
+- [Contributing (hosted docs)](https://topmark.readthedocs.io/en/latest/contributing/)

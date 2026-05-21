@@ -279,9 +279,9 @@ The generated documentation site is available at:
 
 Contributor-facing and CI/CD-specific documentation includes:
 
-- `docs/contributing.md`
-- `docs/ci/`
-- `docs/dev/`
+- [Contributing (hosted docs)](https://topmark.readthedocs.io/en/latest/contributing/)
+- [CI documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
+- [Development documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/)
 
 ______________________________________________________________________
 
@@ -296,10 +296,10 @@ make api-snapshot-update      # regenerate snapshot (interactive)
 make api-snapshot-ensure-clean  # fail if snapshot differs from Git index
 ```
 
-If the snapshot changes **intentionally**, commit the updated JSON, update `CHANGELOG.md`, and make
-sure the next release tag reflects the intended version stage. TopMark uses Git tags as the single
-source of truth for versioning via `setuptools-scm`, so there is no manual version bump in
-`pyproject.toml`.
+If the snapshot changes **intentionally**, commit the updated JSON, update
+[`CHANGELOG.md`](./CHANGELOG.md), and make sure the next release tag reflects the intended version
+stage. TopMark uses Git tags as the single source of truth for versioning via `setuptools-scm`, so
+there is no manual version bump in `pyproject.toml`.
 
 ______________________________________________________________________
 
@@ -330,9 +330,9 @@ This design avoids executing repository-controlled build logic in the privileged
 For detailed maintainer release guidance, release architecture, prerelease handling, and
 published-artifact validation behavior, see:
 
-- `docs/dev/release-process.md`
-- `docs/ci/release-workflow.md`
-- `docs/ci/published-artifact-validation.md`
+- [Release process (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/release-process/)
+- [Release workflow (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/release-workflow/)
+- [Published artifact validation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/published-artifact-validation/)
 
 ______________________________________________________________________
 
@@ -450,7 +450,7 @@ Between tags, development builds may report SCM-derived versions such as:
 
 1. Refresh `tests/api/public_api_snapshot.json` if the public API changed.
 
-1. Update `CHANGELOG.md`.
+1. Update [`CHANGELOG.md`](./CHANGELOG.md).
 
 1. Commit the finalized release-ready changes.
 
@@ -465,13 +465,15 @@ Between tags, development builds may report SCM-derived versions such as:
 > runs.
 
 For the complete maintainer release process, including prerelease flow, artifact validation, and
-recovery guidance, see `docs/dev/release-process.md`.
+recovery guidance, see:
+
+- [Release process (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/release-process/)
 
 ______________________________________________________________________
 
 ## Troubleshooting
 
-- **Missing tools:** run `make venv` then `make venv-sync-dev`
+- **Missing tools:** run `make venv` then `make venv-sync-dev` (or `make venv-sync-all`)
 - **mkdocs errors:** run `make venv-sync-all` or `make docs-serve` to ensure the docs extras are
   installed
 - **Python version errors:** install interpreters via `pyenv`
