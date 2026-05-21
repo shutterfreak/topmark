@@ -358,21 +358,7 @@ ______________________________________________________________________
 
 ## Runtime policy model
 
-TopMark intentionally separates:
-
-1. staged configuration-loading validation
-1. layered runtime configuration resolution
-1. runtime policy evaluation
-1. runtime applicability evaluation
-1. runtime probing and processor resolution
-1. runtime safety-gate enforcement
-1. runtime mutation planning and execution
-
-Machine-readable diagnostics and runtime behavior expose a flattened compatibility view derived from
-these internal stages.
-
-This layered runtime policy model keeps behavior deterministic while preserving stable policy,
-diagnostics, and machine-readable compatibility contracts.
+{% include-markdown "\_snippets/runtime-validation-model.md" %}
 
 ______________________________________________________________________
 

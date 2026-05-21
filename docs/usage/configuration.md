@@ -208,20 +208,7 @@ ______________________________________________________________________
 
 ## Runtime configuration model
 
-TopMark intentionally separates:
-
-- TOML-source loading
-- layered configuration discovery
-- configuration normalization
-- staged configuration-loading validation
-- runtime configuration resolution
-- runtime policy evaluation
-
-Machine-readable diagnostics and runtime behavior expose a flattened compatibility view derived from
-these internal stages.
-
-This layered model keeps runtime behavior deterministic while preserving stable configuration,
-diagnostics, and machine-readable compatibility contracts.
+{% include-markdown "\_snippets/runtime-configuration-model.md" %}
 
 ______________________________________________________________________
 

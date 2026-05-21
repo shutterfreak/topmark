@@ -299,21 +299,7 @@ ______________________________________________________________________
 
 ## Runtime hook model
 
-TopMark intentionally separates:
-
-1. staged configuration-loading validation
-1. layered runtime configuration resolution
-1. runtime file discovery and filtering
-1. runtime applicability evaluation
-1. runtime probing and processor resolution
-1. runtime policy evaluation
-1. runtime mutation planning and execution
-
-Hook diagnostics and machine-readable output expose a flattened compatibility view derived from
-these internal runtime stages.
-
-This layered hook model keeps pre-commit behavior deterministic while preserving stable runtime
-configuration, filtering, policy, and machine-readable compatibility contracts.
+{% include-markdown "\_snippets/runtime-validation-model.md" %}
 
 ______________________________________________________________________
 

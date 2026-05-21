@@ -227,8 +227,8 @@ For the full generated reference configuration document, see
 [Example TOML document](./generated/example-config.md).
 
 File type identifiers in configuration may use either local identifiers such as `python` or
-canonical qualified identifiers such as `topmark:python`. TopMark normalizes these identifiers to
-canonical qualified file type identities during configuration normalization. See
+canonical qualified file type identities such as `topmark:python`. TopMark normalizes these
+identifiers to canonical qualified file type identities during configuration normalization. See
 [Usage configuration](../usage/configuration.md#file-type-identifiers) for the public contract.
 
 ### Reading the tables
@@ -466,21 +466,7 @@ ______________________________________________________________________
 
 ## Runtime configuration model
 
-TopMark intentionally separates:
-
-1. TOML-source loading
-1. staged configuration-loading validation
-1. layered configuration deserialization and merging
-1. runtime configuration resolution
-1. runtime overlay application
-1. runtime policy evaluation
-1. runtime pipeline gatekeeping and mutation planning
-
-Reporting, API surfaces, and machine-readable output expose a flattened compatibility view derived
-from these internal stages.
-
-This layered runtime configuration model keeps behavior deterministic while preserving stable
-configuration, policy, diagnostics, and machine-readable compatibility contracts.
+{% include-markdown "\_snippets/runtime-configuration-model.md" %}
 
 ______________________________________________________________________
 
