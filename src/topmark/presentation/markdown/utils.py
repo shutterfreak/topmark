@@ -75,6 +75,34 @@ def markdown_escape(text: str) -> str:
     return f"{fence}{padding}{text}{padding}{fence}"
 
 
+def render_fenced_code_block_markdown(
+    *,
+    text: str,
+    language: str | None = None,
+) -> str:
+    """Render a Markdown fenced code block using a collision-safe fence.
+
+    Args:
+        text: Code block content.
+        language: Optional Markdown language identifier.
+
+    Returns:
+        Markdown fenced code block.
+    """
+    backtick_matches: list[str] = re.findall(r"`{3,}", text)
+    fence_len: int = max([len(match) for match in backtick_matches] + [2]) + 1
+    fence: str = "`" * fence_len
+    opening: str = f"{fence}{language or ''}"
+
+    return "\n".join(
+        [
+            opening,
+            text.rstrip("\n"),
+            fence,
+        ]
+    )
+
+
 def render_markdown_table(
     headers: Sequence[str],
     rows: Sequence[Sequence[str]],

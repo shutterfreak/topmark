@@ -44,6 +44,7 @@ from topmark.pipeline.status import WriteStatus
 from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.utils import markdown_code_span
+from topmark.presentation.markdown.utils import render_fenced_code_block_markdown
 from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.presentation.markdown.utils import render_path_display_markdown
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
@@ -363,9 +364,12 @@ def _render_per_file_guidance_markdown(
 
             if patch:
                 blocks.append("")
-                blocks.append("```diff")
-                blocks.append(patch.rstrip("\n"))
-                blocks.append("```")
+                blocks.append(
+                    render_fenced_code_block_markdown(
+                        text=patch.rstrip("\n"),
+                        language="diff",
+                    )
+                )
 
         blocks.append("")
 
@@ -437,9 +441,12 @@ def _render_pipeline_diffs_markdown(
         if patch:
             blocks.append(f"### {render_path_display_markdown(ctx)}")
             blocks.append("")
-            blocks.append("```diff")
-            blocks.append(patch.rstrip("\n"))
-            blocks.append("```")
+            blocks.append(
+                render_fenced_code_block_markdown(
+                    text=patch.rstrip("\n"),
+                    language="diff",
+                )
+            )
             blocks.append("")
     if len(blocks) > 2:
         blocks.append("")
