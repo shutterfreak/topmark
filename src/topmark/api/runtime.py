@@ -57,7 +57,6 @@ from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
-from topmark.resolution.files import FileListResolution
 from topmark.resolution.files import probe_explicit_file_selection
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.writer_options import WriterOptions
@@ -77,6 +76,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.protocols import Step
     from topmark.resolution.discovery import FileSelectionProbeResult
+    from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
@@ -474,34 +474,31 @@ def select_pipeline(
     Raises:
         RuntimeError: if an invalid pipeline kind was specified.
     """
+    pipeline: Pipeline
     match kind:
         case "check":
-            return (
-                Pipeline.CHECK_APPLY_PATCH.steps
-                if apply and diff
-                else Pipeline.CHECK_APPLY.steps
-                if apply
-                else Pipeline.CHECK_PATCH.steps
-                if diff
-                else Pipeline.CHECK.steps
-            )
-        case "strip":
-            return (
-                Pipeline.STRIP_APPLY_PATCH.steps
-                if apply and diff
-                else Pipeline.STRIP_APPLY.steps
-                if apply
-                else Pipeline.STRIP_PATCH.steps
-                if diff
-                else Pipeline.STRIP.steps
-            )
-        # Probe has a single diagnostic pipeline. It never writes files and does
-        # not have patch/apply variants.
-        case "probe":
-            return Pipeline.PROBE.steps
+            if apply:  # Mutate files
+                pipeline = Pipeline.CHECK_APPLY_PATCH if diff else Pipeline.CHECK_APPLY
+            else:  # Dry-run
+                pipeline = Pipeline.CHECK_PATCH if diff else Pipeline.CHECK
 
-    # Defensive guard:
-    raise RuntimeError(f"Invalid pipeline kind specified: {kind}")
+        case "strip":
+            if apply:  # Mutate files
+                pipeline = Pipeline.STRIP_APPLY_PATCH if diff else Pipeline.STRIP_APPLY
+            else:  # Dry-run
+                pipeline = Pipeline.STRIP_PATCH if diff else Pipeline.STRIP
+
+        case "probe":
+            # Probe has a single diagnostic pipeline. It never writes files and
+            # does not have patch/apply variants.
+            pipeline = Pipeline.PROBE
+
+        case _:
+            # Defensive guard:
+            raise RuntimeError(f"Invalid pipeline kind specified: {kind}")
+
+    logger.info("Selected pipeline: %r", pipeline)
+    return pipeline.steps
 
 
 def _resolve_public_header_mutation_mode(
