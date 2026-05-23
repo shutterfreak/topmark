@@ -150,7 +150,7 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     ctx_check = runner.run(
         ctx_check,
         pipeline,
-        prune=False,  # We must inspect ctx_check.views.header
+        prune_views=False,  # We must inspect ctx_check.views.header
     )
 
     assert ctx_check.views.header is not None

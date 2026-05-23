@@ -27,10 +27,17 @@ from typing import TYPE_CHECKING
 from typing import Protocol
 from typing import runtime_checkable
 
+from topmark.core.logging import get_logger
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Mapping
     from collections.abc import Sequence
+
+    from topmark.core.logging import TopmarkLogger
+
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 @runtime_checkable
@@ -259,8 +266,17 @@ class Views:
     updated: UpdatedView | None = None
     diff: DiffView | None = None
 
-    def release_all(self) -> None:
-        """Release all non-None views safely (idempotent)."""
+    def release_all(
+        self,
+        *,
+        keep_diff_view: bool = False,
+    ) -> None:
+        """Release all non-None views safely (idempotent).
+
+        Args:
+            keep_diff_view: Whether to preserve the diff view.
+        """
+        logger.debug("keep_diff_view: %r", keep_diff_view)
         if self.image:
             self.image.release()
         if self.header:
@@ -271,8 +287,10 @@ class Views:
             self.render.release()
         if self.updated:
             self.updated.release()
-        if self.diff:
+
+        if self.diff and not keep_diff_view:
             self.diff.release()
+
         # HeaderView is intentionally light; no release.
 
     def as_dict(self) -> dict[str, object]:

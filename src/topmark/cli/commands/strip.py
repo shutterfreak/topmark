@@ -367,6 +367,7 @@ def strip_command(
         stdin_mode=plan.stdin_mode,
         stdin_filename=plan.stdin_filename,
         prune_views=prune_views,
+        keep_diff_view=diff,
     )
 
     logger.debug("run options: %s", run_options)

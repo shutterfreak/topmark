@@ -116,7 +116,7 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     )
 
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK_APPLY.steps
-    ctx = runner.run(ctx, pipeline, prune=False)
+    ctx = runner.run(ctx, pipeline, prune_views=False)
 
     out: list[str] = materialize_updated_lines(ctx)
     # Start marker line should still carry the same pre-prefix indent

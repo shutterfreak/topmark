@@ -39,6 +39,7 @@ from topmark.cli.keys import CliShortOpt
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.cli.rendering.unified_diff import format_patch_styled
+from topmark.core.logging import get_logger
 from topmark.core.presentation import StyleRole
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.context.policy import effective_would_strip
@@ -60,11 +61,15 @@ from topmark.presentation.text.diagnostic import render_diagnostics_text
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.views import DiffView
+
+
+logger: TopmarkLogger = get_logger(__name__)
 
 
 _HINT_CLUSTER_STYLE_ROLE: Final[dict[str, StyleRole]] = {
@@ -463,6 +468,7 @@ def _render_per_file_guidance_text(
             _render_file_summary_line_text(
                 ctx=ctx,
                 verbosity_level=verbosity_level,
+                styled=styled,
             )
         )
 
@@ -515,18 +521,20 @@ def _render_per_file_guidance_text(
 
         # 5. optional diff block
         if show_diffs:
-            diff: str | None = _render_diff_text(
+            patch: str | None = _render_diff_text(
                 ctx.views.diff,
+                keep_diff_view=False,
                 styled=styled,
             )
-            if diff:
+
+            if patch:
                 parts.append("")
                 parts.append(
                     muted_styler(
                         diff_start_fence,
                     )
                 )
-                parts.append(diff)
+                parts.append(patch)
                 parts.append(
                     muted_styler(
                         diff_end_fence,
@@ -545,6 +553,7 @@ def _render_per_file_guidance_text(
 def _render_diff_text(
     diff_view: DiffView | None,
     *,
+    keep_diff_view: bool = True,
     show_line_numbers: bool = False,
     styled: bool,
 ) -> str | None:
@@ -552,21 +561,31 @@ def _render_diff_text(
 
     Args:
         diff_view: Diff view to render.
+        keep_diff_view: Whether to preserve the diff view.
         show_line_numbers: Whether to prepend line numbers.
         styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         Rendered diff text, or `None` when no diff is available.
     """
+    logger.debug("diff_view: %r; keep_diff_view: %r", diff_view, keep_diff_view)
     if diff_view is None:
         return None
+
     diff_text: str | None = diff_view.text
     if diff_text:
-        return format_patch_styled(
+        patch: str = format_patch_styled(
             patch=diff_text,
-            color=styled,
+            styled=styled,
             show_line_numbers=show_line_numbers,
         )
+
+        if not keep_diff_view:
+            # Prune the diff view once the patch has been consumed (rendered)
+            diff_view.release()
+
+        return patch
+
     return None
 
 
@@ -604,13 +623,15 @@ def _render_pipeline_diffs_text(
     )
 
     for ctx in results:
-        diff: str | None = _render_diff_text(
+        patch: str | None = _render_diff_text(
             ctx.views.diff,
+            keep_diff_view=False,
             styled=styled,
             show_line_numbers=show_line_numbers,
         )
-        if diff:
-            parts.append(diff)
+
+        if patch:
+            parts.append(patch)
 
     parts.append(
         diff_fence_style(
