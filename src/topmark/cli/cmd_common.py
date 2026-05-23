@@ -180,6 +180,7 @@ def build_run_options(
     stdin_mode: bool,
     stdin_filename: str | None,
     prune_views: bool = True,
+    keep_diff_view: bool = False,
 ) -> RunOptions:
     """Build invocation-wide runtime options for a CLI command.
 
@@ -189,6 +190,7 @@ def build_run_options(
         stdin_mode: Whether the command is operating in content-on-STDIN mode.
         stdin_filename: Synthetic file name associated with STDIN content, if any.
         prune_views: If `True`, trim heavy views after the run (keeps summaries). Default: `True`.
+        keep_diff_view: Whether to preserve the diff view.
 
     Returns:
         The execution-only runtime options for the current CLI invocation.
@@ -218,6 +220,7 @@ def build_run_options(
         stdin_mode=stdin_mode,
         stdin_filename=stdin_filename,
         prune_views=prune_views,
+        keep_diff_view=keep_diff_view,
     )
 
     ctx: click.Context | None = click.get_current_context(silent=True)

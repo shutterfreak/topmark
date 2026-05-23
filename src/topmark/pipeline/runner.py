@@ -32,26 +32,20 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def trim_views(ctx: ProcessingContext) -> None:
-    """Release heavy in-memory views after the write decision.
-
-    Drops large buffers; retains only summary-friendly data.
-    """
-    ctx.views.release_all()
-
-
 def run(
     ctx: ProcessingContext,
     steps: Sequence[Step[ProcessingContext]],
     *,
-    prune: bool = True,
+    prune_views: bool = True,
+    keep_diff_view: bool = False,
 ) -> ProcessingContext:
     """Execute the pipeline sequentially.
 
     Args:
         ctx: Mutable processing context.
         steps: Ordered sequence of pipeline steps. Each step takes and returns a context.
-        prune: Trim the views at the end of a run to reduce memory usage (default: `True`).
+        prune_views: Trim the views at the end of a run to reduce memory usage (default: `True`).
+        keep_diff_view: Whether to preserve the diff view.
 
     Returns:
         The final processing context after all steps have run.
@@ -59,7 +53,10 @@ def run(
     for step in steps:
         ctx = step(ctx)
 
-    if prune is True:
-        trim_views(ctx)
+    if prune_views is True:
+        # Drops large in-memory buffers from heavy in-memory views;
+        # retains only summary-friendly data.
+        logger.debug("Trimming views; keep_diff_view: %r", keep_diff_view)
+        ctx.views.release_all(keep_diff_view=keep_diff_view)
 
     return ctx

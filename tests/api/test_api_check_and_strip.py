@@ -23,6 +23,7 @@ from tests.helpers.api import by_path_outcome
 from tests.helpers.io import read_text
 from topmark import api
 from topmark.api.types import PublicPolicy
+from topmark.core.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -134,3 +135,56 @@ def test_strip_apply_removes_headers(
     assert r.written >= 1
     # Header gone
     assert not has_header(read_text(b), proc_py, "\n")
+
+
+# ---- diff tests
+
+
+def test_check_diff_is_available_when_views_are_pruned(
+    repo_py_with_and_without_header: Path,
+) -> None:
+    """API check diff output should survive internal view pruning when requested."""
+    path: Path = repo_py_with_and_without_header / "src" / "without_header.py"
+
+    r: api.RunResult = api.check(
+        [path],
+        apply=False,
+        diff=True,
+        config=None,
+        include_file_types=["python"],
+        prune_views=True,
+    )
+
+    assert len(r.files) == 1
+    diff: str | None = r.files[0].diff
+
+    assert diff is not None
+    assert f"--- {path}" in diff
+    assert f"+++ {path}" in diff
+    assert "@@" in diff
+    assert f"+# {TOPMARK_START_MARKER}" in diff
+
+
+def test_strip_diff_is_available_when_views_are_pruned(
+    repo_py_with_and_without_header: Path,
+) -> None:
+    """API strip diff output should survive internal view pruning when requested."""
+    path: Path = repo_py_with_and_without_header / "src" / "with_header.py"
+
+    r: api.RunResult = api.strip(
+        [path],
+        apply=False,
+        diff=True,
+        config=None,
+        include_file_types=["python"],
+        prune_views=True,
+    )
+
+    assert len(r.files) == 1
+    diff: str | None = r.files[0].diff
+
+    assert diff is not None
+    assert f"--- {path}" in diff
+    assert f"+++ {path}" in diff
+    assert "@@" in diff
+    assert f"-# {TOPMARK_START_MARKER}" in diff

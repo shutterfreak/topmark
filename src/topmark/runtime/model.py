@@ -52,6 +52,7 @@ class RunOptions:
             when header generation requires a file identity.
         prune_views: Whether heavy views should be trimmed after the run while
             preserving summary-level results.
+        keep_diff_view: Whether to preserve the diff view.
         started_at: Timestamp captured once for the whole run.
     """
 
@@ -61,5 +62,6 @@ class RunOptions:
     stdin_mode: bool = False
     stdin_filename: str | None = None
     prune_views: bool = True
+    keep_diff_view: bool = False
 
     started_at: datetime = field(default_factory=get_utc_now)

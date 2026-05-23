@@ -138,7 +138,7 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
     ctx = runner.run(
         ctx,
         pipeline,
-        prune=False,  # We must inspect ctx_check.views.header
+        prune_views=False,  # We must inspect ctx_check.views.header
     )
 
     assert ctx.views.header is not None

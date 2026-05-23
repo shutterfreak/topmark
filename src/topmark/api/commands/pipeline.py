@@ -139,6 +139,7 @@ def check(
     run_options: RunOptions = RunOptions(
         apply_changes=apply,
         prune_views=prune_views,
+        keep_diff_view=diff,
     )
 
     api_run: ApiPipelineRun = run_pipeline(
@@ -229,6 +230,7 @@ def strip(
     run_options: RunOptions = RunOptions(
         apply_changes=apply,
         prune_views=prune_views,
+        keep_diff_view=diff,
     )
 
     api_run: ApiPipelineRun = run_pipeline(

@@ -210,7 +210,12 @@ def run_steps_for_files(
                 run_options=run_options,
                 policy_registry_override=policy_registry,
             )
-            ctx_obj = runner.run(ctx_obj, pipeline, prune=run_options.prune_views)
+            ctx_obj = runner.run(
+                ctx_obj,
+                pipeline,
+                prune_views=run_options.prune_views,
+                keep_diff_view=run_options.keep_diff_view,
+            )
             results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)

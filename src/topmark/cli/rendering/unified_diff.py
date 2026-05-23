@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 def format_patch_styled(
     *,
     patch: Sequence[str] | str,
-    color: bool,
+    styled: bool,
     show_line_numbers: bool = False,
 ) -> str:
     """Render a styled (optionally colorized) preview of a unified diff.
@@ -55,7 +55,7 @@ def format_patch_styled(
 
     Args:
         patch: A unified diff as either a list/sequence of lines or a single multiline string.
-        color: Whether to emit ANSI-styled output.
+        styled: Whether to emit ANSI-styled output.
         show_line_numbers: Whether to prefix output with line numbers.
 
     Returns:
@@ -70,7 +70,7 @@ def format_patch_styled(
 
     # Resolve stylers once (when `color=False` these resolve to no-ops via style_for_role).
     def styler(role: StyleRole) -> TextStyler:
-        return style_for_role(role, styled=color)
+        return style_for_role(role, styled=styled)
 
     style_meta: TextStyler = styler(StyleRole.DIFF_META)
     style_header: TextStyler = styler(StyleRole.DIFF_HEADER)
@@ -138,7 +138,7 @@ def format_patch_styled(
         # Optional line numbers: style only the gutter.
         if show_line_numbers:
             gutter: str = f"{i:04d}|"
-            if color:
+            if styled:
                 rendered_lines.append(style_line_no(gutter) + rendered)
             else:
                 rendered_lines.append(gutter + content)

@@ -39,6 +39,17 @@ if TYPE_CHECKING:
     from topmark.config.policy import PolicyRegistry
 
 
+def _fake_runner_run(
+    ctx: Any,
+    pipeline: object,
+    *,
+    prune_views: bool = True,
+    keep_diff_view: bool = False,
+) -> Any:
+    """Faked no-op runner.run()."""
+    return ctx
+
+
 @pytest.mark.pipeline
 def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     tmp_path: Path,
@@ -81,12 +92,9 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
         policy_calls.append(config)
         return {"header_fields": tuple(config.header_fields)}
 
-    def fake_runner_run(ctx: Any, pipeline: object, *, prune: bool = True) -> Any:
-        return ctx
-
     monkeypatch.setattr(engine, "ProcessingContext", FakeProcessingContext)
     monkeypatch.setattr(engine, "make_policy_registry", fake_make_policy_registry)
-    monkeypatch.setattr(engine.runner, "run", fake_runner_run)
+    monkeypatch.setattr(engine.runner, "run", _fake_runner_run)
 
     run_options: RunOptions = RunOptions(apply_changes=False)
 
@@ -153,12 +161,9 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
         policy_calls.append(config)
         return {"header_fields": tuple(config.header_fields)}
 
-    def fake_runner_run(ctx: Any, pipeline: object, *, prune: bool = True) -> Any:
-        return ctx
-
     monkeypatch.setattr(engine, "ProcessingContext", FakeProcessingContext)
     monkeypatch.setattr(engine, "make_policy_registry", fake_make_policy_registry)
-    monkeypatch.setattr(engine.runner, "run", fake_runner_run)
+    monkeypatch.setattr(engine.runner, "run", _fake_runner_run)
 
     run_options: RunOptions = RunOptions(apply_changes=False)
 

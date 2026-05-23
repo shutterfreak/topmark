@@ -41,7 +41,7 @@ def run_cli_in(
     argv: str | Sequence[str] | None,
     *,
     input_text: str | bytes | IO[Any] | None = None,
-    prune: bool = False,
+    prune_views: bool = False,
 ) -> Result:
     """Invoke the CLI with `tmp_path` as the working directory.
 
@@ -56,7 +56,7 @@ def run_cli_in(
         argv: CLI argument vector, e.g. `["--apply", "*.py"]`.
         input_text: Optional standard input to pass to the command.
             This can be a string, bytes, or a file-like object for `--stdin` modes.
-        prune: If `True`, trim heavy views after the run (keeps summaries).
+        prune_views: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         The `click.testing.Result` produced by `click.testing.CliRunner.invoke`.
@@ -76,7 +76,7 @@ def run_cli_in(
             argv,
             input=input_text,
             obj=TopmarkCliState(
-                prune_pipeline_views=prune,
+                prune_pipeline_views=prune_views,
             ),  # inject typed CLI state into Click context (test override)
         )
     finally:
@@ -87,7 +87,7 @@ def run_cli(
     argv: str | Sequence[str] | None,
     *,
     input_text: str | bytes | IO[Any] | None = None,
-    prune: bool = False,
+    prune_views: bool = False,
 ) -> Result:
     """Invoke the CLI without changing the working directory.
 
@@ -103,7 +103,7 @@ def run_cli(
         input_text: Optional standard input to pass
             to the command. This can be a string, bytes, or a file-like object for
             ``--stdin`` modes.
-        prune: If `True`, trim heavy views after the run (keeps summaries).
+        prune_views: If `True`, trim heavy views after the run (keeps summaries).
 
     Returns:
         The `click.testing.Result` produced by `click.testing.CliRunner.invoke`.
@@ -120,7 +120,7 @@ def run_cli(
         argv,
         input=input_text,
         obj=TopmarkCliState(
-            prune_pipeline_views=prune,
+            prune_pipeline_views=prune_views,
         ),  # inject typed CLI state into Click context (test override)
     )
 

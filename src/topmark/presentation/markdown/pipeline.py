@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 from topmark.cli.errors import TopmarkCliPipelineError
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.outcomes import Intent
@@ -52,12 +53,15 @@ from topmark.presentation.shared.pipeline import get_file_type_label
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.views import DiffView
 
+
+logger: TopmarkLogger = get_logger(__name__)
 
 # ---- Hint rendering ----
 
@@ -352,11 +356,15 @@ def _render_per_file_guidance_markdown(
 
         # 5. optional diff block
         if show_diffs:
-            diff: str | None = _render_diff_markdown(ctx.views.diff)
-            if diff:
+            patch: str | None = _render_diff_markdown(
+                ctx.views.diff,
+                keep_diff_view=False,
+            )
+
+            if patch:
                 blocks.append("")
                 blocks.append("```diff")
-                blocks.append(diff.rstrip("\n"))
+                blocks.append(patch.rstrip("\n"))
                 blocks.append("```")
 
         blocks.append("")
@@ -370,25 +378,36 @@ def _render_per_file_guidance_markdown(
 def _render_diff_markdown(
     diff_view: DiffView | None,
     *,
+    keep_diff_view: bool = True,
     show_line_numbers: bool = False,
 ) -> str | None:
     """Render a unified diff as plain Markdown-friendly text.
 
     Args:
         diff_view: Diff view to render.
+        keep_diff_view: Whether to preserve the diff view.
         show_line_numbers: Whether to prepend line numbers.
 
     Returns:
         Rendered diff text, or `None` when no diff is available.
     """
+    logger.debug("diff_view: %r; keep_diff_view: %r", diff_view, keep_diff_view)
     if diff_view is None:
         return None
+
     diff_text: str | None = diff_view.text
     if diff_text:
-        return format_patch_plain(
+        patch: str = format_patch_plain(
             patch=diff_text,
             show_line_numbers=show_line_numbers,
         )
+
+        if not keep_diff_view:
+            # Prune the diff view once the patch has been consumed (rendered)
+            diff_view.release()
+
+        return patch
+
     return None
 
 
@@ -409,15 +428,17 @@ def _render_pipeline_diffs_markdown(
     # Keep Markdown diffs readable and copyable.
     blocks: list[str] = ["## Diffs", ""]
     for ctx in results:
-        diff: str | None = _render_diff_markdown(
+        patch: str | None = _render_diff_markdown(
             ctx.views.diff,
+            keep_diff_view=False,
             show_line_numbers=show_line_numbers,
         )
-        if diff:
+
+        if patch:
             blocks.append(f"### {render_path_display_markdown(ctx)}")
             blocks.append("")
             blocks.append("```diff")
-            blocks.append(diff.rstrip("\n"))
+            blocks.append(patch.rstrip("\n"))
             blocks.append("```")
             blocks.append("")
     if len(blocks) > 2:
