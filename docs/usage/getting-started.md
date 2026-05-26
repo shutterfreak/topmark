@@ -14,6 +14,8 @@ topmark:header:end
 
 > A five-minute path for adding TopMark safely to a repository.
 
+______________________________________________________________________
+
 ## 1. Install TopMark
 
 Stable releases are published on [PyPI](https://pypi.org/project/topmark/):
@@ -31,6 +33,8 @@ topmark version
 # Display the command-line help:
 topmark --help
 ```
+
+______________________________________________________________________
 
 ## 2. Create a starter configuration
 
@@ -117,6 +121,8 @@ Further reading:
 - [`topmark config defaults`](./commands/config/defaults.md)
 - [Filtering](filtering.md)
 
+______________________________________________________________________
+
 ## 3. Preview header compliance
 
 Check if the files have TopMark headers compliant with the settings defined.
@@ -124,6 +130,8 @@ Check if the files have TopMark headers compliant with the settings defined.
 ```bash
 topmark check .
 ```
+
+______________________________________________________________________
 
 ## 4. Preview changes (unified diff)
 
@@ -134,6 +142,8 @@ The precise changes TopMark will apply to files are generated as unified diff wh
 topmark check --diff .
 ```
 
+______________________________________________________________________
+
 ## 5. Apply changes
 
 You can add / update the TopMark headers in files by specifying `--apply`:
@@ -142,11 +152,15 @@ You can add / update the TopMark headers in files by specifying `--apply`:
 topmark check --apply .
 ```
 
+______________________________________________________________________
+
 ## 6. Validate repeatability
 
 Running `topmark check .` again should now report no pending changes.
 
 This idempotent behavior is important for CI and repeatable repository automation workflows.
+
+______________________________________________________________________
 
 ## 7. Add pre-commit validation
 
@@ -171,6 +185,8 @@ For advanced hook usage and manual apply hooks, see:
 
 - [Pre-commit integration](pre-commit.md)
 
+______________________________________________________________________
+
 ## 8. Add CI validation
 
 Validate repository headers in CI:
@@ -185,6 +201,8 @@ Further reading:
 
 - [Exit codes](./exit-codes.md)
 - [CI integration](./ci.md)
+
+______________________________________________________________________
 
 ## Next steps
 

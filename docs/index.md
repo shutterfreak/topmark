@@ -28,6 +28,8 @@ TopMark provides stable and consistent behavior across:
 - pre-commit and CI integration
 - stable public Python API overlays
 
+______________________________________________________________________
+
 ## Start here
 
 | Goal                                               | Recommended page                                      |
@@ -42,6 +44,8 @@ TopMark provides stable and consistent behavior across:
 | Upgrade older repositories to TopMark 1.0          | [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md) |
 | Use the public Python API                          | [Public API](api/public.md)                           |
 | Contribute to TopMark                              | [Contributing](contributing.md)                       |
+
+______________________________________________________________________
 
 ## What it does
 
@@ -127,6 +131,8 @@ TopMark supports two STDIN modes:
 
 See [shared input modes](usage/shared-options.md#shared-input-modes) for the full STDIN contract,
 including why TopMark does not provide a `--stdin` option flag.
+
+______________________________________________________________________
 
 ## Next steps
 

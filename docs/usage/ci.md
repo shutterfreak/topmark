@@ -18,6 +18,8 @@ CI should normally run TopMark in dry-run mode: validate the repository, report 
 job when files would need header updates. Do not use `--apply` in CI unless you are building a
 deliberately mutating automation workflow.
 
+______________________________________________________________________
+
 ## Why use TopMark in CI?
 
 Use TopMark in CI to:
@@ -27,6 +29,8 @@ Use TopMark in CI to:
 - enforce repeatable project, file, license, and copyright metadata;
 - keep mutation out of CI by relying on TopMark's dry-run behavior;
 - expose per-file diagnostics and machine-readable reports for automation.
+
+______________________________________________________________________
 
 ## Minimal CI usage
 
@@ -51,6 +55,8 @@ topmark config check --strict
 topmark check .
 ```
 
+______________________________________________________________________
+
 ## Controlling CI output
 
 For concise CI logs, use summary mode:
@@ -68,11 +74,13 @@ For CI jobs that only need the exit status, use quiet mode:
 topmark check -q .
 ```
 
-Quiet mode suppresses TEXT rendering while preserving the command’s exit status.
+Quiet mode suppresses TEXT rendering while preserving the command's exit status.
 
 Do not use `--quiet` when you want contributors to see which files need updates directly in CI logs.
 For that use case, prefer default output, `--summary`, or machine-readable output consumed by a CI
 annotation step.
+
+______________________________________________________________________
 
 ## Exit codes
 
@@ -133,6 +141,8 @@ See also:
 - [`topmark config check` exit codes](commands/config/check.md#exit-codes) for the complete
   exit-code contract for `topmark config check`.
 - [`Exit codes`](exit-codes.md) for the complete CLI-wide exit-code contract.
+
+______________________________________________________________________
 
 ## GitHub Actions example
 
@@ -199,6 +209,8 @@ updates:
       interval: "weekly"
 ```
 
+______________________________________________________________________
+
 ## GitLab CI example
 
 GitLab CI can run TopMark in the same way: install the Python package, validate configuration, and
@@ -216,6 +228,8 @@ topmark:
 This example is provided as a generic CI pattern. The TopMark project currently validates GitHub
 Actions workflows, not GitLab CI pipelines.
 
+______________________________________________________________________
+
 ## Pre-commit vs CI
 
 Pre-commit and CI serve complementary roles:
@@ -228,6 +242,8 @@ A practical adoption sequence is:
 1. run TopMark locally and apply the initial header updates;
 1. add the `topmark-check` pre-commit hook for local validation;
 1. add `topmark check .` to CI for repository-level enforcement.
+
+______________________________________________________________________
 
 ## Machine-readable output
 
@@ -257,6 +273,8 @@ Further reading:
 - [`topmark probe`](commands/probe.md)
 - [`topmark config dump`](commands/config/dump.md)
 
+______________________________________________________________________
+
 ## Dedicated GitHub Action
 
 TopMark does not currently publish a dedicated GitHub Action. For most users, installing the PyPI
@@ -264,6 +282,8 @@ package in a workflow is simpler and more transparent.
 
 This also avoids introducing an additional abstraction layer around the CLI and keeps CI behavior
 aligned with local development workflows.
+
+______________________________________________________________________
 
 ## Further reading
 
