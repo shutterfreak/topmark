@@ -16,9 +16,10 @@ topmark:header:end
 
 TopMark 1.0 has completed its stabilization and release-readiness cycle. The major architecture
 refactors, contract-freeze decisions, CI/release workflow stabilization, documentation governance
-work, late-beta validation passes, release-candidate validation, and final 1.0 release preparation
-have been completed. The roadmap now focuses on preserving stable 1.x behavior, tracking explicit
-post-1.0 deferrals, and recording future evolution areas without reopening frozen 1.0 contracts.
+work, late-beta validation passes, release-candidate validation, final 1.0 release preparation, and
+initial 1.0.1 patch-release hardening have been completed. The roadmap now focuses on preserving
+stable 1.x behavior, tracking explicit post-1.0 deferrals, and recording future evolution areas
+without reopening frozen 1.0 contracts.
 
 This roadmap now serves two purposes:
 
@@ -27,14 +28,16 @@ This roadmap now serves two purposes:
 - a **historical stabilization ledger** for the architectural, documentation, CI/release, and
   testing decisions made during the 0.12 development line and 1.0 alpha/beta series.
 
-After the final `1.0.0` release, this roadmap remains a concise governance reference. Detailed
-achievements and design decisions are tracked in [Road to TopMark 1.0](./road-to-1.0.md), so this
-file can remain focused on stable 1.x maintenance, compatibility preservation, and post-1.0 scope.
+After the final `1.0.0` release and first `1.0.1` patch-release preparation, this roadmap remains a
+concise governance reference. Detailed achievements and design decisions are tracked in
+[Road to TopMark 1.0](./road-to-1.0.md), so this file can remain focused on stable 1.x maintenance,
+compatibility preservation, and post-1.0 scope.
 
 A key deferred post-1.0 opportunity remains support for data that is not naturally file-backed:
 generated code, editor buffers, CI-provided snippets, or API-driven integrations. Today, almost all
 of TopMark's processing pipeline assumes filesystem I/O, which makes testing heavier, limits reuse,
-and complicates future integrations.
+and complicates future integrations. This broader direction is now tracked as the future streaming
+pipeline architecture work, initiated while fixing issue #52.
 
 Future in-memory pipeline support would enable:
 
@@ -51,11 +54,12 @@ ______________________________________________________________________
 
 ## Done so far
 
-The 0.12 development line, 1.0 alpha/beta series, `1.0.0rc1` validation, and final 1.0 release
-preparation completed the major stabilization work needed for the stable 1.x line. The system is now
-aligned around a clean *TOML → Configuration → Runtime → Pipeline → Presentation* model, with
-explicit registry bindings, separated CLI/presentation layers, schema-driven machine output,
-documented CLI behavior, hardened configuration validation, and artifact-based release automation.
+The 0.12 development line, 1.0 alpha/beta series, `1.0.0rc1` validation, final 1.0 release
+preparation, and initial 1.0.1 patch-release hardening completed the major stabilization work needed
+for the stable 1.x line. The system is now aligned around a clean *TOML → Configuration → Runtime →
+Pipeline → Presentation* model, with explicit registry bindings, separated CLI/presentation layers,
+schema-driven machine output, documented CLI behavior, hardened configuration validation, and
+artifact-based release automation.
 
 Detailed historical achievements and design decisions have been extracted to
 [Road to TopMark 1.0](./road-to-1.0.md). This roadmap now keeps only the release-governance summary
@@ -72,9 +76,12 @@ Completed stabilization themes:
   established and validated;
 - CI, release, packaging, install-smoke validation, coverage reporting, and uv/nox-based tooling are
   automated, documented, and validated through real workflow runs;
-- in-memory pipeline support, richer staged diagnostics exposure, registry query/filter commands,
-  schema versioning, Rich migration, and broader workflow factoring are explicitly deferred beyond
-  1.0.
+- the first stable-line patch-release work fixed concrete post-1.0 correctness issues, including
+  diff output preservation with pruned pipeline views and collision-safe Markdown diff fences;
+- in-memory and streaming pipeline support, richer staged diagnostics exposure, registry
+  query/filter commands, schema versioning, Rich / `rich-click` migration, possible command-help
+  documentation generation, Markdown output refactoring, and broader workflow factoring are
+  explicitly deferred beyond 1.0.
 
 After the final 1.0 release, remaining work is no longer broad architectural redesign. It is limited
 to ecosystem observation, downstream compatibility checks, documentation clarifications, stable 1.x
@@ -287,10 +294,32 @@ The remaining work after `1.0.0` is intentionally narrow and governance-oriented
 - preserving documentation and output-contract consistency;
 - monitoring the finalized CI/release metadata and uv-cache ownership model across ongoing workflow
   runs;
+- planning a possible `rich-click` migration and generated command-help documentation workflow;
+- planning a possible replacement of `yachalk` with `rich` in the presentation layer;
+- planning the streaming pipeline architecture direction initiated while fixing issue #52;
 - and maintaining explicit post-1.0 scope boundaries.
 
 Stable 1.x maintenance is therefore not expected to introduce further architectural redesign or new
 broad contract changes.
+
+### Stable 1.x patch-release work
+
+The first stable-line patch-release work after `1.0.0` is intentionally narrow. It focuses on
+correctness fixes, documentation refinement, dependency/pre-commit refreshes, and regression tests
+without reopening the frozen 1.0 contracts.
+
+The accepted 1.0.1 scope includes:
+
+- preserving unified diff output when pipeline views are pruned;
+- making Markdown diff fences collision-safe when changed Markdown content contains fenced code
+  blocks;
+- refining the 1.0 documentation architecture after release;
+- adding or improving getting-started and CI integration documentation;
+- and keeping dependency and pre-commit metadata current.
+
+This work remains compatible with the stable 1.x posture because it fixes concrete post-release
+findings while preserving the CLI, configuration, registry, probe, pipeline, public API, and
+machine-readable output contracts established in `1.0.0`.
 
 ### Stable 1.x validation posture
 
@@ -331,17 +360,20 @@ explicitly deferred beyond 1.0.
 Remaining work is limited to downstream validation, compatibility preservation, generated-reference
 consistency, and targeted hardening.
 
-### In-memory pipeline support
+### In-memory and streaming pipeline support
 
-In-memory pipeline support is explicitly deferred beyond 1.0.
+In-memory and streaming pipeline support is explicitly deferred beyond 1.0.
 
 The 1.0 release continues using the filesystem-backed execution model together with the existing
-STDIN runtime mechanisms.
+STDIN runtime mechanisms. Post-1.0 design work should evaluate the streaming pipeline processing
+architecture as a more sustainable fix for addressing issue #52 without destabilizing the frozen 1.x
+behavior, and for improving resource usage when processing a large number of files.
 
 Future post-1.0 work may introduce:
 
 - an `InputSource` abstraction;
 - memory-backed execution;
+- streaming processing of pipeline inputs and results;
 - mixed file/memory input models;
 - and lighter-weight memory-oriented test strategies.
 
@@ -404,10 +436,33 @@ Human output:
 - and keeps semantic styling routed through the current `yachalk`-based presentation layer.
 
 Rich or `rich-click` migration remains explicitly deferred beyond 1.0 unless a concrete release
-blocker appears.
+blocker appears. Post-1.0 planning may evaluate replacing `yachalk` with `rich`, adopting
+`rich-click` for command help rendering, auto-generating command help pages instead of fully
+hand-curating `docs/usage/cli.md` and `docs/usage/commands/`, and refactoring Markdown output where
+that naturally follows from a richer presentation backend.
 
 Remaining work is limited to compatibility validation, wording consistency, and downstream consumer
 verification.
+
+### Presentation and command documentation modernization
+
+Presentation modernization is explicitly post-1.0 work.
+
+Potential future work includes:
+
+- replacing `yachalk` with `rich` while preserving semantic styling roles, `NO_COLOR` behavior,
+  non-TTY behavior, and deterministic test output;
+- adopting `rich-click` for richer command help output while preserving Click-compatible command
+  semantics;
+- evaluating whether command help pages can be generated from the CLI instead of fully hand-curating
+  `docs/usage/cli.md` and `docs/usage/commands/`;
+- refactoring Markdown output if the presentation backend changes make the current implementation
+  unnecessarily indirect;
+- and keeping machine-readable JSON/NDJSON output completely separate from human presentation
+  concerns.
+
+This work should be planned as a post-1.0 architecture track, not as stable-line maintenance, unless
+a concrete compatibility or correctness issue requires a narrowly scoped fix.
 
 ### Tooling, CI, and release workflow
 
@@ -494,7 +549,8 @@ stable, documented, reproducible, and well tested.
 
 The major architecture refactors, beta stabilization passes, contract freezes, documentation
 harmonization, release-path rehearsals, install-smoke validation, CI/release hardening, coverage
-integration, prose/documentation governance, and late-beta typing cleanup are complete.
+integration, prose/documentation governance, late-beta typing cleanup, final 1.0 release, and
+initial 1.0.1 patch-release hardening are complete.
 
 This checklist now records:
 
@@ -514,7 +570,7 @@ required by a concrete release blocker:
 - [x] public/internal API boundaries reviewed and frozen
 - [x] mutable/frozen runtime naming finalized
 - [x] filesystem-backed execution model accepted for 1.0
-- [x] in-memory pipeline support explicitly deferred beyond 1.0
+- [x] in-memory and streaming pipeline support explicitly deferred beyond 1.0
 
 #### Registry and resolution readiness
 
@@ -534,7 +590,8 @@ required by a concrete release blocker:
 - [x] verbosity and quiet semantics stabilized
 - [x] warning/error wording reviewed for consistency
 - [x] command-page structure conventions harmonized
-- [x] Rich / `rich-click` migration explicitly deferred beyond 1.0
+- [x] Rich / `rich-click` migration and generated command-help documentation explicitly deferred
+  beyond 1.0
 
 #### Machine-readable output
 
@@ -591,6 +648,7 @@ After tagging final `1.0.0`, keep the frozen contracts validated through:
 - machine-readable output validation;
 - documentation consistency preservation;
 - any targeted confidence-building checks needed for concrete findings;
+- targeted stable-line patch releases for concrete correctness fixes;
 - and focused release-blocking fixes where necessary.
 
 The stable 1.x maintenance path should avoid introducing new broad scope, architectural churn, or
@@ -605,8 +663,9 @@ validated the frozen contracts, release pipeline, GitHub prerelease visibility, 
 handling, coverage-reporting behavior, documentation governance, changelog hygiene, prose hygiene,
 terminology stability, and cross-platform installation behavior.
 
-The stable 1.x maintenance path is now limited to preserving compatibility, validating the final
-PyPI publication after release, monitoring the CI coverage signal, observing the finalized
-CI/release metadata and cache-ownership model across real workflow runs, and applying focused
-compatibility or correctness fixes only. New broad scope, architectural churn, and output-contract
-redesign remain out of scope unless required by a concrete stable 1.x issue.
+The stable 1.x maintenance path is now limited to preserving compatibility, validating published
+artifacts after release, monitoring the CI coverage signal, observing the finalized CI/release
+metadata and cache-ownership model across real workflow runs, and applying focused compatibility or
+correctness fixes only. New broad scope, architectural churn, presentation-backend migration,
+streaming pipeline redesign, generated command-help documentation, and output-contract redesign
+remain out of scope unless required by a concrete stable 1.x issue.

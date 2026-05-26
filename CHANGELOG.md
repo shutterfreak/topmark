@@ -18,6 +18,68 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [1.0.1] - 2026-05-26
+
+This first TopMark 1.0 patch release focuses on post-1.0 correctness fixes, documentation
+architecture refinement, and dependency maintenance.
+
+It preserves the stable 1.x CLI, configuration, registry, probe, pipeline, public API, and
+machine-readable output contracts established in `1.0.0`.
+
+### Highlights - 1.0.1
+
+- Fixed unified diff rendering when pipeline views are pruned.
+- Fixed Markdown diff rendering for diffs containing nested fenced code blocks.
+- Reorganized and refined the 1.0 documentation architecture.
+- Added dedicated getting-started and CI integration documentation.
+- Refreshed dependencies and pre-commit tooling.
+
+### Changed - 1.0.1
+
+- Simplified internal pipeline selection logic for readability and maintainability.
+- Clarified pipeline view-pruning option naming internally.
+- Refined documentation structure by separating user-facing workflows from developer internals.
+- Moved machine-output documentation from:
+  - `docs/dev/machine-output.md`
+  - to `docs/usage/machine-output.md`
+
+### Fixed - 1.0.1
+
+- Fixed `topmark check --diff` and `topmark strip --diff` losing unified diff output when pipeline
+  view pruning was enabled.
+- Fixed Markdown diff rendering when changed Markdown content itself contains triple-backtick or
+  longer fenced code blocks.
+- Added regression coverage for CLI/API diff output with view pruning enabled.
+
+### Documentation - 1.0.1
+
+- Added:
+  - `docs/usage/getting-started.md`
+  - `docs/usage/ci.md`
+- Improved README quick-start and product positioning.
+- Improved installation and contribution guidance.
+- Refined configuration, pipeline, architecture, command-reference, and hosted-doc navigation pages.
+- Updated MkDocs navigation for the revised documentation information architecture.
+
+### Internal - 1.0.1
+
+- Updated machine-output tests to match documentation and output-contract wording changes.
+- Added regression coverage for diff-view preservation and Markdown fence collision handling.
+- Refreshed locked dependencies including `click`, `ruff`, and `uv`.
+- Updated pre-commit dependencies, including TopMark itself.
+
+### Notes - 1.0.1
+
+- This release is intended as a patch release for the stable 1.x line.
+- It does not intentionally introduce new user-facing CLI behavior or machine-readable output schema
+  changes.
+- Larger architectural follow-ups remain deferred, including:
+  - evaluating `rich-click`;
+  - replacing `yachalk` with `rich`;
+  - and moving toward streaming pipeline processing.
+
+______________________________________________________________________
+
 ## [1.0.0] - 2026-05-21
 
 This first stable **TopMark 1.0 release** finalizes the long-running stabilization, contract-freeze,
