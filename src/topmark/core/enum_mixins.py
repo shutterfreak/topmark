@@ -23,7 +23,8 @@ Provided:
 
 Design:
     - Keep the functions *pure* and side-effect free.
-    - Avoid bringing UI libraries (e.g. yachalk) into this module.
+    - Avoid bringing presentation/UI libraries (for example Rich or terminal styling
+      adapters) into this module.
     - Prefer functions over overly clever metaclass tricks for type-checker sanity.
 
 Example:

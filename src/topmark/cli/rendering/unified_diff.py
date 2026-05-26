@@ -10,15 +10,15 @@
 
 r"""Unified diff rendering helpers for CLI (optional ANSI styling).
 
-This module formats unified diffs for human-facing CLI output. It is allowed to
-depend on a styling backend (currently `yachalk`) and provides a single helper
-that can emit either styled or plain output depending on the caller's color
-settings.
+This module formats unified diffs for human-facing CLI output. It uses the
+semantic styling adapter from [topmark.cli.presentation][] and provides a single
+helper that can emit either styled or plain output depending on the caller's
+color settings.
 
 Notes:
     - Control characters such as CR/LF are escaped ("\\r", "\\n") so previews are stable.
-    - For non-ANSI contexts (or when color is disabled), callers can either set
-      `color=False` or use `topmark.utils.diff.format_patch_text`.
+    - For non-ANSI contexts (or when styling is disabled), callers can either set
+      `styled=False` or use `topmark.utils.diff.format_patch_text`.
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ def format_patch_styled(
         # Convert to list to allow multiple passes
         lines = list(patch)
 
-    # Resolve stylers once (when `color=False` these resolve to no-ops via style_for_role).
+    # Resolve stylers once (when `styled=False` these resolve to no-ops via style_for_role).
     def styler(role: StyleRole) -> TextStyler:
         return style_for_role(role, styled=styled)
 

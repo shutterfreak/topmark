@@ -13,8 +13,8 @@
 This module defines a small, stable vocabulary of *semantic* style roles and a lightweight enum base
 that can carry such roles.
 
-The key goal is to keep **core** code free of any concrete presentation backend (ANSI, Rich,
-yachalk, etc.) while still allowing it to attach meaningful styling intent to domain concepts.
+The key goal is to keep **core** code free of any concrete presentation backend while still allowing
+it to attach meaningful styling intent to domain concepts.
 
 Core modules should depend only on:
 

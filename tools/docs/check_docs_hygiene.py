@@ -47,10 +47,38 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 
-from yachalk import chalk
+from rich.console import Console as RichConsole
+from rich.text import Text
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+# Rich styling helper for terminal diagnostics
+_RICH_CONSOLE: Final[RichConsole] = RichConsole(
+    color_system="standard",
+    force_terminal=True,
+    legacy_windows=False,
+    no_color=False,
+    soft_wrap=True,
+    width=120,
+)
+
+
+def _style(text: object, style: str) -> str:
+    """Return text rendered with a Rich style for docs-tool diagnostics.
+
+    Args:
+        text: Value to render.
+        style: Rich style expression.
+
+    Returns:
+        Styled terminal string.
+    """
+    rich_text = Text(str(text), style=style)
+    with _RICH_CONSOLE.capture() as capture:
+        _RICH_CONSOLE.print(rich_text, end="")
+    return capture.get()
+
 
 # Default Markdown paths to process.
 # The docs-hygiene scan covers documentation sources recursively and top-level Markdown files.
@@ -238,9 +266,11 @@ class Diagnostic:
             f"{self.path.as_posix()}:{self.line}" if self.line is not None else self.path.as_posix()
         )
         label = (
-            chalk.red.bold("error") if self.severity == "error" else chalk.yellow.bold("warning")
+            _style("error", "bold red")
+            if self.severity == "error"
+            else _style("warning", "bold yellow")
         )
-        return f"{chalk.bold(location)}: {label}: {self.message}"
+        return f"{_style(location, 'bold')}: {label}: {self.message}"
 
 
 def iter_markdown_files(paths: Sequence[str] | None) -> list[Path]:
@@ -959,7 +989,7 @@ def main(
                 if not allow_re or not allow_re.search(url):
                     ln: int = _abs_line(m, docstring=ds, start_lineno=start_lineno)
                     errors.append(
-                        f"{chalk.bold(path)}:{chalk.bold(ln)}: "
+                        f"{_style(path, 'bold')}:{_style(ln, 'bold')}: "
                         f"avoid raw URL in docstring -> {url}"
                         f"  (docstring {start_lineno}-{end_lineno})"
                     )  # Include docstring range for quick context
@@ -982,14 +1012,15 @@ def main(
                 lines: list[str] = []
                 for name, ln in sorted(set(missing)):
                     lines.append(
-                        f"{chalk.bold(path)}:{chalk.bold(ln)}: "
+                        f"{_style(path, 'bold')}:{_style(ln, 'bold')}: "
                         "internal names should be reference-linked: "
                         f"{name}  (docstring {start_lineno}-{end_lineno})\n"
-                        + chalk.italic(
+                        + _style(
                             "\tuse "
-                            + chalk.yellow.bold(f"[`{name}`][]")
+                            + _style(f"[`{name}`][]", "bold yellow")
                             + " or "
-                            + chalk.yellow.bold(f"[Text][{name}]")
+                            + _style(f"[Text][{name}]", "bold yellow"),
+                            "italic",
                         )
                     )  # Show both exact line and encompassing docstring range
 
