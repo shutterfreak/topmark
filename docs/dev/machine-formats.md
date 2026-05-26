@@ -19,7 +19,7 @@ This page documents TopMark's stable **machine-readable output conventions** acr
 
 See also:
 
-- [Machine-readable output](machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 - [CLI overview](../usage/cli.md)
 - [Shared options](../usage/shared-options.md)
 - [Exit codes](../usage/exit-codes.md)
@@ -74,7 +74,8 @@ Notes:
 
 This page describes the conventions shared across machine-readable formats.
 
-For the canonical field-level schema reference, see [Machine-readable output](machine-output.md).
+For the canonical field-level schema reference, see
+[Machine-readable output](../usage/machine-output.md).
 
 ______________________________________________________________________
 
@@ -481,7 +482,7 @@ These include:
 
 Refer to the machine schema reference for the per-path probe payload:
 
-- [Machine-readable output](machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 
 Note:
 

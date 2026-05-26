@@ -3,7 +3,7 @@ topmark:header:start
 
   project      : TopMark
   file         : machine-output.md
-  file_relpath : docs/dev/machine-output.md
+  file_relpath : docs/usage/machine-output.md
   license      : MIT
   copyright    : (c) 2025 Olivier Biot
 
@@ -45,8 +45,8 @@ See also:
 - [Exit codes](../usage/exit-codes.md)
 - [Configuration](../usage/configuration.md)
 - [Filtering](../usage/filtering.md)
-- [Registry model](registry-model.md)
-- [Machine-readable format conventions](machine-formats.md)
+- [Registry model](../dev/registry-model.md)
+- [Machine-readable format conventions](../dev/machine-formats.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
 
 ## Output formats
@@ -211,7 +211,7 @@ Public inputs may use local identifiers such as `python` when unambiguous, but m
 output emits resolved canonical identities. Consumers should prefer `qualified_key` for durable
 comparisons and joins across payloads.
 
-See [Registry model](registry-model.md#qualified-vs-local-identifiers) for the full identity
+See [Registry model](../dev/registry-model.md#qualified-vs-local-identifiers) for the full identity
 contract.
 
 ______________________________________________________________________

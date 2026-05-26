@@ -24,7 +24,7 @@ The tests serve as high-level contract checks to ensure that:
     - and a `summary` payload;
 - NDJSON output preserves the intended record ordering for config-check output;
 - the output follows the documented machine schema
-  (see `docs/dev/machine-output.md`).
+  (see `docs/usage/machine-output.md`).
 
 These tests intentionally avoid checking the full serialized config content,
 focusing instead on structural stability, required top-level keys, diagnostic

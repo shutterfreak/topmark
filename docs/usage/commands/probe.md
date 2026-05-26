@@ -194,7 +194,7 @@ Machine-readable formats are intended for automation and tooling integration.
 
 For the canonical schema, see:
 
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 
 Probe machine-readable output emits resolved file type identities using canonical qualified identity
@@ -371,7 +371,7 @@ ______________________________________________________________________
 - [Exit codes](../exit-codes.md)
 - [Registry model](../../dev/registry-model.md)
 - [Resolution model](../../dev/resolution.md)
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 - [Terminology and Canonical Vocabulary](../../terminology.md)
 

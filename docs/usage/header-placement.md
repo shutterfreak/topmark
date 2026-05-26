@@ -15,6 +15,9 @@ topmark:header:end
 TopMark is comment-aware and places header blocks according to resolved file type identities and
 header-processor semantics.
 
+Different file types use different comment syntaxes and placement rules. TopMark preserves those
+conventions while keeping insertion and update behavior deterministic.
+
 Configuration-loading strictness (for example through `--strict` or `strict`) does not affect
 header-placement semantics. It controls only whether a run proceeds when staged
 configuration-loading validation warnings are present.
@@ -74,19 +77,22 @@ Rules:
 - Otherwise, place the header at the top of the file.
 - Ensure one trailing blank line after the header block when the next line is not already blank.
 
-Example (Python):
+Example (Python / shell-style line comments):
 
-```py
-#!/usr/bin/env python3
+```bash
+#!/bin/bash
 
 # topmark:header:start
 #
-#   file         :
-#   file_relpath :
+#   project      : ACME Project
+#   file         : script.sh
+#   file_relpath : tools/script.sh
+#   license      : BSD
+#   copyright    : (C) 2025 John Doe
 #
 # topmark:header:end
 
-print("hello")
+echo "Hello, World!"
 ```
 
 ______________________________________________________________________
@@ -102,17 +108,20 @@ Rules:
 - Use `//` as the line prefix.
 - Ensure one trailing blank line after the header block when the next line is not already blank.
 
-Example (JavaScript):
+Example (JavaScript / slash-style line comments):
 
-```js
+```javascript
 // topmark:header:start
 //
-//   file         :
-//   file_relpath :
+//   project      : ACME Project
+//   file         : app.js
+//   file_relpath : frontend/app.js
+//   license      : GPLv3
+//   copyright    : (C) 2025 John Doe
 //
 // topmark:header:end
 
-console.log("hello");
+console.log("Hello, World!");
 ```
 
 ______________________________________________________________________
@@ -135,14 +144,17 @@ Example (CSS):
 /*
  * topmark:header:start
  *
- *   file         :
- *   file_relpath :
+ *   project      : ACME Project
+ *   file         : styles.css
+ *   file_relpath : styles/admin/styles.css
+ *   license      : MIT
+ *   copyright    : (C) 2025 John Doe
  *
  * topmark:header:end
  */
 
 body {
-  color: black;
+  margin: 0;
 }
 ```
 
@@ -159,19 +171,27 @@ Rules:
   header block.
 - Otherwise, place the header at the top of the file.
 - The header uses the file's native comment syntax; for XML/HTML this is an XML-style block comment
-  wrapper:
+  wrapper.
 
-```html
+Example (XML):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 topmark:header:start
 
-  file         :
-  file_relpath :
+  project      : ACME Project
+  file         : config.xml
+  file_relpath : settings/web/config.xml
+  license      : BSD
+  copyright    : (C) 2025 John Doe
 
 topmark:header:end
 -->
 
-<html>...</html>
+<configuration>
+  <!-- XML content here -->
+</configuration>
 ```
 
 ______________________________________________________________________
@@ -189,12 +209,15 @@ Rules:
 
 Example (Markdown):
 
-```md
+```markdown
 <!--
 topmark:header:start
 
-  file         :
-  file_relpath :
+  project      : ACME Project
+  file         : README.md
+  file_relpath : README.md
+  license      : MIT
+  copyright    : (C) 2025 John Doe
 
 topmark:header:end
 -->
@@ -208,7 +231,7 @@ ______________________________________________________________________
 
 - Newline preservation: the inserted header uses the same newline style as the file (LF/CRLF/CR).
 - BOM preservation: if a UTF-8 BOM is present, it is preserved.
-- Idempotency: re-running TopMark on a file with a correct header produces no runtime changes.
+- Idempotency: re-running TopMark on a file with a compliant header produces no runtime changes.
 - Unheaderable file types: some recognized file type identities intentionally have no effective
   processor binding and are skipped rather than headered, such as JSON files without comments,
   license text files, and single-token marker files.

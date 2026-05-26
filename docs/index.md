@@ -12,136 +12,60 @@ topmark:header:end
 
 # TopMark documentation (%%TOPMARK_VERSION%%)
 
-TopMark inspects, inserts, updates, removes, and validates per-file headers across codebases. It is
-comment-aware, file-type-aware, and **dry-run by default** for safe CI usage.
+TopMark inspects, inserts, updates, removes, and validates per-file headers across repositories. It
+is comment-aware, file-type-aware, and **dry-run by default** for safe local usage, CI validation,
+and repository automation.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
 TopMark provides stable and consistent behavior across:
 
-- CLI execution
-- TOML configuration
-- API overlays
-- layered configuration discovery
-- resolution and probe filtering
+- CLI execution and dry-run workflows
+- layered TOML configuration discovery and precedence
+- repository filtering and file-type resolution
+- probe and diagnostics workflows
+- machine-readable reporting and explainability
 - pre-commit and CI integration
+- stable public Python API overlays
 
-## Common workflows
+## Start here
 
-| Goal                                    | Command                                                 | More info                                                                                                                                                                      |
-| --------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Check headers safely                    | `topmark check src/`                                    | [`topmark check`](usage/commands/check.md), [Shared options](usage/shared-options.md), [Exit codes](usage/exit-codes.md)                                                       |
-| Apply header updates                    | `topmark check --apply src/`                            | [`topmark check`](usage/commands/check.md), [Policies](usage/policies.md)                                                                                                      |
-| Remove TopMark headers                  | `topmark strip src/`, then `topmark strip --apply src/` | [`topmark strip`](usage/commands/strip.md), [Header placement](usage/header-placement.md)                                                                                      |
-| Understand file type resolution         | `topmark probe README.md`                               | [`topmark probe`](usage/commands/probe.md), [Filtering](usage/filtering.md), [Policies](usage/policies.md)                                                                     |
-| Inspect effective runtime configuration | `topmark config dump --show-layers`                     | [`topmark config dump`](usage/commands/config/dump.md), [Configuration](usage/configuration.md), [Configuration discovery, precedence, and policy](configuration/discovery.md) |
-| Generate a starter TOML configuration   | `topmark config init > topmark.toml`                    | [`topmark config init`](usage/commands/config/init.md), [Configuration](usage/configuration.md), [Configuration discovery, precedence, and policy](configuration/discovery.md) |
-| Upgrade from TopMark 0.11.x or earlier  | `topmark config check --strict -v`                      | [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md), [`topmark config check`](usage/commands/config/check.md), [`topmark config dump`](usage/commands/config/dump.md)        |
-| Inspect the built-in defaults           | `topmark config defaults`                               | [`topmark config defaults`](usage/commands/config/defaults.md), [Default TOML settings](configuration/generated/config-defaults.md), [Configuration](usage/configuration.md)   |
-
-______________________________________________________________________
-
-## Quickstart
-
-```bash
-pip install topmark
-# Check (dry-run)
-topmark check --summary --config topmark.toml src/
-# Apply changes
-topmark check --apply src/
-# Explain file-type / processor resolution
-topmark probe README.md
-# Process one file's content from STDIN
-cat README.md | topmark check - --stdin-filename README.md
-# Explain why a path was filtered by discovery rules
-topmark probe __pycache__/example.cpython-312.pyc
-```
-
-### Public API quickstart
-
-TopMark also exposes a stable public Python API:
-
-```python
-from topmark import api
-
-res1 = api.check(["src"], report="actionable")  # dry-run
-res2 = api.check(["src"], apply=True)
-res3 = api.check(
-    ["src"],
-    include_file_types=["topmark:python"],
-)
-```
-
-The public Python API also supports querying the registry:
-
-```python
-from topmark.registry.registry import Registry
-
-for binding in Registry.bindings():
-    bound: str = f"bound ({binding.processor.local_key})" if binding.processor else "unbound"
-    print(f"{binding.filetype.local_key} ({binding.filetype.description}): {bound}")
-```
-
-______________________________________________________________________
+| Goal                                               | Recommended page                                      |
+| -------------------------------------------------- | ----------------------------------------------------- |
+| Install TopMark and complete a safe first run      | [Getting started](usage/getting-started.md)           |
+| Understand the CLI structure and shared behavior   | [Command overview](usage/cli.md)                      |
+| Configure layered runtime behavior and policies    | [Configuration](usage/configuration.md)               |
+| Understand repository filtering and file discovery | [Filtering](usage/filtering.md)                       |
+| Validate repositories in CI                        | [CI integration](usage/ci.md)                         |
+| Integrate TopMark with pre-commit                  | [Pre-commit integration](usage/pre-commit.md)         |
+| Understand stable exit-code behavior               | [Exit codes](usage/exit-codes.md)                     |
+| Upgrade older repositories to TopMark 1.0          | [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md) |
+| Use the public Python API                          | [Public API](api/public.md)                           |
+| Contribute to TopMark                              | [Contributing](contributing.md)                       |
 
 ## What it does
 
 - Detects, inserts, updates, validates, and removes per-file headers
 - Honors shebangs, XML declarations, and native comment styles
 - Preserves newline style (LF/CRLF/CR) and BOM
-- Provides [`strip`](usage/commands/strip.md) to remove headers (also dry-run by default)
-- Works well in CI and with pre-commit hooks
-- Explains file-type and processor resolution via [`topmark probe`](usage/commands/probe.md),
-  including why explicit inputs may be filtered before probing
-- Inspects **layered configuration provenance** via `topmark config dump --show-layers`
-- Validates whole-source TOML configuration before layered configuration merging
-- Normalizes file type identifiers to canonical qualified keys such as `topmark:python` before
-  filtering, resolution, policy evaluation, diagnostics, and registry lookup
+- Uses dry-run-first workflows for safe repository automation
+- Supports pre-commit and CI integration
+- Explains repository filtering, file-type resolution, and processor selection via
+  [`topmark probe`](usage/commands/probe.md)
+- Exposes layered configuration provenance via `topmark config dump --show-layers`
+- Provides machine-readable JSON and NDJSON output for automation and reporting
+- Supports canonical qualified file type identifiers such as `topmark:python`
 - Supports local identifiers such as `python` when unambiguous
-
-______________________________________________________________________
-
-## Example headers
-
-Here's how TopMark headers appear in different file types (truncated for brevity):
-
-```bash
-#!/bin/bash
-
-# topmark:header:start
-#
-#   project   : TopMark
-#   file      : script.sh
-#   license   : MIT
-#   copyright : (c) 2025 Olivier Biot
-
-# topmark:header:end
-...
-```
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-topmark:header:start
-
-  project   : TopMark
-  file      : config.xml
-  license   : MIT
-  copyright : (c) 2025 Olivier Biot
-
-topmark:header:end
--->
-...
-```
 
 ______________________________________________________________________
 
 ## Commands
 
-`topmark [COMMAND] ([SUBCOMMAND]) [OPTIONS] [PATHS]...`
+TopMark exposes a small set of dry-run-first CLI commands:
 
-For a structured command overview, common workflows, shared options, and command applicability
-behavior, see [Command overview](usage/cli.md).
+For command structure, shared options, applicability rules, and common workflows, see:
+
+- [Command overview](usage/cli.md).
 
 Core commands: [`check`](usage/commands/check.md), [`strip`](usage/commands/strip.md),
 [`probe`](usage/commands/probe.md), [`config`](usage/commands/config.md),
@@ -204,131 +128,23 @@ TopMark supports two STDIN modes:
 See [shared input modes](usage/shared-options.md#shared-input-modes) for the full STDIN contract,
 including why TopMark does not provide a `--stdin` option flag.
 
-______________________________________________________________________
-
-## Header placement (short version)
-
-- **Pound-style** (Python, Shell, Makefile, YAML, TOML, ...): after shebang and optional encoding
-  line; else at top. Ensure a single blank line separation and a trailing blank line when needed.
-- **XML/HTML-style**: after XML declaration/DOCTYPE when present; otherwise at top. Uses native
-  comment wrapper.
-
-> For full rules, supported file types, JSON vs JSONC handling, and resolution behavior, see the
-> sections in the repository README.
->
-> [`topmark probe`](usage/commands/probe.md) can be used to understand how file types are resolved
-> and why certain paths are ignored.
-
-______________________________________________________________________
-
-## Configuration (example)
-
-```toml
-[config]
-root = true
-
-[fields]
-project = "TopMark"
-license = "MIT"
-
-[header]
-fields = ["file", "file_relpath", "project", "license"]
-relative_to = "."
-
-[formatting]
-align_fields = true
-
-[files]
-include_file_types = ["topmark:python", "topmark:markdown", "topmark:env"]
-exclude_file_types = ["topmark:html"]
-```
-
-TopMark also accepts local identifiers such as `python` when unambiguous, but internally normalizes
-identifiers to canonical qualified keys such as `topmark:python`. The same example with local keys:
-
-```toml
-[files]
-include_file_types = ["python", "markdown", "env"]
-exclude_file_types = ["html"]
-```
-
-In `pyproject.toml`, the same settings live under `[tool.topmark]`, with source-local options such
-as `root` and `strict` under `[tool.topmark.config]`.
-
-Source-local options under `[config]` / `[tool.topmark.config]` do not participate in layered
-configuration merging. For example, `strict` affects staged config-loading validation behavior
-rather than becoming a normal layered configuration field.
-
-{% include-markdown "\_snippets/config-strictness.md" %}
-
-For the full discovery, precedence, path-resolution, and staged validation contract, see
-[Configuration discovery, precedence, and policy](configuration/discovery.md).
-
-At the TOML layer, malformed known sections are handled as warning-and-ignore cases, while missing
-known sections are emitted as INFO diagnostics. This lets callers distinguish absent sections from
-malformed-present sections before staged configuration-validation semantics are applied. These
-TOML-source diagnostics are then evaluated together with merged-config and runtime-applicability
-diagnostics during staged config-loading validation.
-
-______________________________________________________________________
-
-## File type identifiers
-
-{% include-markdown "\_snippets/file-type-identifiers.md" %}
-
-See:
-
-- [Configuration](usage/configuration.md)
-- [Filtering](usage/filtering.md)
-- [Policies](usage/policies.md)
-- [CLI overview](usage/cli.md)
-
-### Inspecting configuration
-
-Use [`topmark config dump`](usage/commands/config/dump.md) to inspect the effective runtime
-configuration.
-
-For deeper insight into how configuration is constructed, use:
-
-```bash
-topmark config dump --show-layers
-```
-
-This shows:
-
-- the **layered provenance** (defaults → discovered config → `--config` → CLI)
-- the final **flattened effective runtime configuration**
-
-Machine-readable JSON and NDJSON output also expose this provenance through the `config_provenance`
-payload. The stored TOML fragments correspond to the source-local TOML view after TOML-layer
-validation.
-
-______________________________________________________________________
-
 ## Next steps
 
-- **Install:** [Installation guide](install.md)
-- **Usage:**
-  - [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md)
-  - [Command overview](usage/cli.md)
-  - [Configuration](usage/configuration.md)
-  - [Filtering](usage/filtering.md)
-  - [Shared options](usage/shared-options.md)
-  - [Exit codes](usage/exit-codes.md)
-  - **Commands:**
-    - [`check`](usage/commands/check.md)
-    - [`strip`](usage/commands/strip.md)
-    - [`probe`](usage/commands/probe.md)
-    - [`version`](usage/commands/version.md)
-    - [`config` commands](usage/commands/config.md)
-    - [`registry` commands](usage/commands/registry.md)
-  - [Pre-commit integration](usage/pre-commit.md)
-- **CI/CD:** Release workflow ([ci/release-workflow.md](ci/release-workflow.md))
-- **Policies:** Guide ([usage/policies.md](usage/policies.md))
-- **Public API:** Reference ([api/public.md](api/public.md))
-- **Internals:** Reference ([api/internals.md](api/internals.md))
-- **Contributing:** [Guidelines](contributing.md)
+- [Usage documentation](usage/index.md)
+- [API documentation](api/index.md)
+- [Configuration documentation](configuration/index.md)
+- [Development documentation](dev/index.md)
+- [Installation guide](install.md)
+- [Contributing](contributing.md)
+
+Common reference pages:
+
+- [Exit codes](usage/exit-codes.md)
+- [CI integration](usage/ci.md)
+- [Release workflow](ci/release-workflow.md)
 
 ______________________________________________________________________
 
-For the canonical project overview and release information, see the project README on GitHub.
+For the canonical project overview and release information, see the project README on GitHub:
+
+- <https://github.com/shutterfreak/topmark/blob/main/README.md>

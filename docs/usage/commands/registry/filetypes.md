@@ -307,7 +307,7 @@ ______________________________________________________________________
 - [Registry model](../../../dev/registry-model.md)
 - [Plugins and extensibility](../../../dev/plugins.md)
 - [Resolution model](../../../dev/resolution.md)
-- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable output](../../machine-output.md)
 - [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Supported file types](../../generated/filetypes.md)
 - [Exit codes](../../exit-codes.md)

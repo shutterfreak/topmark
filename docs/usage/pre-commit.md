@@ -40,7 +40,7 @@ Add TopMark to a project's `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.12.0   # pin to a released tag
+    rev: v1.0.0   # pin to a released tag
     hooks:
       - id: topmark-check
         # Optional: limit scope to supported text types
@@ -341,4 +341,5 @@ ______________________________________________________________________
 - [Filtering](filtering.md)
 - [Policies](policies.md)
 - [Shared options](shared-options.md)
+- [CI integration](ci.md)
 - [Exit codes](exit-codes.md)

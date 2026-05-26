@@ -137,7 +137,7 @@ These keys are intended for stable joins, comparisons, and tooling integration.
 
 See also:
 
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 
 ______________________________________________________________________
@@ -150,7 +150,7 @@ ______________________________________________________________________
 - [Registry model](../../dev/registry-model.md)
 - [Plugins and extensibility](../../dev/plugins.md)
 - [Resolution model](../../dev/resolution.md)
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 - [Exit codes](../exit-codes.md)
 - [Terminology and Canonical Vocabulary](../../terminology.md)

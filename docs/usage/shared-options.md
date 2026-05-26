@@ -209,4 +209,4 @@ ______________________________________________________________________
 - [Policies](policies.md)
 - [Exit codes](exit-codes.md)
 - [Pre-commit integration](pre-commit.md)
-- [Machine-readable output](../dev/machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)

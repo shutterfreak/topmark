@@ -104,4 +104,4 @@ ______________________________________________________________________
 - [`Terminology and Canonical Vocabulary`](../terminology.md)
 - [`Resolution`](./resolution.md)
 - [`Configuration discovery`](../configuration/discovery.md)
-- [`Machine-readable output`](./machine-output.md)
+- [`Machine-readable output`](../usage/machine-output.md)

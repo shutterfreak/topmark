@@ -416,8 +416,8 @@ ______________________________________________________________________
 - [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical definitions for
   identifiers, applicability, ambiguity, and machine-readable terminology
 - [`Plugins`](plugins.md) - how file types and processors are registered
-- [`Machine-readable output`](machine-output.md) - how resolution results surface in JSON and NDJSON
-  outputs
+- [`Machine-readable output`](../usage/machine-output.md) - how resolution results surface in JSON
+  and NDJSON outputs
 - [`Configuration`](../usage/configuration.md) - canonical file-type identifier semantics
 - [`Filtering`](../usage/filtering.md) - discovery and file-type filter behavior
 - [`CLI overview`](../usage/cli.md) - resolver-related CLI commands and filtering options

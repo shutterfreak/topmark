@@ -497,8 +497,8 @@ ______________________________________________________________________
 - [`Pipelines (Reference)`](./pipelines-reference.md) - generated API-backed reference entry points
 - [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical definitions for pipeline,
   status, hint, runtime, and machine-readable terminology
-- [`Machine-readable output`](./machine-output.md) - how pipeline results are exposed in JSON and
-  NDJSON outputs
+- [`Machine-readable output`](../usage/machine-output.md) - how pipeline results are exposed in JSON
+  and NDJSON outputs
 - [`Configuration discovery`](../configuration/discovery.md) - source-local TOML options and
   precedence
 

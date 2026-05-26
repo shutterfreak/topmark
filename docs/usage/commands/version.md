@@ -218,7 +218,7 @@ ______________________________________________________________________
 - [Command overview](../cli.md)
 - [Shared options](../shared-options.md)
 - [Exit codes](../exit-codes.md)
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 - [API stability](../../dev/api-stability.md)
 - [Terminology and Canonical Vocabulary](../../terminology.md)

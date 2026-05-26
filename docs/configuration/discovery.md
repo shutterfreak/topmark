@@ -488,4 +488,4 @@ ______________________________________________________________________
 - [Filtering recipes](../usage/filtering.md)
 - [Policy guide](../usage/policies.md)
 - [CLI overview](../usage/cli.md)
-- [Machine-readable output](../dev/machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)

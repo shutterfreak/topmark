@@ -396,7 +396,7 @@ topmark config dump --show-layers --output-format json .
 topmark probe --output-format json .
 ```
 
-See [machine-readable output](../dev/machine-output.md) and
+See [machine-readable output](../usage/machine-output.md) and
 [machine-readable format conventions](../dev/machine-formats.md) for the stable 1.x machine-output
 contracts.
 
@@ -477,5 +477,5 @@ ______________________________________________________________________
 - [Filtering](./filtering.md)
 - [Pre-commit integration](./pre-commit.md)
 - [Exit codes](./exit-codes.md)
-- [Machine-readable output](../dev/machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 - [Machine-readable format conventions](../dev/machine-formats.md)

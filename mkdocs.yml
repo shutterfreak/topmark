@@ -169,6 +169,7 @@ nav:
   - Installation: install.md
   - Usage:
       - Overview: usage/index.md
+      - Getting started: usage/getting-started.md
       - Command overview: usage/cli.md
       - Configuration discovery, precedence, and policy: usage/configuration.md
       - Shared options: usage/shared-options.md
@@ -193,7 +194,9 @@ nav:
           - Filtering recipes: usage/filtering.md
           - Header placement: usage/header-placement.md
           - Policies: usage/policies.md
+          - Machine-readable output: usage/machine-output.md
           - Pre-commit: usage/pre-commit.md
+          - CI integration: usage/ci.md
       - Registry:
           - Supported file types: usage/generated/filetypes.md
           - Registered processors: usage/generated/processors.md
@@ -235,7 +238,6 @@ nav:
       - Pipelines (concepts): dev/pipelines.md
       - Pipelines (reference hub): dev/pipelines-reference.md
       - API Stability: dev/api-stability.md
-      - Machine-readable output: dev/machine-output.md
       - Machine-readable formats: dev/machine-formats.md
       - Documentation pipeline and reference hygiene: dev/documentation-pipeline.md
       - Documentation conventions: dev/documentation-conventions.md

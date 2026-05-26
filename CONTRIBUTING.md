@@ -12,9 +12,14 @@ topmark:header:end
 
 # Contributing to TopMark
 
-Thank you for your interest in contributing to **TopMark**!\
-This guide explains how to set up a development environment, run validation checks, contribute code,
-and prepare releases.
+Thank you for your interest in contributing to **TopMark**.
+
+This is the canonical contributor guide for the repository. It explains how to set up a development
+environment, run validation checks, contribute code, and understand the release workflow.
+
+User-facing documentation is published at:
+
+- <https://topmark.readthedocs.io/>
 
 ______________________________________________________________________
 
@@ -35,7 +40,7 @@ pyenv local 3.14.2 3.13.11 3.12.12 3.11.14 3.10.19
 
 ______________________________________________________________________
 
-## Quick Start
+## Quick start
 
 ```bash
 # Clone and enter the repo
@@ -59,6 +64,10 @@ make pytest     # supports PYTEST_PAR="-n auto"
 > `.venv` is the standard local development environment for IDE integration and interactive work. It
 > is managed with `uv` and primarily exists for editor support and local tooling integration.
 > Automated validation and CI-parity checks still run through isolated `nox` environments.
+
+For the full installation and development-environment setup guide, see:
+
+- [INSTALL.md](./INSTALL.md)
 
 ______________________________________________________________________
 
@@ -87,38 +96,19 @@ make property-test
 
 TopMark separates configuration into three layers:
 
-- TOML layer (`topmark.toml`) - discovery, parsing, and whole-source TOML schema validation (unknown
-  sections/keys, malformed shapes), plus source-local options (e.g. `[config].root`, `strict`)
-- Config layer (`topmark.config`) - deserialization of validated layered config fragments and
-  layered merge into a mutable config draft
-- Runtime layer (`topmark.runtime`) - execution-time options and overrides
+- TOML layer - source discovery, parsing, whole-source TOML validation, and source-local options
+  such as `[config].root` and `strict`
+- Config layer - deserialization, layered merging, and freezing into `FrozenConfig`
+- Runtime layer - execution-time options, overlays, and command behavior
 
-Configuration loading follows a staged config-loading model:
+Configuration loading follows a staged model so TopMark can distinguish TOML-source diagnostics,
+merged-config diagnostics, and runtime-applicability diagnostics before reporting them through the
+CLI, API, and machine-readable output contracts.
 
-1. resolve TOML sources (defaults, discovered config, `--config`, CLI context)
-1. validate each whole-source TOML fragment
-1. extract the layered config fragment
-1. deserialize and merge into a mutable config draft
-1. evaluate effective config validity across staged config-loading validation
-1. freeze into the final `FrozenConfig`
+Further reading:
 
-Source-local options such as `strict` are resolved during configuration loading and influence
-validation behaviour, but do not become layered Config fields. In the current implementation,
-effective strictness is applied across staged config-loading validation:
-
-- TOML-source diagnostics
-- merged-config diagnostics
-- runtime-applicability diagnostics
-
-A flattened compatibility diagnostics view remains available for reporting and current CLI, API, and
-machine-readable output, derived from staged validation logs. For 1.0, this boundary is intentional:
-staged validation remains primarily internal, while contributor-facing reporting and CLI, API, and
-machine-readable output expose only the flattened compatibility diagnostics contract. CLI/API
-overrides (`--strict` / `--no-strict`) take precedence for the current run.
-
-The main integration helper is:
-
-- `resolve_toml_sources_and_build_mutable_config()`
+- [Configuration discovery and precedence](https://topmark.readthedocs.io/en/latest/configuration/discovery/)
+- [Architecture](https://topmark.readthedocs.io/en/latest/dev/architecture/)
 
 ### Developer validation (optional)
 
@@ -260,15 +250,12 @@ ______________________________________________________________________
 
 ## Documentation
 
-Build or serve the docs through tox:
+Build or serve the docs through the project Makefile:
 
 ```bash
-make docs-build   # strict build (CI)
+make docs-build   # strict build
 make docs-serve   # local live-reload server
 ```
-
-Configuration-related documentation lives under `docs/configuration/` and reflects the TOML → Config
-→ Runtime separation introduced in recent refactors.
 
 MkDocs configuration lives in `mkdocs.yml`, and documentation dependencies are installed from the
 `docs` extra declared in `pyproject.toml` and resolved through `uv.lock`.
@@ -277,11 +264,13 @@ The generated documentation site is available at:
 
 - <https://topmark.readthedocs.io/en/latest/>
 
-Contributor-facing and CI/CD-specific documentation includes:
+Contributor-facing documentation includes:
 
 - [Contributing (hosted docs)](https://topmark.readthedocs.io/en/latest/contributing/)
-- [CI documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
 - [Development documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/)
+- [Documentation conventions (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/documentation-conventions/)
+- [CI documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
+- [Release process (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/release-process/)
 
 ______________________________________________________________________
 
@@ -316,6 +305,7 @@ twine check dist/*
 ```
 
 Releases are normally handled by GitHub Actions rather than by manual `twine upload` commands.
+Manual uploads are reserved for exceptional maintainer recovery workflows.
 
 TopMark uses a two-stage release pipeline:
 
@@ -336,10 +326,10 @@ published-artifact validation behavior, see:
 
 ______________________________________________________________________
 
-## Pre-commit Hooks
+## Pre-commit hooks
 
-Pre-commit hooks are **optional but recommended**. They mirror the checks run by `make verify` and
-`make lint`.
+Pre-commit hooks are optional but recommended. They mirror many checks used by `make verify` and
+provide fast feedback before opening a pull request.
 
 ```bash
 pre-commit install
@@ -347,19 +337,23 @@ pre-commit run --all-files
 pre-commit autoupdate
 ```
 
-Common hooks include:
+Common repository-local hooks include:
 
-- `topmark-check` - validates headers (non-destructive)
-- `topmark-apply` - updates headers (manual only)
-- Ruff (format/lint), Taplo, mdformat, Pyright, and hygiene checks
+- `topmark-check` - validates headers without mutating files
+- `topmark-apply` - updates headers when run manually
+- Ruff, Taplo, mdformat, Pyright, pydoclint, and repository hygiene checks
 
-Run the TopMark fixer manually (`--hook-stage manual`):
+Run the TopMark fixer manually:
 
 ```bash
 pre-commit run topmark-apply --hook-stage manual --all-files
 # Or target specific files:
 pre-commit run topmark-apply --hook-stage manual --files path/to/file1 path/to/file2
 ```
+
+User-facing pre-commit documentation lives in:
+
+- [Pre-commit integration (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/pre-commit/)
 
 ______________________________________________________________________
 
@@ -388,7 +382,7 @@ Follow the Conventional Commits specification:
 
 Keep messages short (≤72 chars) and use the body to explain *why*.
 
-### Pull Request Checklist
+### Pull request checklist
 
 - [ ] PR title follows Conventional Commits
 - [ ] Related issue referenced when applicable
@@ -473,14 +467,14 @@ ______________________________________________________________________
 
 ## Troubleshooting
 
-- **Missing tools:** run `make venv` then `make venv-sync-dev` (or `make venv-sync-all`)
-- **mkdocs errors:** run `make venv-sync-all` or `make docs-serve` to ensure the docs extras are
-  installed
-- **Python version errors:** install interpreters via `pyenv`
-- **Permission issues (Windows):**\
-  Run PowerShell as Administrator and execute\
-  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+- **Missing tools:** run `make venv` then `make venv-sync-dev` or `make venv-sync-all`.
+- **Documentation build errors:** run `make venv-sync-all` or `make docs-serve` to ensure the docs
+  extras are installed.
+- **Python version errors:** install interpreters via `pyenv` or use one supported interpreter for
+  local iteration.
+- **Permission issues on Windows:** run PowerShell as Administrator and execute
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
-______________________________________________________________________
+For installation and environment setup details, see:
 
-Happy coding!
+- [INSTALL.md](./INSTALL.md)

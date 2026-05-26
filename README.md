@@ -21,10 +21,13 @@ topmark:header:end
 [![Development Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](https://pypi.org/project/topmark/)
 [![Downloads](https://static.pepy.tech/badge/topmark)](https://pepy.tech/project/topmark)
 
-**TopMark** is a Python command-line tool and library for inspecting, inserting, updating, removing,
-and validating project file headers across diverse codebases.
+**TopMark** is a dry-run-first Python CLI for keeping license, copyright, project, and file metadata
+headers consistent across polyglot repositories.
 
-It helps keep license, copyright, project, and file metadata consistent through:
+It was built for real-world codebases where file headers must be safe to inspect, update, remove,
+and automate across different languages, comment styles, documentation files, and CI workflows.
+
+It helps teams avoid fragile one-off scripts by providing:
 
 - comment-aware header rendering;
 - layered configuration and policy controls;
@@ -32,7 +35,88 @@ It helps keep license, copyright, project, and file metadata consistent through:
 - stable CI-friendly exit codes;
 - machine-readable output formats;
 - transparent file-type resolution diagnostics;
+- configuration, registry, and file-resolution introspection commands;
 - and a public Python API for automation and integration.
+
+______________________________________________________________________
+
+## Quick start
+
+Install TopMark from PyPI:
+
+```bash
+pip install topmark
+```
+
+Create a starter configuration:
+
+```bash
+topmark config init --root > topmark.toml
+```
+
+Preview whether TopMark would insert or update headers:
+
+```bash
+topmark check .
+```
+
+Preview the changes TopMark would insert or update:
+
+```bash
+topmark check --diff .
+```
+
+Apply the changes once the preview looks right:
+
+```bash
+topmark check --apply .
+```
+
+Remove TopMark-managed headers when needed:
+
+```bash
+topmark strip .
+topmark strip --apply .
+```
+
+TopMark also provides diagnostics for understanding how files, configuration, and processors are
+resolved:
+
+```bash
+topmark probe README.md
+topmark config dump --show-layers
+topmark registry filetypes
+topmark registry processors
+topmark registry bindings
+```
+
+TopMark never mutates files unless `--apply` is passed.
+
+For a guided first setup, see:
+
+- [Getting started (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/getting-started/).
+
+______________________________________________________________________
+
+## Why TopMark?
+
+TopMark started from a simple need: manage consistent file headers in multi-language codebases
+without relying on brittle custom scripts. It began with Python files, expanded to Markdown
+documentation, and matured through the 0.x series into a general-purpose CLI for polyglot
+repositories.
+
+TopMark is useful when you need to:
+
+- keep license and copyright headers consistent across source and documentation files;
+- preview repository-wide changes before anything is written;
+- preserve shebangs, BOMs, newline style, and file-specific comment syntax;
+- configure behavior differently across nested projects or file types;
+- inspect why a file was included, excluded, or matched to a specific processor;
+- integrate header checks into CI, pre-commit, Git hooks, or custom automation;
+- consume deterministic JSON or NDJSON output from scripts and tooling.
+
+The goal is not to replace formatters, linters, or license scanners. TopMark focuses on one job:
+safe, deterministic, comment-aware file header management.
 
 ______________________________________________________________________
 
@@ -50,19 +134,23 @@ ______________________________________________________________________
 ## Features
 
 - Detect, insert, update, validate, and remove file headers across multiple file types
-- Comment-aware rendering for line and block comment styles
 - Dry-run by default, with explicit `--apply` required for mutation
+- Comment-aware rendering for line and block comment styles
+- Preserves standard newline styles, shebangs, BOMs, and file-specific comment rules
+- Idempotent behavior designed for repeatable CI and repository automation
 - Layered configuration via `topmark.toml`, `pyproject.toml`, user config, explicit config files,
   and CLI overrides
 - Policy controls for insertion, update, empty-file behavior, file-type filtering, and content
   probing
 - Resolution diagnostics with `topmark probe`
+- Layered configuration inspection with `topmark config dump --show-layers`
+- Registry introspection with `topmark registry filetypes`, `topmark registry processors`, and
+  `topmark registry bindings`
 - Machine-readable JSON, NDJSON, and Markdown output where supported
 - Stable exit-code contracts for CI and scripting
+- Pre-commit, CI, and Git hook friendly
 - Public Python API for programmatic access to all CLI commands
 - Extensible registry and processor architecture for custom file types and header processors
-- Pre-commit, CI, and Git hook friendly
-- Preserves standard newline styles, shebangs, BOMs, and file-specific comment rules
 - Strictly typed Python implementation using Pyright
 
 ______________________________________________________________________
@@ -71,74 +159,31 @@ ______________________________________________________________________
 
 TopMark adapts headers to the comment syntax of each supported file type.
 
-### Bash / Shell
+### Dry-run diff preview
 
-```bash
-#!/bin/bash
+A dry-run preview makes the intended change explicit before files are modified:
 
-# topmark:header:start
-#
-#   project   : TopMark
-#   file      : script.sh
-#   license   : MIT
-#   copyright : (c) 2025 Olivier Biot
-#
-# topmark:header:end
+```diff
+--- src/example.py (current)    2026-05-23 09:37:03 +0000
++++ src/example.py (updated)    2026-05-23 09:37:18 +0000
+@@ -1 +1,11 @@
++# topmark:header:start
++#
++#   project      : ACME Project
++#   file         : example.py
++#   file_relpath : src/example.py
++#   license      : MIT
++#   copyright    : (C) 2025 John Doe
++#
++# topmark:header:end
++
+ print("Hello, World!")
 
-echo "Hello, World!"
 ```
 
-### XML
+Header rendering and placement rules for supported file types are documented in:
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-topmark:header:start
-
-  project   : TopMark
-  file      : config.xml
-  license   : MIT
-  copyright : (c) 2025 Olivier Biot
-
-topmark:header:end
--->
-
-<configuration>
-    <!-- XML content here -->
-</configuration>
-```
-
-### JavaScript
-
-```javascript
-// topmark:header:start
-//
-//   project   : TopMark
-//   file      : app.js
-//   license   : MIT
-//   copyright : (c) 2025 Olivier Biot
-//
-// topmark:header:end
-
-console.log("Hello, World!");
-```
-
-### CSS
-
-```css
-/*
- * topmark:header:start
- *
- *   project   : TopMark
- *   file      : styles.css
- *   license   : MIT
- *   copyright : (c) 2025 Olivier Biot
- *
- * topmark:header:end
- */
-
-body { margin: 0; }
-```
+- [Header placement rules (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/header-placement/)
 
 ______________________________________________________________________
 
@@ -146,39 +191,25 @@ ______________________________________________________________________
 
 ### From PyPI
 
+TopMark stable releases are published on [PyPI](https://pypi.org/project/topmark/):
+
 ```bash
 pip install topmark
 ```
 
-TopMark stable releases are published on PyPI.
+> [!NOTE] **Upgrading from 0.11.x or earlier**
+>
+> If you are upgrading from TopMark 0.11.x or earlier, review the migration guide before changing
+> existing configuration, CI jobs, or pre-commit hooks:
+>
+> - [Upgrading to TopMark 1.0 (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/upgrading-to-1.0/)
 
-If you are upgrading from TopMark 0.11.x or earlier, review the migration guide before changing
-existing configuration, CI jobs, or pre-commit hooks:
+### From source
 
-- [Upgrading to TopMark 1.0 (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/upgrading-to-1.0/)
+For development setup from source, see:
 
-### From source (development setup)
-
-```bash
-git clone https://github.com/shutterfreak/topmark.git
-cd topmark
-make venv
-make venv-sync-dev
-```
-
-TopMark uses **`uv` as the canonical dependency manager**. `pyproject.toml` declares dependency
-ranges, `uv.lock` is the committed lock source of truth, and a project-local `.venv` is used as the
-standard environment for editor integration and interactive development.
-
-TopMark's package version is no longer maintained manually in `pyproject.toml`; installed versions
-are derived from Git tags via `setuptools-scm`.
-
-Run checks to confirm setup:
-
-```bash
-make verify
-make test
-```
+- [Installation guide (hosted docs)](https://topmark.readthedocs.io/en/latest/install/)
+- [Development documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/)
 
 ### Verify CLI
 
@@ -198,90 +229,43 @@ ______________________________________________________________________
 topmark [COMMAND] [OPTIONS] [PATHS]...
 ```
 
-### Subcommands
-
-| Command               | Description                                                                   |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `check`               | Add or update TopMark headers                                                 |
-| `strip`               | Remove TopMark headers                                                        |
-| `probe`               | Explain file-type and processor resolution                                    |
-| `config check`        | Check the merged config for errors.                                           |
-| `config defaults`     | Show the built-in default TopMark TOML document                               |
-| `config dump`         | Show resolved configuration (merged TOML), optionally with layered provenance |
-| `config init`         | Output the bundled example TopMark TOML resource with documentation           |
-| `registry filetypes`  | List supported file types from the registry                                   |
-| `registry processors` | List header processors and mappings from the registry                         |
-| `registry bindings`   | List effective filetype to processor bindings                                 |
-| `version`             | Print version (PEP 440 or SemVer)                                             |
-
-### Examples
+The most common workflow is:
 
 ```bash
-# Preview (dry-run)
-topmark check src/
+topmark check .           # preview which files would change
+topmark check --diff .    # preview unified diffs
+topmark check --apply .   # add/update headers
 
-# Apply in place
-topmark check --apply src/
-
-# Remove headers (dry-run)
-topmark strip src/
-
-# Remove headers and apply changes
-topmark strip --apply src/
-
-# Treat config warnings as errors for this run
-topmark check --strict src/
-
-# Explain how TopMark resolves a file type and processor
-topmark probe README.md
-
-# Show candidate scores and match signals
-topmark probe -vv README.md
-
-# Filter file types (by local identifier):
-topmark check --include-file-types python src/
-
-# Filter file types (by qualified identifier):
-topmark check --include-file-types topmark:python src/
-
-# Process one file's content from STDIN
-cat README.md | topmark check - --stdin-filename README.md
-
-# Show why a path was filtered by discovery rules
-topmark probe __pycache__/example.cpython-312.pyc
-
-# Inspect merged configuration with layered provenance
-topmark config dump --show-layers
-
-# Emit machine-readable config provenance + flattened config
-topmark config dump --show-layers --output-format json
-
-# Show supported file types in Markdown format
-topmark registry filetypes --output-format markdown --long
-
-# List effective filetype to processor bindings
-topmark registry bindings --output-format markdown --long
+topmark strip .           # preview which files would change
+topmark strip --diff .    # preview unified diffs
+topmark strip --apply .   # remove headers
 ```
 
-> Note:
->
-> - `-v` / `--verbose` applies only to TEXT output.
-> - `-q` / `--quiet` is available only on commands that support TEXT output suppression, such as
->   `check`, `strip`, `probe`, `config check`, and `config dump`.
-> - Pure informational content-producing commands such as `version`, `config defaults`,
->   `config init`, and registry commands do not support `--quiet`.
-> - TopMark does not provide a `--stdin` flag. Use the POSIX-style `-` PATH sentinel together with
->   `--stdin-filename NAME` when reading one file's content from STDIN.
-> - File-agnostic commands such as `version`, `config defaults`, `config init`, and registry
->   commands reject positional paths and file-processing STDIN modes.
-> - Markdown output is document-oriented and ignores TEXT-only verbosity controls.
-> - JSON/NDJSON output is machine-readable and also ignores TEXT-only verbosity controls.
-> - `topmark probe` also reports explicitly requested paths that were filtered out before
->   resolution, distinguishing between path filters, file-type filters, and a generic fallback.
+Common commands:
 
-TopMark preserves standard line endings (LF, CRLF, CR), shebangs, BOMs, and file-specific
-indentation rules. Non-standard Unicode newline separators (NEL/LS/PS) are treated as ordinary
-content rather than physical line endings.
+| Command            | Purpose                                                 |
+| ------------------ | ------------------------------------------------------- |
+| `topmark check`    | Validate, preview, and optionally apply TopMark headers |
+| `topmark strip`    | Preview and remove TopMark-managed headers              |
+| `topmark probe`    | Explain file-type and processor resolution              |
+| `topmark config`   | Inspect, validate, and generate configuration           |
+| `topmark registry` | Inspect file types, processors, and bindings            |
+| `topmark version`  | Print version and environment information               |
+
+Useful diagnostics while adopting TopMark:
+
+```bash
+topmark probe README.md
+topmark config dump --show-layers
+topmark registry filetypes
+```
+
+All available commands, shared options, output formats, STDIN behavior, and exit codes are
+documented in:
+
+- [Command-line interface (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/cli/)
+- [Command reference (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/commands/check/)
+- [Exit codes (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/exit-codes/)
 
 ### Exit codes (CI / scripting)
 
@@ -326,34 +310,18 @@ A minimal project configuration looks like this:
 root = true
 
 [fields]
-project = "TopMark"
+project = "ACME Project"
 license = "MIT"
-copyright = "(c) 2025 Olivier Biot"
 
 [header]
-fields = ["file", "file_relpath", "project", "license", "copyright"]
-relative_to = "."
-
-[policy]
-header_mutation_mode = "all"
-allow_header_in_empty_files = false
-empty_insert_mode = "logical_empty"
-render_empty_header_when_no_fields = false
-allow_reflow = false
-allow_content_probe = true
-
-[policy_by_type."topmark:python"]
-allow_header_in_empty_files = true
-
-[files]
-include_file_types = ["topmark:python", "topmark:markdown", "topmark:env"]
-exclude_file_types = ["topmark:html"]
-exclude_from = [".gitignore"]
+fields = ["file", "file_relpath", "project", "license"]
 ```
 
-TopMark can also control mutation policy, empty-file behavior, content probing, and per-file-type
-overrides. File type filters and `policy_by_type` keys accept local identifiers such as `python`
-when unambiguous and qualified identifiers such as `topmark:python` when explicitness matters.
+Generate a documented starter configuration:
+
+```bash
+topmark config init --root > topmark.toml
+```
 
 Use the CLI to inspect the effective configuration:
 
@@ -362,23 +330,27 @@ topmark config dump --show-layers
 topmark config dump --show-layers --output-format json
 ```
 
-Detailed configuration and policy behavior is documented in:
+Detailed configuration, policy, and filtering behavior is documented in:
 
-- [Configuration Guide (hosted docs)](https://topmark.readthedocs.io/en/latest/configuration/discovery/)
-- [Example TOML document](https://github.com/shutterfreak/topmark/blob/main/src/topmark/toml/topmark-example.toml)
-- [Policy Guide (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/policies/)
+- [Configuration guide (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/configuration/)
+- [Configuration discovery and precedence (hosted docs)](https://topmark.readthedocs.io/en/latest/configuration/discovery/)
+- [Policy guide (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/policies/)
 - [Filtering (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/filtering/)
+- [Example TOML document](https://github.com/shutterfreak/topmark/blob/main/src/topmark/toml/topmark.example.toml)
 
 ______________________________________________________________________
 
-## Pre-commit Integration
+## Pre-commit and CI Integration
 
-TopMark includes **pre-commit** hooks for automated header management.
+Add TopMark to `.pre-commit-config.yaml`:
 
-| Hook ID         | Purpose                            |
-| --------------- | ---------------------------------- |
-| `topmark-check` | Validate headers (non-destructive) |
-| `topmark-apply` | Apply header updates (manual)      |
+```yaml
+repos:
+  - repo: https://github.com/shutterfreak/topmark
+    rev: v1.0.0
+    hooks:
+      - id: topmark-check
+```
 
 Install hooks:
 
@@ -387,11 +359,21 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-Manual header fix (safe interactive mode):
+For CI validation, run TopMark without `--apply`:
 
 ```bash
-pre-commit run topmark-apply --hook-stage manual --all-files
+topmark config check --strict
+topmark check .
 ```
+
+Exit code `2` means files would require header updates.
+
+Detailed integration guidance is documented in:
+
+- [Getting started (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/getting-started/)
+- [Pre-commit integration (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/pre-commit/)
+- [CI integration (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/ci/)
+- [Exit codes (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/exit-codes/)
 
 ______________________________________________________________________
 
@@ -410,48 +392,26 @@ from pathlib import Path
 
 from topmark import api
 
-paths: list[Path] = [Path("src")]
-
-policy = {
-    "header_mutation_mode": "add_only",
-}
-
-# Dry-run (apply=False) header checks
 result = api.check(
-    paths,
+    [Path("src")],
     apply=False,
-    policy=policy,
     report="actionable",
 )
 
 print(result.summary)
 print(result.had_errors)
-
-# Apply changes
-result = api.check(
-    paths,
-    apply=True,
-)
-
-# Remove headers
-result = api.strip(
-    paths,
-    apply=True,
-)
 ```
 
-For read-only resolution diagnostics, use `api.probe()`, which returns stable public DTOs without
-exposing resolver internals or pipeline objects.
+For read-only resolution diagnostics, use `api.probe()`:
 
 ```python
 from pathlib import Path
 
 from topmark import api
 
-# Explain file-type / processor resolution
-probe_result = api.probe([Path("README.md")])
+result = api.probe([Path("README.md")])
 
-for file_result in probe_result.files:
+for file_result in result.files:
     print(file_result.path, file_result.status, file_result.reason)
 ```
 
@@ -468,33 +428,13 @@ ______________________________________________________________________
 TopMark uses Git-tag-driven package versions via `setuptools-scm`. Versions are derived from Git
 tags at build time rather than maintained manually in `pyproject.toml`.
 
-TopMark follows Semantic Versioning for compatibility intent while Python packaging uses SCM-derived
-PEP 440 versions.
-
-Typical stable-release tag forms are:
-
-- final releases: `vX.Y.Z`
-
-Typical pre-release tag forms are:
-
-- alpha releases: `vX.Y.ZaN`
-- beta releases: `vX.Y.ZbN`
-- release candidates: `vX.Y.ZrcN`
-
-Build and validate artifacts locally:
-
-```bash
-make package-check
-```
-
-Releases are published by GitHub Actions when matching Git tags are pushed.
-
-- prereleases are published to TestPyPI for validation;
-- stable releases are published to PyPI.
+Stable releases are published to PyPI, and pre-releases are validated through TestPyPI before
+promotion.
 
 For detailed release architecture and maintainer guidance, see:
 
-- [Release Process (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/release-process/)
+- [Release process (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/release-process/)
+- [Release workflow (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/release-workflow/)
 - [CI/CD documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
 
 ______________________________________________________________________
@@ -502,38 +442,22 @@ ______________________________________________________________________
 ## Development
 
 For day-to-day development, use the local `.venv` for editor integration and interactive work.
-Automated testing, typing, documentation, and validation still run in isolated environments managed
-by `nox`, which keeps local convenience separate from reproducible QA automation.
+Automated testing, typing, documentation, and validation run in isolated environments managed by
+`nox`.
 
-Typical development workflows:
-
-To run the full QA suite across all supported Python versions:
+Common validation commands:
 
 ```bash
-make test              # nox -s qa (matrix)
-make api-snapshot      # nox -s api_snapshot (matrix)
-```
-
-Run QA for a single Python version:
-
-```bash
-nox -s qa -p 3.13
-nox -s qa_api -p 3.13
-```
-
-For faster iteration:
-
-```bash
-make pytest            # run tests in current interpreter (no nox)
-make format            # formatting
-make lint              # static linting
-make docs-build        # build the docs
-make verify            # formatting, linting, docs, links
+make pytest
+make test
+make docs-build
+make verify
 ```
 
 For contributor setup and validation details, see:
 
 - [Contributing (hosted docs)](https://topmark.readthedocs.io/en/latest/contributing/)
+- [Installation guide (hosted docs)](https://topmark.readthedocs.io/en/latest/install/)
 - [CI/CD and validation documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
 - [Documentation conventions (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/documentation-conventions/)
 

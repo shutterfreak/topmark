@@ -198,7 +198,7 @@ pipeline steps query policy behavior.
 See also:
 
 - [`Configuration discovery`](../configuration/discovery.md)
-- [`Machine-readable output schema`](machine-output.md)
+- [`Machine-readable output schema`](../usage/machine-output.md)
 
 This guarantees:
 
@@ -388,7 +388,7 @@ TopMark exposes configuration state through both human-readable and machine-read
   - [`config defaults`](../usage/commands/config/defaults.md) (built-in default TOML document)
   - [`config init`](../usage/commands/config/init.md) (bundled example TOML resource)
 - Machine-readable formats:
-  - JSON / NDJSON snapshots described in [`machine-output.md`](machine-output.md)
+  - JSON / NDJSON snapshots described in [`machine-output.md`](../usage/machine-output.md)
 
 For [`config check`](../usage/commands/config/check.md), machine-readable output reports effective
 strictness under the key `strict`, reflecting TOML-resolved strictness plus any CLI/API override.
@@ -434,8 +434,8 @@ machine-facing interfaces.
   discovery/merge semantics
 - [`Discovery & Precedence`](../configuration/discovery.md) - layered config discovery, root
   semantics, and precedence
-- [`Machine-readable output schema`](./machine-output.md) - JSON / NDJSON envelope and payload
-  shapes
+- [`Machine-readable output schema`](../usage/machine-output.md) - JSON / NDJSON envelope and
+  payload shapes
 - [`Configuration schema`](./configuration-schema.md) - documented TOML schema and key placement
   rules
 

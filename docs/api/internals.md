@@ -43,7 +43,7 @@ See also:
 - [Resolution](../dev/resolution.md)
 - [Plugins and extensibility](../dev/plugins.md)
 - [API stability and snapshot policy](../dev/api-stability.md)
-- [Machine-readable output](../dev/machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
 
 This section provides generated per-module reference pages (see `tools/docs/gen_api_pages.py`). They

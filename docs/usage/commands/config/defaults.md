@@ -124,7 +124,7 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 The canonical schema, stable `kind` values, and shared conventions are documented here:
 
-- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable output](../../machine-output.md)
 - [Machine-readable format conventions](../../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
@@ -209,7 +209,7 @@ ______________________________________________________________________
 - [Policies](../../policies.md)
 - [Configuration discovery, precedence, and policy](../../../configuration/discovery.md)
 - [Configuration schema](../../../dev/configuration-schema.md)
-- [Machine-readable output](../../../dev/machine-output.md)
+- [Machine-readable output](../../machine-output.md)
 - [Machine-readable format conventions](../../../dev/machine-formats.md)
 - [Exit codes](../../exit-codes.md)
 - [Terminology and Canonical Vocabulary](../../../terminology.md)

@@ -36,7 +36,6 @@ ______________________________________________________________________
 ## Compatibility and output contracts
 
 - [API stability and snapshot policy](api-stability.md)
-- [Machine-readable output](machine-output.md)
 - [Machine-readable format conventions](machine-formats.md)
 
 ______________________________________________________________________

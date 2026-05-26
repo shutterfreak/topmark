@@ -218,7 +218,7 @@ Use `--output-format json` or `--output-format ndjson` to emit output suitable f
 
 For the canonical schema, stable `kind` values, and shared conventions, see:
 
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 
 {% include-markdown "\_snippets/output-contract.md" %}
@@ -411,7 +411,7 @@ ______________________________________________________________________
 - [Shared options](../shared-options.md)
 - [Exit codes](../exit-codes.md)
 - [Header placement rules](../header-placement.md)
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 - [Pre-commit integration](../pre-commit.md)
 - [Terminology and Canonical Vocabulary](../../terminology.md)

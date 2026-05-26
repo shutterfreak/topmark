@@ -157,7 +157,7 @@ ______________________________________________________________________
 - [Policies](../policies.md)
 - [Configuration discovery, precedence, and policy](../../configuration/discovery.md)
 - [Configuration schema](../../dev/configuration-schema.md)
-- [Machine-readable output](../../dev/machine-output.md)
+- [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 - [Exit codes](../exit-codes.md)
 - [Terminology and Canonical Vocabulary](../../terminology.md)

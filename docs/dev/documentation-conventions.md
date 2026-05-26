@@ -72,7 +72,7 @@ introduction.
 
 Use:
 
-```md
+```markdown
 ______________________________________________________________________
 
 ## Section Title
@@ -174,14 +174,14 @@ Cross-references should use stable, descriptive wording.
 
 Prefer:
 
-```md
-See [Machine-readable output](machine-output.md).
+```markdown
+See [Machine-readable output](../usage/machine-output.md).
 ```
 
 Avoid:
 
-```md
-See [here](machine-output.md).
+```markdown
+See [here](../usage/machine-output.md).
 ```
 
 Use the same terminology across page titles, navigation labels, inline references, and related-links
@@ -229,7 +229,8 @@ Examples:
 
 - registry layering and bindings belong in [Registry model](registry-model.md);
 - resolution scoring and ambiguity policy belong in [Resolution](resolution.md);
-- machine-readable JSON and NDJSON schemas belong in [Machine-readable output](machine-output.md);
+- machine-readable JSON and NDJSON schemas belong in
+  [Machine-readable output](../usage/machine-output.md);
 - output-format conventions belong in [Machine-readable format conventions](machine-formats.md);
 - public/internal API boundaries belong in [API stability and snapshot policy](api-stability.md).
 
@@ -267,7 +268,7 @@ hosted documentation.
 
 Use relative links for repository-native contributor or development documents:
 
-```md
+```markdown
 [Contributing](docs/contributing.md)
 [Release process](docs/dev/release-process.md)
 ```
@@ -275,7 +276,7 @@ Use relative links for repository-native contributor or development documents:
 Use hosted documentation links for user-facing generated documentation, generated API references,
 and deep canonical reference pages:
 
-```md
+```markdown
 [Configuration Guide (hosted docs)](https://topmark.readthedocs.io/en/latest/configuration/discovery/)
 ```
 
@@ -304,12 +305,12 @@ contributor notes when the surrounding text carries the full meaning without rel
 
 Prefer GitHub-style alerts for semantic emphasis:
 
-```md
+```markdown
 > [!NOTE]
 > Informational note.
 ```
 
-```md
+```markdown
 > [!CAUTION]
 > Upgrade-impacting compatibility note.
 ```
@@ -317,7 +318,7 @@ Prefer GitHub-style alerts for semantic emphasis:
 Use `[!CAUTION]` for changelog breaking-change summaries. Keep the actual section heading plain and
 anchor-friendly:
 
-```md
+```markdown
 > [!CAUTION] **Breaking changes**
 >
 > - Short upgrade-impacting summary.
@@ -343,7 +344,7 @@ Release entries should use only:
 
 Do not introduce level-4 or deeper headings inside release entries. Use bold list labels instead:
 
-```md
+```markdown
 ### Fixed - 1.0.0
 
 - **Windows atomic writer failure**
@@ -353,19 +354,19 @@ Do not introduce level-4 or deeper headings inside release entries. Use bold lis
 
 Release headings should use this shape:
 
-```md
+```markdown
 \#\# [1.0.0] - 2026-05-11
 ```
 
 Prerelease headings should use the same shape:
 
-```md
+```markdown
 \#\# [1.0.0b3] - 2026-05-11
 ```
 
 Keep-a-Changelog-compatible section headings should use level-3 headings with stable, plain text:
 
-```md
+```markdown
 ### Added - 1.0.0b3
 ### Changed - 1.0.0b3
 ### Fixed - 1.0.0b3
@@ -380,7 +381,7 @@ as `### ⚠️ Breaking Changes`.
 When a release has upgrade-impacting changes, add a GitHub-style caution block immediately before
 the detailed breaking-change section:
 
-```md
+```markdown
 > [!CAUTION] **Breaking changes**
 >
 > - Short upgrade-impacting summary.
@@ -897,7 +898,7 @@ ______________________________________________________________________
 - [Documentation pipeline and reference hygiene](documentation-pipeline.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
 - [API stability and snapshot policy](api-stability.md)
-- [Machine-readable output](machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 - [Configuration schema](configuration-schema.md)
 - [Release process](release-process.md)
 - [Test and validation architecture](../ci/test-validation.md)

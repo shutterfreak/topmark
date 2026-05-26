@@ -12,26 +12,40 @@ topmark:header:end
 
 # Installation
 
-This guide covers how to **install** TopMark for regular use, and how to set up a **development**
-environment that matches our current tooling (`uv`, `noxfile.py`, `Makefile`, and
-[`CONTRIBUTING.md`](./CONTRIBUTING.md)).
+This guide covers:
+
+- installing TopMark for normal CLI usage;
+- testing prereleases;
+- upgrading from earlier TopMark versions;
+- setting up a contributor-oriented development environment.
+
+Hosted user documentation lives at:
+
+- <https://topmark.readthedocs.io/>
 
 ______________________________________________________________________
 
 ## Requirements
 
-- Python **3.10 - 3.14**
-- Git (for cloning and contributing)
-- macOS, Linux, or Windows
+### Regular usage
 
-> For development: `make`, `uv`, `nox`, and optionally `pyenv` to install multiple Python versions.
+- Python **3.10 - 3.14**
+
+### Development and contribution
+
+- Git
+- `make`
+- `uv`
+- `nox`
+- optionally `pyenv` for managing multiple Python versions
+
+TopMark supports macOS, Linux, and Windows.
 
 ______________________________________________________________________
 
-## Quick install (users)
+## Install from PyPI
 
-Stable releases are published on [PyPI](https://pypi.org/project/topmark/). Install TopMark from
-PyPI:
+Stable releases are published on [PyPI](https://pypi.org/project/topmark/).
 
 ```bash
 pip install topmark
@@ -45,9 +59,13 @@ topmark version
 topmark --help
 ```
 
+For a guided first setup, see:
+
+- [Getting started (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/getting-started/)
+
 ______________________________________________________________________
 
-## Install a prerelease from TestPyPI
+## Install prereleases from TestPyPI
 
 Prereleases are published to [TestPyPI](https://test.pypi.org/project/topmark/) before stable PyPI
 publication. To test a prerelease:
@@ -88,17 +106,18 @@ git clone https://github.com/shutterfreak/topmark.git
 cd topmark
 ```
 
-### 2) Create an editor-friendly virtual environment (optional)
+### 2) Create a local development environment (optional)
 
-We keep a project-local `.venv` as the recommended long-term environment for editor integration (for
-example, Pyright import resolution) and interactive development. `uv` manages this environment
-directly. Automated validation environments used by CI and quality checks are still created and
-managed by `nox` (via the `uv` backend), ensuring reproducible and isolated test environments while
+A project-local `.venv` is the recommended environment for editor integration and interactive
+development. `uv` manages this environment directly.
+
+Automated validation environments used by CI and quality checks are still created and managed by
+`nox` (via the `uv` backend), ensuring reproducible and isolated validation environments while
 keeping the local developer workflow simple.
 
 ```bash
 make venv
-make venv-sync-dev  # syncs dev/test/typing extras into .venv
+make venv-sync-all  # syncs dev/docs/test/typing extras into .venv
 ```
 
 Activate it:
@@ -119,9 +138,9 @@ To remove it later:
 make venv-clean
 ```
 
-### 3) Run local checks
+### 3) Run validation commands
 
-Run the core quality gates (formatting, linting, docs build, link checks):
+Run the main validation workflow:
 
 ```bash
 make verify
@@ -141,7 +160,7 @@ make pytest
 make pytest PYTEST_PAR="-n auto"
 ```
 
-### 4) Type checks and property tests (optional)
+### 4) Additional validation workflows
 
 Run Pyright directly (example, from `.venv`):
 
@@ -149,7 +168,7 @@ Run Pyright directly (example, from `.venv`):
 pyright --pythonversion 3.13
 ```
 
-In practice you'll usually run Pyright via `nox` sessions:
+In practice, Pyright is usually run via `nox` sessions:
 
 - `qa`: runs tests (`pytest`) and type checks (`pyright`)
 - `qa_api`: runs tests, the API snapshot check, and type checks (`pyright`)
@@ -182,7 +201,7 @@ make docs-serve
 # visit http://127.0.0.1:8000
 ```
 
-### 6) (Optional) Editable install of TopMark
+### 6) Editable install (optional)
 
 If you want to run `topmark` from your checkout without building a wheel, install the project in
 editable mode inside your active environment:
@@ -274,7 +293,7 @@ Manual uploads are discouraged and should only be used in exceptional cases.
 
 ______________________________________________________________________
 
-## Packaging (maintainers & advanced)
+## Packaging and release validation (maintainers)
 
 Build and validate artifacts locally:
 
@@ -282,16 +301,15 @@ Build and validate artifacts locally:
 make package-check
 ```
 
-For a full deterministic pre-release gate:
+Run the deterministic pre-release validation workflow:
 
 ```bash
 make release-check
 ```
 
-Upload to PyPI (or TestPyPI) is normally handled by `.github/workflows/release.yml` when pushing a
-tag.
+Uploads to PyPI and TestPyPI are normally handled by GitHub Actions when release tags are pushed.
 
-Manual upload (maintainers only):
+Manual uploads are intended only for exceptional maintainer workflows:
 
 ```bash
 twine upload dist/*
@@ -299,11 +317,7 @@ twine upload dist/*
 twine upload --repository testpypi dist/*
 ```
 
-Releases are normally published by CI when you push a tag (see
-[`CONTRIBUTING.md`](./CONTRIBUTING.md) for details).
-
-TopMark uses **Git tags as the single source of truth** for published package versions. Versions are
-derived at build time via `setuptools-scm`, and built artifacts include generated version metadata.
+TopMark uses Git tags as the single source of truth for package versions via `setuptools-scm`.
 
 ______________________________________________________________________
 
@@ -340,6 +354,9 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-For contribution guidelines, testing strategies, and release policies, see:
+Further reading:
 
+- [Getting started (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/getting-started/)
 - [Contributing (hosted docs)](https://topmark.readthedocs.io/en/latest/contributing/)
+- [CI/CD documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/)
+- [Development documentation (hosted docs)](https://topmark.readthedocs.io/en/latest/dev/)

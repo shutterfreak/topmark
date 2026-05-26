@@ -12,20 +12,36 @@ topmark:header:end
 
 # Installation guide
 
-This page exists to preserve internal documentation links when the MkDocs site is built in strict
-mode. The canonical installation and development-environment guide lives at the repository root
-(`INSTALL.md`).
+This page summarizes TopMark installation and development-environment setup.
 
-👉 **Read the canonical installation guide on GitHub:**
+The canonical installation and contributor setup guide lives at the repository root in `INSTALL.md`.
+
+Read the canonical installation guide on GitHub:
 
 - <https://github.com/shutterfreak/topmark/blob/main/INSTALL.md>
 
 If you are viewing this from the published documentation site, the link above opens the same
 document in the repository with GitHub-native rendering and navigation.
 
+## Install from PyPI
+
+```bash
+pip install topmark
+```
+
+Verify the CLI:
+
+```bash
+topmark version
+```
+
+For a guided first setup, continue with:
+
+- [Getting started](usage/getting-started.md)
+
 ______________________________________________________________________
 
-## Upgrading from TopMark 0.11.x or earlier
+## Upgrade from TopMark 0.11.x or earlier
 
 TopMark 1.0 includes breaking changes to:
 
@@ -40,8 +56,10 @@ Before upgrading an existing repository, review:
 
 ______________________________________________________________________
 
-## See also
+## Further reading
 
-- [Documentation index](index.md)
+- [Getting started](usage/getting-started.md)
+- [Usage documentation](usage/index.md)
 - [Configuration overview](configuration/index.md)
 - [CI and validation](ci/index.md)
+- [Contributing](contributing.md)

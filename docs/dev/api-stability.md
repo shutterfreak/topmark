@@ -26,7 +26,7 @@ See also:
 - [Public API](../api/public.md)
 - [Registry model](registry-model.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
-- [Machine-readable output](machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 - [Machine-readable format conventions](machine-formats.md)
 - [Configuration discovery, precedence, and policy](../configuration/index.md)
 - [Release Process](release-process.md)
@@ -204,7 +204,7 @@ These identifiers are intentionally shared across:
 
 See also:
 
-- [Machine-readable output](machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 - [Machine-readable format conventions](machine-formats.md)
 
 ______________________________________________________________________
@@ -324,7 +324,7 @@ ______________________________________________________________________
 - [Public API](../api/public.md)
 - [Registry model](registry-model.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
-- [Machine-readable output](machine-output.md)
+- [Machine-readable output](../usage/machine-output.md)
 - [Machine-readable format conventions](machine-formats.md)
 - [Release Process](release-process.md)
 - [Test and validation architecture](../ci/test-validation.md)
