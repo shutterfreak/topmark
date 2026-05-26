@@ -12,7 +12,7 @@
 
 This module maps backend-agnostic semantic style roles
 ([`StyleRole`][topmark.core.presentation.StyleRole]) to concrete terminal styling callables
-(currently backed by yachalk).
+(currently backed by Rich).
 
 Design goals:
     * Keep all ANSI / terminal styling confined to the CLI layer.
@@ -44,15 +44,17 @@ Example: custom theme with overrides
 ------------------------------------
 
 ```py
-from yachalk import chalk
-from topmark.cli.presentation import Theme, DEFAULT_THEME, style_for_role
+from topmark.cli.presentation import DEFAULT_THEME
+from topmark.cli.presentation import Theme
+from topmark.cli.presentation import rich_styler
+from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
 
 custom_theme = Theme(
     base=DEFAULT_THEME.base,
     overrides={
-        StyleRole.ERROR: chalk.bg_red.white.bold,
-        StyleRole.WARNING: chalk.yellow,
+        StyleRole.ERROR: rich_styler("bold white on red"),
+        StyleRole.WARNING: rich_styler("yellow"),
     },
 )
 
@@ -70,14 +72,14 @@ override dictionaries:
 soft_theme = Theme(
     base=DEFAULT_THEME.base,
     overrides={
-        StyleRole.CHANGED: chalk.cyan,
+        StyleRole.CHANGED: rich_styler("cyan"),
     },
 )
 
 minimal_theme = Theme(
     base=soft_theme.base,
     overrides={
-        StyleRole.ERROR: chalk.red,
+        StyleRole.ERROR: rich_styler("red"),
     },
 )
 ```
@@ -91,14 +93,53 @@ from __future__ import annotations
 from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Final
 from typing import TypeAlias
 
-from yachalk import chalk
+from rich.console import Console as RichConsole
+from rich.text import Text
 
 from topmark.core.presentation import StyleRole
 
 TextStyler: TypeAlias = Callable[[str], str]
 """Callable which styles a str."""
+
+_RICH_CONSOLE: Final[RichConsole] = RichConsole(
+    color_system="standard",
+    force_terminal=True,
+    legacy_windows=False,
+    no_color=False,
+    soft_wrap=True,
+    width=120,
+)
+
+
+def rich_styler(style: str) -> TextStyler:
+    """Return a `TextStyler` backed by Rich.
+
+    The returned callable preserves the existing TopMark presentation contract:
+    callers pass a plain string and receive a string containing terminal styling
+    sequences. Rich renderables remain confined to this CLI adapter module.
+
+    This helper is intended for programmatic theme definitions and test-specific
+    theme overrides. It is not a user-facing configuration API; serialized theme
+    configuration should be designed separately if TopMark adds configurable
+    palettes in the future.
+
+    Args:
+        style: Rich style expression, such as `"bold red"` or `"cyan dim"`.
+
+    Returns:
+        A callable that renders text using the requested Rich style.
+    """
+
+    def apply_style(text: str) -> str:
+        rich_text = Text(text, style=style)
+        with _RICH_CONSOLE.capture() as capture:
+            _RICH_CONSOLE.print(rich_text, end="")
+        return capture.get()
+
+    return apply_style
 
 
 def no_style_for_role(s: str) -> str:
@@ -108,33 +149,33 @@ def no_style_for_role(s: str) -> str:
 
 DEFAULT_STYLE_ROLE_MAPPING: dict[StyleRole, TextStyler] = {
     # Severities
-    StyleRole.INFO: chalk.blue,
-    StyleRole.WARNING: chalk.yellow_bright,
-    StyleRole.ERROR: chalk.red_bright.bold,
+    StyleRole.INFO: rich_styler("blue"),
+    StyleRole.WARNING: rich_styler("bright_yellow"),
+    StyleRole.ERROR: rich_styler("bold bright_red"),
     # Generic outcomes / states
-    StyleRole.OK: chalk.green,
-    StyleRole.MUTED: chalk.gray,
-    StyleRole.EMPHASIS: chalk.bold,
-    StyleRole.ITALIC: chalk.italic,
+    StyleRole.OK: rich_styler("green"),
+    StyleRole.MUTED: rich_styler("grey50"),
+    StyleRole.EMPHASIS: rich_styler("bold"),
+    StyleRole.ITALIC: rich_styler("italic"),
     # Change semantics
-    StyleRole.UNCHANGED: chalk.green,
-    StyleRole.WOULD_CHANGE: chalk.yellow_bright.bold,
-    StyleRole.CHANGED: chalk.green_bright.bold,
+    StyleRole.UNCHANGED: rich_styler("green"),
+    StyleRole.WOULD_CHANGE: rich_styler("bold bright_yellow"),
+    StyleRole.CHANGED: rich_styler("bold bright_green"),
     # Other common buckets
-    StyleRole.SKIPPED: chalk.blue,
-    StyleRole.UNSUPPORTED: chalk.magenta,
-    StyleRole.BLOCKED_POLICY: chalk.red,
-    StyleRole.PENDING: chalk.gray.italic,
+    StyleRole.SKIPPED: rich_styler("blue"),
+    StyleRole.UNSUPPORTED: rich_styler("magenta"),
+    StyleRole.BLOCKED_POLICY: rich_styler("red"),
+    StyleRole.PENDING: rich_styler("italic grey50"),
     # Unified diffs
-    StyleRole.DIFF_HEADER: chalk.bold.cyan,
-    StyleRole.DIFF_META: chalk.italic.blue,
-    StyleRole.DIFF_ADD: chalk.bold.green,
-    StyleRole.DIFF_DEL: chalk.bold.red,
-    StyleRole.DIFF_LINE_NO: chalk.white.dim,
+    StyleRole.DIFF_HEADER: rich_styler("bold cyan"),
+    StyleRole.DIFF_META: rich_styler("italic blue"),
+    StyleRole.DIFF_ADD: rich_styler("bold green"),
+    StyleRole.DIFF_DEL: rich_styler("bold red"),
+    StyleRole.DIFF_LINE_NO: rich_styler("dim white"),
     # Generic formats
-    StyleRole.HEADING_TITLE: chalk.bold.underline,
-    StyleRole.MARKER_LINE: chalk.cyan.dim,
-    StyleRole.CONFIG_FILE: chalk.cyan,
+    StyleRole.HEADING_TITLE: rich_styler("bold underline"),
+    StyleRole.MARKER_LINE: rich_styler("dim cyan"),
+    StyleRole.CONFIG_FILE: rich_styler("cyan"),
 }
 
 
@@ -147,10 +188,14 @@ class Theme:
     Lookups are performed in this order:
         1) overrides (if provided)
         2) base mapping
-        3) `_noop` fallback
+        3) `no_style_for_role` fallback
 
     This keeps the default styling stable while allowing caller-controlled theming
     (e.g., alternate palettes, accessibility themes, tests).
+
+    Themes intentionally remain immutable, mapping-based value objects. This keeps
+    the semantic styling boundary small, strictly typed, and independent from any
+    future user-facing theme configuration format.
 
     Attributes:
         base: Base mapping from `StyleRole` to a `TextStyler`.
@@ -179,7 +224,7 @@ def style_for_role(
     """Return a string styler for the given semantic `StyleRole`.
 
     This function maps core semantic roles onto concrete terminal styling.
-    It is intentionally CLI-only (depends on `yachalk`).
+    It is intentionally CLI-only and depends on Rich through this adapter module.
 
     Callers should still gate styling themselves when color is disabled and
     fall back to a no-op.
@@ -208,7 +253,7 @@ def maybe_style(
 
     Args:
         text: Input text to render.
-        styler: Callable that applies styling to a string (for example, a `chalk.*` function).
+        styler: Callable that applies styling to a string.
         styled: When False, return `text` unchanged.
 
     Returns:

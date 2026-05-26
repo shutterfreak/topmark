@@ -599,15 +599,6 @@ wheels = [
 ]
 
 [[package]]
-name = "importlib-resources"
-version = "7.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e4/06/b56dfa750b44e86157093bc8fca0ab81dccbf5260510de4eaf1cb69b5b99/importlib_resources-7.1.0.tar.gz", hash = "sha256:0722d4c6212489c530f2a145a34c0a7a3b4721bc96a15fada5930e2a0b760708", size = 44985, upload-time = "2026-04-12T16:36:09.232Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/db/55a262f3606bebcae07cc14095338471ad7c0bbcaa37707e6f0ee49725b7/importlib_resources-7.1.0-py3-none-any.whl", hash = "sha256:1bd7b48b4088eddb2cd16382150bb515af0bd2c70128194392725f82ad2c96a1", size = 37232, upload-time = "2026-04-12T16:36:08.219Z" },
-]
-
-[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1556,15 +1547,6 @@ wheels = [
 ]
 
 [[package]]
-name = "setuptools"
-version = "82.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4f/db/cfac1baf10650ab4d1c111714410d2fbb77ac5a616db26775db562c8fab2/setuptools-82.0.1.tar.gz", hash = "sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9", size = 1152316, upload-time = "2026-03-09T12:47:17.221Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/76/f789f7a86709c6b087c5a2f52f911838cad707cc613162401badc665acfe/setuptools-82.0.1-py3-none-any.whl", hash = "sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb", size = 1006223, upload-time = "2026-03-09T12:47:15.026Z" },
-]
-
-[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1675,9 +1657,9 @@ dependencies = [
     { name = "click" },
     { name = "packaging" },
     { name = "pathspec" },
+    { name = "rich" },
     { name = "tomlkit" },
     { name = "typing-extensions" },
-    { name = "yachalk" },
 ]
 
 [package.optional-dependencies]
@@ -1709,6 +1691,7 @@ docs = [
     { name = "mkdocstrings", extra = ["python"] },
     { name = "pydocstringformatter" },
     { name = "pymdown-extensions" },
+    { name = "rich" },
     { name = "ruff" },
     { name = "typing-extensions" },
 ]
@@ -1751,6 +1734,8 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'", specifier = ">=9.0.1,<10.0.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=7.1.0,<8.0.0" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3.8.0,<4.0.0" },
+    { name = "rich", specifier = ">=15.0.0,<16.0.0" },
+    { name = "rich", marker = "extra == 'docs'", specifier = ">=15.0.0,<16.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.14.5,<0.16.0" },
     { name = "ruff", marker = "extra == 'docs'", specifier = ">=0.14.5,<0.16.0" },
     { name = "taplo", marker = "extra == 'dev'", specifier = ">=0.9.3,<0.10.0" },
@@ -1759,7 +1744,6 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.15.0,<5.0.0" },
     { name = "typing-extensions", marker = "extra == 'docs'", specifier = ">=4.15.0,<5.0.0" },
     { name = "uv", marker = "extra == 'dev'", specifier = ">=0.5.0,<0.12.0" },
-    { name = "yachalk", specifier = ">=0.1.8,<0.2.0" },
 ]
 provides-extras = ["dev", "docs", "test", "typing"]
 
@@ -1909,19 +1893,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2c/ee/afaf0f85a9a18fe47a67f1e4422ed6cf1fe642f0ae0a2f81166231303c52/wcwidth-0.7.0.tar.gz", hash = "sha256:90e3a7ea092341c44b99562e75d09e4d5160fe7a3974c6fb842a101a95e7eed0", size = 182132, upload-time = "2026-05-02T16:04:12.653Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/41/52/e465037f5375f43533d1a80b6923955201596a99142ed524d77b571a1418/wcwidth-0.7.0-py3-none-any.whl", hash = "sha256:5d69154c429a82910e241c738cd0e2976fac8a2dd47a1a805f4afed1c0f136f2", size = 110825, upload-time = "2026-05-02T16:04:11.033Z" },
-]
-
-[[package]]
-name = "yachalk"
-version = "0.1.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "importlib-resources" },
-    { name = "setuptools" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/5b/e6/17b8642bc554083ca149f69c6b61a801e81afcbd60bb4aa22783d54322ed/yachalk-0.1.8.tar.gz", hash = "sha256:bb9b52fda52f34679c9b13d4284a8603eacb9da9d6365b870e0a0c8c41ea9382", size = 17079, upload-time = "2025-10-10T15:50:05.887Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/3f/233733fddeaf60920d0e08f94e862b5b178c07740342623d00d02211c16f/yachalk-0.1.8-py3-none-any.whl", hash = "sha256:9667709f53a6121b2b272f1e31a77259b98308b267ce8a8591e26e76a9517fb3", size = 13928, upload-time = "2025-10-10T15:50:05.04Z" },
 ]
 
 [[package]]

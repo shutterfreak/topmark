@@ -79,9 +79,10 @@ Completed stabilization themes:
 - the first stable-line patch-release work fixed concrete post-1.0 correctness issues, including
   diff output preservation with pruned pipeline views and collision-safe Markdown diff fences;
 - in-memory and streaming pipeline support, richer staged diagnostics exposure, registry
-  query/filter commands, schema versioning, Rich / `rich-click` migration, possible command-help
-  documentation generation, Markdown output refactoring, and broader workflow factoring are
-  explicitly deferred beyond 1.0.
+  query/filter commands, schema versioning, `rich-click` migration, possible command-help
+  documentation generation, Markdown output refactoring, and broader workflow factoring remain
+  explicitly deferred beyond 1.0, while the presentation styling backend has now been migrated from
+  `yachalk` to `rich` behind the existing semantic adapter.
 
 After the final 1.0 release, remaining work is no longer broad architectural redesign. It is limited
 to ecosystem observation, downstream compatibility checks, documentation clarifications, stable 1.x
@@ -294,8 +295,8 @@ The remaining work after `1.0.0` is intentionally narrow and governance-oriented
 - preserving documentation and output-contract consistency;
 - monitoring the finalized CI/release metadata and uv-cache ownership model across ongoing workflow
   runs;
-- planning a possible `rich-click` migration and generated command-help documentation workflow;
-- planning a possible replacement of `yachalk` with `rich` in the presentation layer;
+- planning a possible `rich-click` migration and generated command-help documentation workflow now
+  that the presentation layer itself uses `rich` behind the existing semantic styling adapter;
 - planning the streaming pipeline architecture direction initiated while fixing issue #52;
 - and maintaining explicit post-1.0 scope boundaries.
 
@@ -433,13 +434,14 @@ Human output:
 - keeps TEXT as the console-oriented format;
 - keeps Markdown document-oriented;
 - keeps verbosity/quiet behavior TEXT-specific;
-- and keeps semantic styling routed through the current `yachalk`-based presentation layer.
+- and keeps semantic styling routed through the current `rich`-backed presentation adapter.
 
-Rich or `rich-click` migration remains explicitly deferred beyond 1.0 unless a concrete release
-blocker appears. Post-1.0 planning may evaluate replacing `yachalk` with `rich`, adopting
-`rich-click` for command help rendering, auto-generating command help pages instead of fully
-hand-curating `docs/usage/cli.md` and `docs/usage/commands/`, and refactoring Markdown output where
-that naturally follows from a richer presentation backend.
+The `yachalk` replacement has now been completed by routing semantic styling through a `rich`-backed
+presentation adapter while preserving the existing styling roles and output boundaries. Remaining
+post-1.0 presentation planning may evaluate adopting `rich-click` for command help rendering,
+auto-generating command help pages instead of fully hand-curating `docs/usage/cli.md` and
+`docs/usage/commands/`, and refactoring Markdown output only where that naturally follows from a
+richer presentation backend.
 
 Remaining work is limited to compatibility validation, wording consistency, and downstream consumer
 verification.
@@ -450,8 +452,9 @@ Presentation modernization is explicitly post-1.0 work.
 
 Potential future work includes:
 
-- replacing `yachalk` with `rich` while preserving semantic styling roles, `NO_COLOR` behavior,
-  non-TTY behavior, and deterministic test output;
+- maintaining the completed `yachalk` to `rich` migration behind the existing semantic styling
+  adapter while preserving semantic styling roles, `NO_COLOR` behavior, non-TTY behavior, and
+  deterministic test output;
 - adopting `rich-click` for richer command help output while preserving Click-compatible command
   semantics;
 - evaluating whether command help pages can be generated from the CLI instead of fully hand-curating
@@ -666,6 +669,6 @@ terminology stability, and cross-platform installation behavior.
 The stable 1.x maintenance path is now limited to preserving compatibility, validating published
 artifacts after release, monitoring the CI coverage signal, observing the finalized CI/release
 metadata and cache-ownership model across real workflow runs, and applying focused compatibility or
-correctness fixes only. New broad scope, architectural churn, presentation-backend migration,
-streaming pipeline redesign, generated command-help documentation, and output-contract redesign
-remain out of scope unless required by a concrete stable 1.x issue.
+correctness fixes only. New broad scope, architectural churn, `rich-click` adoption, streaming
+pipeline redesign, generated command-help documentation, and output-contract redesign remain out of
+scope unless required by a concrete stable 1.x issue.
