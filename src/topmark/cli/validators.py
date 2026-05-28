@@ -72,6 +72,17 @@ LOG_LEVELS: dict[str, int] = {
 # ---- Reusable validators ----
 
 
+def _join_option_list(options: list[str]) -> str:
+    """Return option names joined for a human-readable diagnostic message."""
+    if len(options) == 1:
+        return options[0]
+    if len(options) == 2:
+        return " and ".join(options)
+
+    opts: str = ", ".join(options[:-1])
+    return f"{opts} and {options[-1]}"
+
+
 def _extra_arg_matches_option(arg: str, opt: str) -> bool:
     """Return whether an extra argument is the given option spelling.
 
@@ -168,7 +179,7 @@ def validate_mutually_exclusive(
     cmd: str = ctx.command_path
     if message is None:
         # Keep message stable and easy to read.
-        joined: str = " and ".join(enabled) if len(enabled) == 2 else ", ".join(enabled)
+        joined: str = _join_option_list(enabled)
         message = f"{cmd}: {joined} are mutually exclusive."
 
     raise TopmarkCliUsageError(message)
@@ -205,12 +216,7 @@ def validate_machine_format_forbids_flags(
         return
 
     cmd: str = ctx.command_path
-    if len(enabled) == 1:
-        opts: str = enabled[0]
-    elif len(enabled) == 2:
-        opts = " and ".join(enabled)
-    else:
-        opts = ", ".join(enabled)
+    opts: str = _join_option_list(enabled)
 
     raise TopmarkCliUsageError(f"{cmd}: {CliOpt.OUTPUT_FORMAT}={fmt.value}: {opts} {reason}")
 
@@ -473,7 +479,10 @@ def validate_output_verbosity_policy(
                 ignored.append(CliOpt.QUIET)
                 state.quiet = False
 
-            logger.debug("Ignoring TEXT-only CLI options: %s", ", ".join(ignored))
+            logger.debug(
+                "Ignoring TEXT-only CLI options: %s",
+                _join_option_list(ignored),
+            )
         return
 
     validate_mutually_exclusive(

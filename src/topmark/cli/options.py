@@ -344,7 +344,7 @@ def _trap_underscored_option(ctx: click.Context, param: click.Option, _value: ob
 
     bad: str = param.opts[0] if param.opts else "--?"
     suggestion: str = bad.replace("_", "-")
-    raise click.UsageError(f"Unknown option: {bad}. Did you mean {suggestion}?")
+    raise click.UsageError(f"Unknown option: '{bad}'. Did you mean '{suggestion}'?")
 
 
 def option_with_underscore_traps(
@@ -354,11 +354,15 @@ def option_with_underscore_traps(
     """Like `click.option`, but also traps underscored spellings.
 
     For each canonical long option declaration of the form `--foo-bar`, this helper
-    also registers a hidden eager option `--foo_bar` that raises a helpful error
+    also registers a hidden eager flag `--foo_bar` that raises a helpful error
     suggesting the hyphenated spelling.
 
     The trap is attached alongside the real option so call sites don't need to
     remember to register traps separately.
+
+    Trap options are always flags, even when the canonical option takes a value.
+    This ensures underscored spellings are rejected immediately instead of being
+    parsed as value-taking options.
 
     Args:
         *param_decls: Click option declarations (e.g. `"--verbose"`, `"-v"`).
@@ -392,7 +396,7 @@ def option_with_underscore_traps(
         hidden=True,
         expose_value=False,
         is_eager=True,
-        multiple=True,
+        is_flag=True,
         callback=_trap_underscored_option,
     )
 
@@ -443,7 +447,9 @@ def enum_value_help_text(
         raw_value: str = str(member.value)
         rendered_value: str = raw_value.replace("_", "-")
         if raw_value == default_value:
-            rendered_value = f"{rendered_value} (default)"
+            rendered_value = f"'{rendered_value}' (default)"
+        else:
+            rendered_value = f"'{rendered_value}'"
         rendered_values.append(rendered_value)
         if "_" in raw_value:
             underscore_values.append(raw_value)
