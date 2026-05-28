@@ -98,7 +98,7 @@ def test_validate_mutually_exclusive_joins_three_options() -> None:
 
     with pytest.raises(
         TopmarkCliUsageError,
-        match="--one, --two and --three are mutually exclusive",
+        match="--one, --two, and --three are mutually exclusive",
     ):
         validate_mutually_exclusive(
             ctx,

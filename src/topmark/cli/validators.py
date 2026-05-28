@@ -36,6 +36,7 @@ import click
 from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
+from topmark.cli.keys import CliShortOpt
 from topmark.cli.state import get_cli_state
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
@@ -72,15 +73,34 @@ LOG_LEVELS: dict[str, int] = {
 # ---- Reusable validators ----
 
 
+_OPTION_SHORT_ALIASES: dict[str, str] = {
+    CliOpt.VERBOSE: CliShortOpt.VERBOSE,
+    CliOpt.QUIET: CliShortOpt.QUIET,
+}
+
+
+def _format_option_label(option: str) -> str:
+    """Return a user-facing option label, including a short alias when known."""
+    short_alias: str | None = _OPTION_SHORT_ALIASES.get(option)
+    if short_alias is None:
+        return option
+    return f"{option} ({short_alias})"
+
+
+def _format_option_labels(options: list[str]) -> list[str]:
+    """Return user-facing option labels for a list of option spellings."""
+    return [_format_option_label(option) for option in options]
+
+
 def _join_option_list(options: list[str]) -> str:
-    """Return option names joined for a human-readable diagnostic message."""
+    """Return option labels joined for a human-readable diagnostic message."""
     if len(options) == 1:
         return options[0]
     if len(options) == 2:
         return " and ".join(options)
 
     opts: str = ", ".join(options[:-1])
-    return f"{opts} and {options[-1]}"
+    return f"{opts}, and {options[-1]}"
 
 
 def _extra_arg_matches_option(arg: str, opt: str) -> bool:
@@ -127,8 +147,9 @@ def validate_common_forbidden_path_command_options_in_extra_args(
     extra_args: list[str] = list(ctx.args)
     for opt, reason in _FORBIDDEN_PATH_COMMAND_OPTS_IN_EXTRA_ARGS.items():
         if any(_extra_arg_matches_option(arg, opt) for arg in extra_args):
+            opt_label: str = _format_option_label(opt)
             raise TopmarkCliUsageError(
-                f"Option '{opt}' is not supported for '{ctx.command_path}'. {reason}"
+                f"{ctx.command_path}: option {opt_label} is not supported. {reason}"
             )
 
 
@@ -146,8 +167,9 @@ def validate_forbidden_options_in_extra_args(
     extra_args: list[str] = list(ctx.args)
     for opt, reason in forbidden_opts.items():
         if any(_extra_arg_matches_option(arg, opt) for arg in extra_args):
+            opt_label: str = _format_option_label(opt)
             raise TopmarkCliUsageError(
-                f"Option '{opt}' is not supported for '{ctx.command_path}'. {reason}"
+                f"{ctx.command_path}: option {opt_label} is not supported. {reason}"
             )
 
 
@@ -178,8 +200,7 @@ def validate_mutually_exclusive(
 
     cmd: str = ctx.command_path
     if message is None:
-        # Keep message stable and easy to read.
-        joined: str = _join_option_list(enabled)
+        joined: str = _join_option_list(_format_option_labels(enabled))
         message = f"{cmd}: {joined} are mutually exclusive."
 
     raise TopmarkCliUsageError(message)
@@ -216,7 +237,7 @@ def validate_machine_format_forbids_flags(
         return
 
     cmd: str = ctx.command_path
-    opts: str = _join_option_list(enabled)
+    opts: str = _join_option_list(_format_option_labels(enabled))
 
     raise TopmarkCliUsageError(f"{cmd}: {CliOpt.OUTPUT_FORMAT}={fmt.value}: {opts} {reason}")
 
@@ -481,7 +502,7 @@ def validate_output_verbosity_policy(
 
             logger.debug(
                 "Ignoring TEXT-only CLI options: %s",
-                _join_option_list(ignored),
+                _join_option_list(_format_option_labels(ignored)),
             )
         return
 

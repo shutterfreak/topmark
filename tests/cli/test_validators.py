@@ -118,7 +118,7 @@ def test_validate_common_forbidden_path_options_rejects_stdin(arg: str) -> None:
 
     with pytest.raises(
         TopmarkCliUsageError,
-        match=r"Option '--stdin' is not supported for 'topmark-test'",
+        match=r"topmark-test: option --stdin is not supported.",
     ):
         validate_common_forbidden_path_command_options_in_extra_args(ctx)
 
@@ -129,7 +129,7 @@ def test_validate_forbidden_options_in_extra_args_rejects_custom_option() -> Non
 
     with pytest.raises(
         TopmarkCliUsageError,
-        match=r"Option '--unsafe' is not supported for 'topmark-test'. not allowed",
+        match=r"topmark-test: option --unsafe is not supported. not allowed",
     ):
         validate_forbidden_options_in_extra_args(
             ctx,
@@ -405,7 +405,7 @@ def test_validate_output_verbosity_policy_rejects_text_verbose_and_quiet() -> No
 
     with pytest.raises(
         TopmarkCliUsageError,
-        match=r"topmark-test: --verbose and --quiet are mutually exclusive.",
+        match=r"topmark-test: --verbose \(-v\) and --quiet \(-q\) are mutually exclusive.",
     ):
         validate_output_verbosity_policy(
             ctx,
