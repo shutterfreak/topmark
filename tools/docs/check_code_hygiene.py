@@ -36,10 +36,11 @@ EXCLUDED_DIR_NAMES: Final[frozenset[str]] = frozenset(
     {
         ".git",
         ".nox",
-        ".tox",
+        ".pytest_cache",
+        ".tox",  # defensive exclusion for legacy/local environments
+        ".uv-release-test-env",
         ".venv",
         ".venv-docs",
-        ".uv-release-test-env",
         "__pycache__",
         "build",
         "dist",
