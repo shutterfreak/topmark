@@ -279,9 +279,9 @@ ______________________________________________________________________
 TopMark maintains a stable public 1.x API across Python 3.10-3.14.
 
 ```bash
-make api-snapshot-dev         # quick local check
-make api-snapshot             # tox matrix check
-make api-snapshot-update      # regenerate snapshot (interactive)
+make api-snapshot-dev           # quick local check
+make api-snapshot               # API snapshot (nox matrix check)
+make api-snapshot-update        # regenerate snapshot (interactive)
 make api-snapshot-ensure-clean  # fail if snapshot differs from Git index
 ```
 

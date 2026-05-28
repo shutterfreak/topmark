@@ -258,7 +258,7 @@ typeCheckingMode = "strict"
 # Editor-only integration:
 # The settings below help your **editor** (VS Code Pyright extension) resolve imports
 # from a local convenience environment (e.g. `.venv`). They are **not** used by CI,
-# because our actual type checks run inside tox-managed environments where Pyright
+# because our actual type checks run inside nox-managed environments where Pyright
 # is invoked with an explicit `--pythonversion` per env.
 # If you don't maintain a local `.venv`, you can remove these two lines.
 venvPath                           = "."
