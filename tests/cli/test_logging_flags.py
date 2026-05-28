@@ -66,5 +66,5 @@ def test_config_check_rejects_combined_verbose_and_quiet_flags() -> None:
         assert_USAGE_ERROR(result)
         assert_rich_output_contains(
             result.output,
-            expected="--verbose and --quiet are mutually exclusive",
+            expected="--verbose (-v) and --quiet (-q) are mutually exclusive",
         )

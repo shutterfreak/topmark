@@ -66,7 +66,7 @@ def test_probe_rejects_inapplicable_path_command_options(
     assert_USAGE_ERROR(result)
     assert_rich_output_contains(
         result.output,
-        expected=f"Option '{option}' is not supported for",
+        expected=f"option {option} is not supported.",
     )
     assert_rich_output_contains(
         result.output,
@@ -90,7 +90,7 @@ def test_probe_rejects_inapplicable_option_assignment_form() -> None:
     assert_USAGE_ERROR(result)
     assert_rich_output_contains(
         result.output,
-        expected=f"Option '{CliOpt.WRITE_MODE}' is not supported for",
+        expected=f"option {CliOpt.WRITE_MODE} is not supported.",
     )
     assert_rich_output_contains(
         result.output,
@@ -127,7 +127,7 @@ def test_strip_rejects_generated_header_options(
     assert_USAGE_ERROR(result)
     assert_rich_output_contains(
         result.output,
-        expected=f"Option '{option}' is not supported for",
+        expected=f"option {option} is not supported.",
     )
     assert_rich_output_contains(
         result.output,
@@ -161,7 +161,7 @@ def test_path_commands_reject_stdin_flag(command: str) -> None:
     assert_USAGE_ERROR(result)
     assert_rich_output_contains(
         result.output,
-        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+        expected=f"option {_STDIN_FLAG} is not supported.",
     )
     assert_rich_output_contains(
         result.output,
@@ -195,7 +195,7 @@ def test_path_commands_reject_stdin_flag_assignment_form(command: str) -> None:
     assert_USAGE_ERROR(result)
     assert_rich_output_contains(
         result.output,
-        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+        expected=f"option {_STDIN_FLAG} is not supported.",
     )
     assert_rich_output_contains(
         result.output,
@@ -221,7 +221,7 @@ def test_probe_rejects_first_inapplicable_option_when_multiple_are_present() -> 
     assert_USAGE_ERROR(result)
     assert_rich_output_contains(
         result.output,
-        expected=f"Option '{CliOpt.RENDER_DIFF}' is not supported for",
+        expected=f"option {CliOpt.RENDER_DIFF} is not supported.",
     )
     assert_rich_output_contains(
         result.output,
@@ -252,7 +252,7 @@ def test_check_accepts_content_stdin_sentinel() -> None:
     )
     assert_rich_output_does_not_contain(
         result.output,
-        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+        expected=f"option {_STDIN_FLAG} is not supported.",
     )
 
 
@@ -276,5 +276,5 @@ def test_path_commands_do_not_reject_literal_stdin_named_path(command: str) -> N
     assert_FILE_NOT_FOUND(result)
     assert_rich_output_does_not_contain(
         result.output,
-        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+        expected=f"option {_STDIN_FLAG} is not supported.",
     )
