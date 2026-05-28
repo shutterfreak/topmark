@@ -140,6 +140,7 @@ class _ClickOptionKwargs(TypedDict, total=True):
     is_flag: NotRequired[bool]
     multiple: NotRequired[bool]
     show_default: NotRequired[bool]
+    hidden: NotRequired[bool]
     help: NotRequired[str | None]
     metavar: NotRequired[str | None]
     type: NotRequired[object]
@@ -381,7 +382,10 @@ def option_with_underscore_traps(
     ]
     trap_longs: list[str] = ["--" + d[2:].replace("-", "_") for d in canonical_longs]
 
-    real_decorator = click.option(*param_decls, **attrs)
+    real_decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = click.option(
+        *param_decls,
+        **attrs,
+    )
 
     if not trap_longs:
         return real_decorator
@@ -390,7 +394,7 @@ def option_with_underscore_traps(
     key: str = canonical_longs[0][2:].replace("-", "_")
     trap_dest: str = f"_trap__{key}"
 
-    trap_decorator = click.option(
+    trap_decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = click.option(
         *trap_longs,
         trap_dest,
         hidden=True,
@@ -404,6 +408,70 @@ def option_with_underscore_traps(
         f = trap_decorator(f)
         f = real_decorator(f)
         return f
+
+    return decorator
+
+
+def option_with_hidden_aliases_and_underscore_traps(
+    *param_decls: str,
+    hidden_aliases: tuple[str, ...],
+    multiple: bool = False,
+    callback: Callable[..., object] | None = None,
+    help: str | None = None,
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    """Like `option_with_underscore_traps`, with hidden compatibility aliases.
+
+    Hidden aliases are registered as separate hidden Click options that write to
+    the same destination as the visible option. This keeps the compatibility
+    aliases accepted by Click while omitting them from Click and Rich Click help
+    output.
+
+    This helper intentionally exposes only the option attributes currently
+    needed by file-type filters. Keeping the signature narrow avoids ambiguous
+    `TypedDict` unpacking for the forced `hidden=True` alias option.
+
+    Args:
+        *param_decls: Visible Click option declarations. The declarations must
+            include an explicit destination name.
+        hidden_aliases: Compatibility aliases accepted but hidden from help.
+        multiple: Whether the visible and hidden options may be repeated.
+        callback: Optional Click callback applied to parsed option values.
+        help: Human-facing help text for the visible option.
+
+    Returns:
+        A Click option decorator.
+
+    Raises:
+        ValueError: If `param_decls` does not include an explicit destination.
+    """
+    destination_names: list[str] = [d for d in param_decls if not d.startswith("-")]
+    if not destination_names:
+        raise ValueError("hidden alias options require an explicit destination name")
+
+    destination_name: str = destination_names[-1]
+    visible_decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = (
+        option_with_underscore_traps(
+            *param_decls,
+            multiple=multiple,
+            callback=callback,
+            help=help,
+        )
+    )
+    hidden_alias_decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = (
+        option_with_underscore_traps(
+            *hidden_aliases,
+            destination_name,
+            hidden=True,
+            multiple=multiple,
+            callback=callback,
+            help=None,
+        )
+    )
+
+    def decorator(f: Callable[_P, _R]) -> Callable[_P, _R]:
+        decorated: Callable[_P, _R] = hidden_alias_decorator(f)
+        decorated = visible_decorator(decorated)
+        return decorated
 
     return decorator
 
@@ -762,6 +830,7 @@ def common_file_type_filtering_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common file type selection and filtering options.
 
     Adds file type filtering options: ``--include-file-types``, ``--exclude-file-types``.
+    The singular spellings remain accepted as hidden compatibility aliases.
 
     Args:
         f: The Click command function to decorate.
@@ -769,31 +838,29 @@ def common_file_type_filtering_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     Returns:
         The decorated function.
     """
-    f = option_with_underscore_traps(
+    f = option_with_hidden_aliases_and_underscore_traps(
         CliOpt.INCLUDE_FILE_TYPES,
-        CliOpt.INCLUDE_FILE_TYPE,
         CliShortOpt.INCLUDE_FILE_TYPES,
         ArgKey.INCLUDE_FILE_TYPES,
+        hidden_aliases=(CliOpt.INCLUDE_FILE_TYPE,),
         multiple=True,
         callback=_split_csv_multi_option,
         help=(
-            "Filter: restrict to given file types. Preferred spelling is "
-            f"{CliOpt.INCLUDE_FILE_TYPES} (alias: {CliOpt.INCLUDE_FILE_TYPE}). "
+            "Filter: restrict to given file types. "
             "Applied after path include/exclude filtering. "
             "May be repeated and/or given as a comma-separated list."
         ),
     )(f)
 
-    f = option_with_underscore_traps(
+    f = option_with_hidden_aliases_and_underscore_traps(
         CliOpt.EXCLUDE_FILE_TYPES,
-        CliOpt.EXCLUDE_FILE_TYPE,
         CliShortOpt.EXCLUDE_FILE_TYPES,
         ArgKey.EXCLUDE_FILE_TYPES,
+        hidden_aliases=(CliOpt.EXCLUDE_FILE_TYPE,),
         multiple=True,
         callback=_split_csv_multi_option,
         help=(
-            "Filter: exclude given file types. Preferred spelling is "
-            f"{CliOpt.EXCLUDE_FILE_TYPES} (alias: {CliOpt.EXCLUDE_FILE_TYPE}). "
+            "Filter: exclude given file types. "
             "Applied after path include/exclude filtering. "
             "May be repeated and/or given as a comma-separated list."
         ),
