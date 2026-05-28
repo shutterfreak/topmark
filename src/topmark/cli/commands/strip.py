@@ -47,6 +47,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.api.runtime import ensure_config_valid
 from topmark.api.runtime import select_pipeline
@@ -58,6 +59,8 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_processing_results_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -131,19 +134,23 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.STRIP,
     context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
     help=(
         f"Preview header removal (dry-run), or remove TopMark headers with {CliOpt.APPLY_CHANGES}."
     ),
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Preview which files would change (dry-run)\n"
-        f"  topmark {CliCmd.STRIP} src\n"
-        "  # Remove headers in-place (apply):\n"
-        f"  topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} .\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Preview which files would change (dry-run)",
+                command_line=f"topmark {CliCmd.STRIP} src",
+            ),
+            HelpExample(
+                summary="Remove headers in-place (apply):",
+                command_line=f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} .",
+            ),
+        ),
     ),
 )
 @common_color_options

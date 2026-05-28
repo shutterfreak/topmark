@@ -28,6 +28,7 @@ import pytest
 from packaging.version import InvalidVersion
 from packaging.version import Version
 
+from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.version import SEMVER_RE
@@ -100,9 +101,10 @@ def test_version_rejects_quiet_option_for_text_output() -> None:
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 def test_version_rejects_quiet_option_with_markdown_output() -> None:
@@ -117,9 +119,10 @@ def test_version_rejects_quiet_option_with_markdown_output() -> None:
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 # --- Markdown output ---

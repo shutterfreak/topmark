@@ -51,6 +51,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.api.runtime import ensure_config_valid
 from topmark.api.runtime import select_pipeline
@@ -62,6 +63,8 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_processing_results_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -139,20 +142,28 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.CHECK,
     context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
     help=f"Inspect TopMark headers (dry-run), or add/update them with {CliOpt.APPLY_CHANGES}.",
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Preview which files would change (dry-run)\n"
-        f"  topmark {CliCmd.CHECK} src\n"
-        "  # Apply header updates in place\n"
-        f"  topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} .\n"
-        "  # Restrict check/apply to adding missing headers only\n"
-        f"  topmark {CliCmd.CHECK} "
-        f"{CliOpt.POLICY_HEADER_MUTATION_MODE}={HeaderMutationMode.ADD_ONLY.value} src\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Preview which files would change (dry-run)",
+                command_line=f"topmark {CliCmd.CHECK} src",
+            ),
+            HelpExample(
+                summary="Apply header updates in place",
+                command_line=f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} .",
+            ),
+            HelpExample(
+                summary="Restrict check/apply to adding missing headers only",
+                command_line=(
+                    f"topmark {CliCmd.CHECK} "
+                    f"{CliOpt.POLICY_HEADER_MUTATION_MODE}={HeaderMutationMode.ADD_ONLY.value} src"
+                ),
+            ),
+        ),
     ),
 )
 @common_color_options

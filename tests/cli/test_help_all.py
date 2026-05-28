@@ -19,9 +19,11 @@ These tests are broad command-surface smoke tests, not detailed content checks.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import Final
 
 from click.testing import Result
 
+from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
@@ -30,7 +32,7 @@ from topmark.cli.keys import CliOpt
 if TYPE_CHECKING:
     from click.testing import Result
 
-PUBLIC_COMMAND_PATHS: list[tuple[str, ...]] = [
+PUBLIC_HELP_COMMAND_PATHS: Final[tuple[tuple[str, ...], ...]] = (
     (CliCmd.PROBE,),
     (CliCmd.CHECK,),
     (CliCmd.STRIP,),
@@ -65,12 +67,7 @@ PUBLIC_COMMAND_PATHS: list[tuple[str, ...]] = [
         CliCmd.REGISTRY_BINDINGS,
     ),
     (CliCmd.VERSION,),
-]
-
-
-def _collapse_help_whitespace(text: str) -> str:
-    """Normalize Click help wrapping for stable substring assertions."""
-    return " ".join(text.split())
+)
 
 
 # --- Top-level help ---
@@ -83,7 +80,10 @@ def test_top_level_help_exits_success() -> None:
     )
 
     assert_SUCCESS(result)
-    assert "usage" in result.output.lower()
+    assert_rich_output_contains(
+        result.output,
+        expected="Usage:",
+    )
 
 
 # --- Public command help pages ---
@@ -91,13 +91,16 @@ def test_top_level_help_exits_success() -> None:
 
 def test_each_public_command_path_has_help() -> None:
     """Every public command path should expose a working `--help` page."""
-    for command_path in PUBLIC_COMMAND_PATHS:
+    for command_path in PUBLIC_HELP_COMMAND_PATHS:
         result: Result = run_cli(
             command_path + (CliOpt.HELP,),
         )
 
         assert_SUCCESS(result)
-        assert "usage" in result.output.lower()
+        assert_rich_output_contains(
+            result.output,
+            expected="Usage:",
+        )
 
 
 def test_config_dump_help_listed_paths_noop() -> None:
@@ -109,6 +112,8 @@ def test_config_dump_help_listed_paths_noop() -> None:
             CliOpt.HELP,
         ]
     )
-    output: str = _collapse_help_whitespace(result.output)
 
-    assert "Listed paths do not affect the dumped configuration." in output
+    assert_rich_output_contains(
+        result.output,
+        expected="Listed paths do not affect the dumped configuration.",
+    )

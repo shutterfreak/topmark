@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_USAGE_ERROR
 from tests.cli.conftest import run_cli
@@ -63,4 +64,7 @@ def test_config_check_rejects_combined_verbose_and_quiet_flags() -> None:
     for args in conflicting_invocations:
         result: Result = run_cli(args)
         assert_USAGE_ERROR(result)
-        assert "--verbose and --quiet are mutually exclusive" in result.output
+        assert_rich_output_contains(
+            result.output,
+            expected="--verbose and --quiet are mutually exclusive",
+        )

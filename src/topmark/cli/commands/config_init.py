@@ -19,9 +19,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_config_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -50,7 +53,7 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.CONFIG_INIT,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
@@ -60,24 +63,35 @@ if TYPE_CHECKING:
         f"Use {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
     ),
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Print a starter topmark.toml configuration\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT}\n"
-        "  # Print a starter pyproject.toml configuration section\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} {CliOpt.CONFIG_FOR_PYPROJECT}\n"
-        "  # Write a starter configuration file\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml\n"
-        "  # Emit machine-readable configuration\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} "
-        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\n"
-        "\b\n"
-        "Notes:\n"
-        "  • Human formats use the annotated, commented template bundled with TopMark.\n"
-        "  • Machine-readable formats emit a minimal Config snapshot "
-        "without comments or diagnostics.\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Print a starter topmark.toml configuration",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT}",
+            ),
+            HelpExample(
+                summary="Print a starter pyproject.toml configuration section",
+                command_line=(
+                    f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} {CliOpt.CONFIG_FOR_PYPROJECT}"
+                ),
+            ),
+            HelpExample(
+                summary="Write a starter configuration file",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml",
+            ),
+            HelpExample(
+                summary="Emit machine-readable configuration",
+                command_line=(
+                    f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} "
+                    f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
+                ),
+            ),
+        ),
+        notes=(
+            "Human formats use the annotated, commented template bundled with TopMark.",
+            "Machine-readable formats emit a minimal Config snapshot "
+            "without comments or diagnostics.",
+        ),
     ),
 )
 # Common option decorators

@@ -46,6 +46,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.api.runtime import ensure_config_valid
 from topmark.cli.cmd_common import PreparedCliConfig
@@ -57,6 +58,8 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_probe_results_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -122,17 +125,21 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.PROBE,
     context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
     help="Probe file type and processor resolution.",
-    epilog=(
-        f"\b\nExamples:\n"
-        f"  # Explain how files resolve to file types and processors\n"
-        f"  topmark {CliCmd.PROBE} src\n"
-        f"\n"
-        f"  # Show candidate scores and match signals\n"
-        f"  topmark {CliCmd.PROBE} README.md -vv\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Explain how files resolve to file types and processors",
+                command_line=f"topmark {CliCmd.PROBE} src",
+            ),
+            HelpExample(
+                summary="Show candidate scores and match signals",
+                command_line=f"topmark {CliCmd.PROBE} README.md -vv",
+            ),
+        ),
     ),
 )
 @common_color_options

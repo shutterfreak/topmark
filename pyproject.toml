@@ -76,6 +76,8 @@ dependencies = [
   "pathspec>=1.1.0,<1.2.0",
   # Rich rendering on the terminal (ANSI, Markdown, tables...):
   "rich>=15.0.0,<16.0.0",
+  # Format click help output nicely with rich:
+  "rich-click>=1.9.7,<2.0.0",
   # TOML configuration file manipulation:
   "tomlkit>=0.15.0,<0.16.0",
   # Add typing extensions and deprecation annotations:

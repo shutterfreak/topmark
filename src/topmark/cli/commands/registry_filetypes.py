@@ -18,9 +18,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_filetypes_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -46,24 +49,34 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import DetailedMetaPayload
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.REGISTRY_FILETYPES,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help="Inspect registered TopMark file types.",
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Inspect registered file types\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES}\n"
-        "  # Show extended file type metadata\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} {CliOpt.SHOW_DETAILS}\n"
-        "  # Emit machine-readable file type metadata\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} "
-        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\b\n"
-        "Notes:\n"
-        "  • Use file type identifiers in configuration filters.\n"
-        "  • Machine-readable formats emit registry metadata without human formatting.\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Inspect registered file types",
+                command_line=f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES}",
+            ),
+            HelpExample(
+                summary="Show extended file type metadata",
+                command_line=(
+                    f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} {CliOpt.SHOW_DETAILS}"
+                ),
+            ),
+            HelpExample(
+                summary="Emit machine-readable file type metadata",
+                command_line=(
+                    f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} "
+                    f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
+                ),
+            ),
+        ),
+        notes=(
+            "Use file type identifiers in configuration filters.",
+            "Machine-readable formats emit registry metadata without human formatting.",
+        ),
     ),
 )
 @common_color_options

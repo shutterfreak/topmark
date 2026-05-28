@@ -21,31 +21,42 @@ configuration:
 
 from __future__ import annotations
 
-import click
+import rich_click
 
 from topmark.cli.commands.config_check import config_check_command
 from topmark.cli.commands.config_defaults import config_defaults_command
 from topmark.cli.commands.config_dump import config_dump_command
 from topmark.cli.commands.config_init import config_init_command
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 
 
-@click.group(
+@rich_click.group(
+    cls=rich_click.RichGroup,
     name=CliCmd.CONFIG,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help="Validate, inspect, and scaffold TopMark configuration.",
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Validate the effective runtime configuration\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}\n"
-        "  # Print the effective runtime configuration\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}\n"
-        "  # Print the built-in default configuration reference\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DEFAULTS}\n"
-        "  # Create a starter configuration file for projects\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Validate the effective runtime configuration",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}",
+            ),
+            HelpExample(
+                summary="Print the effective runtime configuration",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}",
+            ),
+            HelpExample(
+                summary="Print the built-in default configuration reference",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DEFAULTS}",
+            ),
+            HelpExample(
+                summary="Create a starter configuration file for projects",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml",
+            ),
+        ),
     ),
 )
 def config_command() -> None:

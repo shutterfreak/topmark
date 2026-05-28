@@ -16,7 +16,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_FILE_NOT_FOUND
+from tests.cli.conftest import assert_rich_output_contains
+from tests.cli.conftest import assert_rich_output_does_not_contain
 from tests.cli.conftest import assert_USAGE_ERROR
+from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -60,9 +64,18 @@ def test_probe_rejects_inapplicable_path_command_options(
     result: Result = run_cli(argv)
 
     assert_USAGE_ERROR(result)
-    assert f"Option '{option}' is not supported for" in result.output
-    assert CliCmd.PROBE in result.output
-    assert reason in result.output
+    assert_rich_output_contains(
+        result.output,
+        expected=f"Option '{option}' is not supported for",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=CliCmd.PROBE,
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=reason,
+    )
 
 
 def test_probe_rejects_inapplicable_option_assignment_form() -> None:
@@ -75,9 +88,18 @@ def test_probe_rejects_inapplicable_option_assignment_form() -> None:
     )
 
     assert_USAGE_ERROR(result)
-    assert f"Option '{CliOpt.WRITE_MODE}' is not supported for" in result.output
-    assert CliCmd.PROBE in result.output
-    assert _CHECK_STRIP_REASON in result.output
+    assert_rich_output_contains(
+        result.output,
+        expected=f"Option '{CliOpt.WRITE_MODE}' is not supported for",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=CliCmd.PROBE,
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=_CHECK_STRIP_REASON,
+    )
 
 
 @pytest.mark.parametrize(
@@ -103,9 +125,18 @@ def test_strip_rejects_generated_header_options(
     result: Result = run_cli(argv)
 
     assert_USAGE_ERROR(result)
-    assert f"Option '{option}' is not supported for" in result.output
-    assert CliCmd.STRIP in result.output
-    assert _CHECK_ONLY_REASON in result.output
+    assert_rich_output_contains(
+        result.output,
+        expected=f"Option '{option}' is not supported for",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=CliCmd.STRIP,
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=_CHECK_ONLY_REASON,
+    )
 
 
 @pytest.mark.parametrize(
@@ -128,9 +159,18 @@ def test_path_commands_reject_stdin_flag(command: str) -> None:
     )
 
     assert_USAGE_ERROR(result)
-    assert f"Option '{_STDIN_FLAG}' is not supported for" in result.output
-    assert command in result.output
-    assert _STDIN_GUIDANCE in result.output
+    assert_rich_output_contains(
+        result.output,
+        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=command,
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=_STDIN_GUIDANCE,
+    )
 
 
 @pytest.mark.parametrize(
@@ -153,9 +193,18 @@ def test_path_commands_reject_stdin_flag_assignment_form(command: str) -> None:
     )
 
     assert_USAGE_ERROR(result)
-    assert f"Option '{_STDIN_FLAG}' is not supported for" in result.output
-    assert command in result.output
-    assert _STDIN_GUIDANCE in result.output
+    assert_rich_output_contains(
+        result.output,
+        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=command,
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=_STDIN_GUIDANCE,
+    )
 
 
 def test_probe_rejects_first_inapplicable_option_when_multiple_are_present() -> None:
@@ -170,9 +219,18 @@ def test_probe_rejects_first_inapplicable_option_when_multiple_are_present() -> 
     )
 
     assert_USAGE_ERROR(result)
-    assert f"Option '{CliOpt.RENDER_DIFF}' is not supported for" in result.output
-    assert CliCmd.PROBE in result.output
-    assert _CHECK_STRIP_REASON in result.output
+    assert_rich_output_contains(
+        result.output,
+        expected=f"Option '{CliOpt.RENDER_DIFF}' is not supported for",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=CliCmd.PROBE,
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=_CHECK_STRIP_REASON,
+    )
 
 
 def test_check_accepts_content_stdin_sentinel() -> None:
@@ -187,8 +245,15 @@ def test_check_accepts_content_stdin_sentinel() -> None:
         input_text="print('hello')\n",
     )
 
-    assert "Usage:" not in result.output
-    assert f"Option '{_STDIN_FLAG}' is not supported" not in result.output
+    assert_WOULD_CHANGE(result)
+    assert_rich_output_does_not_contain(
+        result.output,
+        expected="Usage:",
+    )
+    assert_rich_output_does_not_contain(
+        result.output,
+        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+    )
 
 
 @pytest.mark.parametrize(
@@ -208,4 +273,8 @@ def test_path_commands_do_not_reject_literal_stdin_named_path(command: str) -> N
         ]
     )
 
-    assert f"Option '{_STDIN_FLAG}' is not supported" not in result.output
+    assert_FILE_NOT_FOUND(result)
+    assert_rich_output_does_not_contain(
+        result.output,
+        expected=f"Option '{_STDIN_FLAG}' is not supported for",
+    )

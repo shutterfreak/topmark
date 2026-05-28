@@ -30,10 +30,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.api.runtime import is_config_valid
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_config_check_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -69,7 +72,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.CONFIG_CHECK,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
@@ -80,24 +83,31 @@ logger: TopmarkLogger = get_logger(__name__)
         f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
     ),
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Validate the effective runtime configuration\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}\n"
-        "  # Fail on warnings (strict mode)\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} {CliOpt.STRICT}\n"
-        "  # Emit machine-readable diagnostics\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} "
-        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\n"
-        "\b\n"
-        "Notes:\n"
-        "  • Configuration is built from defaults, discovered files, "
-        f"explicit {CliOpt.CONFIG_FILES} files, and CLI overrides.\n"
-        "  • Exit status is non-zero on validation failure "
-        f"(errors, or warnings with {CliOpt.STRICT}).\n"
-        "  • NDJSON emits a sequence of structured records.\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Validate the effective runtime configuration",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK}",
+            ),
+            HelpExample(
+                summary="Fail on warnings (strict mode)",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} {CliOpt.STRICT}",
+            ),
+            HelpExample(
+                summary="Emit machine-readable diagnostics",
+                command_line=(
+                    f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_CHECK} "
+                    f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
+                ),
+            ),
+        ),
+        notes=(
+            "Configuration is built from defaults, discovered files, "
+            f"explicit {CliOpt.CONFIG_FILES} files, and CLI overrides.",
+            "Exit status is non-zero on validation failure "
+            f"(errors, or warnings with {CliOpt.STRICT}).",
+            "NDJSON emits a sequence of structured records.",
+        ),
     ),
 )
 @common_color_options

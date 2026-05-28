@@ -25,6 +25,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.cli.commands.check import check_command
 from topmark.cli.commands.config import config_command
@@ -32,6 +33,8 @@ from topmark.cli.commands.probe import probe_command
 from topmark.cli.commands.registry import registry_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -44,27 +47,41 @@ if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
 
 
-@click.group(
-    cls=click.Group,
+@rich_click.group(
+    cls=rich_click.RichGroup,
     context_settings=GROUP_CONTEXT_SETTINGS,
     invoke_without_command=True,  # Always invoke the cli() function
     help="Inspect, validate, and manage TopMark headers and configuration.",
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Validate headers in a project (dry-run)\n"
-        f"  topmark {CliCmd.CHECK} src\n"
-        "  # Apply header updates in place\n"
-        f"  topmark {CliCmd.CHECK} --apply .\n"
-        "  # Write a starter configuration file\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml\n"
-        "  # Validate the merged configuration\n"
-        f"  topmark {CliCmd.CONFIG} check\n"
-        "  # Inspect file types (machine-readable output)\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} "
-        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "  # Print the installed TopMark version\n"
-        f"  topmark {CliCmd.VERSION}\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Validate headers in a project (dry-run)",
+                command_line=f"topmark {CliCmd.CHECK} src",
+            ),
+            HelpExample(
+                summary="Apply header updates in place",
+                command_line=f"topmark {CliCmd.CHECK} --apply .",
+            ),
+            HelpExample(
+                summary="Write a starter configuration file",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml",
+            ),
+            HelpExample(
+                summary="Validate the merged configuration",
+                command_line=f"topmark {CliCmd.CONFIG} check",
+            ),
+            HelpExample(
+                summary="Inspect file types (machine-readable output)",
+                command_line=(
+                    f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} "
+                    f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
+                ),
+            ),
+            HelpExample(
+                summary="Print the installed TopMark version",
+                command_line=f"topmark {CliCmd.VERSION}",
+            ),
+        ),
     ),
 )
 @click.pass_context
