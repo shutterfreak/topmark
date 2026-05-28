@@ -251,18 +251,24 @@ def assert_FILE_NOT_FOUND(result: Result) -> None:
     assert result.exit_code == ExitCode.FILE_NOT_FOUND, result.output
 
 
+ANSI_ESCAPE_RE: Final[re.Pattern[str]] = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+"""ANSI control-sequence matcher used to normalize Rich-rendered test output."""
+
+
 def normalize_rich_cli_output(output: str) -> str:
     """Normalize Rich-rendered CLI output for semantic substring assertions.
 
-    Rich panels and tables may wrap messages across lines and surround content
-    with border glyphs. Long option names may also soft-wrap after hyphens inside
-    Rich table cells. These tests validate command behavior, not exact terminal
-    layout, so this helper removes panel borders, collapses whitespace, and joins
-    soft-wrapped hyphenated option tokens while preserving the rendered text
-    content.
+    Rich panels and tables may wrap messages across lines, surround content with
+    border glyphs, and emit ANSI control sequences depending on the terminal
+    environment. Long option names may also soft-wrap after hyphens inside Rich
+    table cells. These tests validate command behavior, not exact terminal
+    layout, so this helper removes ANSI sequences and panel borders, collapses
+    whitespace, and joins soft-wrapped hyphenated option tokens while preserving
+    the rendered text content.
     """
+    plain_output: str = ANSI_ESCAPE_RE.sub("", output)
     content_lines: list[str] = []
-    for line in output.splitlines():
+    for line in plain_output.splitlines():
         stripped: str = line.strip()
         if not stripped:
             continue
