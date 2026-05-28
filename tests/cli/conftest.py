@@ -20,11 +20,14 @@ matching TopMark's resolver contract that disallows absolute patterns.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import IO
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Final
 
+import click
 from click.testing import CliRunner
 from click.testing import Result
 
@@ -246,3 +249,115 @@ def assert_FILE_NOT_FOUND(result: Result) -> None:
         result: The Result object returned by `run_cli` or `run_cli_in`.
     """
     assert result.exit_code == ExitCode.FILE_NOT_FOUND, result.output
+
+
+ANSI_ESCAPE_RE: Final[re.Pattern[str]] = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+"""ANSI control-sequence matcher used to normalize Rich-rendered test output."""
+
+
+def normalize_rich_cli_output(output: str) -> str:
+    """Normalize Rich-rendered CLI output for semantic substring assertions.
+
+    Rich panels and tables may wrap messages across lines, surround content with
+    border glyphs, and emit ANSI control sequences depending on the terminal
+    environment. Long option names may also soft-wrap after hyphens inside Rich
+    table cells. These tests validate command behavior, not exact terminal
+    layout, so this helper removes ANSI sequences and panel borders, collapses
+    whitespace, and joins soft-wrapped hyphenated option tokens while preserving
+    the rendered text content.
+    """
+    plain_output: str = ANSI_ESCAPE_RE.sub("", output)
+    content_lines: list[str] = []
+    for line in plain_output.splitlines():
+        stripped: str = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith(("╭", "╰")):
+            continue
+        if stripped.startswith("│") and stripped.endswith("│"):
+            stripped = stripped[1:-1].strip()
+        elif stripped.startswith("│"):
+            stripped = stripped[1:].strip()
+        content_lines.append(stripped)
+
+    normalized: str = " ".join(" ".join(content_lines).split())
+    return re.sub(r"(?<=-)\s+(?=[A-Za-z0-9])", "", normalized)
+
+
+def assert_rich_output_contains(
+    output: str,
+    *,
+    expected: str,
+) -> None:
+    """Assert text appears in Rich-rendered CLI output.
+
+    The comparison ignores Rich panel borders and line wrapping so tests remain
+    focused on emitted diagnostic content.
+    """
+    normalized_output: str = normalize_rich_cli_output(output)
+    normalized_expected: str = " ".join(expected.split())
+    assert normalized_expected in normalized_output
+
+
+def assert_rich_output_does_not_contain(
+    output: str,
+    *,
+    expected: str,
+) -> None:
+    """Assert text does not appear in Rich-rendered CLI output.
+
+    The comparison ignores Rich panel borders and line wrapping so tests remain
+    focused on emitted diagnostic content.
+    """
+    normalized_output: str = normalize_rich_cli_output(output)
+    normalized_expected: str = " ".join(expected.split())
+    assert normalized_expected not in normalized_output
+
+
+CLICK_USAGE_ERROR_EXIT_CODE: Final[int] = 2
+"""Exit code used by Click for reporting a usage error."""
+
+
+def assert_rich_output_no_such_option(
+    result: Result,
+    *,
+    option_name: str,
+) -> None:
+    """Assert that Rich Click reported an unknown CLI option.
+
+    Click reports parser-level usage errors with exit code 2 before TopMark can
+    normalize them to `ExitCode.USAGE_ERROR`. That numeric code overlaps with
+    `ExitCode.WOULD_CHANGE`, so this helper also asserts the rendered
+    `No such option` diagnostic.
+    """
+    # Click handles the parser error and `CliRunner` captures the resulting
+    # `SystemExit(2)`, not the original `click.NoSuchOption` instance. The
+    # rendered diagnostic disambiguates this parser-level failure from
+    # TopMark's normal `ExitCode.WOULD_CHANGE` outcome, which also uses code 2.
+    assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE, result.output
+
+    # Use the message format used by `rich-click`:
+    assert_rich_output_contains(
+        result.output,
+        expected=f"No such option '{option_name}'.",
+    )
+
+
+def command_option_names(command_name: str) -> set[str]:
+    """Return all option declarations exposed by a CLI subcommand.
+
+    Rich Click may wrap long option names inside rendered help tables, so tests
+    that validate option exposure should inspect the Click command model instead
+    of asserting on terminal layout. The helper creates a lightweight Click
+    context explicitly because no global current context exists after
+    `CliRunner.invoke` has returned.
+    """
+    ctx = click.Context(cli, info_name="topmark")
+    command: click.Command | None = cli.get_command(ctx, cmd_name=command_name)
+    assert command is not None
+
+    option_names: set[str] = set()
+    for parameter in command.params:
+        option_names.update(parameter.opts)
+        option_names.update(parameter.secondary_opts)
+    return option_names

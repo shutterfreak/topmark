@@ -18,9 +18,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -48,23 +51,31 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.VERSION,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help="Print the installed TopMark version.",
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Print the installed TopMark version\n"
-        f"  topmark {CliCmd.VERSION}\n"
-        "  # Print the version in SemVer form when possible\n"
-        f"  topmark {CliCmd.VERSION} {CliOpt.SEMVER_VERSION}\n"
-        "  # Emit machine-readable version metadata\n"
-        f"  topmark {CliCmd.VERSION} "
-        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "Notes:\n"
-        "  • Default output uses the installed package version.\n"
-        "  • Machine-readable formats emit structured version metadata.\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Print the installed TopMark version",
+                command_line=f"topmark {CliCmd.VERSION}",
+            ),
+            HelpExample(
+                summary="Print the version in SemVer form when possible",
+                command_line=f"topmark {CliCmd.VERSION} {CliOpt.SEMVER_VERSION}",
+            ),
+            HelpExample(
+                summary="Emit machine-readable version metadata",
+                command_line=(
+                    f"topmark {CliCmd.VERSION} {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
+                ),
+            ),
+        ),
+        notes=(
+            "Default output uses the installed package version.",
+            "Machine-readable formats emit structured version metadata.",
+        ),
     ),
 )
 @common_color_options

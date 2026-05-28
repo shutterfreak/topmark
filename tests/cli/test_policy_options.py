@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_USAGE_ERROR
+from tests.cli.conftest import command_option_names
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
@@ -60,12 +61,14 @@ def test_check_help_lists_check_only_and_shared_policy_options() -> None:
     )
     assert_SUCCESS(result)
 
-    assert CliOpt.POLICY_HEADER_MUTATION_MODE in result.output
-    assert CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES in result.output
-    assert CliOpt.POLICY_EMPTY_INSERT_MODE in result.output
-    assert CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS in result.output
-    assert CliOpt.POLICY_ALLOW_REFLOW in result.output
-    assert CliOpt.POLICY_ALLOW_CONTENT_PROBE in result.output
+    option_names: set[str] = command_option_names(CliCmd.CHECK)
+
+    assert CliOpt.POLICY_HEADER_MUTATION_MODE in option_names
+    assert CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES in option_names
+    assert CliOpt.POLICY_EMPTY_INSERT_MODE in option_names
+    assert CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS in option_names
+    assert CliOpt.POLICY_ALLOW_REFLOW in option_names
+    assert CliOpt.POLICY_ALLOW_CONTENT_PROBE in option_names
 
 
 def test_strip_help_lists_only_shared_policy_options() -> None:
@@ -78,12 +81,14 @@ def test_strip_help_lists_only_shared_policy_options() -> None:
     )
     assert_SUCCESS(result)
 
-    assert CliOpt.POLICY_ALLOW_CONTENT_PROBE in result.output
-    assert CliOpt.POLICY_HEADER_MUTATION_MODE not in result.output
-    assert CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES not in result.output
-    assert CliOpt.POLICY_EMPTY_INSERT_MODE not in result.output
-    assert CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS not in result.output
-    assert CliOpt.POLICY_ALLOW_REFLOW not in result.output
+    option_names: set[str] = command_option_names(CliCmd.STRIP)
+
+    assert CliOpt.POLICY_ALLOW_CONTENT_PROBE in option_names
+    assert CliOpt.POLICY_HEADER_MUTATION_MODE not in option_names
+    assert CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES not in option_names
+    assert CliOpt.POLICY_EMPTY_INSERT_MODE not in option_names
+    assert CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS not in option_names
+    assert CliOpt.POLICY_ALLOW_REFLOW not in option_names
 
 
 # --- Check behavior: header mutation mode ---

@@ -18,9 +18,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.emitters.machine import emit_processors_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -46,24 +49,34 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import DetailedMetaPayload
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.REGISTRY_PROCESSORS,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help="Inspect registered TopMark header processors.",
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Inspect registered header processors\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS}\n"
-        "  # Show extended processor metadata\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} {CliOpt.SHOW_DETAILS}\n"
-        "  # Emit machine-readable processor metadata\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} "
-        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\b\n"
-        "Notes:\n"
-        "  • Processors define how TopMark detects and renders headers for file types.\n"
-        "  • Machine-readable formats emit registry metadata without human formatting.\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Inspect registered header processors",
+                command_line=f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS}",
+            ),
+            HelpExample(
+                summary="Show extended processor metadata",
+                command_line=(
+                    f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} {CliOpt.SHOW_DETAILS}"
+                ),
+            ),
+            HelpExample(
+                summary="Emit machine-readable processor metadata",
+                command_line=(
+                    f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} "
+                    f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
+                ),
+            ),
+        ),
+        notes=(
+            "Processors define how TopMark detects and renders headers for file types.",
+            "Machine-readable formats emit registry metadata without human formatting.\n",
+        ),
     ),
 )
 @common_color_options

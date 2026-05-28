@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import Result
 
+from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
@@ -80,9 +81,10 @@ def test_config_content_commands_reject_text_quiet_option(cmd: str) -> None:
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 # --- Quiet mode: Markdown output ---
@@ -130,9 +132,10 @@ def test_config_content_commands_reject_quiet_option_with_markdown_output(cmd: s
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 # --- Verbosity: Markdown output ---

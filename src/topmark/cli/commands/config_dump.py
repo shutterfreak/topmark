@@ -29,12 +29,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import click
+import rich_click
 
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_config_machine
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -82,7 +85,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@click.command(
+@rich_click.command(
     name=CliCmd.CONFIG_DUMP,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
@@ -92,26 +95,39 @@ logger: TopmarkLogger = get_logger(__name__)
         f"Use {CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}/{OutputFormat.NDJSON.value} "
         "for machine-readable output."
     ),
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Print the effective runtime configuration\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}\n"
-        "  # Include configuration provenance layers\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} {CliOpt.SHOW_CONFIG_LAYERS}\n"
-        "  # Read include patterns from STDIN\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} {CliOpt.INCLUDE_FROM} -\n"
-        "  # Emit machine-readable configuration\n"
-        f"  topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} "
-        f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}\n"
-        "\n"
-        "\b\n"
-        "Notes:\n"
-        "  • File lists are inputs, not configuration; "
-        "listed paths do not affect this command's output.\n"
-        "  • Pattern sources are configuration and are included in the dump.\n"
-        "  • Human output may include TOML block markers when verbosity is enabled.\n"
-        "  • Machine-readable formats emit a Config snapshot and optional provenance records.\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Print the effective runtime configuration",
+                command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP}",
+            ),
+            HelpExample(
+                summary="Include configuration provenance layers",
+                command_line=(
+                    f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} {CliOpt.SHOW_CONFIG_LAYERS}"
+                ),
+            ),
+            HelpExample(
+                summary="Read include patterns from STDIN",
+                command_line=(
+                    f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} {CliOpt.INCLUDE_FROM} -"
+                ),
+            ),
+            HelpExample(
+                summary="Emit machine-readable configuration",
+                command_line=(
+                    f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_DUMP} "
+                    f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
+                ),
+            ),
+        ),
+        notes=(
+            "File lists are inputs, not configuration; "
+            "listed paths do not affect this command's output.",
+            "Pattern sources are configuration and are included in the dump.",
+            "Human output may include TOML block markers when verbosity is enabled.",
+            "Machine-readable formats emit a Config snapshot and optional provenance records.",
+        ),
     ),
 )
 @common_color_options

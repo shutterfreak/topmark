@@ -21,11 +21,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import click
+import rich_click
 
 from topmark.cli.commands.registry_bindings import registry_bindings_command
 from topmark.cli.commands.registry_filetypes import registry_filetypes_command
 from topmark.cli.commands.registry_processors import registry_processors_command
+from topmark.cli.help import HelpExample
+from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.core.logging import get_logger
@@ -37,19 +39,26 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@click.group(
+@rich_click.group(
+    cls=rich_click.RichGroup,
     name=CliCmd.REGISTRY,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help="Inspect TopMark registry metadata.",
-    epilog=(
-        "\b\n"
-        "Examples:\n"
-        "  # Inspect registered file types\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES}\n"
-        "  # Inspect registered header processors\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS}\n"
-        "  # Inspect file-type-to-processor bindings\n"
-        f"  topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_BINDINGS}\n"
+    epilog=render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Inspect registered file types",
+                command_line=f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES}",
+            ),
+            HelpExample(
+                summary="Inspect registered header processors",
+                command_line=f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS}",
+            ),
+            HelpExample(
+                summary="Inspect file-type-to-processor bindings",
+                command_line=f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_BINDINGS}",
+            ),
+        ),
     ),
 )
 def registry_command() -> None:

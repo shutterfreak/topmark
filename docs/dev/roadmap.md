@@ -79,10 +79,10 @@ Completed stabilization themes:
 - the first stable-line patch-release work fixed concrete post-1.0 correctness issues, including
   diff output preservation with pruned pipeline views and collision-safe Markdown diff fences;
 - in-memory and streaming pipeline support, richer staged diagnostics exposure, registry
-  query/filter commands, schema versioning, `rich-click` migration, possible command-help
-  documentation generation, Markdown output refactoring, and broader workflow factoring remain
-  explicitly deferred beyond 1.0, while the presentation styling backend has now been migrated from
-  `yachalk` to `rich` behind the existing semantic adapter.
+  query/filter commands, schema versioning, possible command-help documentation generation, Markdown
+  output refactoring, and broader workflow factoring remain explicitly deferred beyond 1.0, while
+  the presentation styling backend has now been migrated from `yachalk` to `rich` behind the
+  existing semantic adapter and `rich-click` has been adopted for CLI help rendering.
 
 After the final 1.0 release, remaining work is no longer broad architectural redesign. It is limited
 to ecosystem observation, downstream compatibility checks, documentation clarifications, stable 1.x
@@ -295,8 +295,9 @@ The remaining work after `1.0.0` is intentionally narrow and governance-oriented
 - preserving documentation and output-contract consistency;
 - monitoring the finalized CI/release metadata and uv-cache ownership model across ongoing workflow
   runs;
-- planning a possible `rich-click` migration and generated command-help documentation workflow now
-  that the presentation layer itself uses `rich` behind the existing semantic styling adapter;
+- planning generated command-help documentation and help-layout refinements now that the
+  presentation layer itself uses `rich` behind the existing semantic styling adapter and CLI help
+  uses `rich-click`;
 - planning the streaming pipeline architecture direction initiated while fixing issue #52;
 - and maintaining explicit post-1.0 scope boundaries.
 
@@ -437,11 +438,16 @@ Human output:
 - and keeps semantic styling routed through the current `rich`-backed presentation adapter.
 
 The `yachalk` replacement has now been completed by routing semantic styling through a `rich`-backed
-presentation adapter while preserving the existing styling roles and output boundaries. Remaining
-post-1.0 presentation planning may evaluate adopting `rich-click` for command help rendering,
-auto-generating command help pages instead of fully hand-curating `docs/usage/cli.md` and
-`docs/usage/commands/`, and refactoring Markdown output only where that naturally follows from a
-richer presentation backend.
+presentation adapter while preserving the existing styling roles and output boundaries. The first
+`rich-click` adoption phase has also been completed for CLI help rendering only: command/group help
+uses Rich Click formatting, while Click remains the authoritative runtime, validation, state, and
+context layer. Internal command code continues to prefer `click.get_current_context()`;
+`rich_click.get_current_context()` is intentionally not used.
+
+Remaining post-1.0 presentation planning may evaluate auto-generating command help pages instead of
+fully hand-curating `docs/usage/cli.md` and `docs/usage/commands/`, improving long-option help
+layout, and refactoring Markdown output only where that naturally follows from a richer presentation
+backend.
 
 Remaining work is limited to compatibility validation, wording consistency, and downstream consumer
 verification.
@@ -455,8 +461,10 @@ Potential future work includes:
 - maintaining the completed `yachalk` to `rich` migration behind the existing semantic styling
   adapter while preserving semantic styling roles, `NO_COLOR` behavior, non-TTY behavior, and
   deterministic test output;
-- adopting `rich-click` for richer command help output while preserving Click-compatible command
-  semantics;
+- maintaining the completed first `rich-click` adoption phase for CLI help rendering only while
+  preserving Click-compatible command semantics, validation, state, and context handling;
+- improving help layout for very long option names, aliases, and boolean flag pairs where Rich Click
+  table wrapping remains awkward;
 - evaluating whether command help pages can be generated from the CLI instead of fully hand-curating
   `docs/usage/cli.md` and `docs/usage/commands/`;
 - refactoring Markdown output if the presentation backend changes make the current implementation
@@ -593,8 +601,9 @@ required by a concrete release blocker:
 - [x] verbosity and quiet semantics stabilized
 - [x] warning/error wording reviewed for consistency
 - [x] command-page structure conventions harmonized
-- [x] Rich / `rich-click` migration and generated command-help documentation explicitly deferred
-  beyond 1.0
+- [x] `yachalk` → `rich` migration completed behind the semantic styling adapter
+- [x] initial `rich-click` adoption completed for CLI help rendering
+- [x] generated command-help documentation explicitly deferred beyond 1.0
 
 #### Machine-readable output
 
@@ -669,6 +678,6 @@ terminology stability, and cross-platform installation behavior.
 The stable 1.x maintenance path is now limited to preserving compatibility, validating published
 artifacts after release, monitoring the CI coverage signal, observing the finalized CI/release
 metadata and cache-ownership model across real workflow runs, and applying focused compatibility or
-correctness fixes only. New broad scope, architectural churn, `rich-click` adoption, streaming
-pipeline redesign, generated command-help documentation, and output-contract redesign remain out of
+correctness fixes only. New broad scope, architectural churn, streaming pipeline redesign, generated
+command-help documentation, Markdown-output redesign, and output-contract redesign remain out of
 scope unless required by a concrete stable 1.x issue.

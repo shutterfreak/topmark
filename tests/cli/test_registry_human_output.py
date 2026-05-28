@@ -27,6 +27,7 @@ from typing import ClassVar
 
 import pytest
 
+from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.registry import make_file_type
@@ -187,9 +188,10 @@ def test_registry_commands_reject_quiet_option_for_text_output(
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 # --- Markdown output: filetypes ---
@@ -239,9 +241,10 @@ def test_registry_filetypes_markdown_rejects_quiet_option(
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 def test_registry_filetypes_markdown_long_shows_details(

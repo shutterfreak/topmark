@@ -19,6 +19,7 @@ import pytest
 from packaging.version import InvalidVersion
 from packaging.version import Version
 
+from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
@@ -97,9 +98,10 @@ def test_version_rejects_quiet_option_with_json_output() -> None:
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 def test_version_verbose_does_not_change_json_output() -> None:
@@ -188,9 +190,10 @@ def test_version_rejects_quiet_option_with_ndjson_output() -> None:
         ]
     )
 
-    assert result.exit_code != 0
-    assert "No such option" in result.output
-    assert CliOpt.QUIET in result.output
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.QUIET,
+    )
 
 
 def test_version_verbose_does_not_change_ndjson_output() -> None:
