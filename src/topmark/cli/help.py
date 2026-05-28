@@ -8,14 +8,14 @@
 #
 # topmark:header:end
 
-"""Shared helpers for Rich Click command help epilogs.
+"""Shared helpers for Rich Click command help output.
 
 This module builds small Rich renderables used by `rich-click` help output.
-It keeps command epilog formatting consistent while preserving plain Click for
-command execution, context handling, validation, and shell completion.
 
 The helpers are intentionally limited to human-facing command help. They should
 not be used for machine-readable output, runtime reports, or pipeline rendering.
+Click remains the authoritative runtime, validation, context, and shell
+completion layer.
 """
 
 from __future__ import annotations
