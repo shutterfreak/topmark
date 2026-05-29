@@ -26,7 +26,6 @@ rather than exact phrases to tolerate minor wording tweaks.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -190,3 +189,91 @@ def test_report_actionable_hides_unsupported_per_file_but_summary_counts_it(tmp_
 
     assert_SUCCESS(result_summary)
     assert ResolveStatus.UNSUPPORTED.value in result_summary.output.lower()
+
+
+# ---- Test hidden singular option aliases ----
+
+
+@pytest.mark.parametrize(
+    ("include_opt", "exclude_opt"),
+    [
+        (CliOpt.INCLUDE_FILE_TYPES, CliOpt.EXCLUDE_FILE_TYPES),
+        (CliOpt.INCLUDE_FILE_TYPE, CliOpt.EXCLUDE_FILE_TYPE),
+        (CliOpt.INCLUDE_FILE_TYPES, CliOpt.EXCLUDE_FILE_TYPE),
+        (CliOpt.INCLUDE_FILE_TYPE, CliOpt.EXCLUDE_FILE_TYPES),
+    ],
+)
+def test_file_type_filter_accepts_plural_and_hidden_singular_aliases(
+    tmp_path: Path,
+    include_opt: str,
+    exclude_opt: str,
+) -> None:
+    """File type filter accepts plural and hidden singular aliases.
+
+    This tests:
+    - plural options;
+    - hidden singular aliases;
+    - mixed canonical/hidden spelling combinations;
+    - CSV parsing;
+    - actual filter semantics.
+    """
+    py: Path = tmp_path / "a.py"
+    md: Path = tmp_path / "a.md"
+    java: Path = tmp_path / "A.java"
+    toml: Path = tmp_path / "settings.toml"
+
+    py.write_text("print('x')\n", "utf-8")
+    md.write_text("# Title\n", "utf-8")
+    java.write_text("class A {}\n", "utf-8")
+    toml.write_text("[project]\nname = 'x'\n", "utf-8")
+
+    result: Result = run_cli(
+        [
+            CliCmd.CHECK,
+            include_opt,
+            "python,markdown,javascript,toml",
+            exclude_opt,
+            "java",
+            CliOpt.APPLY_CHANGES,
+            str(tmp_path),
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert TOPMARK_START_MARKER in py.read_text("utf-8")
+    assert TOPMARK_START_MARKER in md.read_text("utf-8")
+    assert TOPMARK_START_MARKER not in java.read_text("utf-8")
+    assert TOPMARK_START_MARKER in toml.read_text("utf-8")
+
+
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP, CliCmd.PROBE])
+def test_file_type_filter_merges_repeated_plural_and_hidden_singular_aliases(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Repeated plural and hidden singular aliases are accepted and merged.
+
+    This test intentionally runs in dry-run mode against one selected file. It
+    verifies the CLI parsing and file-type filter accumulation contract without
+    depending on command-specific mutation behavior or directory probe reporting.
+    """
+    md: Path = tmp_path / "a.md"
+
+    md.write_text("# Title\n", "utf-8")
+
+    result: Result = run_cli(
+        [
+            command,
+            CliOpt.INCLUDE_FILE_TYPE,
+            "python",
+            CliOpt.INCLUDE_FILE_TYPES,
+            "javascript,markdown,toml",
+            CliOpt.EXCLUDE_FILE_TYPE,
+            "html",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "css,xml,svg",
+            str(md),
+        ],
+    )
+
+    assert_SUCCESS_or_WOULD_CHANGE(result)

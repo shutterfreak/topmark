@@ -18,13 +18,13 @@ These tests are broad command-surface smoke tests, not detailed content checks.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 from typing import Final
 
-from click.testing import Result
-
 from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import normalize_rich_cli_output
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -116,4 +116,35 @@ def test_config_dump_help_listed_paths_noop() -> None:
     assert_rich_output_contains(
         result.output,
         expected="Listed paths do not affect the dumped configuration.",
+    )
+
+
+# ---- Test hidden aliases ----
+
+
+def test_file_type_hidden_singular_aliases_are_not_shown_in_help() -> None:
+    """Hidden singular file type filter aliases are not shown in help."""
+    result: Result = run_cli([CliCmd.CHECK, CliOpt.HELP])
+
+    assert_SUCCESS(result)
+    assert_rich_output_contains(result.output, expected=CliOpt.INCLUDE_FILE_TYPES)
+    assert_rich_output_contains(result.output, expected=CliOpt.EXCLUDE_FILE_TYPES)
+
+    # We cannot use `assert_rich_output_does_not_contain()` here since the hidden singular alias
+    # is a substring of the canonical plural option name. We normalize the rich output by hand and
+    # use a regular expression instead:
+    normalized_output: str = normalize_rich_cli_output(result.output)
+    assert (
+        re.search(
+            rf"{re.escape(CliOpt.INCLUDE_FILE_TYPE)}(?!s)(?:\s|,)",
+            normalized_output,
+        )
+        is None
+    )
+    assert (
+        re.search(
+            rf"{re.escape(CliOpt.EXCLUDE_FILE_TYPE)}(?!s)(?:\s|,)",
+            normalized_output,
+        )
+        is None
     )
