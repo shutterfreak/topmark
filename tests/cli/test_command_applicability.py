@@ -8,7 +8,12 @@
 #
 # topmark:header:end
 
-"""CLI command-specific option applicability tests."""
+"""CLI command-specific option applicability tests.
+
+These tests intentionally import the production applicability groups so every
+centralized forbidden option remains covered. Argument values stay local to the
+test module because they are test fixtures, not CLI metadata.
+"""
 
 from __future__ import annotations
 
@@ -24,6 +29,10 @@ from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.option_groups import CHECK_ONLY_OPTION_REASON
+from topmark.cli.option_groups import CHECK_OR_STRIP_ONLY_OPTION_REASON
+from topmark.cli.option_groups import PROBE_FORBIDDEN_OPTIONS
+from topmark.cli.option_groups import STRIP_FORBIDDEN_OPTIONS
 
 if TYPE_CHECKING:
     from click.testing import Result
@@ -31,24 +40,38 @@ if TYPE_CHECKING:
 _STDIN_FLAG: str = "--stdin"
 _STDIN_FILENAME: str = CliOpt.STDIN_FILENAME
 _STDIN_GUIDANCE: str = "Use '-' with '--stdin-filename' to read one file's content from STDIN."
-_CHECK_ONLY_REASON: str = "Use this only with `topmark check`."
-_CHECK_STRIP_REASON: str = "Use this only with `topmark check` or `topmark strip`."
+
+
+# Values used when exercising option spellings that require an argument. Keep
+# these local to the tests: production applicability metadata should describe
+# whether an option applies to a command, not how a test should invoke it.
+_OPTION_VALUES: dict[str, str | None] = {
+    CliOpt.APPLY_CHANGES: None,
+    CliOpt.WRITE_MODE: "stdout",
+    CliOpt.RENDER_DIFF: None,
+    CliOpt.RESULTS_SUMMARY_MODE: "compact",
+    CliOpt.REPORT: "all",
+    CliOpt.POLICY_HEADER_MUTATION_MODE: "replace",
+    CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES: None,
+    CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: None,
+    CliOpt.POLICY_EMPTY_INSERT_MODE: "ignore",
+    CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: None,
+    CliOpt.POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: None,
+    CliOpt.POLICY_ALLOW_REFLOW: None,
+    CliOpt.POLICY_NO_ALLOW_REFLOW: None,
+    CliOpt.HEADER_FIELDS: "project,file",
+    CliOpt.FIELD_VALUES: "project=TopMark",
+    CliOpt.ALIGN_FIELDS: None,
+    CliOpt.NO_ALIGN_FIELDS: None,
+    CliOpt.RELATIVE_TO: "cwd",
+}
 
 
 @pytest.mark.parametrize(
     ("option", "value", "reason"),
     [
-        (CliOpt.APPLY_CHANGES, None, _CHECK_STRIP_REASON),
-        (CliOpt.WRITE_MODE, "stdout", _CHECK_STRIP_REASON),
-        (CliOpt.RENDER_DIFF, None, _CHECK_STRIP_REASON),
-        (CliOpt.RESULTS_SUMMARY_MODE, "compact", _CHECK_STRIP_REASON),
-        (CliOpt.REPORT, "all", _CHECK_STRIP_REASON),
-        (CliOpt.POLICY_HEADER_MUTATION_MODE, "replace", _CHECK_ONLY_REASON),
-        (CliOpt.HEADER_FIELDS, "project,file", _CHECK_ONLY_REASON),
-        (CliOpt.FIELD_VALUES, "project=TopMark", _CHECK_ONLY_REASON),
-        (CliOpt.ALIGN_FIELDS, None, _CHECK_ONLY_REASON),
-        (CliOpt.NO_ALIGN_FIELDS, None, _CHECK_ONLY_REASON),
-        (CliOpt.RELATIVE_TO, "cwd", _CHECK_ONLY_REASON),
+        (option, _OPTION_VALUES[option], reason)
+        for option, reason in PROBE_FORBIDDEN_OPTIONS.items()
     ],
 )
 def test_probe_rejects_inapplicable_path_command_options(
@@ -56,7 +79,7 @@ def test_probe_rejects_inapplicable_path_command_options(
     value: str | None,
     reason: str,
 ) -> None:
-    """`probe` must reject known check/strip options before input planning."""
+    """`probe` rejects every centralized check/strip-only option."""
     argv: list[str] = [CliCmd.PROBE, option]
     if value is not None:
         argv.append(value)
@@ -98,26 +121,19 @@ def test_probe_rejects_inapplicable_option_assignment_form() -> None:
     )
     assert_rich_output_contains(
         result.output,
-        expected=_CHECK_STRIP_REASON,
+        expected=CHECK_OR_STRIP_ONLY_OPTION_REASON,
     )
 
 
 @pytest.mark.parametrize(
     ("option", "value"),
-    [
-        (CliOpt.POLICY_HEADER_MUTATION_MODE, "replace"),
-        (CliOpt.HEADER_FIELDS, "project,file"),
-        (CliOpt.FIELD_VALUES, "project=TopMark"),
-        (CliOpt.ALIGN_FIELDS, None),
-        (CliOpt.NO_ALIGN_FIELDS, None),
-        (CliOpt.RELATIVE_TO, "cwd"),
-    ],
+    [(option, _OPTION_VALUES[option]) for option in STRIP_FORBIDDEN_OPTIONS],
 )
 def test_strip_rejects_generated_header_options(
     option: str,
     value: str | None,
 ) -> None:
-    """`strip` must reject check-only generated-header controls."""
+    """`strip` rejects every centralized check-only generated-header option."""
     argv: list[str] = [CliCmd.STRIP, option]
     if value is not None:
         argv.append(value)
@@ -135,7 +151,7 @@ def test_strip_rejects_generated_header_options(
     )
     assert_rich_output_contains(
         result.output,
-        expected=_CHECK_ONLY_REASON,
+        expected=CHECK_ONLY_OPTION_REASON,
     )
 
 
@@ -229,7 +245,7 @@ def test_probe_rejects_first_inapplicable_option_when_multiple_are_present() -> 
     )
     assert_rich_output_contains(
         result.output,
-        expected=_CHECK_STRIP_REASON,
+        expected=CHECK_OR_STRIP_ONLY_OPTION_REASON,
     )
 
 
