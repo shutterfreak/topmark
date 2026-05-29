@@ -64,6 +64,7 @@ from topmark.cli.help import render_examples_epilog
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.option_groups import STRIP_FORBIDDEN_OPTIONS
 from topmark.cli.options import PATH_COMMAND_CONTEXT_SETTINGS
 from topmark.cli.options import common_apply_and_write_options
 from topmark.cli.options import common_color_options
@@ -282,24 +283,9 @@ def strip_command(
     # Reject options that belong to header generation/update. `strip` shares
     # input, reporting, diff, and write semantics with `check`, but it is a
     # removal-only command and must not accept generated-header controls.
-    _check_reason: str = "Use this only with `topmark check`."
     validate_forbidden_options_in_extra_args(
         ctx,
-        forbidden_opts={
-            CliOpt.POLICY_HEADER_MUTATION_MODE: _check_reason,
-            CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES: _check_reason,
-            CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: _check_reason,
-            CliOpt.POLICY_EMPTY_INSERT_MODE: _check_reason,
-            CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _check_reason,
-            CliOpt.POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: _check_reason,
-            CliOpt.POLICY_ALLOW_REFLOW: _check_reason,
-            CliOpt.POLICY_NO_ALLOW_REFLOW: _check_reason,
-            CliOpt.HEADER_FIELDS: _check_reason,
-            CliOpt.FIELD_VALUES: _check_reason,
-            CliOpt.ALIGN_FIELDS: _check_reason,
-            CliOpt.NO_ALIGN_FIELDS: _check_reason,
-            CliOpt.RELATIVE_TO: _check_reason,
-        },
+        forbidden_opts=STRIP_FORBIDDEN_OPTIONS,
     )
 
     # Reject common unsupported option spellings that permissive path parsing
