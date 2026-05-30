@@ -147,6 +147,22 @@ def test_probe_explicit_file_selection_reports_missing_file(tmp_path: Path) -> N
     assert result.reason == FileSelectionReason.NOT_FOUND
 
 
+def test_probe_explicit_file_selection_skips_reported_missing_literal(
+    tmp_path: Path,
+) -> None:
+    """Missing explicit inputs already reported by resolution should be skipped."""
+    file: Path = tmp_path / "missing.py"
+    cfg: FrozenConfig = make_frozen_config(files=[str(file)])
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[],
+        missing_literals=[file],
+    )
+
+    assert results == ()
+
+
 def test_probe_explicit_file_selection_reports_directory(tmp_path: Path) -> None:
     """Explicit directories omitted from selected files should be reported as not files."""
     directory: Path = tmp_path / "data"
@@ -163,3 +179,21 @@ def test_probe_explicit_file_selection_reports_directory(tmp_path: Path) -> None
     assert result.path == directory
     assert result.status == FileSelectionStatus.FILTERED
     assert result.reason == FileSelectionReason.NOT_A_FILE
+
+
+def test_probe_explicit_file_selection_omits_directory_with_selected_descendant(
+    tmp_path: Path,
+) -> None:
+    """Explicit directories with selected descendants are expansion sources."""
+    directory: Path = tmp_path / "data"
+    directory.mkdir()
+    file: Path = directory / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+    cfg: FrozenConfig = make_frozen_config(files=[str(directory)])
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[file],
+    )
+
+    assert results == ()

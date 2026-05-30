@@ -833,16 +833,8 @@ def run_probe_pipeline(
         else probe_explicit_file_selection(
             prepared.effective_cfg,
             selected_files=prepared.file_list,
+            missing_literals=prepared.file_resolution.missing_literals,
         )
-    )
-
-    # Missing explicit literals get hard error contexts below. Do not also emit a
-    # semantic filtered probe context for the same path.
-    missing_literal_paths: frozenset[Path] = frozenset(prepared.file_resolution.missing_literals)
-    filtered_selection_results = tuple(
-        selection
-        for selection in filtered_selection_results
-        if selection.path not in missing_literal_paths
     )
 
     execution: PipelineExecution = _execute_pipeline_for_file_list(

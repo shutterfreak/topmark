@@ -388,6 +388,7 @@ def probe_command(
         filtered_selection_results = probe_explicit_file_selection(
             config,
             selected_files=file_list,
+            missing_literals=file_resolution.missing_literals,
         )
 
     if (

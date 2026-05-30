@@ -258,6 +258,25 @@ def _explicit_input_paths(config: FrozenConfig) -> list[Path]:
     return paths
 
 
+def _real_paths(paths: Sequence[Path]) -> set[Path]:
+    """Return normalized real paths for filesystem entries.
+
+    Args:
+        paths: Filesystem paths to normalize.
+
+    Returns:
+        Set of resolved paths. Paths that cannot be resolved are kept as
+        provided so comparison remains best-effort and non-fatal.
+    """
+    resolved: set[Path] = set()
+    for path in paths:
+        try:
+            resolved.add(path.resolve())
+        except OSError:
+            resolved.add(path)
+    return resolved
+
+
 def _selected_real_paths(selected_files: Sequence[Path]) -> set[Path]:
     """Return normalized real paths for selected file-list entries.
 
@@ -268,13 +287,40 @@ def _selected_real_paths(selected_files: Sequence[Path]) -> set[Path]:
         Set of resolved selected paths. Paths that cannot be resolved are kept
         as provided so comparison remains best-effort and non-fatal.
     """
-    selected: set[Path] = set()
-    for path in selected_files:
+    return _real_paths(selected_files)
+
+
+# --- Explicit-input selection helpers ---
+
+
+def _has_selected_descendant(
+    directory: Path,
+    selected_real: set[Path],
+) -> bool:
+    """Return whether `directory` contains at least one selected file.
+
+    Args:
+        directory: Explicit directory input to check.
+        selected_real: Resolved selected file paths returned by
+            [_selected_real_paths][topmark.resolution.files._selected_real_paths].
+
+    Returns:
+        True if at least one selected file is below `directory`.
+    """
+    try:
+        directory_real: Path = directory.resolve()
+    except OSError:
+        directory_real = directory
+
+    for selected in selected_real:
         try:
-            selected.add(path.resolve())
-        except OSError:
-            selected.add(path)
-    return selected
+            selected.relative_to(directory_real)
+        except ValueError:
+            continue
+        else:
+            return True
+
+    return False
 
 
 # --- Discovery filter explanation helpers ---
@@ -369,6 +415,7 @@ def probe_explicit_file_selection(
     config: FrozenConfig,
     *,
     selected_files: Sequence[Path],
+    missing_literals: Sequence[Path] = (),
 ) -> tuple[FileSelectionProbeResult, ...]:
     """Explain explicit inputs that were not selected for file-type probing.
 
@@ -380,12 +427,16 @@ def probe_explicit_file_selection(
     Args:
         config: Effective layered configuration used for file discovery.
         selected_files: Files selected by `resolve_file_list()`.
+        missing_literals: Literal input paths already reported by file-list
+            resolution as missing. These paths are skipped so probe does not
+            emit duplicate missing and filtered synthetic results.
 
     Returns:
         Discovery-level probe results for explicit inputs that did not reach
         file-type probing.
     """
     selected_real: set[Path] = _selected_real_paths(selected_files)
+    missing_real: set[Path] = _real_paths(missing_literals)
     results: list[FileSelectionProbeResult] = []
 
     for explicit in _explicit_input_paths(config):
@@ -394,7 +445,7 @@ def probe_explicit_file_selection(
         except OSError:
             real = explicit
 
-        if real in selected_real:
+        if real in selected_real or real in missing_real:
             continue
 
         if not explicit.exists():
@@ -408,6 +459,9 @@ def probe_explicit_file_selection(
             continue
 
         if not explicit.is_file():
+            if explicit.is_dir() and _has_selected_descendant(explicit, selected_real):
+                continue
+
             results.append(
                 FileSelectionProbeResult(
                     path=explicit,

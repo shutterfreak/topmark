@@ -103,8 +103,12 @@ working directory; path-based filters run before file-type filters, and exclude 
 precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
 contract.
 
-Unlike processing commands, `probe` may report explicitly requested paths as filtered diagnostic
+Unlike processing commands, `probe` may report explicitly requested files as filtered diagnostic
 results instead of silently omitting them.
+
+Explicit directories that successfully expand to selected files are treated as discovery inputs and
+are not reported as separate filtered probe results. Explicit missing paths are reported as missing
+input errors rather than filtered probe results.
 
 ### File type filters
 
@@ -244,7 +248,11 @@ ______________________________________________________________________
 }
 ```
 
-Filtered explicit inputs are also represented as semantic probe payloads
+Only explicit inputs that actually fail selection are represented as filtered probe payloads.
+
+Directories that successfully expand to selected files are not emitted as additional filtered probe
+results. Explicit missing paths are represented as missing-input probe results rather than filtered
+probe results.
 
 ```jsonc
 {
@@ -392,4 +400,5 @@ ______________________________________________________________________
 - **`--stdin` is rejected**: Use `-` as the PATH sentinel together with `--stdin-filename NAME` when
   reading one virtual file from STDIN content.
 - **Missing file error**: A literal path such as `fubar.py` is treated as an explicit input and
-  fails with `FILE_NOT_FOUND (66)` when it does not exist.
+  fails with `FILE_NOT_FOUND (66)` when it does not exist. Missing explicit inputs are reported as
+  missing-input probe results rather than filtered probe results.

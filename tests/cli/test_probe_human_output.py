@@ -28,7 +28,9 @@ from click.testing import Result
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
+from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -56,7 +58,7 @@ def test_probe_text_output_progressively_expands_with_verbosity(tmp_path: Path) 
         [
             CliCmd.PROBE,
             str(file),
-            "-v",
+            CliOpt.VERBOSE,
         ],
     )
     result_vv: Result = runner.invoke(
@@ -64,7 +66,8 @@ def test_probe_text_output_progressively_expands_with_verbosity(tmp_path: Path) 
         [
             CliCmd.PROBE,
             str(file),
-            "-vv",
+            CliOpt.VERBOSE,
+            CliOpt.VERBOSE,
         ],
     )
 
@@ -90,6 +93,8 @@ def test_probe_text_output_progressively_expands_with_verbosity(tmp_path: Path) 
 
 
 # --- TEXT output: filtered explicit inputs ---
+
+
 def test_probe_text_output_reports_explicitly_filtered_input(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
@@ -107,7 +112,7 @@ def test_probe_text_output_reports_explicitly_filtered_input(
         cli,
         [
             CliCmd.PROBE,
-            "--exclude",
+            CliOpt.EXCLUDE_PATTERNS,
             "__pycache__/",
             input_path,
         ],
@@ -119,7 +124,68 @@ def test_probe_text_output_reports_explicitly_filtered_input(
     assert "filtered: excluded_by_path_filter" in result.output
 
 
+def test_probe_text_output_omits_directory_filtered_result_when_children_selected(
+    tmp_path: Path,
+) -> None:
+    """Expanded directories should not be reported as filtered inputs."""
+    directory: Path = tmp_path / "project"
+    directory.mkdir()
+
+    python_file: Path = directory / "example.py"
+    python_file.write_text("print('hello')\n", encoding="utf-8")
+
+    markdown_file: Path = directory / "README.md"
+    markdown_file.write_text("# Example\n", encoding="utf-8")
+
+    html_file: Path = directory / "index.html"
+    html_file.write_text("<h1>Example</h1>\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.INCLUDE_FILE_TYPES,
+            "markdown,toml",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "html",
+            str(directory),
+        ],
+    )
+
+    assert_SUCCESS(result)
+
+    assert "example.py" in result.output
+    assert "README.md" in result.output
+    assert "<filtered>" not in result.output
+
+
+def test_probe_text_output_reports_missing_input_only_once(
+    tmp_path: Path,
+) -> None:
+    """Missing explicit inputs should not also appear as filtered."""
+    missing_directory: Path = tmp_path / "topmark-does-not-exist"
+    runner = CliRunner()
+
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(missing_directory),
+        ],
+    )
+
+    assert result.exit_code != 0
+
+    assert "probe-missing" in result.output
+    assert "<filtered>" not in result.output
+
+
 # --- Markdown output: verbosity and quiet controls ---
+
+
 def test_probe_markdown_output_ignores_text_verbosity(tmp_path: Path) -> None:
     """Markdown probe output should ignore TEXT-only verbosity flags."""
     file: Path = tmp_path / "example.py"
@@ -132,8 +198,8 @@ def test_probe_markdown_output_ignores_text_verbosity(tmp_path: Path) -> None:
         [
             CliCmd.PROBE,
             str(file),
-            "--output-format",
-            "markdown",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
         ],
     )
     result_v: Result = runner.invoke(
@@ -141,9 +207,9 @@ def test_probe_markdown_output_ignores_text_verbosity(tmp_path: Path) -> None:
         [
             CliCmd.PROBE,
             str(file),
-            "--output-format",
-            "markdown",
-            "-v",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            CliOpt.VERBOSE,
         ],
     )
 
@@ -171,9 +237,9 @@ def test_probe_markdown_output_ignores_text_quiet(tmp_path: Path) -> None:
         [
             CliCmd.PROBE,
             str(file),
-            "--output-format",
-            "markdown",
-            "--quiet",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            CliOpt.QUIET,
         ],
     )
 

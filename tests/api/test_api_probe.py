@@ -60,7 +60,10 @@ def test_probe_python_file_resolves_with_stable_candidate_shape(tmp_path: Path) 
     assert isinstance(file_result, api.ProbeFileResult)
     assert file_result.path == target
     assert file_result.status == "resolved"
-    assert file_result.reason in {"selected_highest_score", "selected_by_tie_break"}
+    assert file_result.reason in {
+        "selected_highest_score",
+        "selected_by_tie_break",
+    }
     assert file_result.selected_file_type == "python"
     assert file_result.selected_processor is not None
     assert file_result.candidates
@@ -93,7 +96,10 @@ def test_probe_unsupported_explicit_file_uses_public_strings(tmp_path: Path) -> 
 
     file_result: api.ProbeFileResult = result.files[0]
     assert file_result.path == target
-    assert file_result.status in {"unsupported", "filtered"}
+    assert file_result.status in {
+        "unsupported",
+        "filtered",
+    }
     assert isinstance(file_result.reason, str)
     assert file_result.selected_file_type is None
     assert file_result.selected_processor is None
@@ -113,6 +119,11 @@ def test_probe_missing_explicit_path_reports_error(tmp_path: Path) -> None:
 
     file_result: api.ProbeFileResult = result.files[0]
     assert file_result.path == missing
+
+    assert file_result.status == "error"
+    assert file_result.reason == "not found"
+    assert len(result.files) == 1
+
     assert file_result.selected_file_type is None
     assert file_result.selected_processor is None
     assert file_result.candidates == ()
@@ -141,3 +152,44 @@ def test_probe_explicit_input_filtered_by_file_type_is_reported(tmp_path: Path) 
     assert by_path[toml_file].reason == "excluded_by_file_type_filter"
     assert by_path[toml_file].candidates == ()
     assert result.summary.get("filtered", 0) >= 1
+
+
+# Directories that expand to selected files are not probe results.
+def test_probe_directory_with_selected_children_omits_directory_result(
+    tmp_path: Path,
+) -> None:
+    """Directories that expand to selected files are not probe results."""
+    directory: Path = tmp_path / "project"
+    directory.mkdir()
+
+    python_file: Path = directory / "example.py"
+    python_file.write_text("print('hello')\n", encoding="utf-8")
+
+    markdown_file: Path = directory / "README.md"
+    markdown_file.write_text("# Example\n", encoding="utf-8")
+
+    html_file: Path = directory / "index.html"
+    html_file.write_text("<h1>Example</h1>\n", encoding="utf-8")
+
+    result: api.ProbeRunResult = api.probe(
+        [directory],
+        include_file_types=[
+            "python",
+            "markdown",
+            "toml",
+        ],
+        exclude_file_types=[
+            "html",
+        ],
+    )
+
+    assert result.had_errors is False
+
+    by_path: dict[Path, api.ProbeFileResult] = {
+        file_result.path: file_result for file_result in result.files
+    }
+    assert set(by_path) == {python_file, markdown_file}
+    assert by_path[python_file].status == "resolved"
+    assert by_path[markdown_file].status == "resolved"
+    assert directory not in by_path
+    assert result.summary == {"resolved": 2}

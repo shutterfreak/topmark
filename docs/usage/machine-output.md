@@ -232,7 +232,8 @@ formats expose the same resolution evidence used by the human-facing probe rende
 - probe status and reason
 - all scored candidate file types
 - candidate match signals
-- explicit inputs filtered during discovery before file-type probing
+- explicit file inputs filtered during discovery before file-type probing
+- explicit missing inputs that could not produce a normal resolution probe
 
 ### JSON schema
 
@@ -252,8 +253,9 @@ formats expose the same resolution evidence used by the human-facing probe rende
   policy.
 - `config_diagnostics`: full diagnostics payload including counts and the list of config
   diagnostics.
-- `probes`: one resolution probe payload per probed path, including explicit inputs filtered before
-  file-type probing.
+- `probes`: one resolution probe payload per probed path, including explicit file inputs filtered
+  before file-type probing and explicit missing inputs that could not produce a normal resolution
+  probe.
 
 ### NDJSON schema
 
@@ -292,7 +294,9 @@ ______________________________________________________________________
 
 Each element of the JSON `probes` array and each NDJSON `probe` record contains a **per-path
 resolution probe payload**. Most probe payloads correspond to files that reached file-type probing,
-but explicit inputs filtered during discovery are also represented as probe payloads.
+but explicit file inputs filtered during discovery are also represented as probe payloads. Explicit
+missing inputs are represented as `probe_missing` payloads when no normal resolution probe could be
+recorded.
 
 High-level shape:
 
@@ -346,9 +350,26 @@ Filtered explicit input shape:
 }
 ```
 
-Filtered probe payloads are emitted only for paths explicitly supplied to
+Missing explicit input shape:
+
+```jsonc
+{
+  "path": "topmark-does-not-exist",
+  "status": "probe_missing",
+  "reason": "no_resolution_probe_result",
+  "selected_file_type": null,
+  "selected_processor": null,
+  "candidates": []
+}
+```
+
+Filtered probe payloads are emitted only for explicit file inputs supplied to
 [`topmark probe`](../usage/commands/probe.md) (including paths loaded via `--files-from`). TopMark
 does not enumerate every recursively discovered file that was ignored by discovery filters.
+
+Explicit directories that successfully expand to selected child files are treated as discovery
+sources and are not emitted as separate filtered probe payloads. Explicit missing inputs are emitted
+as `probe_missing` payloads rather than filtered payloads.
 
 Filtered probe payloads may use one of these reasons:
 
@@ -359,15 +380,15 @@ Filtered probe payloads may use one of these reasons:
 
 Fields:
 
-- `path`: probed or explicitly requested filesystem path. For filtered explicit inputs, this is the
-  path supplied to the command.
+- `path`: probed or explicitly requested filesystem path. For filtered and missing explicit inputs,
+  this is the path supplied to the command.
 - `status`: probe status, currently one of:
   - `resolved` - a file type and processor were selected.
   - `unsupported` - no file type candidate matched.
   - `no_processor` - a file type was selected, but no processor binding was available.
-  - `filtered` - an explicitly requested input was filtered during discovery before file-type
+  - `filtered` - an explicitly requested file input was filtered during discovery before file-type
     probing.
-  - `probe_missing` - internal fallback used only if a pipeline result lacks a probe payload.
+  - `probe_missing` - an explicit input could not produce a normal resolution probe payload.
 - `reason`: machine-friendly explanation for the status and selection, for example:
   - `selected_highest_score`
   - `selected_by_tie_break`
@@ -378,11 +399,11 @@ Fields:
   - `excluded_by_discovery_filter`
   - `no_resolution_probe_result`
 - `selected_file_type`: selected canonical file type identity and score, or `null` when unresolved,
-  unbound, or filtered.
-- `selected_processor`: selected processor identity, or `null` when unresolved, unbound, or
-  filtered.
+  unbound, filtered, or missing.
+- `selected_processor`: selected processor identity, or `null` when unresolved, unbound, filtered,
+  or missing.
 - `candidates`: scored candidate file types in deterministic resolution order. Empty for filtered
-  explicit inputs and for unsupported paths with no candidates.
+  explicit inputs, missing explicit inputs, and unsupported paths with no candidates.
 
 Candidate fields:
 
@@ -411,10 +432,10 @@ Candidate fields:
 
 Note:
 
-- Explicit missing literal inputs are not represented as a dedicated probe status; they are reported
-  via CLI exit codes (`FILE_NOT_FOUND (66)`).
-- Synthetic probe entries may still appear for explicitly requested paths that were filtered during
-  discovery, but exit-code precedence is resolved at the CLI layer.
+- Explicit missing literal inputs are represented as `probe_missing` probe payloads and still fail
+  the CLI invocation with `FILE_NOT_FOUND (66)`.
+- Synthetic filtered probe entries may still appear for explicitly requested files that were
+  filtered during discovery, but exit-code precedence is resolved at the CLI layer.
 
 ______________________________________________________________________
 

@@ -330,7 +330,8 @@ Common NDJSON kinds include:
 - `config_diagnostics` (counts-only in NDJSON prefix records)
 - `diagnostic` (one diagnostic per record; see "Diagnostics" below)
 - `result` (per-file result)
-- `probe` (per-path resolution probe, including filtered explicit inputs)
+- `probe` (per-path resolution probe, including filtered explicit file inputs and missing explicit
+  inputs that could not produce a normal resolution probe)
 - `summary` (one aggregated `(outcome, reason)` summary entry)
 - `version`
 - registry-specific kinds:
@@ -472,8 +473,9 @@ quiet mode.
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
 
-Filtered probe results use machine-friendly reasons to explain why a path did not reach probing.
-These include:
+Filtered probe results use machine-friendly reasons to explain why an explicit file input did not
+reach probing. Missing explicit inputs use `probe_missing` with `no_resolution_probe_result` when no
+normal resolution probe payload could be recorded. These include:
 
 - `excluded_by_path_filter` - excluded by path-based include/exclude rules
 - `excluded_by_file_type_filter` - excluded by file-type include/exclude rules after identifier
@@ -486,10 +488,12 @@ Refer to the machine schema reference for the per-path probe payload:
 
 Note:
 
-- Explicit missing literal inputs are surfaced via the CLI exit code (`FILE_NOT_FOUND (66)`), not as
-  a distinct probe status.
-- In mixed-input runs, probe payloads may still include filtered or unsupported entries, but
-  exit-code precedence is resolved outside the payload.
+- Explicit missing literal inputs are represented as `probe_missing` probe payloads and still fail
+  the CLI invocation with `FILE_NOT_FOUND (66)`.
+- Explicit directories that successfully expand to selected child files are treated as discovery
+  sources and are not emitted as separate filtered probe payloads.
+- In mixed-input runs, probe payloads may still include filtered, missing, or unsupported entries,
+  but exit-code precedence is resolved outside the payload.
 
 ______________________________________________________________________
 
