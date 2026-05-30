@@ -18,10 +18,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from click.testing import CliRunner
 
+from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
+from tests.helpers.config_diagnostics import assert_config_diagnostics_warning_payload
+from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
@@ -244,6 +248,60 @@ def test_probe_json_omits_directory_filtered_result_when_children_selected(
     assert statuses == {"resolved"}
 
 
+# Regression test: strict config warnings yield machine-readable diagnostics in JSON mode
+@pytest.mark.parametrize(
+    ("include_file_types", "exclude_file_types", "expected_removed_file_types"),
+    [
+        ("python", "python", ("topmark:python",)),
+        ("python", "topmark:python", ("topmark:python",)),
+        ("topmark:python", "python", ("topmark:python",)),
+        ("topmark:python", "topmark:python", ("topmark:python",)),
+        (
+            "topmark:python,topmark:markdown",
+            "python,markdown",
+            ("topmark:python", "topmark:markdown"),
+        ),
+    ],
+)
+def test_probe_json_strict_config_warning_emits_machine_diagnostics(
+    tmp_path: Path,
+    include_file_types: str,
+    exclude_file_types: str,
+    expected_removed_file_types: tuple[str, ...],
+) -> None:
+    """Strict config warnings should remain machine-readable in JSON mode.
+
+    When strict mode escalates a config warning to `CONFIG_ERROR`, probing stops
+    before file resolution. JSON output should still be a valid
+    config-diagnostics envelope instead of human-oriented error text.
+    """
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            include_file_types,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            exclude_file_types,
+            str(file),
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    payload: dict[str, object] = parse_json_object(result.output)
+    assert_config_diagnostics_warning_payload(
+        payload,
+        expected_removed_file_types,
+    )
+
+
 def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
     """NDJSON output should contain probe records with correct structure."""
     file: Path = tmp_path / "example.py"
@@ -378,3 +436,77 @@ def test_probe_ndjson_multiple_files(tmp_path: Path) -> None:
 
     probe_records: list[dict[str, object]] = [r for r in records if r["kind"] == "probe"]
     assert len(probe_records) == 2
+
+
+# Regression test: strict config warnings yield machine-readable diagnostics in NDJSON mode
+@pytest.mark.parametrize(
+    ("include_file_types", "exclude_file_types", "expected_removed_file_types"),
+    [
+        ("python", "python", ("topmark:python",)),
+        ("python", "topmark:python", ("topmark:python",)),
+        ("topmark:python", "python", ("topmark:python",)),
+        ("topmark:python", "topmark:python", ("topmark:python",)),
+        (
+            "topmark:python,topmark:markdown",
+            "python,markdown",
+            ("topmark:python", "topmark:markdown"),
+        ),
+    ],
+)
+def test_probe_ndjson_strict_config_warning_emits_machine_diagnostics(
+    tmp_path: Path,
+    include_file_types: str,
+    exclude_file_types: str,
+    expected_removed_file_types: tuple[str, ...],
+) -> None:
+    """Strict config warnings should remain machine-readable in NDJSON mode."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            include_file_types,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            exclude_file_types,
+            str(file),
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert records
+
+    kinds: list[str] = record_kinds(records)
+    assert "config_diagnostics" in kinds
+    assert "diagnostic" in kinds
+
+    diagnostic_messages: list[str] = []
+    for record in records:
+        if record.get("kind") != "diagnostic":
+            continue
+
+        diagnostic_obj: object | None = record.get("diagnostic")
+        assert is_mapping(diagnostic_obj)
+        diagnostic: dict[str, object] = as_object_dict(diagnostic_obj)
+
+        domain_obj: object | None = diagnostic.get("domain")
+        level_obj: object | None = diagnostic.get("level")
+        message_obj: object | None = diagnostic.get("message")
+
+        assert domain_obj == "config"
+        assert level_obj == "warning"
+        assert isinstance(message_obj, str)
+        diagnostic_messages.append(message_obj)
+
+    assert diagnostic_messages
+    assert_overlap_warning_text(
+        "\n".join(diagnostic_messages),
+        expected_removed_file_types,
+    )

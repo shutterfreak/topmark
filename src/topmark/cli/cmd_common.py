@@ -25,11 +25,13 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import NoReturn
 
 import click
 
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import resolve_color_mode
+from topmark.cli.emitters.machine import emit_config_diagnostics_machine
 from topmark.cli.options import ColorMode
 from topmark.cli.options import normalize_verbosity
 from topmark.cli.presentation import TextStyler
@@ -45,9 +47,13 @@ from topmark.config.resolution.bridge import resolve_toml_sources_and_build_muta
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.core.constants import CLI_OVERRIDE_STR
+from topmark.core.exit_codes import ExitCode
+from topmark.core.formats import OutputFormat
 from topmark.core.logging import resolve_env_log_level
 from topmark.core.logging import setup_logging
 from topmark.core.presentation import StyleRole
+from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
+from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.resolution.files import FileListResolution
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.model import RunOptions
@@ -62,8 +68,9 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.config.policy import MutablePolicy
     from topmark.config.resolution.bridge import ResolvedConfigDraft
-    from topmark.core.exit_codes import ExitCode
-    from topmark.core.formats import OutputFormat
+    from topmark.core.errors import ConfigValidationError
+    from topmark.core.machine.schemas import MetaPayload
+    from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -332,6 +339,69 @@ class PreparedCliConfig:
 
     resolved_toml: ResolvedTopmarkTomlSources
     draft: MutableConfig
+
+
+def exit_for_config_validation_error(
+    *,
+    ctx: click.Context,
+    console: ConsoleProtocol,
+    exc: ConfigValidationError,
+    config: FrozenConfig,
+    fmt: OutputFormat,
+    meta: MetaPayload,
+    verbosity_level: int,
+    quiet: bool,
+    color: bool,
+) -> NoReturn:
+    """Render config diagnostics for a validation failure and exit.
+
+    Strict config validation may stop a command before normal probe or
+    processing output exists. This helper preserves the existing `CONFIG_ERROR`
+    exit contract while ensuring the diagnostics that caused the failure remain
+    visible in the active output format.
+
+    Args:
+        ctx: Active Click context used to exit with `CONFIG_ERROR`.
+        console: Console used for command output.
+        exc: Validation exception raised by config validation.
+        config: Effective frozen configuration carrying validation logs.
+        fmt: Active output format.
+        meta: Machine-output metadata for JSON and NDJSON diagnostics.
+        verbosity_level: Effective TEXT verbosity level.
+        quiet: Whether TEXT quiet mode is enabled.
+        color: Whether TEXT output should use color.
+    """
+    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
+        emit_config_diagnostics_machine(
+            console=console,
+            meta=meta,
+            config=config,
+            fmt=fmt,
+        )
+        ctx.exit(ExitCode.CONFIG_ERROR)
+
+    flattened_diagnostics: FrozenDiagnosticLog = config.validation_logs.flattened()
+
+    console.error(f"Processing stopped: {exc}")
+
+    if fmt == OutputFormat.MARKDOWN:
+        diagnostics_md: str = render_diagnostics_markdown(
+            diagnostics=flattened_diagnostics,
+        )
+        if diagnostics_md:
+            console.print(diagnostics_md)
+        ctx.exit(ExitCode.CONFIG_ERROR)
+
+    if not quiet:
+        diagnostics_text: str = render_diagnostics_text(
+            diagnostics=flattened_diagnostics,
+            verbosity_level=max(verbosity_level, 1),
+            color=color,
+        )
+        if diagnostics_text:
+            console.print(diagnostics_text)
+
+    ctx.exit(ExitCode.CONFIG_ERROR)
 
 
 def build_resolved_toml_sources_and_config_for_plan(

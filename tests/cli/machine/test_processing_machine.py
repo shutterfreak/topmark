@@ -40,14 +40,18 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli_in
+from tests.helpers.config_diagnostics import assert_config_diagnostics_warning_payload
+from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.formats import OutputFormat
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
@@ -56,6 +60,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from click.testing import Result
+
 
 # ----- JSON -----
 
@@ -86,7 +91,7 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
         [
             command,
             CliOpt.OUTPUT_FORMAT,
-            "json",
+            OutputFormat.JSON.value,
             ".",
         ],
     )
@@ -133,7 +138,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
         [
             command,
             CliOpt.OUTPUT_FORMAT,
-            "json",
+            OutputFormat.JSON.value,
             ".",
         ],
     )
@@ -237,7 +242,7 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
         [
             command,
             CliOpt.OUTPUT_FORMAT,
-            "json",
+            OutputFormat.JSON.value,
             CliOpt.RESULTS_SUMMARY_MODE,
             ".",
         ],
@@ -288,7 +293,7 @@ def test_processing_json_summary_rows_do_not_use_legacy_key_label_shape(
         [
             command,
             CliOpt.OUTPUT_FORMAT,
-            "json",
+            OutputFormat.JSON.value,
             CliOpt.RESULTS_SUMMARY_MODE,
             ".",
         ],
@@ -310,6 +315,43 @@ def test_processing_json_summary_rows_do_not_use_legacy_key_label_shape(
         assert "count" in row
         assert "key" not in row
         assert "label" not in row
+
+
+# Regression test: strict config warnings should remain machine-readable in JSON mode
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+def test_processing_json_strict_config_warning_emits_machine_diagnostics(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Strict config warnings should remain machine-readable in JSON mode.
+
+    When strict mode escalates a config warning to `CONFIG_ERROR`, processing
+    stops before file resolution. JSON output should still be a valid
+    config-diagnostics envelope instead of human-oriented error text.
+    """
+    (tmp_path / "example.py").write_text("print('hi')\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "topmark:python,topmark:markdown",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "python,markdown",
+            ".",
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    payload: dict[str, object] = parse_json_object(result.output)
+    assert_config_diagnostics_warning_payload(
+        payload,
+        ("topmark:python", "topmark:markdown"),
+    )
 
 
 # ----- NDJSON -----
@@ -342,7 +384,7 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
         [
             command,
             CliOpt.OUTPUT_FORMAT,
-            "ndjson",
+            OutputFormat.NDJSON.value,
             CliOpt.RESULTS_SUMMARY_MODE,
             ".",
         ],
@@ -397,7 +439,7 @@ def test_processing_ndjson_summary_rows_do_not_use_legacy_key_label_shape(
         [
             command,
             CliOpt.OUTPUT_FORMAT,
-            "ndjson",
+            OutputFormat.NDJSON.value,
             CliOpt.RESULTS_SUMMARY_MODE,
             ".",
         ],
@@ -427,3 +469,61 @@ def test_processing_ndjson_summary_rows_do_not_use_legacy_key_label_shape(
         assert "label" not in summary
 
     assert summary_records_found > 0
+
+
+# Regression test: strict config warnings should remain machine-readable in NDJSON mode
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
+def test_processing_ndjson_strict_config_warning_emits_machine_diagnostics(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Strict config warnings should remain machine-readable in NDJSON mode."""
+    (tmp_path / "example.py").write_text("print('hi')\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "topmark:python,topmark:markdown",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "python,markdown",
+            ".",
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert records
+
+    kinds: list[str] = record_kinds(records)
+    assert "config_diagnostics" in kinds
+    assert "diagnostic" in kinds
+
+    diagnostic_messages: list[str] = []
+    for record in records:
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        if record.get("kind") != "diagnostic":
+            continue
+
+        diagnostic_obj: object | None = record.get("diagnostic")
+        assert is_mapping(diagnostic_obj)
+        diagnostic: dict[str, object] = as_object_dict(diagnostic_obj)
+
+        domain_obj: object | None = diagnostic.get("domain")
+        level_obj: object | None = diagnostic.get("level")
+        message_obj: object | None = diagnostic.get("message")
+
+        assert domain_obj == "config"
+        assert level_obj == "warning"
+        assert isinstance(message_obj, str)
+        diagnostic_messages.append(message_obj)
+
+    assert diagnostic_messages
+    assert_overlap_warning_text(
+        "\n".join(diagnostic_messages),
+        ("topmark:python", "topmark:markdown"),
+    )
