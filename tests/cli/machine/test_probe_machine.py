@@ -19,15 +19,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from click.testing import CliRunner
-from click.testing import Result
 
+from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.ndjson import record_payload
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
+from topmark.core.formats import OutputFormat
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
@@ -35,6 +37,7 @@ from topmark.core.typing_guards import is_mapping
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from click.testing import Result
     from pytest import MonkeyPatch
 
 
@@ -49,12 +52,12 @@ def test_probe_json_output_shape(tmp_path: Path) -> None:
         [
             CliCmd.PROBE,
             str(file),
-            "--output-format",
-            "json",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
         ],
     )
 
-    assert result.exit_code == 0
+    assert_SUCCESS(result)
 
     payload: dict[str, object] = parse_json_object(result.output)
 
@@ -90,12 +93,12 @@ def test_probe_json_candidate_structure(tmp_path: Path) -> None:
         [
             CliCmd.PROBE,
             str(file),
-            "--output-format",
-            "json",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
         ],
     )
 
-    assert result.exit_code == 0
+    assert_SUCCESS(result)
 
     payload: dict[str, object] = parse_json_object(result.output)
     probes_obj: object = payload["probes"]
@@ -152,11 +155,11 @@ def test_probe_json_reports_explicit_filtered_input(
         cli,
         [
             CliCmd.PROBE,
-            "--exclude",
+            CliOpt.EXCLUDE_PATTERNS,
             "__pycache__/",
             input_path,
-            "--output-format",
-            "json",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
         ],
     )
 
@@ -186,6 +189,61 @@ def test_probe_json_reports_explicit_filtered_input(
     assert "match" not in probe
 
 
+def test_probe_json_omits_directory_filtered_result_when_children_selected(
+    tmp_path: Path,
+) -> None:
+    """JSON output should omit expanded directory synthetic filtered results."""
+    directory: Path = tmp_path / "project"
+    directory.mkdir()
+
+    python_file: Path = directory / "example.py"
+    python_file.write_text("print('hello')\n", encoding="utf-8")
+
+    markdown_file: Path = directory / "README.md"
+    markdown_file.write_text("# Example\n", encoding="utf-8")
+
+    html_file: Path = directory / "index.html"
+    html_file.write_text("<h1>Example</h1>\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.INCLUDE_FILE_TYPES,
+            "markdown,toml",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "html",
+            str(directory),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+    probes_obj: object = payload["probes"]
+    assert is_any_list(probes_obj)
+    probes: list[object] = probes_obj
+    assert len(probes) == 2
+
+    probe_payloads: list[dict[str, object]] = []
+    for probe_obj in probes:
+        assert is_mapping(probe_obj)
+        probe_payloads.append(as_object_dict(probe_obj))
+
+    paths: set[object] = {probe["path"] for probe in probe_payloads}
+    assert str(python_file) in paths
+    assert str(markdown_file) in paths
+    assert str(directory) not in paths
+
+    statuses: set[object] = {probe["status"] for probe in probe_payloads}
+    assert statuses == {"resolved"}
+
+
 def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
     """NDJSON output should contain probe records with correct structure."""
     file: Path = tmp_path / "example.py"
@@ -197,12 +255,12 @@ def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
         [
             CliCmd.PROBE,
             str(file),
-            "--output-format",
-            "ndjson",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
         ],
     )
 
-    assert result.exit_code == 0
+    assert_SUCCESS(result)
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     kinds: list[str] = record_kinds(records)
@@ -238,11 +296,11 @@ def test_probe_ndjson_reports_explicit_filtered_input(
         cli,
         [
             CliCmd.PROBE,
-            "--exclude",
+            CliOpt.EXCLUDE_PATTERNS,
             "__pycache__/",
             input_path,
-            "--output-format",
-            "ndjson",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
         ],
     )
 
@@ -267,6 +325,33 @@ def test_probe_ndjson_reports_explicit_filtered_input(
     assert "match" not in payload
 
 
+def test_probe_ndjson_reports_missing_input_only_once(tmp_path: Path) -> None:
+    """NDJSON output should not duplicate missing inputs as filtered."""
+    missing: Path = tmp_path / "topmark-does-not-exist"
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(missing),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+        ],
+    )
+
+    assert result.exit_code != 0
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    probe_records: list[dict[str, object]] = [r for r in records if r["kind"] == "probe"]
+    assert len(probe_records) == 1
+
+    payload: dict[str, object] = record_payload(probe_records[0])
+    assert payload["path"] == str(missing)
+    assert payload["status"] == "probe_missing"
+    assert payload["reason"] == "no_resolution_probe_result"
+
+
 def test_probe_ndjson_multiple_files(tmp_path: Path) -> None:
     """NDJSON should emit one probe record per file."""
     file1: Path = tmp_path / "a.py"
@@ -276,18 +361,18 @@ def test_probe_ndjson_multiple_files(tmp_path: Path) -> None:
     file2.write_text("print('b')\n", encoding="utf-8")
 
     runner = CliRunner()
-    result = runner.invoke(
+    result: Result = runner.invoke(
         cli,
         [
             CliCmd.PROBE,
             str(file1),
             str(file2),
-            "--output-format",
-            "ndjson",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
         ],
     )
 
-    assert result.exit_code == 0
+    assert_SUCCESS(result)
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
 

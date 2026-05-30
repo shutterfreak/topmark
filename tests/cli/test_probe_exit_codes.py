@@ -28,6 +28,7 @@ from tests.cli.conftest import assert_FILE_NOT_FOUND
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
 
 if TYPE_CHECKING:
@@ -51,6 +52,37 @@ def test_probe_exit_code_success_for_supported_file(tmp_path: Path) -> None:
             str(file),
         ],
     )
+    assert_SUCCESS(result)
+
+
+def test_probe_exit_code_success_for_filtered_directory_with_selected_files(
+    tmp_path: Path,
+) -> None:
+    """Directory inputs with selected children should exit SUCCESS."""
+    directory: Path = tmp_path / "project"
+    directory.mkdir()
+    python_file: Path = directory / "example.py"
+    python_file.write_text("print('hello')\n", encoding="utf-8")
+    markdown_file: Path = directory / "README.md"
+    markdown_file.write_text("# Example\n", encoding="utf-8")
+    html_file: Path = directory / "index.html"
+    html_file.write_text("<h1>Example</h1>\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.INCLUDE_FILE_TYPES,
+            "markdown,toml",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "html",
+            str(directory),
+        ],
+    )
+
     assert_SUCCESS(result)
 
 
