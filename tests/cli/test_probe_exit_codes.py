@@ -24,6 +24,7 @@ import pytest
 from click.testing import CliRunner
 from click.testing import Result
 
+from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_FILE_NOT_FOUND
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
@@ -84,6 +85,42 @@ def test_probe_exit_code_success_for_filtered_directory_with_selected_files(
     )
 
     assert_SUCCESS(result)
+
+
+# --- Config validation failures ---
+@pytest.mark.parametrize(
+    "include_file_types,exclude_file_types",
+    [
+        ("python", "python"),
+        ("python", "topmark:python"),
+        ("topmark:python", "python"),
+        ("topmark:python", "topmark:python"),
+    ],
+)
+def test_probe_exit_code_config_error_for_strict_file_type_overlap(
+    tmp_path: Path,
+    include_file_types: str,
+    exclude_file_types: str,
+) -> None:
+    """Strict config warnings should exit CONFIG_ERROR before probing inputs."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            include_file_types,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            exclude_file_types,
+            str(file),
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
 
 
 # --- Unsupported / unresolved inputs ---

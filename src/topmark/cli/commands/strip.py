@@ -54,6 +54,7 @@ from topmark.api.runtime import select_pipeline
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
+from topmark.cli.cmd_common import exit_for_config_validation_error
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
@@ -391,8 +392,17 @@ def strip_command(
             resolved=prepared_cli_config.resolved_toml,
         )
     except ConfigValidationError as exc:
-        console.error(f"Processing stopped: {exc}")
-        ctx.exit(ExitCode.CONFIG_ERROR)
+        exit_for_config_validation_error(
+            ctx=ctx,
+            console=console,
+            exc=exc,
+            config=config,
+            fmt=fmt,
+            meta=meta,
+            verbosity_level=verbosity_level,
+            quiet=state.quiet,
+            color=enable_color,
+        )
 
     # Display config validation diagnostics before resolving files.
     # TEXT keeps these behind -v; Markdown renders diagnostics whenever present.

@@ -18,6 +18,55 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [Unreleased]
+
+### Changed - Unreleased
+
+- Replaced the CLI presentation backend with Rich.
+- Adopted `rich-click` for CLI help rendering while preserving Click runtime semantics.
+- Centralized CLI option metadata and command-applicability groups used by diagnostics.
+- Hid singular file-type compatibility aliases from help output while preserving them as accepted
+  hidden aliases.
+
+### Fixed - Unreleased
+
+- Fixed post-1.0.1 documentation hygiene violations.
+- Trapped underscored option spellings consistently and suggested hyphenated alternatives.
+- Improved CLI validation diagnostic formatting.
+- Fixed misleading synthetic `probe` results for explicit directories that successfully expand to
+  selected child files.
+- Fixed duplicate `probe` records for missing explicit inputs.
+- Fixed strict config-validation failures so the triggering diagnostics remain visible in
+  human-readable output.
+- Preserved valid JSON/NDJSON config diagnostics when strict config validation stops command
+  execution.
+
+### Documentation - Unreleased
+
+- Updated probe and machine-output documentation for corrected explicit-input probe behavior.
+- Clarified strict configuration-validation diagnostics in shared configuration strictness
+  documentation.
+- Documented machine-readable output behavior when strict config validation stops commands before
+  probing or processing.
+
+### Internal - Unreleased
+
+- Removed stale tox references.
+- Updated pre-commit dependencies, including TopMark itself.
+- Refreshed locked dependencies including Ruff, Hypothesis, and uv.
+
+### Notes - Unreleased
+
+- CLI help output and selected human-facing validation diagnostics now use Rich / `rich-click`
+  presentation. Runtime behavior and machine-readable JSON/NDJSON contracts are unchanged, but
+  consumers or tests that assert exact human-readable terminal formatting may need to update
+  formatting-sensitive expectations.
+- Strict configuration-validation failures now preserve machine-readable JSON/NDJSON output. This
+  fixes invalid machine output in error paths, but consumers that previously treated such failures
+  as unparseable plain text may need to adjust their error handling.
+
+______________________________________________________________________
+
 ## [1.0.1] - 2026-05-26
 
 This first TopMark 1.0 patch release focuses on post-1.0 correctness fixes, documentation

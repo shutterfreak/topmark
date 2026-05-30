@@ -149,8 +149,15 @@ HEADING_LINE_RE: Final[re.Pattern[str]] = re.compile(
 
 # Dedicated changelog hygiene constants
 CHANGELOG_PATH: Final[Path] = Path("CHANGELOG.md")
+CHANGELOG_VERSION_IDENTIFIER_RE: Final[str] = (
+    r"\d+\.\d+\.\d+(?:a\d+|b\d+|rc\d+|\.post\d+|\.dev\d+)?"
+)
 CHANGELOG_RELEASE_HEADING_RE: Final[re.Pattern[str]] = re.compile(
-    r"^## \[(?P<version>[^\]]+)\] - \d{4}-\d{2}-\d{2}$"
+    rf"^## \[(?P<version>Unreleased|{CHANGELOG_VERSION_IDENTIFIER_RE})\]"
+    rf"(?: - \d{{4}}-\d{{2}}-\d{{2}})?$"
+)
+CHANGELOG_DATED_RELEASE_HEADING_RE: Final[re.Pattern[str]] = re.compile(
+    rf"^## \[(?P<version>{CHANGELOG_VERSION_IDENTIFIER_RE})\] - \d{{4}}-\d{{2}}-\d{{2}}$"
 )
 CHANGELOG_SECTION_HEADING_RE: Final[re.Pattern[str]] = re.compile(
     r"^### (?P<section>[A-Za-z][A-Za-z /-]*) - (?P<version>\S+)$"
@@ -603,7 +610,25 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
                         line=line,
                         message=(
                             "CHANGELOG.md level-2 headings must be release entries shaped "
-                            f"like '## [1.0.0] - YYYY-MM-DD', found '{marker} {title}'"
+                            "like '## [Unreleased]' or '## [1.0.0] - YYYY-MM-DD', "
+                            f"found '{marker} {title}'"
+                        ),
+                    )
+                )
+                continue
+
+            if title != "[Unreleased]" and not CHANGELOG_DATED_RELEASE_HEADING_RE.fullmatch(
+                heading.group(0)
+            ):
+                diagnostics.append(
+                    Diagnostic(
+                        severity="error",
+                        path=path,
+                        line=line,
+                        message=(
+                            "CHANGELOG.md dated release headings must use a proper version "
+                            "identifier and date, shaped like '## [1.0.0] - YYYY-MM-DD', "
+                            f"found '{marker} {title}'"
                         ),
                     )
                 )

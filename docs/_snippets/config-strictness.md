@@ -21,4 +21,7 @@ topmark:header:end
 > - merged-config diagnostics;
 > - runtime applicability diagnostics.
 >
+> When strict validation fails, TopMark exits with `CONFIG_ERROR`. The diagnostics that triggered
+> the failure remain visible in human-readable and machine-readable output formats.
+>
 > `strict` is resolved during TOML loading and does not become a layered configuration field.

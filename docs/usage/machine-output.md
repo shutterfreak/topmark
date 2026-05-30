@@ -85,6 +85,11 @@ Consumers must:
 - inspect the process exit code for success or failure semantics,
 - parse machine-readable output for detailed diagnostics and results.
 
+When strict configuration validation stops a command before probing or processing begins, TopMark
+still emits valid machine-readable configuration diagnostics. In that case, JSON output may contain
+a configuration-diagnostics envelope without normal `probes`, `results`, or `summary` payloads, and
+NDJSON output may contain only the configuration-diagnostics prefix records.
+
 This design ensures a clean separation between:
 
 - **process status** (exit code), and
@@ -257,6 +262,9 @@ formats expose the same resolution evidence used by the human-facing probe rende
   before file-type probing and explicit missing inputs that could not produce a normal resolution
   probe.
 
+If strict configuration validation stops `probe` before resolution begins, JSON output contains the
+same `meta` and `config_diagnostics` structure but may omit the normal `probes` payload.
+
 ### NDJSON schema
 
 NDJSON output follows the same stable config prefix used by processing commands, then emits one
@@ -278,6 +286,9 @@ NDJSON rules for `probe`:
   1. `config_diagnostics` (**counts-only**)
   1. zero or more `diagnostic` records (each with `domain="config"`)
 - Then one `probe` record is emitted per probe result.
+
+If strict configuration validation stops `probe` before resolution begins, the stream may end after
+the `config_diagnostics` and `diagnostic` records, before any `probe` records are emitted.
 
 The JSON `probes` key and NDJSON `probe` kind are defined in
 \[`topmark.pipeline.machine.schemas.PipelineKey`\][topmark.pipeline.machine.schemas.PipelineKey] and
@@ -470,6 +481,10 @@ Detail mode corresponds to `summary_mode = false`.
   \[`topmark.config.machine.payloads.build_config_diagnostics_payload`\][topmark.config.machine.payloads.build_config_diagnostics_payload].
 - `results`: one entry per processed file (see **Per-file result payload** below).
 
+If strict configuration validation stops a processing command before file discovery or pipeline
+execution begins, JSON output contains the same `meta` and `config_diagnostics` structure but may
+omit the normal `results` or `summary` payload.
+
 ### JSON schema (summary mode)
 
 Summary mode corresponds to `summary_mode = true`.
@@ -546,6 +561,10 @@ NDJSON rules for processing commands:
 - Then either:
   - detail mode: one `result` record per file
   - summary mode: one `summary` record per `(outcome, reason)` bucket
+
+If strict configuration validation stops a processing command before file discovery or pipeline
+execution begins, the stream may end after the `config_diagnostics` and `diagnostic` records, before
+any `result` or `summary` records are emitted.
 
 The NDJSON record stream is produced by:
 

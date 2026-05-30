@@ -22,9 +22,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from click.testing import CliRunner
 from click.testing import Result
 
+from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from topmark.cli.keys import CliCmd
@@ -181,6 +183,95 @@ def test_probe_text_output_reports_missing_input_only_once(
 
     assert "probe-missing" in result.output
     assert "<filtered>" not in result.output
+
+
+# --- TEXT output: strict config diagnostics ---
+
+
+@pytest.mark.parametrize(
+    ("include_file_types", "exclude_file_types", "expected_removed_file_types"),
+    [
+        ("python", "python", ("topmark:python",)),
+        ("python", "topmark:python", ("topmark:python",)),
+        ("topmark:python", "python", ("topmark:python",)),
+        ("topmark:python", "topmark:python", ("topmark:python",)),
+        (
+            "topmark:python,topmark:markdown",
+            "python,markdown",
+            ("topmark:python", "topmark:markdown"),
+        ),
+    ],
+)
+def test_probe_text_output_reports_strict_file_type_overlap_warning(
+    tmp_path: Path,
+    include_file_types: str,
+    exclude_file_types: str,
+    expected_removed_file_types: tuple[str, ...],
+) -> None:
+    """TEXT probe output should include config diagnostics on strict failure.
+
+    Strict mode escalates configuration warnings to `CONFIG_ERROR`, but the
+    warning remains the actionable explanation. Probe should therefore render
+    the normalized include/exclude overlap diagnostic instead of showing only
+    the aggregate validation failure.
+    """
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            include_file_types,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            exclude_file_types,
+            str(file),
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    out: str = result.output.lower()
+    assert "file types specified in both include and exclude filters" in out
+    assert "exclusion wins" in out
+    for expected_removed_file_type in expected_removed_file_types:
+        assert expected_removed_file_type in out
+
+
+# --- Markdown output: strict config diagnostics ---
+
+
+def test_probe_markdown_output_reports_strict_file_type_overlap_warning(
+    tmp_path: Path,
+) -> None:
+    """Markdown probe output should include config diagnostics on strict failure."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "topmark:python,topmark:markdown",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "python,markdown",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            str(file),
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    out: str = result.output.lower()
+    assert "file types specified in both include and exclude filters" in out
+    assert "exclusion wins" in out
+    assert "topmark:python" in out
+    assert "topmark:markdown" in out
 
 
 # --- Markdown output: verbosity and quiet controls ---

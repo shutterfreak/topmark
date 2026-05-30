@@ -778,17 +778,18 @@ class MutableConfig:
             is_exclusion=True,
         )
 
-        # If a type appears in both include and exclude, prefer exclusion.
+        # If a type appears in both include and exclude, keep both selectors.
+        # Downstream filtering applies includes first and exclusions second, so
+        # exclusion still wins without collapsing an emptied include set into the
+        # default "include all file types" behavior.
         overlap: set[str] = self.include_file_types & self.exclude_file_types
         if overlap:
             overlap_str: str = ", ".join(sorted(overlap))
             msg: str = (
                 "File types specified in both include and exclude filters; "
-                f"exclusion wins (removed from include): {overlap_str}"
+                f"exclusion wins: {overlap_str}"
             )
             self.validation_logs.runtime_applicability.add_warning(msg)
-            # Remove overlaps (blacklisted wins from whitelisted):
-            self.include_file_types.difference_update(overlap)
 
         def _sanitize_policy_by_type() -> None:
             """Resolve per-type policy keys to canonical qualified file type keys.

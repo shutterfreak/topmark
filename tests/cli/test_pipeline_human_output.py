@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
@@ -34,6 +35,7 @@ from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -70,6 +72,98 @@ def _write_file_requiring_pipeline_change(tmp_path: Path, cmd: str) -> Path:
         _write_file_requiring_check_update(tmp_path)
         if cmd == CliCmd.CHECK
         else _write_file_requiring_strip(tmp_path)
+    )
+
+
+# --- Strict config diagnostics ---
+
+
+def _assert_strict_file_type_overlap_warning(
+    result: Result,
+    expected_removed_file_types: tuple[str, ...],
+) -> None:
+    """Assert strict file-type overlap output includes actionable diagnostics."""
+    assert_CONFIG_ERROR(result)
+    out: str = result.output.lower()
+    assert "file types specified in both include and exclude filters" in out
+    assert "exclusion wins" in out
+    for expected_removed_file_type in expected_removed_file_types:
+        assert expected_removed_file_type in out
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+@pytest.mark.parametrize(
+    ("include_file_types", "exclude_file_types", "expected_removed_file_types"),
+    [
+        ("python", "python", ("topmark:python",)),
+        ("python", "topmark:python", ("topmark:python",)),
+        ("topmark:python", "python", ("topmark:python",)),
+        ("topmark:python", "topmark:python", ("topmark:python",)),
+        (
+            "topmark:python,topmark:markdown",
+            "python,markdown",
+            ("topmark:python", "topmark:markdown"),
+        ),
+    ],
+)
+def test_pipeline_text_output_reports_strict_file_type_overlap_warning(
+    tmp_path: Path,
+    cmd: str,
+    include_file_types: str,
+    exclude_file_types: str,
+    expected_removed_file_types: tuple[str, ...],
+) -> None:
+    """TEXT pipeline output should include config diagnostics on strict failure.
+
+    Strict mode escalates configuration warnings to `CONFIG_ERROR`, but the
+    warning remains the actionable explanation. Processing commands should
+    therefore render the normalized include/exclude overlap diagnostic instead
+    of showing only the aggregate validation failure.
+    """
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            include_file_types,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            exclude_file_types,
+            str(path),
+        ]
+    )
+
+    _assert_strict_file_type_overlap_warning(result, expected_removed_file_types)
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_markdown_output_reports_strict_file_type_overlap_warning(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """Markdown pipeline output should include config diagnostics on strict failure."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "topmark:python,topmark:markdown",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "python,markdown",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            str(path),
+        ]
+    )
+
+    _assert_strict_file_type_overlap_warning(
+        result,
+        ("topmark:python", "topmark:markdown"),
     )
 
 
@@ -113,7 +207,7 @@ def test_pipeline_markdown_output_ignores_text_quiet(
             cmd,
             CliOpt.QUIET,
             CliOpt.OUTPUT_FORMAT,
-            "markdown",
+            OutputFormat.MARKDOWN.value,
             str(path),
         ]
     )
@@ -135,7 +229,7 @@ def test_pipeline_markdown_output_ignores_text_verbosity(
             cmd,
             CliOpt.NO_COLOR_MODE,
             CliOpt.OUTPUT_FORMAT,
-            "markdown",
+            OutputFormat.MARKDOWN.value,
             str(base_path),
         ]
     )
@@ -145,7 +239,7 @@ def test_pipeline_markdown_output_ignores_text_verbosity(
             CliOpt.NO_COLOR_MODE,
             CliOpt.VERBOSE,
             CliOpt.OUTPUT_FORMAT,
-            "markdown",
+            OutputFormat.MARKDOWN.value,
             str(base_path),
         ]
     )
@@ -168,7 +262,7 @@ def test_pipeline_markdown_output_always_renders_document_banner(
             cmd,
             CliOpt.NO_COLOR_MODE,
             CliOpt.OUTPUT_FORMAT,
-            "markdown",
+            OutputFormat.MARKDOWN.value,
             str(path),
         ]
     )
@@ -186,7 +280,7 @@ def test_check_markdown_output_shows_hints_without_text_verbosity(tmp_path: Path
             CliCmd.CHECK,
             CliOpt.NO_COLOR_MODE,
             CliOpt.OUTPUT_FORMAT,
-            "markdown",
+            OutputFormat.MARKDOWN.value,
             str(path),
         ]
     )

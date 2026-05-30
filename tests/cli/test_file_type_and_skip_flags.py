@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli
@@ -244,6 +245,117 @@ def test_file_type_filter_accepts_plural_and_hidden_singular_aliases(
     assert TOPMARK_START_MARKER in md.read_text("utf-8")
     assert TOPMARK_START_MARKER not in java.read_text("utf-8")
     assert TOPMARK_START_MARKER in toml.read_text("utf-8")
+
+
+@pytest.mark.parametrize(
+    (
+        "include_file_types",
+        "exclude_file_types",
+        "expected_py_has_header",
+        "expected_md_has_header",
+        "expected_ts_has_header",
+    ),
+    [
+        ("topmark:python", "python", False, False, False),
+        ("python", "topmark:python", False, False, False),
+        ("topmark:python", "topmark:python", False, False, False),
+        ("topmark:python,topmark:markdown", "python", False, True, False),
+        ("topmark:python,topmark:markdown", "python,markdown", False, False, False),
+    ],
+)
+def test_file_type_filter_normalized_overlap_excludes_matching_types(
+    tmp_path: Path,
+    include_file_types: str,
+    exclude_file_types: str,
+    expected_py_has_header: bool,
+    expected_md_has_header: bool,
+    expected_ts_has_header: bool,
+) -> None:
+    """Overlapping include/exclude file-type filters are normalized before filtering.
+
+    Local identifiers such as `python` and qualified identifiers such as
+    `topmark:python` may resolve to the same canonical file type. When an
+    include and exclude entry overlap after normalization, exclusion wins for
+    the overlapping canonical type only. Non-overlapping include entries remain
+    selected and should still be processed.
+    """
+    py: Path = tmp_path / "a.py"
+    md: Path = tmp_path / "a.md"
+    ts: Path = tmp_path / "a.ts"
+
+    py.write_text("print('x')\n", "utf-8")
+    md.write_text("# Title\n", "utf-8")
+    ts.write_text("console.log(1);\n", "utf-8")
+
+    result: Result = run_cli(
+        [
+            CliCmd.CHECK,
+            CliOpt.INCLUDE_FILE_TYPES,
+            include_file_types,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            exclude_file_types,
+            CliOpt.APPLY_CHANGES,
+            str(tmp_path),
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert (TOPMARK_START_MARKER in py.read_text("utf-8")) is expected_py_has_header
+    assert (TOPMARK_START_MARKER in md.read_text("utf-8")) is expected_md_has_header
+    assert (TOPMARK_START_MARKER in ts.read_text("utf-8")) is expected_ts_has_header
+
+
+@pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP, CliCmd.PROBE])
+@pytest.mark.parametrize(
+    ("include_file_types", "exclude_file_types", "expected_removed_file_types"),
+    [
+        ("python", "python", ("topmark:python",)),
+        ("python", "topmark:python", ("topmark:python",)),
+        ("topmark:python", "python", ("topmark:python",)),
+        ("topmark:python", "topmark:python", ("topmark:python",)),
+        (
+            "topmark:python,topmark:markdown",
+            "python,markdown",
+            ("topmark:python", "topmark:markdown"),
+        ),
+    ],
+)
+def test_strict_file_type_filter_overlap_reports_actionable_warning(
+    tmp_path: Path,
+    command: str,
+    include_file_types: str,
+    exclude_file_types: str,
+    expected_removed_file_types: tuple[str, ...],
+) -> None:
+    """Strict mode fails on normalized overlap warnings and renders their cause.
+
+    Overlapping include/exclude file-type filters are deterministic because
+    exclusion wins, but the overlap is still an actionable configuration
+    warning. Under strict mode, that warning should stop processing with
+    `CONFIG_ERROR` while preserving the diagnostic details that explain which
+    canonical file types were removed from the include set.
+    """
+    py: Path = tmp_path / "a.py"
+    py.write_text("print('x')\n", "utf-8")
+
+    result: Result = run_cli(
+        [
+            command,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            include_file_types,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            exclude_file_types,
+            str(py),
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    out: str = result.output.lower()
+    assert "file types specified in both include and exclude filters" in out
+    assert "exclusion wins" in out
+    for expected_removed_file_type in expected_removed_file_types:
+        assert expected_removed_file_type in out
 
 
 @pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP, CliCmd.PROBE])

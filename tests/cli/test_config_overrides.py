@@ -159,7 +159,8 @@ def test_cli_write_mode_overrides_local_writer_option(
         [
             CliCmd.CHECK,
             CliOpt.APPLY_CHANGES,
-            "--write-mode=atomic",
+            CliOpt.WRITE_MODE,
+            "atomic",
             file_name,
         ],
     )
@@ -213,3 +214,40 @@ def test_invalid_topmark_toml_exits_config_error_in_strict_mode(
 
     # Strict config checking escalates config-resolution diagnostics to CONFIG_ERROR.
     assert_CONFIG_ERROR(result)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+        CliCmd.PROBE,
+    ],
+)
+def test_strict_config_warning_renders_actionable_diagnostic_for_processing_commands(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Strict config failure should still render the warning that caused it."""
+    file_name = "x.py"
+    f: Path = tmp_path / file_name
+    f.write_text("print('ok')\n", "utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.STRICT,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "topmark:python",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "python",
+            file_name,
+        ],
+    )
+
+    assert_CONFIG_ERROR(result)
+    out: str = result.output.lower()
+    assert "file types specified in both include and exclude filters" in out
+    assert "exclusion wins" in out
+    assert "topmark:python" in out
