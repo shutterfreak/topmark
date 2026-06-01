@@ -65,8 +65,13 @@ def compute_relpath(file_path: Path, root_path: Path) -> Path:
         # Direct subpath case
         return resolved_path.relative_to(resolved_root)
     except ValueError:
-        # Not a direct subpath - safe fallback using os.path.relpath
-        return Path(os.path.relpath(resolved_path, start=resolved_root))
+        # Not a direct subpath. Fall back to a relative path when possible.
+        # On Windows, `os.path.relpath()` raises ValueError when the path and root
+        # are on different drives; in that case, return the absolute resolved path.
+        try:
+            return Path(os.path.relpath(resolved_path, start=resolved_root))
+        except ValueError:
+            return resolved_path
 
 
 def rebase_glob_patterns(

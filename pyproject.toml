@@ -274,6 +274,7 @@ reportUnusedVariable               = true
 [tool.pytest.ini_options]
 markers = [
   "api: tests that exercise the API",
+  "case_insensitive_fs: tests for case-insensitive file systems",
   "cli: tests that exercise the CLI",
   "config: tests for config deserialization, path normalization, strictness, and layer merge behavior",
   "dev_validation: developer validation tests (e.g., registry validation)",

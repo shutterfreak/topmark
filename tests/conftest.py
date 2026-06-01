@@ -163,6 +163,46 @@ def isolation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return cwd
 
 
+# --- Filesystem Case Sensitivity Helpers ---
+
+
+def is_case_insensitive_filesystem(path: Path) -> bool:
+    """Return whether the filesystem containing `path` resolves names case-insensitively.
+
+    Args:
+        path: Existing directory used as the probe location.
+
+    Returns:
+        True when a differently cased spelling resolves to the same directory entry.
+    """
+    probe = path / "TopMarkCaseProbe.txt"
+    alias = path / "topmarkcaseprobe.txt"
+
+    probe.write_text("probe\n", encoding="utf-8")
+    try:
+        return alias.exists()
+    finally:
+        probe.unlink(missing_ok=True)
+
+
+@pytest.fixture
+def case_insensitive_fs(tmp_path: Path) -> Path:
+    """Return `tmp_path` only when it is backed by a case-insensitive filesystem.
+
+    Args:
+        tmp_path: Pytest temporary directory used to probe filesystem behavior.
+
+    Returns:
+        The temporary directory when case-insensitive path lookup is available.
+
+    Raises:
+        pytest.skip.Exception: When the temporary filesystem is case-sensitive.
+    """
+    if not is_case_insensitive_filesystem(tmp_path):
+        pytest.skip("test requires a case-insensitive filesystem")
+    return tmp_path
+
+
 # --- Generic Test Helpers ---
 
 

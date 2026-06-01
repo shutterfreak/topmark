@@ -46,6 +46,7 @@ from topmark.pipeline.outcomes import collect_outcome_reason_counts
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
 
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
@@ -53,6 +54,11 @@ if TYPE_CHECKING:
     from topmark.resolution.probe import ResolutionProbeMatchSignals
     from topmark.resolution.probe import ResolutionProbeResult
     from topmark.resolution.probe import ResolutionProbeSelection
+
+
+def _machine_path(path: Path) -> str:
+    """Emit POSIX path for machine output."""
+    return path.as_posix()
 
 
 def build_probe_selection_payload(
@@ -147,7 +153,7 @@ def build_probe_result_payload(
     probe: ResolutionProbeResult | None = result.resolution_probe
     if probe is None:
         return {
-            "path": str(result.path),
+            "path": _machine_path(result.path),
             "status": "probe_missing",
             "reason": "no_resolution_probe_result",
             "selected_file_type": None,
@@ -156,7 +162,7 @@ def build_probe_result_payload(
         }
 
     return {
-        "path": str(probe.path),
+        "path": _machine_path(probe.path),
         "status": probe.status.value,
         "reason": probe.reason.value,
         "selected_file_type": build_probe_selection_payload(probe.selected_file_type),

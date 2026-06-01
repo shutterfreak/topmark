@@ -78,19 +78,20 @@ ______________________________________________________________________
 
 ## Jobs and validation scope
 
-| Job                 | Purpose                                                               | Main tools                                 |
-| ------------------- | --------------------------------------------------------------------- | ------------------------------------------ |
-| `changes`           | Detect changed file groups for PR job gating                          | `dorny/paths-filter`                       |
-| `python-metadata`   | Resolve supported and canonical Python versions for CI jobs           | `nox`, `pyproject.toml`                    |
-| `lint`              | Validate formatting, linting, typing, and docstring links             | `nox`, `ruff`, `pyright`                   |
-| `pre-commit`        | Run configured pre-commit hooks                                       | `pre-commit`                               |
-| `docs`              | Build the documentation site in strict mode                           | `nox`, `mkdocs`                            |
-| `tests`             | Run the supported Python test matrix                                  | `nox`, `pytest`                            |
-| `coverage`          | Generate and publish canonical coverage reports                       | `nox`, `coverage.py`, `pytest`             |
-| `api-snapshot`      | Check public API stability for source-changing pull requests          | `nox`, `tools/api_snapshot.py`             |
-| `links`             | Validate links in source Markdown files                               | `lycheeverse/lychee-action`, `lychee.toml` |
-| `links-site`        | Validate links in the rendered MkDocs site, including generated pages | `mkdocs`, `lycheeverse/lychee-action`      |
-| `release-artifacts` | Build and upload release artifacts for version tags                   | `uv build`, `actions/upload-artifact`      |
+| Job                 | Purpose                                                                 | Main tools                                 |
+| ------------------- | ----------------------------------------------------------------------- | ------------------------------------------ |
+| `changes`           | Detect changed file groups for PR job gating                            | `dorny/paths-filter`                       |
+| `python-metadata`   | Resolve supported and canonical Python versions for CI jobs             | `nox`, `pyproject.toml`                    |
+| `lint`              | Validate formatting, linting, typing, and docstring links               | `nox`, `ruff`, `pyright`                   |
+| `pre-commit`        | Run configured pre-commit hooks                                         | `pre-commit`                               |
+| `docs`              | Build the documentation site in strict mode                             | `nox`, `mkdocs`                            |
+| `tests`             | Run the supported Python test matrix                                    | `nox`, `pytest`                            |
+| `filesystem-tests`  | Run canonical Python tests across Linux, macOS, and Windows filesystems | `nox`, `pytest`                            |
+| `coverage`          | Generate and publish canonical coverage reports                         | `nox`, `coverage.py`, `pytest`             |
+| `api-snapshot`      | Check public API stability for source-changing pull requests            | `nox`, `tools/api_snapshot.py`             |
+| `links`             | Validate links in source Markdown files                                 | `lycheeverse/lychee-action`, `lychee.toml` |
+| `links-site`        | Validate links in the rendered MkDocs site, including generated pages   | `mkdocs`, `lycheeverse/lychee-action`      |
+| `release-artifacts` | Build and upload release artifacts for version tags                     | `uv build`, `actions/upload-artifact`      |
 
 Most jobs delegate validation to nox sessions so local development and CI share the same stable
 validation contracts and execution semantics. The `python-metadata` job resolves supported Python
@@ -98,14 +99,20 @@ versions and the canonical single-version Python from project metadata through
 `nox -s print_python_matrix`. The test matrix consumes that supported-version list with `fail-fast`
 disabled so failures on one Python version do not hide failures on others.
 
+Filesystem-sensitive behavior is validated separately by the `filesystem-tests` job. That job runs
+the canonical Python QA session across Ubuntu, macOS, and Windows so platform-dependent path and
+filesystem semantics are checked on real GitHub-hosted filesystems without multiplying the full
+supported Python-version matrix across every operating system.
+
 Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolved canonical Python
 version and the existing `nox -s coverage` session. Coverage intentionally runs outside the full
 test matrix to avoid duplicating expensive QA work that is already covered by the compatibility
 matrix.
 
-The coverage job depends on the full test matrix succeeding before coverage reports are generated.
-This keeps the compatibility matrix as the primary validation gate while avoiding additional
-coverage-processing noise after known test failures.
+The coverage job depends on the full supported-version test matrix succeeding before coverage
+reports are generated. This keeps the compatibility matrix as the primary validation gate while
+avoiding additional coverage-processing noise after known test failures. Platform-dependent
+filesystem validation remains a separate gate through `filesystem-tests`.
 
 Canonical single-version jobs such as linting, documentation builds, coverage, API snapshot checks,
 and release-artifact construction use the same resolved canonical Python value rather than carrying
@@ -192,6 +199,10 @@ nox -s qa -p 3.13
 nox -s coverage -p 3.13
 ```
 
+The `filesystem-tests` job runs the same canonical `qa` session on Ubuntu, macOS, and Windows. Local
+reproduction can validate the current machine's filesystem behavior, but it cannot replace the
+cross-platform GitHub-hosted runs for case-sensitivity and path-canonicalization behavior.
+
 The concrete `3.13` commands shown here reflect the current canonical Python version. That value is
 resolved from project metadata and is expected to move when the supported Python range moves.
 
@@ -235,6 +246,9 @@ When editing this workflow:
 - keep Python-version metadata sourced from `pyproject.toml` through `nox -s print_python_matrix`;
 - keep the coverage job canonical and lightweight rather than instrumenting the full compatibility
   matrix;
+- keep platform-dependent filesystem behavior covered by the canonical cross-platform
+  `filesystem-tests` job rather than expanding the full Python-version matrix across all operating
+  systems;
 - keep coverage reporting lightweight and diagnostic rather than turning it into a percentage-driven
   release gate;
 - keep release artifact building in CI unless the release trust model is deliberately redesigned;
