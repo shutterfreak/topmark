@@ -42,6 +42,7 @@ from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import BuilderView
 from topmark.utils.file import compute_relpath
+from topmark.utils.path import canonicalize_existing_path
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
@@ -120,23 +121,24 @@ class BuilderStep(BaseStep):
         Path semantics:
             - `file_path` is `ctx.path` as provided by config resolution.
               It may be relative or absolute depending on how the file was discovered.
-            - `file_abspath` is computed from the logical header path and is therefore an
-              absolute, normalized path. In stdin mode this means it reflects the logical
-              `stdin_filename`, not the materialized temporary file path.
+            - For regular filesystem input, `file`, `file_relpath`, and `file_abspath`
+              are derived from the canonical filesystem spelling of the resolved path.
+              This avoids casing-only metadata drift on case-insensitive filesystems.
+            - In stdin mode, `file`, `file_relpath`, and `file_abspath` are derived from
+              the logical `stdin_filename`, not the materialized temporary file path.
             - `file_relpath` and `relpath` are computed by calling
-              `compute_relpath(file_path, relative_to)`. Note that this uses the
-              original `file_path` (not `file_path.resolve()`), so the relative
-              path is derived from the discovery spelling.
+              `compute_relpath(header_path, relative_to)`.
             - `relative_to` defaults to `Path.cwd()` when no explicit root is configured.
-              If `FrozenConfig.relative_to` is set, it is resolved to an absolute path via
-              `Path(config.relative_to).resolve()`.
+              If `FrozenConfig.relative_to` is set and exists on disk, it is canonicalized
+              before relative paths are computed.
             - `relpath` becomes "." at repo root.
 
             This behavior intentionally keeps `file_relpath` stable for common cases
             like running TopMark from the repository root (so `pyproject.toml` yields
             `file_relpath = "pyproject.toml"`). If you need `file_relpath` computed
             relative to a specific root, set `FrozenConfig.relative_to` (via config or CLI/API
-            overrides).
+            overrides). User-supplied path spelling is not treated as header metadata once a
+            regular filesystem path has been successfully resolved.
         """
         logger.debug("ctx: %s", ctx)
 
@@ -173,10 +175,12 @@ class BuilderStep(BaseStep):
         content_path: Path = file_path
 
         # In stdin mode, use `stdin_filename` (if provided) for logical header metadata.
+        # Otherwise, use the canonical filesystem spelling of the existing content path.
+        # This keeps generated metadata tied to filesystem identity instead of invocation spelling.
         header_path: Path = (
             Path(ctx.run_options.stdin_filename)
             if (ctx.run_options.stdin_mode and ctx.run_options.stdin_filename)
-            else content_path
+            else canonicalize_existing_path(content_path)
         )
 
         # File absolute path is derived from the logical header path so stdin mode reports the
@@ -185,9 +189,13 @@ class BuilderStep(BaseStep):
         content_absolute_path: Path = content_path.resolve(strict=True)
 
         # Relative paths are computed against `relative_to` using the logical header path.
-        # Note: `header_path` may not exist, so `compute_relpath()` must not rely on
-        # strict filesystem resolution.
-        relative_to: Path = Path(config.relative_to).resolve() if config.relative_to else Path.cwd()
+        # Note: `header_path` may not exist in stdin mode, so `compute_relpath()` must not rely
+        # on strict filesystem resolution.
+        relative_to: Path = (
+            canonicalize_existing_path(Path(config.relative_to))
+            if config.relative_to and Path(config.relative_to).exists()
+            else Path.cwd()
+        )
         # Determine relative path from the file to the root path
         # Default to the current working directory if 'relative_to' is not configured
         relative_path: Path = compute_relpath(header_path, relative_to)
