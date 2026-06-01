@@ -201,7 +201,11 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
         policy_registry_override=policy_registry,
     )
     pipeline: Sequence[Step[ProcessingContext]] = Pipeline.CHECK.steps
-    ctx2 = runner.run(ctx2, pipeline)
+    ctx2 = runner.run(
+        ctx2,
+        pipeline,
+        prune_views=False,  # We must inspect ctx2.views.header.
+    )
     assert ctx2.views.header is not None
     assert ctx2.views.header.range is not None
 
