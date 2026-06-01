@@ -191,7 +191,8 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
                 ln = prefix + core
         new_lines.append(ln)
 
-    path.write_text("".join(new_lines), encoding="utf-8")
+    with path.open("w", encoding="utf-8", newline="") as fp:
+        fp.write("".join(new_lines))
 
     # Now the scanner should still detect it
     ctx2: ProcessingContext = ProcessingContext.bootstrap(
