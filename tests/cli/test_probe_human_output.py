@@ -27,6 +27,7 @@ from click.testing import CliRunner
 from click.testing import Result
 
 from tests.cli.conftest import assert_CONFIG_ERROR
+from tests.cli.conftest import assert_FILE_NOT_FOUND
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from topmark.cli.keys import CliCmd
@@ -179,7 +180,7 @@ def test_probe_text_output_reports_missing_input_only_once(
         ],
     )
 
-    assert result.exit_code != 0
+    assert_FILE_NOT_FOUND(result)
 
     assert "probe-missing" in result.output
     assert "<filtered>" not in result.output

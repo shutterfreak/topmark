@@ -182,8 +182,10 @@ Common `config defaults` exit codes:
 
 Notes:
 
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
 - This command does not inspect project files and does not use file-processing exit codes such as
-  `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+  `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 - Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
 - `--quiet` is unsupported because the command's primary purpose is to emit content.
 

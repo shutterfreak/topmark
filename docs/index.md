@@ -86,9 +86,14 @@ them as CLI usage errors before runtime processing begins.
 TopMark uses a small stable set of exit codes suitable for CI and scripting:
 
 - `SUCCESS (0)` - success (no changes needed or changes applied)
-- `WOULD_CHANGE (2)` - dry-run indicates changes would be made ([`check`](usage/commands/check.md),
+
+- `WOULD_CHANGE (3)` - dry-run indicates changes would be made ([`check`](usage/commands/check.md),
   [`strip`](usage/commands/strip.md))
-- `FAILURE (1)` - validation failed ([`config check`](usage/commands/config/check.md))
+
+- `CONFIG_ERROR (78)` - configuration validation failed ([`check`](usage/commands/check.md),
+  [`strip`](usage/commands/strip.md), [`probe`](usage/commands/probe.md),
+  [`config check`](usage/commands/config/check.md))
+
 - `USAGE_ERROR (64)` - CLI usage error (invalid options, unsupported STDIN modes, or positional
   paths on file-agnostic commands)
 

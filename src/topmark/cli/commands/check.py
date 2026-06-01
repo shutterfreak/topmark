@@ -289,7 +289,7 @@ def check_command(
 
     Exit Status:
         SUCCESS (0): No changes required or all requested changes were written.
-        WOULD_CHANGE (2): Dry-run detected files that would change with ``--apply``.
+        WOULD_CHANGE (3): Dry-run detected files that would change with ``--apply``.
         USAGE_ERROR (64): Invalid invocation (e.g., mixing ``-`` with ``--files-from -``).
         FILE_NOT_FOUND (66): One or more specified files or directories could not be found.
         PERMISSION_DENIED (77): Insufficient permissions to read or write a file.

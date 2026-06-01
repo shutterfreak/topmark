@@ -145,13 +145,32 @@ def assert_SUCCESS(result: Result) -> None:
     assert result.exit_code == ExitCode.SUCCESS, result.output
 
 
-def assert_WOULD_CHANGE(result: Result) -> None:
-    """Assert that the command exited with WOULD_CHANGE (code 2).
+def assert_FAILURE(result: Result) -> None:
+    """Assert that the command exited with generic failure (code 1).
+
+    This is a defensive fallback assertion for unexpected non-specific failures.
+    Prefer a more specific helper such as `assert_CONFIG_ERROR`,
+    `assert_IO_ERROR`, or `assert_FILE_NOT_FOUND` whenever the command contract
+    defines a specific outcome.
 
     Args:
         result: The Result object returned by `run_cli` or `run_cli_in`.
     """
-    # WOULD_CHANGE is a *normal* outcome; do not assert on exception.
+    assert result.exit_code == ExitCode.FAILURE, result.output
+
+
+def assert_WOULD_CHANGE(result: Result) -> None:
+    """Assert that the command exited with WOULD_CHANGE (code 3).
+
+    `WOULD_CHANGE` is a normal dry-run outcome, not a runtime failure. TopMark
+    intentionally uses code 3 so tests and scripts can distinguish this semantic
+    change signal from Click parser-level usage errors, which use code 2.
+
+    Args:
+        result: The Result object returned by `run_cli` or `run_cli_in`.
+    """
+    # WOULD_CHANGE is a normal TopMark outcome; Click parser usage errors use
+    # raw exit code 2 and must be asserted with parser-error-specific helpers.
     assert result.exit_code == ExitCode.WOULD_CHANGE, result.output
 
 
@@ -189,18 +208,6 @@ def assert_USAGE_ERROR(result: Result) -> None:
     """
     # TopMark normalizes usage errors to the public USAGE_ERROR contract code.
     assert result.exit_code == ExitCode.USAGE_ERROR, result.output
-
-
-def assert_FAILURE(result: Result) -> None:
-    """Assert that the command exited with validation failure (code 1).
-
-    This is used for commands that complete successfully as commands but report
-    a failing validation result, such as `topmark config check`.
-
-    Args:
-        result: The Result object returned by `run_cli` or `run_cli_in`.
-    """
-    assert result.exit_code == ExitCode.FAILURE, result.output
 
 
 def assert_CONFIG_ERROR(result: Result) -> None:
@@ -315,7 +322,7 @@ def assert_rich_output_does_not_contain(
 
 
 CLICK_USAGE_ERROR_EXIT_CODE: Final[int] = 2
-"""Exit code used by Click for reporting a usage error."""
+"""Raw exit code used by Click for parser-level usage errors."""
 
 
 def assert_rich_output_no_such_option(
@@ -325,15 +332,16 @@ def assert_rich_output_no_such_option(
 ) -> None:
     """Assert that Rich Click reported an unknown CLI option.
 
-    Click reports parser-level usage errors with exit code 2 before TopMark can
-    normalize them to `ExitCode.USAGE_ERROR`. That numeric code overlaps with
-    `ExitCode.WOULD_CHANGE`, so this helper also asserts the rendered
-    `No such option` diagnostic.
+    Click parser-level usage errors (for example, unknown commands, unknown options
+    options or invalid option values) may exit with code `2` before command logic runs.
+    TopMark intentionally does not assign code 2 to a semantic outcome; `WOULD_CHANGE`
+    uses code 3 instead. This helper therefore asserts both the Click-owned code
+    and the rendered `No such option` diagnostic.
     """
     # Click handles the parser error and `CliRunner` captures the resulting
     # `SystemExit(2)`, not the original `click.NoSuchOption` instance. The
-    # rendered diagnostic disambiguates this parser-level failure from
-    # TopMark's normal `ExitCode.WOULD_CHANGE` outcome, which also uses code 2.
+    # The rendered diagnostic distinguishes this parser-level failure from
+    # TopMark-owned semantic outcomes such as WOULD_CHANGE (code 3).
     assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE, result.output
 
     # Use the message format used by `rich-click`:

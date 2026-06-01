@@ -12,13 +12,12 @@
 
 This module centralizes the exit codes used by the CLI, engine helpers, and
 tests. TopMark aligns with the BSD ``sysexits`` convention where practical so
-that other tooling can interpret failures consistently. The one deliberate
-divergence is ``WOULD_CHANGE = 2``, which is used to signal a dry-run state
-where changes would be made; this allows automation and tests to distinguish
-between a "would change" result and a usage error (which, in Click, also
-defaults to 2). When used with Click-based CLIs, tests must assert
-``result.exception is None`` to disambiguate TopMark's dry-run from Click's
-own usage errors.
+that other tooling can interpret failures consistently. TopMark deliberately
+avoids assigning semantic runtime meaning to exit code ``2`` because Click uses
+it for parser-level usage errors before TopMark command logic can normalize the
+failure. Dry-run change detection therefore uses ``WOULD_CHANGE = 3`` so
+scripts can distinguish valid change signals from parser failures by exit code
+alone.
 """
 
 from __future__ import annotations
@@ -30,12 +29,13 @@ class ExitCode(IntEnum):
     """Standardized exit codes for the TopMark runtime and CLI.
 
     TopMark follows the BSD ``sysexits`` convention where practical so other
-    tooling can interpret failures consistently. The one deliberate
-    divergence is ``WOULD_CHANGE = 2``, which TopMark uses to signal a dry-run
-    state where changes would be made. When running under a Click-based CLI,
-    tests must assert that no Click exception was raised
-    (``result.exception is None``) to disambiguate from Click's own usage
-    errors (which also default to 2).
+    tooling can interpret failures consistently.
+
+    Exit code ``2`` is reserved for Click-owned parser usage errors, such as
+    unknown options or invalid option values raised before TopMark command logic runs.
+
+    TopMark dry-run change detection therefore uses ``WOULD_CHANGE = 3`` so automation
+    can distinguish valid change signals from parser failures by exit code alone.
 
     Attributes:
         SUCCESS: Successful execution with no errors.
@@ -57,15 +57,24 @@ class ExitCode(IntEnum):
         CONFIG_ERROR: Configuration error (missing/invalid/malformed config).
             Mirrors BSD ``EX_CONFIG (78)``.
         VERSION_CONVERSION_ERROR: Version conversion error (missing/invalid/malformed PEP version
-            identifier, version cannot be converted tot SemVer).
+            identifier, version cannot be converted to SemVer).
             Mirrors BSD ``EX_CONFIG (78)``.
         UNEXPECTED_ERROR: Unhandled/unknown error (last-resort). Mirrors BSD
             ``EX_SOFTWARE (70)`` but kept distinct for clarity.
+
+    Notes:
+        - Exit code ``2`` is intentionally not represented here because it is
+          owned by Click parser usage errors, not by TopMark semantic outcomes.
+
     """
 
     SUCCESS = 0
     FAILURE = 1
-    WOULD_CHANGE = 2  # deliberate divergence from sysexits; see class docstring
+
+    # Exit code 2 is intentionally unassigned here: Click owns it for parser-level
+    # usage errors such as invalid options or invalid option values.
+
+    WOULD_CHANGE = 3  # deliberate divergence from sysexits; see class docstring
 
     # sysexits-aligned values for better interoperability
     USAGE_ERROR = 64  # EX_USAGE

@@ -257,7 +257,7 @@ and CI.
 - **`topmark-check` (non-destructive)**:
 
   - Exits with `SUCCESS (0)` when all headers are up-to-date.
-  - Exits with `WOULD_CHANGE (2)` when headers would be added/updated in dry-run mode (this causes
+  - Exits with `WOULD_CHANGE (3)` when headers would be added/updated in dry-run mode (this causes
     the hook to fail as intended).
   - May exit with other non-zero codes for errors, for example:
     - `FILE_NOT_FOUND (66)` for explicit missing input paths
@@ -279,7 +279,7 @@ and CI.
 Notes:
 
 - Pre-commit treats any non-zero exit code as a failure; this is expected for `topmark-check` when
-  changes are needed (`WOULD_CHANGE (2)`).
+  changes are needed (`WOULD_CHANGE (3)`).
 - Use `--quiet` in CI to suppress human-readable TEXT output and rely solely on exit status.
 - Use `topmark-probe` when a hook appears to skip, include, or classify files with unexpected
   semantic runtime outcomes.

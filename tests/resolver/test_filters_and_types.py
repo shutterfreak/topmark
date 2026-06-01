@@ -96,7 +96,7 @@ def test_strip_applies_only_to_included_non_excluded_targets(tmp_path: Path) -> 
 
 
 @pytest.mark.parametrize("file_type_id", ["python", "topmark:python"])
-def test_file_type_filter_selects_only_matching_file_types(
+def test_check_file_type_filter_selects_only_matching_file_types(
     tmp_path: Path,
     file_type_id: str,
 ) -> None:
@@ -113,7 +113,12 @@ def test_file_type_filter_selects_only_matching_file_types(
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliOpt.INCLUDE_FILE_TYPES, file_type_id, "*.*"],
+        [
+            CliCmd.CHECK,
+            CliOpt.INCLUDE_FILE_TYPES,
+            file_type_id,
+            "*.*",
+        ],
     )
 
     # Only x.py should be selected; because it lacks a header, check should report WOULD_CHANGE.
@@ -121,7 +126,7 @@ def test_file_type_filter_selects_only_matching_file_types(
 
 
 @pytest.mark.parametrize("file_type_id", ["python", "topmark:python"])
-def test_file_type_exclude_filter_skips_matching_file_types(
+def test_check_file_type_exclude_filter_skips_matching_file_types(
     tmp_path: Path,
     file_type_id: str,
 ) -> None:
@@ -133,7 +138,12 @@ def test_file_type_exclude_filter_skips_matching_file_types(
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliOpt.EXCLUDE_FILE_TYPES, file_type_id, "*.*"],
+        [
+            CliCmd.CHECK,
+            CliOpt.EXCLUDE_FILE_TYPES,
+            file_type_id,
+            "*.*",
+        ],
     )
 
     assert_WOULD_CHANGE(result)

@@ -13,8 +13,8 @@
 This module pins the command-level validation contract:
 - valid configuration exits SUCCESS (0),
 - warning-only diagnostics exit SUCCESS (0) in non-strict mode,
-- warning-only diagnostics exit FAILURE (1) in strict mode,
-- malformed/unusable configuration exits FAILURE (1) as a validation result.
+- warning-only diagnostics exit CONFIG_ERROR (78) in strict mode,
+- malformed/unusable configuration exits CONFIG_ERROR (78) as a validation result.
 
 Unlike processing commands, `config check` reports configuration problems as
 validation results rather than runtime `CONFIG_ERROR` exits.
@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.cli.conftest import assert_FAILURE
+from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
@@ -86,7 +86,7 @@ def test_config_check_warning_only_config_exits_success_in_non_strict_mode(tmp_p
 
 
 def test_config_check_warning_only_config_exits_failure_in_strict_mode(tmp_path: Path) -> None:
-    """Warning-only diagnostics should exit FAILURE in strict mode."""
+    """Warning-only diagnostics should exit CONFIG_ERROR in strict mode."""
     (tmp_path / "topmark.toml").write_text(
         "\n".join(
             [
@@ -108,14 +108,14 @@ def test_config_check_warning_only_config_exits_failure_in_strict_mode(tmp_path:
     )
 
     # Strict config checking escalates warning-only diagnostics to validation failure.
-    assert_FAILURE(result)
+    assert_CONFIG_ERROR(result)
 
 
 # --- Malformed / unusable configuration ---
 
 
 def test_config_check_malformed_config_exits_failure(tmp_path: Path) -> None:
-    """Malformed config should exit FAILURE as a validation result."""
+    """Malformed config should exit CONFIG_ERROR as a validation result."""
     (tmp_path / "topmark.toml").write_text("this = [[[[ not_toml", "utf-8")
 
     result: Result = run_cli_in(
@@ -127,4 +127,4 @@ def test_config_check_malformed_config_exits_failure(tmp_path: Path) -> None:
     )
 
     # `config check` reports TOML parse errors as validation failures.
-    assert_FAILURE(result)
+    assert_CONFIG_ERROR(result)

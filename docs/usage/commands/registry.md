@@ -92,9 +92,14 @@ All `registry` subcommands are informational introspection commands:
 - CLI usage errors (invalid or unsupported options) exit with `USAGE_ERROR (64)`.
 
 Registry subcommands do not process project files and therefore do not use file-processing exit
-codes such as `WOULD_CHANGE (2)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
+codes such as `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 
 Invalid positional paths or file-processing input options are reported as CLI usage errors.
+
+Notes:
+
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 

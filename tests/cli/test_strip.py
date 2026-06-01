@@ -49,11 +49,11 @@ if TYPE_CHECKING:
 # --- Dry-run exit-code contract ---
 
 
-def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
-    """Dry-run should exit 2 when a header is present (action would occur).
+def test_strip_dry_run_exits_would_change(tmp_path: Path) -> None:
+    """Dry-run should exit 3 when a header is present (action would occur).
 
     Given a file that contains a recognizable TopMark header, calling `topmark strip`
-    without `--apply` should signal "would change" with exit code 2.
+    without `--apply` should signal "would change" with exit code 3.
     """
     f: Path = tmp_path / "x.py"
     f.write_text(
@@ -64,7 +64,7 @@ def test_strip_dry_run_exits_2(tmp_path: Path) -> None:
         [CliCmd.STRIP, str(f)],
     )
 
-    # Exit 2 means "changes would be made" (pre-commit friendly).
+    # Exit 3 means "changes would be made" (pre-commit friendly).
     assert_WOULD_CHANGE(result)
 
 
@@ -134,7 +134,7 @@ def test_strip_diff_shows_patch(tmp_path: Path) -> None:
         [CliCmd.STRIP, CliOpt.RENDER_DIFF, str(f)],
     )
 
-    # With a removable header, diff-only should exit 2 (would change).
+    # With a removable header, diff-only should exit 3 (would change).
     assert_WOULD_CHANGE(result)
 
     # Diff should include unified headers and removed header lines.

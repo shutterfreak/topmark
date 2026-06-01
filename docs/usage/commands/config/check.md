@@ -75,7 +75,7 @@ ______________________________________________________________________
   content-on-STDIN for this command, and file-list STDIN modes such as `--files-from -` do not
   apply.
 
-- **CI-friendly**: exits with `FAILURE (1)` when validation fails.
+- **CI-friendly**: exits with `CONFIG_ERROR (78)` when validation fails.
 
 - **Strict mode**: effective strictness is determined as:
 
@@ -274,27 +274,31 @@ ______________________________________________________________________
 ## Exit codes
 
 `topmark config check` exits with `SUCCESS (0)` when the effective runtime configuration is valid.
-It exits with `FAILURE (1)` when validation completes and reports failing diagnostics:
+It exits with `CONFIG_ERROR (78)` when configuration validation fails.
 
-- errors are present, or
-- effective strict config checking is enabled and warnings are present.
+This includes:
+
+- configuration-loading failures that prevent validation from completing;
+- validation runs that report configuration errors; and
+- warning-only results when strict configuration checking is enabled.
 
 Common `config check` exit codes:
 
-| Scenario                                       | Exit code           |
-| ---------------------------------------------- | ------------------- |
-| Valid effective runtime configuration          | `SUCCESS (0)`       |
-| Validation completed with failing diagnostics  | `FAILURE (1)`       |
-| Invalid CLI usage                              | `USAGE_ERROR (64)`  |
-| Configuration cannot be loaded for the command | `CONFIG_ERROR (78)` |
+| Scenario                                      | Exit code           |
+| --------------------------------------------- | ------------------- |
+| Valid effective runtime configuration         | `SUCCESS (0)`       |
+| Validation completed with failing diagnostics | `CONFIG_ERROR (78)` |
+| Invalid CLI usage                             | `USAGE_ERROR (64)`  |
 
 Notes:
 
-- `FAILURE (1)` is a validation result for this command, not an unexpected crash.
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
+- `CONFIG_ERROR (78)` is the normal validation-failure result for this command.
 - Warning-only diagnostics exit with `SUCCESS (0)` unless strict configuration checking is enabled.
-- Malformed TOML discovered by `config check` is reported as a failing validation result and exits
-  with `FAILURE (1)`.
-- CLI usage errors (for example, invalid options) exit with `USAGE_ERROR (64)`.
+- Malformed TOML discovered by `config check` is reported as a configuration-validation failure and
+  exits with `CONFIG_ERROR (78)`.
+- TopMark semantic validation and configuration-loading failures use `CONFIG_ERROR (78)`.
 
 Because `config check` is file-agnostic, invalid positional paths or file-processing input options
 are reported as CLI usage errors rather than as file-processing diagnostics.

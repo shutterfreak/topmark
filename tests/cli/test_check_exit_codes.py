@@ -40,7 +40,7 @@ pytestmark: pytest.MarkDecorator = pytest.mark.exit_code
 
 # --- Dry-run contract ---
 def test_check_exits_would_change_when_changes_needed(tmp_path: Path) -> None:
-    """`check` should exit WOULD_CHANGE (2) when headers would be added or modified."""
+    """`check` should exit WOULD_CHANGE (3) when headers would be added or modified."""
     f: Path = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
 

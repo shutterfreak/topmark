@@ -27,6 +27,20 @@ ______________________________________________________________________
 - Centralized CLI option metadata and command-applicability groups used by diagnostics.
 - Hid singular file-type compatibility aliases from help output while preserving them as accepted
   hidden aliases.
+- Reworked CLI exit-code semantics to reserve exit code `2` for Click parser-level usage errors and
+  moved `WOULD_CHANGE` to exit code `3`.
+- Updated `config check` to report validation failures using `CONFIG_ERROR (78)` instead of the
+  generic `FAILURE (1)` exit code.
+
+### Breaking Changes - Unreleased
+
+- Exit code `WOULD_CHANGE` changed from `2` to `3`.
+- Exit code `2` is now reserved for Click parser-level usage errors (for example, unknown options or
+  invalid option values encountered before TopMark command logic runs).
+- CI workflows, shell scripts, tests, and automation that previously treated exit code `2` as the
+  TopMark dry-run change signal must be updated to expect exit code `3` instead.
+- `topmark config check` now reports validation failures using `CONFIG_ERROR (78)` instead of the
+  generic `FAILURE (1)` exit code.
 
 ### Fixed - Unreleased
 
@@ -40,6 +54,8 @@ ______________________________________________________________________
   human-readable output.
 - Preserved valid JSON/NDJSON config diagnostics when strict config validation stops command
   execution.
+- Clarified and disambiguated Click parser-level usage errors versus TopMark semantic exit-code
+  outcomes.
 
 ### Documentation - Unreleased
 
@@ -48,6 +64,10 @@ ______________________________________________________________________
   documentation.
 - Documented machine-readable output behavior when strict config validation stops commands before
   probing or processing.
+- Updated CLI exit-code documentation to distinguish Click-owned parser failures from TopMark-owned
+  semantic outcomes.
+- Documented the exit-code migration from `WOULD_CHANGE (2)` to `WOULD_CHANGE (3)` and the revised
+  `config check` validation-failure behavior.
 
 ### Internal - Unreleased
 
@@ -64,6 +84,10 @@ ______________________________________________________________________
 - Strict configuration-validation failures now preserve machine-readable JSON/NDJSON output. This
   fixes invalid machine output in error paths, but consumers that previously treated such failures
   as unparseable plain text may need to adjust their error handling.
+- This release intentionally introduces a breaking CLI exit-code change: `WOULD_CHANGE` now exits
+  with code `3` instead of `2` so automation can distinguish dry-run change signals from Click
+  parser-level usage errors. Existing CI jobs, shell scripts, and tests that checked for exit code
+  `2` must be updated.
 
 ______________________________________________________________________
 

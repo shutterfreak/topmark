@@ -323,10 +323,13 @@ Common `probe` exit codes:
 
 Notes:
 
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
 - `UNSUPPORTED_FILE_TYPE (69)` indicates runtime-resolution failure (e.g., unsupported file type or
   filtered input), not a crash.
 - Explicit missing literal paths are treated as hard input errors and produce `FILE_NOT_FOUND (66)`.
-- Missing explicit inputs take precedence over runtime-resolution outcomes (`69`).
+- Missing explicit inputs take precedence over runtime-resolution outcomes
+  (`UNSUPPORTED_FILE_TYPE (69)`).
 - Unmatched glob patterns are reported as filtered probe results (e.g.,
   `filtered: excluded_by_discovery_filter`) and result in `UNSUPPORTED_FILE_TYPE (69)`.
 - Ambiguous local file type identifiers may also contribute to runtime-resolution outcomes unless
