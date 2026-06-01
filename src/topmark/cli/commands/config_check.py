@@ -208,7 +208,7 @@ def config_check_command(
 
     def _exit(ctx: click.Context, *, success: bool) -> None:
         """Select exit code depending on outcome."""
-        ctx.exit(0 if success else ExitCode.FAILURE)
+        ctx.exit(0 if success else ExitCode.CONFIG_ERROR)
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_config_check_machine(

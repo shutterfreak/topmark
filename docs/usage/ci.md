@@ -38,7 +38,7 @@ ______________________________________________________________________
 topmark check .
 ```
 
-This validates the selected files and exits with `WOULD_CHANGE (2)` when headers would need to be
+This validates the selected files and exits with `WOULD_CHANGE (3)` when headers would need to be
 inserted, updated, or removed.
 
 If you also want to validate the TopMark configuration, either provide `--strict` to `topmark check`
@@ -86,7 +86,7 @@ ______________________________________________________________________
 
 ### `topmark check`
 
-`topmark check` uses exit code `WOULD_CHANGE (2)` as a stable dry-run signal when changes would be
+`topmark check` uses exit code `WOULD_CHANGE (3)` as a stable dry-run signal when changes would be
 needed. Successful clean runs exit with `SUCCESS (0)`.
 
 Common `check` exit codes:
@@ -94,7 +94,7 @@ Common `check` exit codes:
 | Scenario                    | Exit code                |
 | --------------------------- | ------------------------ |
 | Clean run                   | `SUCCESS (0)`            |
-| Dry-run would add or update | `WOULD_CHANGE (2)`       |
+| Dry-run would add or update | `WOULD_CHANGE (3)`       |
 | Missing explicit input path | `FILE_NOT_FOUND (66)`    |
 | Permission failure          | `PERMISSION_DENIED (77)` |
 | Configuration error         | `CONFIG_ERROR (78)`      |
@@ -104,32 +104,37 @@ Notes:
 
 - Explicit missing literal paths are hard input errors and produce `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns are soft discovery diagnostics and do not fail `check`.
-- In mixed-result runs, hard input and filesystem errors take precedence over `WOULD_CHANGE (2)`.
+- In mixed-result runs, hard input and filesystem errors take precedence over `WOULD_CHANGE (3)`.
 
 ### `topmark config check`
 
 `topmark config check` exits with `SUCCESS (0)` when the effective runtime configuration is valid.
-It exits with `FAILURE (1)` when validation completes and reports failing diagnostics:
+It exits with `CONFIG_ERROR (78)` when configuration validation fails.
 
-- errors are present, or
-- effective strict config checking is enabled and warnings are present.
+This includes:
+
+- configuration-loading failures that prevent validation from completing;
+- validation runs that report configuration errors; and
+- warning-only results when strict configuration checking is enabled.
 
 Common `config check` exit codes:
 
-| Scenario                                       | Exit code           |
-| ---------------------------------------------- | ------------------- |
-| Valid effective runtime configuration          | `SUCCESS (0)`       |
-| Validation completed with failing diagnostics  | `FAILURE (1)`       |
-| Invalid CLI usage                              | `USAGE_ERROR (64)`  |
-| Configuration cannot be loaded for the command | `CONFIG_ERROR (78)` |
+| Scenario                              | Exit code           |
+| ------------------------------------- | ------------------- |
+| Valid effective runtime configuration | `SUCCESS (0)`       |
+| Configuration validation failed       | `CONFIG_ERROR (78)` |
+| Invalid CLI usage                     | `USAGE_ERROR (64)`  |
 
 Notes:
 
-- `FAILURE (1)` is a validation result for this command, not an unexpected crash.
+- `CONFIG_ERROR (78)` covers both configuration-loading failures and completed validation runs that
+  report configuration errors.
 - Warning-only diagnostics exit with `SUCCESS (0)` unless strict configuration checking is enabled.
-- Malformed TOML discovered by `config check` is reported as a failing validation result and exits
-  with `FAILURE (1)`.
-- CLI usage errors (for example, invalid options) exit with `USAGE_ERROR (64)`.
+- Malformed TOML discovered by `config check` is reported as a configuration-validation failure and
+  exits with `CONFIG_ERROR (78)`.
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
+- TopMark semantic validation and configuration-loading failures use `CONFIG_ERROR (78)`.
 
 Because `config check` is file-agnostic, invalid positional paths or file-processing input options
 are reported as CLI usage errors rather than as file-processing diagnostics.

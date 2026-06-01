@@ -272,12 +272,15 @@ documented in:
 TopMark uses a small, stable set of exit codes for automation:
 
 - `SUCCESS (0)` - success (no changes needed or changes applied)
-- `WOULD_CHANGE (2)` - dry-run indicates changes would be made (`check`, `strip`)
-- `FAILURE (1)` - validation failed (`config check`)
+- `WOULD_CHANGE (3)` - dry-run indicates changes would be made (`check`, `strip`)
+- `CONFIG_ERROR (78)` - configuration validation failed (`check`, `strip`, `probe`, `config check`)
 - `USAGE_ERROR (64)` - CLI usage error
 - invalid command/option combinations, positional paths on file-agnostic commands, and unsupported
   STDIN modes are reported as usage errors
 - `CONFIG_ERROR (78)` - configuration error
+
+Exit code `2` is reserved for Click-owned parser-level usage errors, such as unknown commands,
+unknown options or invalid option values.
 
 Other codes (for example `UNSUPPORTED_FILE_TYPE (69)`, `PIPELINE_ERROR (70)`, `IO_ERROR (74)`,
 `PERMISSION_DENIED (77)`) are used for more specific runtime conditions after CLI usage has been

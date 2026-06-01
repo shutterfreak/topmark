@@ -195,7 +195,7 @@ Validate repository headers in CI:
 topmark check .
 ```
 
-Exit code `2` means files would require header updates.
+Exit code `3` means files would require header updates.
 
 Further reading:
 

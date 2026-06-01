@@ -102,11 +102,19 @@ Exit-code behavior for `config` subcommands follows a consistent pattern:
 - Informational commands ([`config dump`](config/dump.md), [`config defaults`](config/defaults.md),
   [`config init`](config/init.md)) exit with `SUCCESS (0)` on success.
 - Validation command ([`config check`](config/check.md)) exits with:
-  - `SUCCESS (0)` when configuration is valid
-  - `FAILURE (1)` when validation completes and reports failing diagnostics
-- CLI usage errors (invalid options, incompatible flags) exit with `USAGE_ERROR (64)`.
-- Configuration loading/processing failures exit with `CONFIG_ERROR (78)` where applicable.
+  - `SUCCESS (0)` when configuration validation succeeds.
+  - `CONFIG_ERROR (78)` when configuration validation fails.
+- CLI usage errors (invalid options, incompatible flags) exit with `USAGE_ERROR (64)` when handled
+  by TopMark command logic.
+- Configuration loading and validation failures use `CONFIG_ERROR (78)` where applicable.
 - Unexpected internal failures exit with `UNEXPECTED_ERROR (255)`.
+
+Notes:
+
+- `CONFIG_ERROR (78)` covers both configuration-loading failures and completed validation runs that
+  report configuration errors.
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 

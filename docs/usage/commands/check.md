@@ -55,7 +55,7 @@ ______________________________________________________________________
 
 ## Input applicability
 
-- Dry-run by default; exit code `WOULD_CHANGE (2)` when changes would occur.
+- Dry-run by default; exit code `WOULD_CHANGE (3)` when changes would occur.
 - Preserves the file's original newline style (LF/CRLF/CR).
 - Preserves a leading UTF-8 BOM if present.
 - Places headers according to file-type policy (shebang and PEP 263 in Python; XML
@@ -382,7 +382,7 @@ ______________________________________________________________________
 
 ## Exit codes
 
-`topmark check` uses exit code `WOULD_CHANGE (2)` as a stable dry-run signal when changes would be
+`topmark check` uses exit code `WOULD_CHANGE (3)` as a stable dry-run signal when changes would be
 needed. Successful clean runs and successful `--apply` runs exit with `SUCCESS (0)`.
 
 Common `check` exit codes:
@@ -390,7 +390,7 @@ Common `check` exit codes:
 | Scenario                     | Exit code                |
 | ---------------------------- | ------------------------ |
 | Clean run / successful apply | `SUCCESS (0)`            |
-| Dry-run would add or update  | `WOULD_CHANGE (2)`       |
+| Dry-run would add or update  | `WOULD_CHANGE (3)`       |
 | Missing explicit input path  | `FILE_NOT_FOUND (66)`    |
 | Write/apply failure          | `IO_ERROR (74)`          |
 | Permission failure           | `PERMISSION_DENIED (77)` |
@@ -399,9 +399,11 @@ Common `check` exit codes:
 
 Notes:
 
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
 - Explicit missing literal paths are hard input errors and produce `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns are soft discovery diagnostics and do not fail `check`.
-- In mixed-result runs, hard input and filesystem errors take precedence over `WOULD_CHANGE (2)`.
+- In mixed-result runs, hard input and filesystem errors take precedence over `WOULD_CHANGE (3)`.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.
 
@@ -427,7 +429,7 @@ git ls-files -m -o --exclude-standard | topmark check --files-from - --diff
 ### 3) CI: summarize and fail when changes are needed
 
 ```bash
-# Print summary only. Exit 2 signals "would change" to fail the job.
+# Print summary only. Exit 3 signals "would change" to fail the job.
 topmark check --summary
 ```
 

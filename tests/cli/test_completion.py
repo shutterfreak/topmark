@@ -62,7 +62,7 @@ def _complete(incomplete: str = "") -> list[CompletionItem]:
     items: list[CompletionItem] = enum_type.shell_complete(ctx, opt, incomplete)
     if items:
         return items
-    # Fallback for robustness; shouldn't happen on Click 8.2
+    # Fallback for robustness; shouldn't happen on Click 8.2+
     return [CompletionItem(str(x)) for x in items]
 
 

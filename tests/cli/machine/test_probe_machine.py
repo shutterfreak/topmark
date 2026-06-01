@@ -22,6 +22,7 @@ import pytest
 from click.testing import CliRunner
 
 from tests.cli.conftest import assert_CONFIG_ERROR
+from tests.cli.conftest import assert_FILE_NOT_FOUND
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from tests.helpers.config_diagnostics import assert_config_diagnostics_warning_payload
@@ -398,7 +399,7 @@ def test_probe_ndjson_reports_missing_input_only_once(tmp_path: Path) -> None:
         ],
     )
 
-    assert result.exit_code != 0
+    assert_FILE_NOT_FOUND(result)
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     probe_records: list[dict[str, object]] = [r for r in records if r["kind"] == "probe"]

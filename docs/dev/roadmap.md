@@ -176,7 +176,7 @@ Command applicability is stricter:
 The CLI exit-code contract is now enum-backed, documented, and tested. Notable stable outcomes
 include:
 
-- `check` / `strip` use `WOULD_CHANGE (2)` for dry-run would-change results;
+- `check` / `strip` use `WOULD_CHANGE (3)` for dry-run would-change results;
 - explicit missing literal inputs produce `FILE_NOT_FOUND (66)`;
 - unmatched globs are soft discovery diagnostics for `check` / `strip`;
 - `probe` reports unresolved, unsupported, filtered, and unmatched-glob semantic outcomes with

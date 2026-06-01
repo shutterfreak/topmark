@@ -44,7 +44,8 @@ ______________________________________________________________________
 | ---: | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 |    0 | SUCCESS                  | Operation completed successfully.                                                                                                  |
 |    1 | FAILURE                  | Generic failure (non-specific error).                                                                                              |
-|    2 | WOULD_CHANGE             | Dry-run indicates changes would be made (used by [`check`](commands/check.md) and [`strip`](commands/strip.md) without `--apply`). |
+|    2 | -                        | Reserved for Click parser-level usage errors (e.g., unknown options or invalid option values).                                     |
+|    3 | WOULD_CHANGE             | Dry-run indicates changes would be made (used by [`check`](commands/check.md) and [`strip`](commands/strip.md) without `--apply`). |
 |   64 | USAGE_ERROR              | Invalid CLI usage (invalid options, incompatible flags).                                                                           |
 |   65 | ENCODING_ERROR           | Text decoding/encoding error (e.g., Unicode issues).                                                                               |
 |   66 | FILE_NOT_FOUND           | Explicit input path does not exist.                                                                                                |
@@ -60,6 +61,8 @@ Notes:
 
 - Codes broadly follow **sysexits-style semantics** where applicable.
 - Not all codes are used by every command.
+- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+  values) may exit with code `2` before command logic runs.
 - Commands may short-circuit on higher-severity errors (e.g., config errors before processing).
 - Canonical file-type identifier normalization does not affect exit-code semantics.
 - Ambiguous or malformed file-type identifiers are reported diagnostically and may contribute to
@@ -95,7 +98,7 @@ ______________________________________________________________________
 | Scenario                                 | Exit code |
 | ---------------------------------------- | --------: |
 | No differences (clean)                   |         0 |
-| Differences found (dry-run)              |         2 |
+| Differences found (dry-run)              |         3 |
 | Changes applied successfully (`--apply`) |         0 |
 | Configuration error                      |        78 |
 | Write failure during apply               |        74 |
@@ -105,8 +108,8 @@ ______________________________________________________________________
 
 Notes:
 
-- `2` is a semantic change signal, not a runtime failure: it indicates that files would change.
-- In CI, treat `2` as "diff detected".
+- `3` is a semantic change signal, not a runtime failure: it indicates that files would change.
+- In CI, treat `3` as "diff detected".
 - Explicit missing input paths are reported as errors (66), even if no files are selected for
   processing.
 - Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
@@ -118,7 +121,7 @@ ______________________________________________________________________
 | Scenario                                 | Exit code |
 | ---------------------------------------- | --------: |
 | Nothing to strip / no changes            |         0 |
-| Changes would occur (dry-run)            |         2 |
+| Changes would occur (dry-run)            |         3 |
 | Changes applied successfully (`--apply`) |         0 |
 | Configuration error                      |        78 |
 | Write failure during apply               |        74 |
@@ -130,6 +133,8 @@ Notes:
 
 - Explicit missing input paths are reported as errors (66).
 - Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
+- `3` is a semantic change signal, not a runtime failure: it indicates that headers would be
+  stripped.
 
 ______________________________________________________________________
 
@@ -160,15 +165,14 @@ ______________________________________________________________________
 | Scenario                                     | Exit code |
 | -------------------------------------------- | --------: |
 | Configuration is valid                       |         0 |
-| Configuration is invalid (validation result) |         1 |
 | CLI usage error                              |        64 |
+| Configuration is invalid (validation result) |        78 |
 | Internal error                               |  70 / 255 |
 
 Important distinction:
 
-- Exit code `1` is not a runtime configuration-loading failure.
-- It indicates that configuration validation completed and found issues.
-- Errors that prevent validation entirely use `78` (not typically surfaced here).
+- Exit code `78` is used both when configuration cannot be loaded and when `config check` completes
+  validation and reports configuration errors.
 
 ______________________________________________________________________
 
@@ -227,9 +231,8 @@ ______________________________________________________________________
 Recommended handling:
 
 - Treat `0` as success.
-- Treat `2` as **non-error change signal** (for `check`/`strip`).
-- Treat `1` (from `config check`) as a configuration-validation result rather than a runtime
-  failure.
+- Treat `2` as a Click parser-level usage error.
+- Treat `3` as **non-error change signal** (for `check`/`strip`).
 - Treat `64`, `66`, `69`, `70`, `74`, `78`, `255` as errors.
 - `66` indicates explicit literal input errors (e.g., missing paths), not unmatched glob patterns.
 
@@ -258,7 +261,7 @@ semantic outcomes occur during a single invocation.
 1. Write/apply failures (`74`)
 1. Configuration errors (`78`)
 1. Semantic/availability signals (`69`)
-1. Generic failures (`1`)
+1. Dry-run change signals (`3`)
 
 This ensures that hard runtime or environment failures take precedence over informational, semantic,
 or availability-oriented outcomes.
@@ -268,7 +271,7 @@ Example:
 ```sh
 # Detect formatting/header drift without applying changes
 if ! topmark check . ; then
-  if [ $? -eq 2 ] ; then
+  if [ $? -eq 3 ] ; then
     echo "Changes required"
   else
     echo "Error during check"
@@ -290,14 +293,9 @@ ______________________________________________________________________
 
 ## Stability guarantee
 
-The exit-code contract defined on this page is part of TopMark's stable 1.x CLI compatibility
-surface.
-
-Future changes will:
-
-- preserve existing codes,
-- only introduce new codes in a backward-compatible manner, or
-- require a major version bump.
+The exit-code contract defined on this page is part of TopMark's stable CLI compatibility surface.
+Changing an existing TopMark-owned semantic exit code, such as `WOULD_CHANGE`, is a breaking CLI
+contract change and requires explicit release-note and migration documentation.
 
 ______________________________________________________________________
 
