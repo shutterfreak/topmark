@@ -36,7 +36,6 @@ import click
 from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
-from topmark.cli.option_meta import format_option_label
 from topmark.cli.option_meta import format_option_labels
 from topmark.cli.state import get_cli_state
 from topmark.core.formats import OutputFormat
@@ -83,76 +82,6 @@ def _join_option_list(options: list[str]) -> str:
 
     opts: str = ", ".join(options[:-1])
     return f"{opts}, and {options[-1]}"
-
-
-def _extra_arg_matches_option(arg: str, opt: str) -> bool:
-    """Return whether an extra argument is the given option spelling.
-
-    Supports both bare flag form (``--flag``) and assignment form
-    (``--flag=value``). Short-option clustering is intentionally not supported
-    because TopMark command-specific option constants are long options.
-    """
-    return arg == opt or arg.startswith(f"{opt}=")
-
-
-_FORBIDDEN_PATH_COMMAND_OPTS_IN_EXTRA_ARGS: Mapping[str, str] = {
-    "--stdin": (f"Use '-' with '{CliOpt.STDIN_FILENAME}' to read one file's content from STDIN."),
-}
-"""Known option spellings that are intentionally unsupported by path commands.
-
-Path-oriented commands use permissive Click parsing so arbitrary file paths can
-start with a dash. As a consequence, unknown options remain in ``ctx.args`` and
-would otherwise be interpreted as literal input paths. Keep this mapping for
-cross-command spellings that TopMark wants to reject explicitly with an
-actionable message.
-"""
-
-
-def validate_common_forbidden_path_command_options_in_extra_args(
-    ctx: click.Context,
-) -> None:
-    """Reject common unsupported options left behind by permissive path parsing.
-
-    Path commands use ``ignore_unknown_options=True`` and ``allow_extra_args=True``
-    to support Black-style path handling. This means a mistyped or unsupported
-    option can survive Click parsing in ``ctx.args``. This validator catches
-    known common spellings before input planning can treat them as file paths.
-
-    Args:
-        ctx: Active Click context whose ``ctx.args`` may contain extra path-like
-            tokens and unknown option spellings.
-
-    Raises:
-        TopmarkCliUsageError: If a known common unsupported option is present in
-            ``ctx.args``.
-    """
-    extra_args: list[str] = list(ctx.args)
-    for opt, reason in _FORBIDDEN_PATH_COMMAND_OPTS_IN_EXTRA_ARGS.items():
-        if any(_extra_arg_matches_option(arg, opt) for arg in extra_args):
-            opt_label: str = format_option_label(opt)
-            raise TopmarkCliUsageError(
-                f"{ctx.command_path}: option {opt_label} is not supported. {reason}"
-            )
-
-
-def validate_forbidden_options_in_extra_args(
-    ctx: click.Context,
-    *,
-    forbidden_opts: Mapping[str, str],
-) -> None:
-    """Reject known-but-forbidden options that remain in `ctx.args`.
-
-    This is used for commands that enable Click's permissive path-oriented parsing
-    (`ignore_unknown_options=True` / `allow_extra_args=True`), where unsupported
-    options would otherwise be silently accepted as extra arguments.
-    """
-    extra_args: list[str] = list(ctx.args)
-    for opt, reason in forbidden_opts.items():
-        if any(_extra_arg_matches_option(arg, opt) for arg in extra_args):
-            opt_label: str = format_option_label(opt)
-            raise TopmarkCliUsageError(
-                f"{ctx.command_path}: option {opt_label} is not supported. {reason}"
-            )
 
 
 def validate_mutually_exclusive(
@@ -403,12 +332,10 @@ def apply_ignore_positional_paths_policy(
 ) -> None:
     """Ignore positional PATHS for file-agnostic commands.
 
-    Some CLI commands do not operate on input files (for example, configuration inspection
-    commands like ``topmark config check``). When such commands are implemented with
-    ``allow_extra_args=True`` / ``ignore_unknown_options=True``, Click places unexpected
-    positional arguments into ``ctx.args``.
-
-    This helper applies a consistent policy:
+    Some CLI commands do not operate on input files (for example, configuration
+    inspection commands like ``topmark config check``). This helper applies a
+    consistent policy for any positional arguments that command setup placed in
+    ``ctx.args``:
 
     - If any positional arguments were provided, emit a warning that they are ignored.
     - If ``"-"`` was provided (STDIN sentinel) and ``warn_stdin_dash`` is enabled, emit a

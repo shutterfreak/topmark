@@ -31,6 +31,8 @@ ______________________________________________________________________
   moved `WOULD_CHANGE` to exit code `3`.
 - Updated `config check` to report validation failures using `CONFIG_ERROR (78)` instead of the
   generic `FAILURE (1)` exit code.
+- Aligned path-oriented command parsing with Click and POSIX-style option handling: unknown
+  option-like tokens are now parser errors unless passed after `--`.
 
 ### Breaking Changes - Unreleased
 
@@ -41,6 +43,9 @@ ______________________________________________________________________
   TopMark dry-run change signal must be updated to expect exit code `3` instead.
 - `topmark config check` now reports validation failures using `CONFIG_ERROR (78)` instead of the
   generic `FAILURE (1)` exit code.
+- `topmark check`, `topmark strip`, and `topmark probe` now reject unknown option-like arguments
+  before `--` as Click parser-level usage errors. Literal filenames that begin with `-` must be
+  passed after the standard `--` delimiter, for example `topmark check -- --generated.py`.
 
 ### Fixed - Unreleased
 
@@ -56,6 +61,8 @@ ______________________________________________________________________
   execution.
 - Clarified and disambiguated Click parser-level usage errors versus TopMark semantic exit-code
   outcomes.
+- Fixed unknown options passed to `check`, `strip`, and `probe` so they are no longer interpreted as
+  missing input paths.
 
 ### Documentation - Unreleased
 
@@ -68,6 +75,7 @@ ______________________________________________________________________
   semantic outcomes.
 - Documented the exit-code migration from `WOULD_CHANGE (2)` to `WOULD_CHANGE (3)` and the revised
   `config check` validation-failure behavior.
+- Documented use of the standard `--` delimiter for literal dash-prefixed path names.
 
 ### Internal - Unreleased
 

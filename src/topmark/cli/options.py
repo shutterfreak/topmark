@@ -74,11 +74,9 @@ GROUP_CONTEXT_SETTINGS: dict[str, list[str] | bool] = {
     ],
 }
 
-#: Click context settings to allow Black-style extra args and unknown options.
+#: Click context settings for path-oriented commands.
 PATH_COMMAND_CONTEXT_SETTINGS: dict[str, list[str] | bool] = {
     **GROUP_CONTEXT_SETTINGS,
-    "ignore_unknown_options": True,
-    "allow_extra_args": True,
 }
 
 
