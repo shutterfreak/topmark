@@ -763,7 +763,7 @@ def resolve_file_list_with_diagnostics(
         # Report problems *after* expansion
         if "*" in str(p):
             if not expanded:
-                unmatched_patterns.append(str(p))  # glob that matched nothing
+                unmatched_patterns.append(p.as_posix())  # glob that matched nothing
         else:
             if not p.exists():
                 missing_literals.append(p)  # literal path that doesn't exist
