@@ -24,8 +24,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
-from tests.cli.conftest import assert_USAGE_ERROR
 from tests.cli.conftest import command_option_names
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
@@ -227,4 +227,7 @@ def test_strip_rejects_header_mutation_mode_option(tmp_path: Path) -> None:
             target.name,
         ],
     )
-    assert_USAGE_ERROR(result)
+    assert_rich_output_no_such_option(
+        result,
+        option_name=CliOpt.POLICY_HEADER_MUTATION_MODE,
+    )

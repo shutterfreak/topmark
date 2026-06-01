@@ -96,8 +96,10 @@ TopMark supports the following path-based filtering controls:
 
 Stable path-filtering semantics:
 
-- Positional arguments are resolved **relative to the current working directory** (CWD),
-  Black-style.
+- Positional arguments are parsed by Click and resolved **relative to the current working
+  directory** (CWD).
+- Unknown option-like tokens before the standard `--` delimiter are parser errors. Use `--` before
+  literal path names that begin with a dash, for example `topmark check -- --generated.py`.
 - Patterns in `--include`, `--exclude`, and files referenced by `--include-from` / `--exclude-from`
   are also resolved **relative to CWD**.
 - Absolute patterns are not supported.

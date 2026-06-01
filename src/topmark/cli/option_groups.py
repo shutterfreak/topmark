@@ -10,12 +10,10 @@
 
 """Command applicability groups for CLI options.
 
-This module is a narrow metadata layer for TopMark-owned applicability
-validation. It groups already-declared option spellings by the path-oriented
-commands that may accept them.
-
-Click option declarations remain in `topmark.cli.options`; this module must not
-become a generated parser model or a replacement for Click decorators.
+This module is a narrow metadata layer for command-applicability test coverage.
+It groups already-declared option spellings by the path-oriented commands that
+may accept them. Click remains the authoritative parser: commands that do not
+declare these options reject them as parser-level unknown options.
 """
 
 from __future__ import annotations
@@ -78,18 +76,18 @@ PROBE_FORBIDDEN_OPTIONS: Final[dict[str, str]] = {
         CHECK_ONLY_OPTION_REASON,
     ),
 }
-"""Options accepted by permissive parsing but rejected by `topmark probe`.
+"""Options that `topmark probe` must not declare.
 
-The values are human-facing reason strings used by command applicability
-validation.
+The values document the historical command-applicability rationale and keep test
+parameterization close to production option metadata.
 """
 
 STRIP_FORBIDDEN_OPTIONS: Final[dict[str, str]] = dict.fromkeys(
     CHECK_ONLY_GENERATED_HEADER_OPTIONS,
     CHECK_ONLY_OPTION_REASON,
 )
-"""Options accepted by permissive parsing but rejected by `topmark strip`.
+"""Options that `topmark strip` must not declare.
 
-The values are human-facing reason strings used by command applicability
-validation.
+The values document the historical command-applicability rationale and keep test
+parameterization close to production option metadata.
 """

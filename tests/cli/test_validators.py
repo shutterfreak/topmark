@@ -22,12 +22,9 @@ from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.state import TopmarkCliState
-from topmark.cli.validators import _extra_arg_matches_option  # pyright: ignore[reportPrivateUsage]
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
-from topmark.cli.validators import validate_common_forbidden_path_command_options_in_extra_args
 from topmark.cli.validators import validate_diff_policy_for_output_format
-from topmark.cli.validators import validate_forbidden_options_in_extra_args
 from topmark.cli.validators import validate_human_only_config_flags_for_machine_format
 from topmark.cli.validators import validate_machine_format_forbids_flags
 from topmark.cli.validators import validate_mutually_exclusive
@@ -87,64 +84,6 @@ def _state_with_console(
         console=Console(enable_color=False, err=err),
     )
     return state, err
-
-
-@pytest.mark.parametrize(
-    ("arg", "opt", "expected"),
-    [
-        ("--stdin", "--stdin", True),
-        ("--stdin=value", "--stdin", True),
-        ("--stdin-filename", "--stdin", False),
-        ("--std", "--stdin", False),
-        ("path.py", "--stdin", False),
-    ],
-)
-def test_extra_arg_matches_option(arg: str, opt: str, expected: bool) -> None:
-    """Extra option matching should support exact and assignment forms only."""
-    assert _extra_arg_matches_option(arg, opt) is expected
-
-
-def test_validate_common_forbidden_path_options_accepts_absent_options() -> None:
-    """Common forbidden-option validator should pass when no known option remains."""
-    ctx: click.Context = _make_click_context(args=["--unknown", "file.py"])
-
-    validate_common_forbidden_path_command_options_in_extra_args(ctx)
-
-
-@pytest.mark.parametrize("arg", ["--stdin", "--stdin=ignored"])
-def test_validate_common_forbidden_path_options_rejects_stdin(arg: str) -> None:
-    """Path commands should reject leftover `--stdin` spellings."""
-    ctx: click.Context = _make_click_context(args=[arg])
-
-    with pytest.raises(
-        TopmarkCliUsageError,
-        match=r"topmark-test: option --stdin is not supported.",
-    ):
-        validate_common_forbidden_path_command_options_in_extra_args(ctx)
-
-
-def test_validate_forbidden_options_in_extra_args_rejects_custom_option() -> None:
-    """Custom forbidden options should be rejected from permissive extra args."""
-    ctx: click.Context = _make_click_context(args=["--unsafe=true"])
-
-    with pytest.raises(
-        TopmarkCliUsageError,
-        match=r"topmark-test: option --unsafe is not supported. not allowed",
-    ):
-        validate_forbidden_options_in_extra_args(
-            ctx,
-            forbidden_opts={"--unsafe": "not allowed"},
-        )
-
-
-def test_validate_forbidden_options_in_extra_args_ignores_unmatched_options() -> None:
-    """Custom forbidden-option validator should ignore unrelated extras."""
-    ctx: click.Context = _make_click_context(args=["--other", "file.py"])
-
-    validate_forbidden_options_in_extra_args(
-        ctx,
-        forbidden_opts={"--unsafe": "not allowed"},
-    )
 
 
 def test_validate_mutually_exclusive_accepts_zero_or_one_enabled_flag() -> None:

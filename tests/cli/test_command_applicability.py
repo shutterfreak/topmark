@@ -22,24 +22,24 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.cli.conftest import assert_FILE_NOT_FOUND
-from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_rich_output_does_not_contain
-from tests.cli.conftest import assert_USAGE_ERROR
+from tests.cli.conftest import assert_rich_output_no_such_option
+from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
+from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
-from topmark.cli.option_groups import CHECK_ONLY_OPTION_REASON
-from topmark.cli.option_groups import CHECK_OR_STRIP_ONLY_OPTION_REASON
 from topmark.cli.option_groups import PROBE_FORBIDDEN_OPTIONS
 from topmark.cli.option_groups import STRIP_FORBIDDEN_OPTIONS
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from click.testing import Result
 
 _STDIN_FLAG: str = "--stdin"
 _STDIN_FILENAME: str = CliOpt.STDIN_FILENAME
-_STDIN_GUIDANCE: str = "Use '-' with '--stdin-filename' to read one file's content from STDIN."
 
 
 # Values used when exercising option spellings that require an argument. Keep
@@ -68,41 +68,25 @@ _OPTION_VALUES: dict[str, str | None] = {
 
 
 @pytest.mark.parametrize(
-    ("option", "value", "reason"),
-    [
-        (option, _OPTION_VALUES[option], reason)
-        for option, reason in PROBE_FORBIDDEN_OPTIONS.items()
-    ],
+    ("option", "value"),
+    [(option, _OPTION_VALUES[option]) for option in PROBE_FORBIDDEN_OPTIONS],
 )
 def test_probe_rejects_inapplicable_path_command_options(
     option: str,
     value: str | None,
-    reason: str,
 ) -> None:
-    """`probe` rejects every centralized check/strip-only option."""
+    """`probe` leaves inapplicable options to Click parser handling."""
     argv: list[str] = [CliCmd.PROBE, option]
     if value is not None:
         argv.append(value)
 
     result: Result = run_cli(argv)
 
-    assert_USAGE_ERROR(result)
-    assert_rich_output_contains(
-        result.output,
-        expected=f"option {option} is not supported.",
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=CliCmd.PROBE,
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=reason,
-    )
+    assert_rich_output_no_such_option(result, option_name=option)
 
 
 def test_probe_rejects_inapplicable_option_assignment_form() -> None:
-    """Forbidden-option validation must catch `--option=value` spellings."""
+    """Click rejects `--option=value` spellings for inapplicable options."""
     result: Result = run_cli(
         [
             CliCmd.PROBE,
@@ -110,19 +94,7 @@ def test_probe_rejects_inapplicable_option_assignment_form() -> None:
         ]
     )
 
-    assert_USAGE_ERROR(result)
-    assert_rich_output_contains(
-        result.output,
-        expected=f"option {CliOpt.WRITE_MODE} is not supported.",
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=CliCmd.PROBE,
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=CHECK_OR_STRIP_ONLY_OPTION_REASON,
-    )
+    assert_rich_output_no_such_option(result, option_name=CliOpt.WRITE_MODE)
 
 
 @pytest.mark.parametrize(
@@ -133,26 +105,14 @@ def test_strip_rejects_generated_header_options(
     option: str,
     value: str | None,
 ) -> None:
-    """`strip` rejects every centralized check-only generated-header option."""
+    """`strip` leaves check-only options to Click parser handling."""
     argv: list[str] = [CliCmd.STRIP, option]
     if value is not None:
         argv.append(value)
 
     result: Result = run_cli(argv)
 
-    assert_USAGE_ERROR(result)
-    assert_rich_output_contains(
-        result.output,
-        expected=f"option {option} is not supported.",
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=CliCmd.STRIP,
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=CHECK_ONLY_OPTION_REASON,
-    )
+    assert_rich_output_no_such_option(result, option_name=option)
 
 
 @pytest.mark.parametrize(
@@ -164,7 +124,7 @@ def test_strip_rejects_generated_header_options(
     ],
 )
 def test_path_commands_reject_stdin_flag(command: str) -> None:
-    """Path commands must reject `--stdin` and instruct to use '-'."""
+    """Path commands reject `--stdin` at Click parser level."""
     result: Result = run_cli(
         [
             command,
@@ -174,19 +134,7 @@ def test_path_commands_reject_stdin_flag(command: str) -> None:
         ]
     )
 
-    assert_USAGE_ERROR(result)
-    assert_rich_output_contains(
-        result.output,
-        expected=f"option {_STDIN_FLAG} is not supported.",
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=command,
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=_STDIN_GUIDANCE,
-    )
+    assert_rich_output_no_such_option(result, option_name=_STDIN_FLAG)
 
 
 @pytest.mark.parametrize(
@@ -198,7 +146,7 @@ def test_path_commands_reject_stdin_flag(command: str) -> None:
     ],
 )
 def test_path_commands_reject_stdin_flag_assignment_form(command: str) -> None:
-    """`--stdin=value` must also be rejected."""
+    """`--stdin=value` is rejected at Click parser level."""
     result: Result = run_cli(
         [
             command,
@@ -208,23 +156,11 @@ def test_path_commands_reject_stdin_flag_assignment_form(command: str) -> None:
         ]
     )
 
-    assert_USAGE_ERROR(result)
-    assert_rich_output_contains(
-        result.output,
-        expected=f"option {_STDIN_FLAG} is not supported.",
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=command,
-    )
-    assert_rich_output_contains(
-        result.output,
-        expected=_STDIN_GUIDANCE,
-    )
+    assert_rich_output_no_such_option(result, option_name=_STDIN_FLAG)
 
 
 def test_probe_rejects_first_inapplicable_option_when_multiple_are_present() -> None:
-    """`probe` should fail deterministically on the first known forbidden option."""
+    """`probe` should fail deterministically on the first unsupported option."""
     result: Result = run_cli(
         [
             CliCmd.PROBE,
@@ -234,18 +170,65 @@ def test_probe_rejects_first_inapplicable_option_when_multiple_are_present() -> 
         ]
     )
 
-    assert_USAGE_ERROR(result)
-    assert_rich_output_contains(
-        result.output,
-        expected=f"option {CliOpt.RENDER_DIFF} is not supported.",
+    assert_rich_output_no_such_option(result, option_name=CliOpt.REPORT)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+        CliCmd.PROBE,
+    ],
+)
+def test_path_commands_reject_existing_dash_prefixed_paths_before_delimiter(
+    command: str,
+    tmp_path: Path,
+) -> None:
+    """Dash-prefixed paths before `--` are parsed as unsupported options."""
+    path: Path = tmp_path / "--foo.py"
+    path.write_text("print('hello')\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            "--foo.py",
+        ],
     )
-    assert_rich_output_contains(
-        result.output,
-        expected=CliCmd.PROBE,
+
+    assert_rich_output_no_such_option(result, option_name="--foo.py")
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+        CliCmd.PROBE,
+    ],
+)
+def test_path_commands_accept_existing_dash_prefixed_paths_after_delimiter(
+    command: str,
+    tmp_path: Path,
+) -> None:
+    """Literal dash-prefixed paths require the standard `--` delimiter."""
+    path: Path = tmp_path / "--foo.py"
+    path.write_text("print('hello')\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            "--",
+            "--foo.py",
+        ],
     )
-    assert_rich_output_contains(
+
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+    assert_rich_output_does_not_contain(
         result.output,
-        expected=CHECK_OR_STRIP_ONLY_OPTION_REASON,
+        expected="No such option",
     )
 
 

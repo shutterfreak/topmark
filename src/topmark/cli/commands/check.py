@@ -90,7 +90,6 @@ from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
-from topmark.cli.validators import validate_common_forbidden_path_command_options_in_extra_args
 from topmark.cli.validators import validate_diff_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_report_scope_ignored
@@ -167,6 +166,7 @@ logger: TopmarkLogger = get_logger(__name__)
         ),
     ),
 )
+@click.argument("paths", nargs=-1, type=click.UNPROCESSED)
 @common_color_options
 @common_text_output_verbosity_options
 @common_text_output_quiet_options
@@ -185,6 +185,7 @@ logger: TopmarkLogger = get_logger(__name__)
 @common_header_formatting_options
 @common_output_format_options
 def check_command(
+    paths: tuple[str, ...],
     *,
     # common_ui_options (verbosity, color):
     verbosity: int,
@@ -233,8 +234,7 @@ def check_command(
 ) -> None:
     """Run the header check pipeline in dry-run or apply mode.
 
-    The command reads positional paths from ``click.get_current_context().args``
-    (Black-style) and supports three input styles:
+    The command receives Click-parsed positional paths and supports three input styles:
 
     1. Paths mode (default): PATHS and/or ``--files-from FILE``.
     2. Content-on-STDIN: use ``-`` as the sole PATH **and** provide ``--stdin-filename``.
@@ -242,6 +242,8 @@ def check_command(
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
     Args:
+        paths: Positional paths parsed by Click. Use ``--`` before literal
+            path names that begin with a dash.
         verbosity: Increase TEXT output detail.
         quiet: Suppress TEXT output.
         color_mode: Set the color mode (default: auto).
@@ -299,6 +301,7 @@ def check_command(
         UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
     ctx: click.Context = click.get_current_context()
+    ctx.args = list(paths)
     state: TopmarkCliState = bootstrap_cli_state(ctx)
     # Effective output format (stored early so shared initialization sees it).
     state.output_format = output_format or OutputFormat.TEXT
@@ -314,10 +317,6 @@ def check_command(
 
     # Effective TEXT verbosity for console-oriented progressive disclosure.
     verbosity_level: int = state.verbosity
-
-    # Reject common unsupported option spellings that permissive path parsing
-    # would otherwise pass through as positional input paths, such as `--stdin`.
-    validate_common_forbidden_path_command_options_in_extra_args(ctx)
 
     # Machine metadata.
     meta: MetaPayload = build_meta_payload()
