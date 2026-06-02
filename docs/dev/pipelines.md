@@ -230,6 +230,10 @@ SP --> B --> T
 - Rendered header available in context
 - No determination yet whether changes are needed
 
+`BuilderStep` derives built-in header metadata fields such as `file_relpath`, `file_abspath`,
+`relpath`, and `abspath`. These generated header metadata path fields are serialized with POSIX `/`
+separators on all platforms.
+
 Useful for debugging header generation.
 
 ______________________________________________________________________
@@ -283,6 +287,10 @@ CP --> P --> H
 
 - Patch generated
 - No patch if unchanged or skipped
+
+`PatcherStep` generates unified diffs for human review. Diff file labels use the same human-facing
+display-path policy as TEXT and Markdown reports, including the logical `--stdin-filename` for
+STDIN-backed processing when available. They are not machine-readable path serialization fields.
 
 Used when `--patch` is requested without `--apply`.
 
@@ -442,12 +450,12 @@ Each step implements the \[`Step`\][topmark.pipeline.protocols.Step] protocol an
 | \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                      |
 | \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                            |
 | \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                       |
-| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values                                                  |
+| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values and POSIX-serialized header metadata paths       |
 | \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                  |
 | \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                 |
 | \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                               |
 | \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                               |
-| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff                                                               |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff with human-facing display labels                              |
 | \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                     |
 
 ______________________________________________________________________

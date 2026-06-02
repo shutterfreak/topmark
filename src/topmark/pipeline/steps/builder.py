@@ -43,6 +43,7 @@ from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import BuilderView
 from topmark.utils.file import compute_relpath
 from topmark.utils.path import canonicalize_existing_path
+from topmark.utils.path import format_header_metadata_path
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
@@ -127,16 +128,18 @@ class BuilderStep(BaseStep):
             - In stdin mode, `file`, `file_relpath`, and `file_abspath` are derived from
               the logical `stdin_filename`, not the materialized temporary file path.
             - `file_relpath` and `relpath` are computed by calling
-              `compute_relpath(header_path, relative_to)`.
+              `compute_relpath(header_path, relative_to)` and serialized with
+              `format_header_metadata_path()`.
             - `relative_to` defaults to `Path.cwd()` when no explicit root is configured.
               If `FrozenConfig.relative_to` is set and exists on disk, it is canonicalized
               before relative paths are computed.
             - `relpath` becomes "." at repo root.
 
-            This behavior intentionally keeps `file_relpath` stable for common cases
-            like running TopMark from the repository root (so `pyproject.toml` yields
-            `file_relpath = "pyproject.toml"`). If you need `file_relpath` computed
-            relative to a specific root, set `FrozenConfig.relative_to` (via config or CLI/API
+            Header metadata path fields are serialized with POSIX separators on all
+            platforms. This behavior intentionally keeps `file_relpath` stable for common
+            cases like running TopMark from the repository root (so `pyproject.toml` yields
+            `file_relpath = "pyproject.toml"`). If you need `file_relpath` computed relative
+            to a specific root, set `FrozenConfig.relative_to` (via config or CLI/API
             overrides). User-supplied path spelling is not treated as header metadata once a
             regular filesystem path has been successfully resolved.
         """
@@ -204,13 +207,13 @@ class BuilderStep(BaseStep):
             # Base file name (without any path)
             "file": header_path.name,
             # File name with its relative path
-            "file_relpath": relative_path.as_posix(),
+            "file_relpath": format_header_metadata_path(relative_path),
             # File name with its absolute path
-            "file_abspath": absolute_path.as_posix(),
+            "file_abspath": format_header_metadata_path(absolute_path),
             # Parent directory path (relative)
-            "relpath": relative_path.parent.as_posix() if relative_path else "",
+            "relpath": format_header_metadata_path(relative_path.parent) if relative_path else "",
             # Parent directory path (absolute, of actual content)
-            "abspath": content_absolute_path.parent.as_posix(),
+            "abspath": format_header_metadata_path(content_absolute_path.parent),
         }
 
         # Merge in any additional fields from the configuration (may override built-ins).

@@ -32,6 +32,15 @@ Source-local TOML options such as `[config].root` and `strict` are resolved befo
 execution. They influence configuration discovery and staged config-loading validation behavior, but
 do not become layered configuration fields.
 
+Path handling responsibilities are split between pipeline processing and presentation layers:
+
+- `BuilderStep` generates header metadata path fields (`file_relpath`, `file_abspath`, `relpath`,
+  and `abspath`) using POSIX `/` serialization on all platforms.
+- `PatcherStep` generates unified diffs for human review; diff file labels use human-facing display
+  paths rather than machine-readable path serialization.
+- TEXT and Markdown frontends share display-path helpers so STDIN-backed processing consistently
+  displays the logical `--stdin-filename` when available.
+
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 ## Line-ending handling (contract)
@@ -76,12 +85,14 @@ API module.
   - [`topmark.pipeline.steps.sniffer`](../api/internals/topmark/pipeline/steps/sniffer.md)
   - [`topmark.pipeline.steps.reader`](../api/internals/topmark/pipeline/steps/reader.md)
   - [`topmark.pipeline.steps.scanner`](../api/internals/topmark/pipeline/steps/scanner.md)
-  - [`topmark.pipeline.steps.builder`](../api/internals/topmark/pipeline/steps/builder.md)
+  - [`topmark.pipeline.steps.builder`](../api/internals/topmark/pipeline/steps/builder.md) - header
+    values and metadata paths
   - [`topmark.pipeline.steps.renderer`](../api/internals/topmark/pipeline/steps/renderer.md)
   - [`topmark.pipeline.steps.comparer`](../api/internals/topmark/pipeline/steps/comparer.md)
   - [`topmark.pipeline.steps.stripper`](../api/internals/topmark/pipeline/steps/stripper.md)
   - [`topmark.pipeline.steps.planner`](../api/internals/topmark/pipeline/steps/planner.md)
-  - [`topmark.pipeline.steps.patcher`](../api/internals/topmark/pipeline/steps/patcher.md)
+  - [`topmark.pipeline.steps.patcher`](../api/internals/topmark/pipeline/steps/patcher.md) - unified
+    diffs and display labels
   - [`topmark.pipeline.steps.writer`](../api/internals/topmark/pipeline/steps/writer.md)
 
 ### Axes and statuses

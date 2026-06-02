@@ -316,6 +316,22 @@ Machine-readable output is also intentionally decoupled from process exit codes.
 payloads serialize structured results, diagnostics, and resolution state; they do not embed the CLI
 exit code. Consumers must inspect the process exit status separately from parsing machine payloads.
 
+Path representation follows the same separation between machine-facing serialization and
+human-facing presentation:
+
+- Internal filesystem identity is represented with `Path` objects where possible.
+- Header metadata path fields, processing machine-output paths, and probe machine-output paths are
+  serialized with POSIX `/` separators on all platforms.
+- Registry `filenames` entries are POSIX-style matching rules, not filesystem paths.
+- TEXT and Markdown output use shared display-path helpers so regular paths follow human-facing
+  display policy and STDIN-backed processing shows the logical `--stdin-filename` when available.
+- Unified diff file labels are human-facing display labels. They are not machine-readable path
+  serialization fields and should not be treated like JSON or NDJSON path values.
+
+Some machine-readable configuration and provenance payloads may still expose path-like values
+outside the current POSIX path contract. Extending POSIX serialization to those remaining fields is
+tracked separately from the presentation-helper refactor.
+
 ### CLI applicability and usage-error boundary
 
 CLI command applicability is enforced before pipeline execution and before presentation or machine

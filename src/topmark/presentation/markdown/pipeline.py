@@ -43,12 +43,12 @@ from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
+from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_fenced_code_block_markdown
 from topmark.presentation.markdown.utils import render_markdown_table
-from topmark.presentation.markdown.utils import render_path_display_markdown
+from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
-from topmark.presentation.shared.pipeline import get_display_path
 from topmark.presentation.shared.pipeline import get_file_type_label
 
 if TYPE_CHECKING:
@@ -130,6 +130,31 @@ def _render_pipeline_banner_markdown(
 # ---- Command guidance rendering ----
 
 
+def _render_apply_command_markdown(
+    *,
+    command: str,
+    ctx: ProcessingContext,
+) -> str:
+    """Render the suggested apply command for Markdown guidance.
+
+    The command uses the shared human-facing display-path policy so STDIN-backed
+    content is represented by its logical `--stdin-filename` value while regular
+    file processing uses the normal display path. The returned command is plain
+    text; callers are responsible for Markdown escaping.
+
+    Args:
+        command: TopMark subcommand name.
+        ctx: Processing context for the file.
+
+    Returns:
+        Suggested apply command for Markdown guidance output.
+    """
+    path_name: str = get_display_path(ctx)
+    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+        return f"topmark {command} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} {path_name} -"
+    return f"topmark {command} {CliOpt.APPLY_CHANGES} {path_name}"
+
+
 def _render_check_guidance_message_markdown(
     ctx: ProcessingContext,
     apply_changes: bool,
@@ -151,7 +176,6 @@ def _render_check_guidance_message_markdown(
         return None
 
     path_label: str = render_path_display_markdown(ctx)
-    path_name: str = get_display_path(ctx)
     intent: Intent = determine_intent(ctx)
 
     if apply_changes:
@@ -168,12 +192,7 @@ def _render_check_guidance_message_markdown(
             else f"✏️  Updating header in {path_label}"
         )
 
-    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
-        apply_cmd: str = (
-            f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} {path_name} -"
-        )
-    else:
-        apply_cmd = f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {path_name}"
+    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.CHECK, ctx=ctx)
 
     if intent == Intent.INSERT:
         action: str = "add a TopMark header to this file"
@@ -208,7 +227,6 @@ def _render_strip_guidance_message_markdown(
         return None
 
     path_label: str = render_path_display_markdown(ctx)
-    path_name: str = get_display_path(ctx)
     intent: Intent = determine_intent(ctx)
 
     if apply_changes:
@@ -221,12 +239,7 @@ def _render_strip_guidance_message_markdown(
 
         return f"🧹 Stripping header in {path_label}"
 
-    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
-        apply_cmd: str = (
-            f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} {path_name} -"
-        )
-    else:
-        apply_cmd = f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {path_name}"
+    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.STRIP, ctx=ctx)
 
     if intent == Intent.STRIP:
         action: str = "strip the TopMark header from this file"

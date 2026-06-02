@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
-from topmark.presentation.shared.pipeline import get_display_path
+from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:

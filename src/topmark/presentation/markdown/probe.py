@@ -21,9 +21,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
+from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_markdown_table
-from topmark.presentation.markdown.utils import render_path_display_markdown
 
 if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext

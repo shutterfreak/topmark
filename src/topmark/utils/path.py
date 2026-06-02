@@ -67,5 +67,27 @@ def format_machine_path(path: Path) -> str:
 
     Machine-readable processing payloads use POSIX separators on all platforms
     so JSON and NDJSON output remain stable across operating systems.
+
+    Args:
+        path: Path to serialize.
+
+    Returns:
+        POSIX-style path string for machine-readable processing output.
+    """
+    return path.as_posix()
+
+
+def format_header_metadata_path(path: Path) -> str:
+    """Serialize a path for generated TopMark header metadata.
+
+    Header metadata is written into source files and should remain stable across
+    operating systems. Use POSIX separators for relative and absolute path
+    fields generated in TopMark headers.
+
+    Args:
+        path: Path to serialize.
+
+    Returns:
+        POSIX-style path string for generated header metadata.
     """
     return path.as_posix()

@@ -72,6 +72,8 @@ Notes:
   output.
 - Markdown output is also independent from machine-readable formats and follows its own
   document-oriented contract.
+- Unified diff output from `--diff` is human-facing output. Its file labels follow display-path
+  policy and are not part of the JSON/NDJSON machine-readable path contract.
 
 ______________________________________________________________________
 
@@ -614,9 +616,11 @@ At a high level, per-file results include:
 >
 > - Diffs (`--diff`) and any ANSI coloring are **human-only** and are not included in machine
 >   payloads.
+> - Diff file labels use human-facing display paths, including the logical `--stdin-filename` for
+>   STDIN-backed processing when available. They are not machine-readable path serialization fields.
 > - Human presentation controls such as `-v` / `--verbose` and `-q` / `--quiet` are ignored by
->   machine-readable output. Consumers should use JSON/NDJSON fields rather than relying on TEXT or
->   Markdown rendering.
+>   machine-readable output. Consumers should use JSON/NDJSON fields rather than relying on TEXT,
+>   Markdown, or unified diff rendering.
 
 ______________________________________________________________________
 
