@@ -61,7 +61,7 @@ Notes:
 
 - Codes broadly follow **sysexits-style semantics** where applicable.
 - Not all codes are used by every command.
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - Commands may short-circuit on higher-severity errors (e.g., config errors before processing).
 - Canonical file-type identifier normalization does not affect exit-code semantics.

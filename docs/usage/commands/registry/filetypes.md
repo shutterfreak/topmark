@@ -206,7 +206,7 @@ Common `registry filetypes` exit codes:
 
 Notes:
 
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
@@ -252,6 +252,10 @@ types not marked `skip_processing = true`).
 Filename rules that contain path separators (for example, `.vscode/settings.json`) are treated as
 path-suffix matches against normalized POSIX-style paths. Plain filename rules still match only the
 basename.
+
+Registry `filenames` values are matching rules, not discovered filesystem paths. Values that contain
+path separators use POSIX-style `/` separators because TopMark evaluates path-suffix filename rules
+against normalized POSIX-style paths.
 
 ### Content-based disambiguation
 

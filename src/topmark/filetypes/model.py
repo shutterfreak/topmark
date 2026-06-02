@@ -224,13 +224,13 @@ class FileType:
         extensions: List of filename extensions associated with this type. Values
             should include the leading dot (e.g. ``.py``) or be consistent with the
             matcher used elsewhere in TopMark.
-        filenames: Exact filenames or tail subpaths to match. If a value contains a
-            path separator (``/`` or ``\\``), it is matched against the *tail* of the
-            path (e.g. ``".vscode/settings.json"``). Otherwise, it must equal the
-            basename exactly (e.g. ``"Makefile"``).
-        patterns: Regular expressions evaluated against the basename (see
-            `re.fullmatch`). Useful for families of files that don't share a
-            simple extension.
+        filenames: Exact basenames or POSIX-style tail subpaths to match. Values containing
+            `/` or `\` are treated as tail-subpath rules and are matched against
+            `path.as_posix()`. Built-in file type definitions should prefer POSIX `/`
+            separators for cross-platform stability.
+        patterns: Regular expressions evaluated against the basename only (see
+            `re.fullmatch`). Patterns are not path-aware and do not receive POSIX-normalized
+            subpaths; use `filenames` for exact basename or POSIX-style tail-subpath rules.
         description: Human-readable description of the file type.
         skip_processing: When ``True``, the pipeline **recognizes** files of this
             type but intentionally **skips header processing** (e.g. JSON without
@@ -383,10 +383,10 @@ class FileType:
 
         # 2) if still not matched, try filenames
         if matched_by is None and self.filenames:
-            # Filenames: support exact basename or tail subpath matches
-            #    - "settings.json" matches only if basename == "settings.json"
-            #    - ".vscode/settings.json" matches
-            #      if path.as_posix().endswith(".vscode/settings.json")
+            # Filenames support exact basename matches and POSIX-style tail-subpath matches:
+            #    - "settings.json" matches only if basename == "settings.json".
+            #    - ".vscode/settings.json" matches if path.as_posix() ends with that tail.
+            # Tail-subpath filename rules are matched against normalized POSIX-style paths.
             basename: str = path.name
             posix: str = path.as_posix()
             for fname in self.filenames:

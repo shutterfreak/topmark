@@ -33,6 +33,8 @@ ______________________________________________________________________
   generic `FAILURE (1)` exit code.
 - Aligned path-oriented command parsing with Click and POSIX-style option handling: unknown
   option-like tokens are now parser errors unless passed after `--`.
+- Standardized processing machine-output path serialization for `check` and `strip` JSON/NDJSON
+  result payloads to use POSIX `/` separators, matching existing `probe` machine-output behavior.
 
 ### Breaking Changes - Unreleased
 
@@ -46,6 +48,9 @@ ______________________________________________________________________
 - `topmark check`, `topmark strip`, and `topmark probe` now reject unknown option-like arguments
   before `--` as Click parser-level usage errors. Literal filenames that begin with `-` must be
   passed after the standard `--` delimiter, for example `topmark check -- --generated.py`.
+- `topmark check` and `topmark strip` JSON/NDJSON `result.path` values now use POSIX `/` separators
+  on all platforms. Consumers that compare Windows machine-output paths literally may need to update
+  expectations from backslash-separated paths to slash-separated paths.
 
 ### Fixed - Unreleased
 
@@ -63,6 +68,8 @@ ______________________________________________________________________
   outcomes.
 - Fixed unknown options passed to `check`, `strip`, and `probe` so they are no longer interpreted as
   missing input paths.
+- Fixed inconsistent path serialization between `probe` machine output and `check` / `strip`
+  processing result machine output.
 
 ### Documentation - Unreleased
 
@@ -76,12 +83,22 @@ ______________________________________________________________________
 - Documented the exit-code migration from `WOULD_CHANGE (2)` to `WOULD_CHANGE (3)` and the revised
   `config check` validation-failure behavior.
 - Documented use of the standard `--` delimiter for literal dash-prefixed path names.
+- Documented TopMark's path serialization contract for header metadata, processing machine output,
+  probe machine output, and human-readable display output.
+- Added temporary documentation notes for configuration/provenance machine payloads that are not yet
+  covered by the future all-machine-paths POSIX serialization contract.
+- Clarified that registry filename tail-subpath rules are declarative matching rules that use
+  POSIX-style `/` separators, not discovered filesystem paths.
 
 ### Internal - Unreleased
 
 - Removed stale tox references.
 - Updated pre-commit dependencies, including TopMark itself.
 - Refreshed locked dependencies including Ruff, Hypothesis, and uv.
+- Added shared machine-path formatting helpers and regression coverage for Windows-style processing
+  machine-output path serialization.
+- Documented follow-up issues for normalizing registry filename rules and extending POSIX path
+  serialization to all machine-readable path fields.
 
 ### Notes - Unreleased
 
@@ -92,6 +109,10 @@ ______________________________________________________________________
 - Strict configuration-validation failures now preserve machine-readable JSON/NDJSON output. This
   fixes invalid machine output in error paths, but consumers that previously treated such failures
   as unparseable plain text may need to adjust their error handling.
+- Machine-readable `check` and `strip` processing result paths now match the existing `probe` path
+  serialization convention by using POSIX `/` separators on all platforms. This improves
+  cross-platform stability for machine consumers, but may require updates to Windows-specific golden
+  tests or literal path comparisons.
 - This release intentionally introduces a breaking CLI exit-code change: `WOULD_CHANGE` now exits
   with code `3` instead of `2` so automation can distinguish dry-run change signals from Click
   parser-level usage errors. Existing CI jobs, shell scripts, and tests that checked for exit code

@@ -29,6 +29,8 @@ header processor controls the concrete comment syntax and placement behavior.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
+{% include-markdown "\_snippets/path-serialization-contract.md" %}
+
 > [!NOTE]
 >
 > File type identities are bound to header processors, and each processor defines how headers are
@@ -94,6 +96,8 @@ Example (Python / shell-style line comments):
 
 echo "Hello, World!"
 ```
+
+Note that header path fields such as `file_relpath` use POSIX `/` separators on all platforms.
 
 ______________________________________________________________________
 
@@ -194,6 +198,9 @@ topmark:header:end
 </configuration>
 ```
 
+Header metadata path fields are serialized with POSIX `/` separators regardless of the host
+operating system.
+
 ______________________________________________________________________
 
 ## Markdown files
@@ -229,6 +236,8 @@ ______________________________________________________________________
 
 ## Placement guarantees
 
+- Path serialization: generated header path fields (`file_relpath`, `file_abspath`, `relpath`, and
+  `abspath`) use POSIX `/` separators on all platforms.
 - Newline preservation: the inserted header uses the same newline style as the file (LF/CRLF/CR).
 - BOM preservation: if a UTF-8 BOM is present, it is preserved.
 - Idempotency: re-running TopMark on a file with a compliant header produces no runtime changes.

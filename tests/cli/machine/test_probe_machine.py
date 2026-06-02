@@ -38,20 +38,13 @@ from topmark.core.formats import OutputFormat
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
+from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from click.testing import Result
     from pytest import MonkeyPatch
-
-
-def _machine_path(path: Path) -> str:
-    """Emit POSIX path for machine output.
-
-    See [topmark.pipeline.machine.payloads].
-    """
-    return path.as_posix()
 
 
 def test_probe_json_output_shape(tmp_path: Path) -> None:
@@ -249,9 +242,9 @@ def test_probe_json_omits_directory_filtered_result_when_children_selected(
         probe_payloads.append(as_object_dict(probe_obj))
 
     paths: set[object] = {probe["path"] for probe in probe_payloads}
-    assert _machine_path(python_file) in paths
-    assert _machine_path(markdown_file) in paths
-    assert _machine_path(directory) not in paths
+    assert format_machine_path(python_file) in paths
+    assert format_machine_path(markdown_file) in paths
+    assert format_machine_path(directory) not in paths
 
     statuses: set[object] = {probe["status"] for probe in probe_payloads}
     assert statuses == {"resolved"}
@@ -401,7 +394,7 @@ def test_probe_ndjson_reports_missing_input_only_once(tmp_path: Path) -> None:
         cli,
         [
             CliCmd.PROBE,
-            _machine_path(missing),
+            format_machine_path(missing),
             CliOpt.OUTPUT_FORMAT,
             OutputFormat.NDJSON.value,
         ],
@@ -414,7 +407,7 @@ def test_probe_ndjson_reports_missing_input_only_once(tmp_path: Path) -> None:
     assert len(probe_records) == 1
 
     payload: dict[str, object] = record_payload(probe_records[0])
-    assert payload["path"] == _machine_path(missing)
+    assert payload["path"] == format_machine_path(missing)
     assert payload["status"] == "probe_missing"
     assert payload["reason"] == "no_resolution_probe_result"
 

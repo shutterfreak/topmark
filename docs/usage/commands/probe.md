@@ -29,6 +29,8 @@ Instead, it exposes the resolution decision process, including:
 
 {% include-markdown "\_snippets/terminology.md" %}
 
+{% include-markdown "\_snippets/path-serialization-contract.md" %}
+
 ______________________________________________________________________
 
 ## Quick start
@@ -201,8 +203,8 @@ For the canonical schema, see:
 - [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 
-Probe machine-readable output emits resolved file type identities using canonical qualified identity
-strings when available.
+Probe machine-readable output emits probe paths with POSIX `/` separators and resolved file type
+identities using canonical qualified identity strings when available.
 
 ### Shared output controls
 
@@ -237,7 +239,7 @@ ______________________________________________________________________
   "config_diagnostics": { /* ConfigDiagnosticsPayload */ },
   "probes": [
     {
-      "path": "README.md",
+      "path": "README.md", // POSIX path serialization
       "status": "resolved",
       "reason": "selected_highest_score",
       "selected_file_type": { ... },
@@ -256,7 +258,7 @@ probe results.
 
 ```jsonc
 {
-  "path": "__pycache__/example.cpython-312.pyc",
+  "path": "__pycache__/example.cpython-312.pyc", // POSIX path serialization
   "status": "filtered",
   "reason": "excluded_by_path_filter",
   "selected_file_type": null,
@@ -283,6 +285,9 @@ Filtered probe results may use one of the following reasons:
 
 Canonical file type identities in machine-readable output use normalized qualified-key identities
 such as `topmark:python`.
+
+Probe payload `path` values use POSIX `/` separators on all platforms. Human TEXT output remains
+display-oriented and may use the host platform's native path representation.
 
 ______________________________________________________________________
 
@@ -323,7 +328,7 @@ Common `probe` exit codes:
 
 Notes:
 
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - `UNSUPPORTED_FILE_TYPE (69)` indicates runtime-resolution failure (e.g., unsupported file type or
   filtered input), not a crash.

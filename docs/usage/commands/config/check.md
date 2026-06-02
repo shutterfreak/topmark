@@ -203,6 +203,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
+{% include-markdown "\_snippets/machine-path-contract-current-scope.md" %}
+
 Notes:
 
 - `config check` emits diagnostics for both TOML schema validation and configuration
@@ -292,7 +294,7 @@ Common `config check` exit codes:
 
 Notes:
 
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - `CONFIG_ERROR (78)` is the normal validation-failure result for this command.
 - Warning-only diagnostics exit with `SUCCESS (0)` unless strict configuration checking is enabled.

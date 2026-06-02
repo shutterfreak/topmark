@@ -20,6 +20,8 @@ end with `- removed`).
 
 {% include-markdown "\_snippets/terminology.md" %}
 
+{% include-markdown "\_snippets/path-serialization-contract.md" %}
+
 ______________________________________________________________________
 
 ## Quick start
@@ -223,9 +225,9 @@ For the canonical schema, stable `kind` values, and shared conventions, see:
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine-readable output emits resolved file type identities using canonical qualified identity
-strings when available. Configuration payloads also emit normalized file type filters and
-`policy_by_type` keys.
+Machine-readable output emits processing result paths with POSIX `/` separators and resolved file
+type identities using canonical qualified identity strings when available. Configuration payloads
+also emit normalized file type filters and `policy_by_type` keys.
 
 Notes:
 
@@ -234,6 +236,8 @@ Notes:
 - The `config` payload in JSON and NDJSON is the resolved runtime configuration snapshot after
   per-source TOML validation, layered configuration merge, staged configuration-loading validation,
   and CLI override application.
+- Per-file `result.path` values use POSIX `/` separators on all platforms. This path serialization
+  contract applies to processing result payloads; human TEXT output remains display-oriented.
 
 ### JSON schema (detail mode)
 
@@ -337,7 +341,7 @@ Common `strip` exit codes:
 
 Notes:
 
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - Explicit missing literal paths are hard input errors and produce `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns are soft discovery diagnostics and do not fail `strip`.
