@@ -60,3 +60,12 @@ def canonicalize_existing_path(path: Path) -> Path:
         current = current / entry_name
 
     return current
+
+
+def format_machine_path(path: Path) -> str:
+    """Serialize a path for processing machine-readable output.
+
+    Machine-readable processing payloads use POSIX separators on all platforms
+    so JSON and NDJSON output remain stable across operating systems.
+    """
+    return path.as_posix()

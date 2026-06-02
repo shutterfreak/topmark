@@ -37,29 +37,65 @@ All CLI invocations are executed via Click's `CliRunner`, using the helpers in
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import cast
 
 import pytest
 
 from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli_in
+from tests.helpers.config import make_frozen_config
 from tests.helpers.config_diagnostics import assert_config_diagnostics_warning_payload
 from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
+from tests.helpers.pipeline import make_pipeline_context
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.formats import OutputFormat
+from topmark.core.machine.schemas import MetaPayload
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
+from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
+from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
+from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from click.testing import Result
+
+    from topmark.config.model import FrozenConfig
+    from topmark.pipeline.context.model import ProcessingContext
+
+
+class _WindowsStylePath:
+    """Minimal path double for exercising Windows-native string serialization."""
+
+    def __str__(self) -> str:
+        """Return the Windows-native spelling produced by `Path.__str__()` on Windows."""
+        return r"C:\Repo\src\example.py"
+
+    def as_posix(self) -> str:
+        """Return the POSIX spelling expected for processing machine output."""
+        return "C:/Repo/src/example.py"
+
+
+def _machine_meta() -> MetaPayload:
+    """Return stable test metadata payload for machine-envelope builders."""
+    return MetaPayload(
+        tool="topmark",
+        version="test",
+        platform="test",
+    )
+
+
+def _empty_resolved_toml_sources() -> ResolvedTopmarkTomlSources:
+    """Return an empty TOML resolution result for envelope-builder tests."""
+    return ResolvedTopmarkTomlSources(sources=[], writer_options=None, strict=None)
 
 
 # ----- JSON -----
@@ -215,6 +251,48 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     # outcome: should be a mapping
     outcome_obj = first["outcome"]
     assert is_mapping(outcome_obj)
+
+
+# --- Path serialization contract tests ---
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_json_detail_path_serializes_windows_style_path_as_posix(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Processing JSON result paths should use POSIX separators in detail mode."""
+    cfg: FrozenConfig = make_frozen_config()
+    ctx: ProcessingContext = make_pipeline_context(path=tmp_path / "example.py", cfg=cfg)
+
+    # The production attribute is a concrete Path, but this contract test needs
+    # to exercise Windows-native `str(path)` behavior on every host platform.
+    ctx.path = cast("Path", _WindowsStylePath())
+
+    payload: dict[str, object] = build_processing_results_json_envelope(
+        meta=_machine_meta(),
+        config=cfg,
+        resolved_toml=_empty_resolved_toml_sources(),
+        results=[ctx],
+        summary_mode=False,
+    )
+
+    results_obj: object = payload["results"]
+    assert is_any_list(results_obj)
+    results: list[object] = results_obj
+    assert len(results) == 1
+
+    first_obj: object = results[0]
+    assert is_mapping(first_obj)
+    first: dict[str, object] = as_object_dict(first_obj)
+
+    assert first.get("path") == "C:/Repo/src/example.py"
 
 
 @pytest.mark.parametrize(
@@ -415,6 +493,47 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
     assert "config" in kinds_set
     assert "config_diagnostics" in kinds_set
     assert "summary" in kinds_set
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_ndjson_detail_path_serializes_windows_style_path_as_posix(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Processing NDJSON result paths should use POSIX separators in detail mode."""
+    cfg: FrozenConfig = make_frozen_config()
+    ctx: ProcessingContext = make_pipeline_context(path=tmp_path / "example.py", cfg=cfg)
+
+    # The production attribute is a concrete Path, but this contract test needs
+    # to exercise Windows-native `str(path)` behavior on every host platform.
+    ctx.path = cast("Path", _WindowsStylePath())
+
+    records: list[dict[str, object]] = list(
+        iter_processing_results_ndjson_records(
+            meta=_machine_meta(),
+            config=cfg,
+            resolved_toml=_empty_resolved_toml_sources(),
+            results=[ctx],
+            summary_mode=False,
+        )
+    )
+
+    result_records: list[dict[str, object]] = [
+        record for record in records if record.get("kind") == "result"
+    ]
+    assert len(result_records) == 1
+
+    result_obj: object | None = result_records[0].get("result")
+    assert is_mapping(result_obj)
+    result: dict[str, object] = as_object_dict(result_obj)
+
+    assert result.get("path") == "C:/Repo/src/example.py"
 
 
 @pytest.mark.parametrize(

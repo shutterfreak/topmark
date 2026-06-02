@@ -182,6 +182,8 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
+{% include-markdown "\_snippets/machine-path-contract-current-scope.md" %}
+
 Notes:
 
 - `config dump` is file-agnostic and emits the effective runtime configuration after applying
@@ -256,7 +258,7 @@ Common `config dump` exit codes:
 
 Notes:
 
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - This command does not process files and does not use file-processing exit codes such as
   `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.

@@ -98,7 +98,7 @@ Invalid positional paths or file-processing input options are reported as CLI us
 
 Notes:
 
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.

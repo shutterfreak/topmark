@@ -132,7 +132,7 @@ Notes:
 - Warning-only diagnostics exit with `SUCCESS (0)` unless strict configuration checking is enabled.
 - Malformed TOML discovered by `config check` is reported as a configuration-validation failure and
   exits with `CONFIG_ERROR (78)`.
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - TopMark semantic validation and configuration-loading failures use `CONFIG_ERROR (78)`.
 

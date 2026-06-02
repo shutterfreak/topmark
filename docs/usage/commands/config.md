@@ -113,7 +113,7 @@ Notes:
 
 - `CONFIG_ERROR (78)` covers both configuration-loading failures and completed validation runs that
   report configuration errors.
-- Click parser-level usage errors (for example, unknown commands, unknown options or invalid option
+- Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 
 See [`Exit codes`](../exit-codes.md) for the complete CLI-wide exit-code contract.

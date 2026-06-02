@@ -57,7 +57,7 @@ ______________________________________________________________________
 - Explains repository filtering, file-type resolution, and processor selection via
   [`topmark probe`](usage/commands/probe.md)
 - Exposes layered configuration provenance via `topmark config dump --show-layers`
-- Provides machine-readable JSON and NDJSON output for automation and reporting
+- Provides stable machine-readable JSON and NDJSON output suitable for automation and reporting
 - Supports canonical qualified file type identifiers such as `topmark:python`
 - Supports local identifiers such as `python` when unambiguous
 

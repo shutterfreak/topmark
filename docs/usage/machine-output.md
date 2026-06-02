@@ -38,6 +38,8 @@ task-oriented examples consistent with this schema.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
+{% include-markdown "\_snippets/path-serialization-contract.md" %}
+
 See also:
 
 - [CLI overview](../usage/cli.md)
@@ -391,8 +393,8 @@ Filtered probe payloads may use one of these reasons:
 
 Fields:
 
-- `path`: probed or explicitly requested filesystem path. For filtered and missing explicit inputs,
-  this is the path supplied to the command.
+- `path`: probed or explicitly requested filesystem path, serialized with POSIX `/` separators. For
+  filtered and missing explicit inputs, this is the path supplied to the command.
 - `status`: probe status, currently one of:
   - `resolved` - a file type and processor were selected.
   - `unsupported` - no file type candidate matched.
@@ -596,7 +598,7 @@ The canonical builders and typing live under:
 At a high level, per-file results include:
 
 - identity:
-  - `path`
+  - `path` (serialized with POSIX `/` separators)
   - `file_type` (resolved canonical TopMark file type key, for example `topmark:python`)
 - pipeline execution:
   - executed step names

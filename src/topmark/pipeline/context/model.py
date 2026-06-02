@@ -52,6 +52,7 @@ from topmark.pipeline.hints import make_hint
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import Views
+from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -358,13 +359,14 @@ class ProcessingContext:
         the ``Views`` bundling.
 
         Returns:
-            A JSON-serializable mapping describing the context, including path, file type,
-            step statuses, views summary, diagnostics, and high-level outcome flags.
+            A JSON-serializable mapping describing the context, including the
+            POSIX-serialized path, file type, step statuses, views summary,
+            diagnostics, and high-level outcome flags.
         """
         views_summary: dict[str, object] = self.views.as_dict()
 
         return {
-            "path": str(self.path),
+            "path": format_machine_path(self.path),
             "file_type": {
                 "qualified_key": (self.file_type.qualified_key),
                 "description": (self.file_type.description),
