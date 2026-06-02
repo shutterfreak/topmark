@@ -42,6 +42,7 @@ from topmark.pipeline.views import DiffView
 from topmark.pipeline.views import ListFileImageView
 from topmark.pipeline.views import UpdatedView
 from topmark.presentation.formatters.unified_diff import format_patch_plain
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -235,3 +236,25 @@ def test_patcher_halts_when_comparison_status_is_pending(tmp_path: Path) -> None
     assert ctx.views.diff is None
     assert ctx.halt_state is not None
     assert ctx.halt_state.reason_code == "PatcherStep did not set state."
+
+
+def test_patcher_uses_stdin_filename_in_unified_diff_labels(tmp_path: Path) -> None:
+    """STDIN-backed diffs should label files with the logical stdin filename."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "materialized-stdin.py",
+        image_lines=["old\n"],
+        updated_lines=["new\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    ctx.run_options = RunOptions(
+        stdin_mode=True,
+        stdin_filename="logical/input.py",
+    )
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "--- logical/input.py (current)" in diff_text
+    assert "+++ logical/input.py (updated)" in diff_text
+    assert "materialized-stdin.py" not in diff_text

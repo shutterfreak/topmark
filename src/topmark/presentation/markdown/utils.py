@@ -8,13 +8,15 @@
 #
 # topmark:header:end
 
-"""Shared presentation utilities for MARKDOWN.
+"""Shared low-level presentation utilities for Markdown.
 
-This module provides helpers to render Markdown fragments.
+This module provides pure string helpers for Markdown fragments.
 
 Scope:
 - Pure string rendering only (no I/O, no Click/Rich console usage).
 - Safe to import from any frontend (CLI, API tests, etc.).
+- No processing-context-aware rendering; context-aware Markdown presentation
+  belongs in dedicated Markdown presentation modules.
 
 The helpers here are intentionally small and composable; command-specific
 formatting belongs in the command's presentation module.
@@ -25,13 +27,9 @@ from __future__ import annotations
 import re
 import typing
 
-from topmark.presentation.shared.pipeline import get_display_path
-
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
-
-    from topmark.pipeline.context.model import ProcessingContext
 
 
 def markdown_code_span(text: str) -> str:
@@ -209,29 +207,3 @@ def render_toml_markdown(
     lines.append(fence)
 
     return "\n".join(lines) + "\n"
-
-
-# ---- Path rendering ----
-
-
-def render_path_display_markdown(ctx: ProcessingContext) -> str:
-    """Render a short Markdown path label for headings and list items.
-
-    This helper formats
-    [`get_display_path()`][topmark.presentation.shared.pipeline.get_display_path]
-    for Markdown and annotates STDIN-backed content with ``_(via STDIN)_`` when a
-    synthetic filename is available.
-
-    Args:
-        ctx: Processing context containing the path to display.
-
-    Returns:
-        Short Markdown label for per-file headings and guidance messages.
-    """
-    path: str = get_display_path(ctx)
-    code: str = markdown_code_span(path)
-
-    if ctx.run_options.stdin_mode and bool(ctx.run_options.stdin_filename):
-        return f"{code} _(via STDIN)_"
-
-    return code

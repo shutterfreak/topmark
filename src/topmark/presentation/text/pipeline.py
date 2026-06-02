@@ -53,8 +53,9 @@ from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.presentation.shared.outcomes import collect_outcome_counts_styled
 from topmark.presentation.shared.outcomes import get_outcome_style_role
+from topmark.presentation.shared.paths import get_display_path
+from topmark.presentation.shared.paths import render_path_display_text
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
-from topmark.presentation.shared.pipeline import get_display_path
 from topmark.presentation.shared.pipeline import get_file_type_label
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
@@ -82,30 +83,6 @@ _HINT_CLUSTER_STYLE_ROLE: Final[dict[str, StyleRole]] = {
     Cluster.BLOCKED_POLICY.value: StyleRole.BLOCKED_POLICY,
     Cluster.ERROR.value: StyleRole.ERROR,
 }
-
-
-# ---- Path rendering ----
-
-
-def _render_path_display_text(ctx: ProcessingContext) -> str:
-    """Render a short TEXT path label for guidance messages.
-
-    This helper formats
-    [`get_display_path()`][topmark.presentation.shared.pipeline.get_display_path]
-    for human-facing TEXT output and annotates STDIN-backed content with `(via STDIN)`
-    when a synthetic filename is available.
-
-    Args:
-        ctx: Processing context containing the path to display.
-
-    Returns:
-        Short TEXT label for guidance messages.
-    """
-    path: str = get_display_path(ctx)
-    if ctx.run_options.stdin_mode and bool(ctx.run_options.stdin_filename):
-        return f"'{path}' (via STDIN)"
-
-    return f"'{path}'"
 
 
 # ---- Hint rendering ----
@@ -220,6 +197,30 @@ def _render_pipeline_banner_text(
 # ---- Command guidance rendering ----
 
 
+def _render_apply_command_text(
+    *,
+    command: str,
+    ctx: ProcessingContext,
+) -> str:
+    """Render the suggested apply command for a processing context.
+
+    The command uses the shared human-facing display-path policy so STDIN-backed
+    content is represented by its logical `--stdin-filename` value while regular
+    file processing uses the normal display path.
+
+    Args:
+        command: TopMark subcommand name.
+        ctx: Processing context for the file.
+
+    Returns:
+        Suggested apply command for TEXT guidance output.
+    """
+    path_name: str = get_display_path(ctx)
+    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+        return f"topmark {command} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
+    return f"topmark {command} {CliOpt.APPLY_CHANGES} '{path_name}'"
+
+
 def _render_check_guidance_message_text(
     ctx: ProcessingContext,
     apply_changes: bool,
@@ -240,8 +241,7 @@ def _render_check_guidance_message_text(
     if not effective_would_add_or_update(ctx):
         return None
 
-    path_label: str = _render_path_display_text(ctx)
-    path_name: str = get_display_path(ctx)
+    path_label: str = render_path_display_text(ctx)
     intent: Intent = determine_intent(ctx)
 
     if apply_changes:
@@ -258,12 +258,7 @@ def _render_check_guidance_message_text(
             else f"✏️  Updating header in {path_label}"
         )
 
-    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
-        apply_cmd: str = (
-            f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
-        )
-    else:
-        apply_cmd = f"topmark {CliCmd.CHECK} {CliOpt.APPLY_CHANGES} '{path_name}'"
+    apply_cmd: str = _render_apply_command_text(command=CliCmd.CHECK, ctx=ctx)
 
     if intent == Intent.INSERT:
         action: str = "add a TopMark header to this file"
@@ -296,8 +291,7 @@ def _render_strip_guidance_message_text(
     if not effective_would_strip(ctx):
         return None
 
-    path_label: str = _render_path_display_text(ctx)
-    path_name: str = get_display_path(ctx)
+    path_label: str = render_path_display_text(ctx)
     intent: Intent = determine_intent(ctx)
 
     if apply_changes:
@@ -310,12 +304,7 @@ def _render_strip_guidance_message_text(
 
         return f"🧹 Stripping header in {path_label}"
 
-    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
-        apply_cmd: str = (
-            f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
-        )
-    else:
-        apply_cmd = f"topmark {CliCmd.STRIP} {CliOpt.APPLY_CHANGES} '{path_name}'"
+    apply_cmd: str = _render_apply_command_text(command=CliCmd.STRIP, ctx=ctx)
 
     if intent == Intent.STRIP:
         action: str = "strip the TopMark header from this file"

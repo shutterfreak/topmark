@@ -38,10 +38,12 @@ from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
 from topmark.pipeline.views import DiffView
+from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
+from topmark.presentation.shared.paths import get_display_path
+from topmark.presentation.shared.paths import render_path_display_text
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
-from topmark.presentation.shared.pipeline import get_display_path
 from topmark.presentation.shared.pipeline import get_file_type_label
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
 from topmark.presentation.text.pipeline import render_pipeline_output_text
@@ -117,6 +119,42 @@ def _add_diff(ctx: ProcessingContext) -> None:
     """Attach a deterministic unified diff to a context."""
     ctx.status.patch = PatchStatus.GENERATED
     ctx.views.diff = DiffView(text="--- old\n+++ new\n@@ -1 +1 @@\n-old\n+new\n")
+
+
+def test_render_path_display_text_uses_regular_display_path(tmp_path: Path) -> None:
+    """TEXT path labels should quote regular display paths without STDIN annotation."""
+    ctx: ProcessingContext = _make_context(tmp_path / "regular.py")
+
+    assert render_path_display_text(ctx) == f"'{ctx.path}'"
+
+
+def test_render_path_display_text_uses_stdin_filename(tmp_path: Path) -> None:
+    """TEXT path labels should show the logical stdin filename in STDIN mode."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "materialized-stdin.py",
+        stdin_mode=True,
+        stdin_filename="logical/input.py",
+    )
+
+    assert render_path_display_text(ctx) == "'logical/input.py' (via STDIN)"
+
+
+def test_render_path_display_markdown_uses_regular_display_path(tmp_path: Path) -> None:
+    """Markdown path labels should render regular display paths as code spans."""
+    ctx: ProcessingContext = _make_context(tmp_path / "regular.py")
+
+    assert render_path_display_markdown(ctx) == f"`{ctx.path}`"
+
+
+def test_render_path_display_markdown_uses_stdin_filename(tmp_path: Path) -> None:
+    """Markdown path labels should show the logical stdin filename in STDIN mode."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "materialized-stdin.py",
+        stdin_mode=True,
+        stdin_filename="logical/input.py",
+    )
+
+    assert render_path_display_markdown(ctx) == "`logical/input.py` _(via STDIN)_"
 
 
 def test_shared_display_path_uses_stdin_filename_for_stdin_context(tmp_path: Path) -> None:

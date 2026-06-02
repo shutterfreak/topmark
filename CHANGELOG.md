@@ -41,6 +41,10 @@ ______________________________________________________________________
   canonical filename-rule representation.
 - Clarified that `FileType.filenames` entries are declarative registry matching rules rather than
   filesystem paths.
+- Centralized path serialization and human-facing path presentation helpers for processing output,
+  generated header metadata, TEXT rendering, Markdown rendering, and unified diff labels.
+- Clarified that unified diff file labels follow human-facing display-path policy rather than the
+  machine-readable path serialization contract.
 
 ### Breaking Changes - Unreleased
 
@@ -93,6 +97,8 @@ ______________________________________________________________________
   rules before resolution and registry serialization.
 - Fixed inconsistent registry output where equivalent filename rules could be represented using
   different path-separator spellings.
+- Fixed STDIN-backed unified diff labels so they use the logical `--stdin-filename` instead of the
+  materialized temporary file path.
 
 ### Documentation - Unreleased
 
@@ -115,6 +121,10 @@ ______________________________________________________________________
 - Documented the canonical filename-rule contract for `FileType.filenames`.
 - Documented normalization and validation behavior for tail-subpath filename rules.
 - Clarified plugin-author guidance around filename-rule definitions and canonical registry metadata.
+- Documented the boundary between machine-readable path serialization and human-facing path
+  presentation, including TEXT, Markdown, and unified diff output.
+- Clarified that unified diff labels are human-facing display labels and should not be treated as
+  JSON/NDJSON path fields.
 
 ### Internal - Unreleased
 
@@ -128,6 +138,9 @@ ______________________________________________________________________
 - Added centralized filename-rule normalization and validation helpers.
 - Added regression coverage for filename-rule normalization, validation, matching, registry
   serialization, resolver behavior, and presentation output.
+- Added dedicated header-metadata path serialization and display-path presentation helper modules.
+- Added regression coverage for header metadata path serialization, TEXT and Markdown path labels,
+  and STDIN-backed unified diff labels.
 
 ### Notes - Unreleased
 

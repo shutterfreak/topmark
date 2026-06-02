@@ -22,7 +22,8 @@ Inputs:
 
 Outputs:
   * ``ctx.views.diff`` - [`DiffView`][topmark.pipeline.views.DiffView] carrying the
-    unified diff text (or ``None``).
+    unified diff text (or ``None``). Diff file labels are human-facing display labels,
+    not machine-readable path serialization fields.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import DiffView
 from topmark.pipeline.views import UpdatedView
 from topmark.presentation.formatters.unified_diff import format_patch_plain
+from topmark.presentation.shared.paths import get_display_path
 from topmark.utils.timestamp import format_gnu_diff_timestamp
 
 if TYPE_CHECKING:
@@ -107,6 +109,9 @@ class PatcherStep(BaseStep):
         The step runs only after comparison. If the comparison status is
         ``UNCHANGED`` or if no updated image is present, the diff is omitted.
 
+        Unified diff file labels use the shared human-facing display path policy,
+        including the logical ``--stdin-filename`` in STDIN content mode.
+
         Args:
             ctx: The processing context holding original/updated images
                 and statuses.
@@ -148,12 +153,14 @@ class PatcherStep(BaseStep):
             ctx.status.patch = PatchStatus.SKIPPED
             return
 
+        display_path: str = get_display_path(ctx)
+
         patch_lines: list[str] = list(
             difflib.unified_diff(
                 current_lines,
                 updated_lines,
-                fromfile=f"{ctx.path} (current)",
-                tofile=f"{ctx.path} (updated)",
+                fromfile=f"{display_path} (current)",
+                tofile=f"{display_path} (updated)",
                 fromfiledate=format_gnu_diff_timestamp(dt=ctx.timestamp),
                 n=3,
                 lineterm=ctx.newline_style,

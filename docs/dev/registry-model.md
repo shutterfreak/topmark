@@ -174,6 +174,10 @@ TopMark also normalizes file type filename rules to canonical POSIX-style regist
 Exact-basename rules are preserved, while relative tail-subpath rules are stored and emitted using
 `/` separators regardless of platform.
 
+These normalized filename rules are registry metadata rather than filesystem paths. Their POSIX
+representation exists to provide stable matching, introspection, documentation examples, and
+machine-readable registry output across platforms.
+
 Local identifiers are accepted only when unambiguous.
 
 ### HeaderProcessorRegistry
@@ -366,8 +370,9 @@ Plugin authors should:
 - choose clear local keys such as `django_html` or `my_lang`;
 - document and use qualified identifiers such as `acme:django_html` in shared examples;
 - avoid relying on local identifiers remaining unambiguous as ecosystems grow;
-- define filename rules as relative registry matching rules rather than filesystem paths, preferring
-  POSIX-style `/` separators for tail-subpath matching.
+- define filename rules as relative registry matching rules rather than filesystem paths;
+- use POSIX-style `/` separators for tail-subpath matching rules so registry metadata remains stable
+  across platforms.
 
 Header processor plugins currently use advanced runtime-overlay integration semantics. They should
 bind processor definitions to canonical qualified file type identifiers.

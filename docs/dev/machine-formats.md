@@ -97,6 +97,9 @@ Stability guarantees:
 
 - Machine-readable payloads contain no ANSI color codes.
 - Payload shapes are JSON-safe (no Python-specific objects).
+- Processing and probe path fields are serialized with POSIX `/` separators on all platforms.
+- Header metadata path fields are also serialized with POSIX `/` separators when TopMark renders
+  headers.
 - New fields may be added over time as additive 1.x evolution.
 - Existing fields are not removed or renamed without a breaking-change signal.
 - Resolved file type identities are emitted using canonical qualified keys when available.
@@ -110,10 +113,18 @@ Consumers should:
 
 - Tolerate unknown fields.
 
-- Avoid string matching against formatted output.
+- Avoid string matching against formatted output, including human-facing path labels in TEXT,
+  Markdown, and unified diff output.
 
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names or user-supplied input spellings.
+
+Path-like values are not all part of the same contract. Processing and probe machine payloads use
+POSIX path serialization, while registry `filenames` entries are POSIX-style matching rules rather
+than filesystem paths. Human-facing path labels, including unified diff file labels, follow display
+policy and are not machine-stable path fields. Some configuration and provenance payloads may still
+expose path-like values outside the current POSIX path contract; extending that contract is tracked
+separately from presentation rendering.
 
 ______________________________________________________________________
 

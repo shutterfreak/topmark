@@ -17,6 +17,11 @@ topmark:header:end
 > - header metadata path fields; and
 > - processing and probe machine-readable output.
 >
+> Human-facing path labels are outside this contract, including:
+>
+> - CLI and Markdown presentation paths; and
+> - unified diff file labels.
+>
 > Some machine-readable configuration and provenance payloads may still emit path-like values
 > outside this contract. A future compatibility update may extend POSIX serialization to all
 > machine-readable path fields.
