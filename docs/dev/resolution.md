@@ -191,10 +191,17 @@ Candidate generation operates against the effective composed runtime registry.
 The resolver computes three name-based match signals:
 
 - **extension**: the basename ends with one of the file type's configured extensions
-- **filename**: the basename or normalized path tail matches one of the file type's configured
-  filenames
+- **filename**: the basename or normalized POSIX path tail matches one of the file type's configured
+  filename rules
 - **pattern**: the basename fully matches one of the file type's configured regular-expression
   patterns
+
+Filename rules are declarative registry matching rules rather than filesystem paths. Exact-basename
+rules match against `path.name`; relative tail-subpath rules match against `path.as_posix()`.
+
+Tail-subpath rules are stored and emitted using canonical POSIX-style `/` separators.
+Backslash-containing definitions are normalized during file-type construction before candidate
+generation and scoring occur.
 
 These signals are represented by \[`MatchSignals`\][topmark.resolution.filetypes.MatchSignals].
 
@@ -249,8 +256,8 @@ header-capable types a stable advantage on otherwise equal matches.
 
 More specifically:
 
-- filename and path-tail matches receive the highest scores and become more specific as the matched
-  tail becomes longer
+- exact-basename and tail-subpath filename-rule matches receive the highest scores and become more
+  specific as the matched tail becomes longer
 - content-confirmed matches outrank generic pattern and extension matches
 - pattern matches outrank plain extension matches
 - extension matches remain valid fallbacks for generic formats

@@ -69,6 +69,18 @@ class Probe:
         return self.result
 
 
+class FailingProbe:
+    """Callable probe that raises to exercise fail-closed matcher behavior."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __call__(self, path: Path) -> bool:  # content_matcher signature
+        """Increment call counter and raise a deterministic error."""
+        self.calls += 1
+        raise OSError("simulated matcher failure")
+
+
 _USE_JSON_AS_JSONC_FILE_TYPE = object()
 
 
@@ -189,6 +201,40 @@ def test_gate_if_filename_calls_matcher_only_on_filename_match(tmp_path: Path) -
     p2.write_text("{}")
     assert ft2.matches(p2) is True  # extension matched; gate blocks probe
     assert probe2.calls == 0
+
+
+def test_gate_if_filename_uses_normalized_tail_subpath_rules(tmp_path: Path) -> None:
+    """IF_FILENAME gate treats backslash rules as POSIX tail-subpath rules."""
+    probe = Probe(result=True)
+    ft: FileType = make_file_type(
+        local_key="vscode",
+        filenames=[r".vscode\settings.json"],
+        content_matcher=probe,
+        content_gate=ContentGate.IF_FILENAME,
+    )
+
+    path: Path = tmp_path / ".vscode" / "settings.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("// jsonc\n{}")
+
+    assert ft.matches(path) is True
+    assert probe.calls == 1
+
+
+def test_content_matcher_exception_fails_closed(tmp_path: Path) -> None:
+    """Matcher exceptions should fail closed instead of leaking."""
+    probe = FailingProbe()
+    ft: FileType = make_file_type(
+        local_key="json",
+        extensions=[".json"],
+        content_matcher=probe,
+        content_gate=ContentGate.ALWAYS,
+    )
+    path: Path = tmp_path / "settings.json"
+    path.write_text("{}\n", encoding="utf-8")
+
+    assert ft.matches(path) is False
+    assert probe.calls == 1
 
 
 def test_gate_if_pattern_calls_matcher_only_on_pattern_match(tmp_path: Path) -> None:

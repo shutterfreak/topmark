@@ -114,7 +114,7 @@ TopMark is useful when you need to:
 - inspect why a file was included, excluded, or matched to a specific processor;
 - integrate header checks into CI, pre-commit, Git hooks, or custom automation;
 - consume deterministic JSON or NDJSON output from scripts and tooling, with stable machine-readable
-  path serialization.
+  path serialization and canonical cross-platform registry metadata.
 
 The goal is not to replace formatters, linters, or license scanners. TopMark focuses on one job:
 safe, deterministic, comment-aware file header management.

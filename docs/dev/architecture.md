@@ -107,11 +107,17 @@ file-type-to-processor bindings.
 At the architecture level, the important invariants are:
 
 - identity registration and processor binding are separate concerns;
+- file type filename rules are canonical registry matching rules, not filesystem paths;
 - built-in registry data is never mutated directly;
 - runtime additions and removals are represented as overlay state;
 - effective registry views are composed from base registries plus overlays;
 - public integrations should prefer the read-only `Registry` facade;
 - advanced integrations and tests may use overlay mutation helpers deliberately.
+
+File type `filenames` entries are normalized during `FileType` construction so registry composition,
+resolution, presentation, and machine-readable output all consume canonical POSIX-style matching
+rules. Exact basename rules match file names, while relative tail-subpath rules match normalized
+POSIX path tails.
 
 Detailed registry behavior, including base/overlay composition, caching, invalidation, bindings,
 qualified/local file type identifiers, plugin integration, and registry CLI inspection, is

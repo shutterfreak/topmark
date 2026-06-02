@@ -574,6 +574,10 @@ ______________________________________________________________________
 
 Registry commands expose the effective composed runtime registry composition.
 
+File type `filenames` fields are emitted as canonical POSIX-style registry matching rules.
+Tail-subpath rules therefore use `/` separators consistently across platforms, regardless of the
+spelling used by the file type definition.
+
 Important identity fields:
 
 - `qualified_key`: canonical file type or processor identity

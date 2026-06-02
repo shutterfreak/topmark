@@ -19,7 +19,6 @@ from typing import cast
 
 from tests.helpers.registry import make_file_type
 from topmark.filetypes.instances import get_base_file_type_registry
-from topmark.filetypes.model import FileType
 from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:

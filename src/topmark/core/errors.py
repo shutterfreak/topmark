@@ -147,6 +147,47 @@ class ReservedNamespaceError(TopmarkError):
 # ---- File-type / registry lookup errors ----
 
 
+class InvalidFileTypeDefinitionError(TopmarkError):
+    """Raised when a file type definition is malformed.
+
+    This error is intended for registry construction and plugin/model definition
+    boundaries where invalid declarative file-type metadata should be rejected
+    explicitly before it reaches matching, resolution, or serialization code.
+
+    Args:
+        message: Human-readable error message, without CLI styling.
+        file_type: Optional file type identifier associated with the invalid
+            definition.
+        field_name: Optional file type field containing the invalid value.
+        value: Optional invalid scalar value.
+    """
+
+    def __init__(
+        self,
+        *,
+        message: str,
+        file_type: str | None = None,
+        field_name: str | None = None,
+        value: str | None = None,
+    ) -> None:
+        details: list[str] = []
+        if field_name is not None:
+            details.append(f"field={field_name}")
+        if value is not None:
+            details.append(f"value={value}")
+
+        super().__init__(
+            ErrorContext(
+                message=message,
+                qualified_key=file_type,
+                details=tuple(details),
+            )
+        )
+        self.file_type: Final[str | None] = file_type
+        self.field_name: Final[str | None] = field_name
+        self.value: Final[str | None] = value
+
+
 class UnsupportedFileTypeError(TopmarkError):
     """Raised when a file type is recognized but currently unsupported.
 

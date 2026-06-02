@@ -26,6 +26,30 @@ if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
 
 
+def test_filename_rule_normalization_preserves_registry_identity() -> None:
+    """Filename-rule normalization does not affect registry identity fields."""
+    file_type: FileType = make_file_type(
+        local_key="settings_json",
+        namespace="pytest",
+        filenames=[r".vscode\settings.json"],
+        description="VS Code settings file type",
+    )
+
+    with patched_effective_registries(
+        filetypes={"settings_json": file_type},
+        processors={},
+    ):
+        resolved: FileType | None = FileTypeRegistry.resolve_filetype_id(
+            "pytest:settings_json",
+        )
+
+    assert file_type.local_key == "settings_json"
+    assert file_type.namespace == "pytest"
+    assert file_type.qualified_key == "pytest:settings_json"
+    assert file_type.filenames == [".vscode/settings.json"]
+    assert resolved is file_type
+
+
 def test_resolve_filetype_id_accepts_unambiguous_local_identifier() -> None:
     """Unqualified local identifiers resolve when they match exactly one file type."""
     file_type: FileType = make_file_type(

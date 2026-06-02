@@ -35,6 +35,12 @@ ______________________________________________________________________
   option-like tokens are now parser errors unless passed after `--`.
 - Standardized processing machine-output path serialization for `check` and `strip` JSON/NDJSON
   result payloads to use POSIX `/` separators, matching existing `probe` machine-output behavior.
+- Normalized `FileType.filenames` tail-subpath rules to canonical POSIX-style `/` separators during
+  file-type construction.
+- Standardized registry, resolver, presentation, and machine-readable registry output to consume the
+  canonical filename-rule representation.
+- Clarified that `FileType.filenames` entries are declarative registry matching rules rather than
+  filesystem paths.
 
 ### Breaking Changes - Unreleased
 
@@ -51,6 +57,19 @@ ______________________________________________________________________
 - `topmark check` and `topmark strip` JSON/NDJSON `result.path` values now use POSIX `/` separators
   on all platforms. Consumers that compare Windows machine-output paths literally may need to update
   expectations from backslash-separated paths to slash-separated paths.
+- `FileType.filenames` tail-subpath rules are now canonicalized during file-type construction.
+  Definitions that previously used backslash separators are normalized to POSIX-style `/` separators
+  before matching, registry composition, presentation, and machine-readable output.
+- Invalid filename-rule definitions are now rejected during file-type construction. Rejected forms
+  include:
+  - empty rules;
+  - absolute paths;
+  - UNC paths;
+  - Windows drive paths;
+  - rules containing empty path segments;
+  - rules containing `.` or `..` path segments.
+- Plugin authors and custom file-type providers should treat `FileType.filenames` values as relative
+  registry matching rules rather than filesystem paths.
 
 ### Fixed - Unreleased
 
@@ -70,6 +89,10 @@ ______________________________________________________________________
   missing input paths.
 - Fixed inconsistent path serialization between `probe` machine output and `check` / `strip`
   processing result machine output.
+- Fixed platform-dependent registry filename-rule behavior by normalizing tail-subpath matching
+  rules before resolution and registry serialization.
+- Fixed inconsistent registry output where equivalent filename rules could be represented using
+  different path-separator spellings.
 
 ### Documentation - Unreleased
 
@@ -89,6 +112,9 @@ ______________________________________________________________________
   covered by the future all-machine-paths POSIX serialization contract.
 - Clarified that registry filename tail-subpath rules are declarative matching rules that use
   POSIX-style `/` separators, not discovered filesystem paths.
+- Documented the canonical filename-rule contract for `FileType.filenames`.
+- Documented normalization and validation behavior for tail-subpath filename rules.
+- Clarified plugin-author guidance around filename-rule definitions and canonical registry metadata.
 
 ### Internal - Unreleased
 
@@ -99,6 +125,9 @@ ______________________________________________________________________
   machine-output path serialization.
 - Documented follow-up issues for normalizing registry filename rules and extending POSIX path
   serialization to all machine-readable path fields.
+- Added centralized filename-rule normalization and validation helpers.
+- Added regression coverage for filename-rule normalization, validation, matching, registry
+  serialization, resolver behavior, and presentation output.
 
 ### Notes - Unreleased
 
