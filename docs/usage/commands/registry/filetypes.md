@@ -113,7 +113,7 @@ Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 - Canonical qualified key
 - Namespace / local key
 - Extensions (comma-separated)
-- Filenames (comma-separated)
+- Filenames (comma-separated exact-basename and tail-subpath matching rules)
 - Patterns (comma-separated)
 - `skip_processing` (`true`/`false`)
 - `has_content_matcher` (`true`/`false`)
@@ -165,6 +165,9 @@ The `kind` field is always `filetype` for this command.
 
 Machine-readable output emits canonical qualified file type identities suitable for stable
 automation and tooling integration.
+
+Filename-rule fields (`filenames`) are emitted using canonical POSIX-style representations.
+Tail-subpath rules therefore appear consistently across all platforms and registry implementations.
 
 Unlike [`topmark registry bindings`](bindings.md), this command focuses on canonical file type
 identities, not processor-dispatch relationships.
@@ -250,12 +253,40 @@ types not marked `skip_processing = true`).
 ### Path-suffix matching
 
 Filename rules that contain path separators (for example, `.vscode/settings.json`) are treated as
-path-suffix matches against normalized POSIX-style paths. Plain filename rules still match only the
-basename.
+relative tail-subpath matching rules against normalized POSIX-style paths. Plain filename rules
+continue to match only the basename.
 
-Registry `filenames` values are matching rules, not discovered filesystem paths. Values that contain
-path separators use POSIX-style `/` separators because TopMark evaluates path-suffix filename rules
-against normalized POSIX-style paths.
+Registry `filenames` values are matching rules, not filesystem paths. They are stored and emitted
+using canonical POSIX-style `/` separators regardless of the host platform.
+
+Examples:
+
+```text
+Makefile
+.vscode/settings.json
+```
+
+Built-in definitions and plugins should prefer POSIX-style / separators.
+
+For compatibility, backslash-containing definitions such as:
+
+```text
+Makefile
+.vscode\\settings.json
+```
+
+are accepted during registration and normalized to:
+
+```text
+Makefile
+.vscode/settings.json
+```
+
+before matching, registry composition, and machine-readable serialization.
+
+Filename rules must be relative matching rules. Absolute paths, UNC paths, Windows drive paths,
+empty rules, and rules containing empty path segments or `.` or `..` path segments are rejected
+during file-type construction.
 
 ### Content-based disambiguation
 

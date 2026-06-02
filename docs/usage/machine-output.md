@@ -981,6 +981,10 @@ JSON envelope:
 `qualified_key` is the canonical file type identity. `namespace` and `local_key` are provided for
 inspection, grouping, and display.
 
+Detailed `filenames` values are canonical filename rules, not filesystem paths. Exact-basename rules
+are emitted unchanged, while tail-subpath rules are emitted with POSIX-style `/` separators across
+platforms.
+
 Brief entry (default):
 
 ```jsonc

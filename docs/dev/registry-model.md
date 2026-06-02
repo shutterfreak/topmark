@@ -151,6 +151,7 @@ Each file type has:
 - local key
 - qualified key
 - extensions
+- filename rules
 - resolver and matching metadata
 
 Examples of local identifiers:
@@ -168,6 +169,10 @@ topmark:markdown
 ```
 
 TopMark normalizes file type identifiers to canonical qualified keys.
+
+TopMark also normalizes file type filename rules to canonical POSIX-style registry matching rules.
+Exact-basename rules are preserved, while relative tail-subpath rules are stored and emitted using
+`/` separators regardless of platform.
 
 Local identifiers are accepted only when unambiguous.
 
@@ -360,7 +365,9 @@ Plugin authors should:
 - use a stable namespace such as `acme` or `my_plugin`;
 - choose clear local keys such as `django_html` or `my_lang`;
 - document and use qualified identifiers such as `acme:django_html` in shared examples;
-- avoid relying on local identifiers remaining unambiguous as ecosystems grow.
+- avoid relying on local identifiers remaining unambiguous as ecosystems grow;
+- define filename rules as relative registry matching rules rather than filesystem paths, preferring
+  POSIX-style `/` separators for tail-subpath matching.
 
 Header processor plugins currently use advanced runtime-overlay integration semantics. They should
 bind processor definitions to canonical qualified file type identifiers.

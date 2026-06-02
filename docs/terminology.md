@@ -121,8 +121,10 @@ python
 
 ### Canonical identity
 
-The normalized qualified-key representation used internally for comparison, storage,
-machine-readable output, filtering, runtime policy lookup, registry composition, and resolution.
+The normalized representation used internally for comparison, storage, machine-readable output,
+filtering, runtime policy lookup, registry composition, and resolution.
+
+Examples include qualified file-type identities and canonicalized registry matching rules.
 
 ### Namespace
 
@@ -139,6 +141,25 @@ ______________________________________________________________________
 ### Resolution
 
 The process of selecting the most appropriate file type for a path or input.
+
+### Filename rule
+
+A declarative file-type matching rule used by `FileType.filenames`.
+
+Filename rules are registry matching rules rather than filesystem paths.
+
+Two forms are supported:
+
+- exact-basename rules (for example `Makefile`);
+- relative tail-subpath rules (for example `.vscode/settings.json`).
+
+Tail-subpath rules are stored and emitted using canonical POSIX-style `/` separators regardless of
+platform.
+
+> [!NOTE]
+>
+> Absolute paths, UNC paths, Windows drive paths, empty rules, empty path segments, and `.` / `..`
+> path segments are invalid filename rules.
 
 ### Probe
 

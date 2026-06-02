@@ -43,6 +43,24 @@ def test_register_and_unregister_filetypes() -> None:
     assert "tmp" not in FileTypeRegistry.as_mapping_by_local_key()
 
 
+def test_register_filetype_exposes_normalized_filename_rules() -> None:
+    """Registered file types expose canonical POSIX filename rules."""
+    ft: FileType = make_file_type(
+        local_key="tmp_tail_rule",
+        extensions=[],
+        filenames=[r".vscode\settings.json"],
+        patterns=[],
+        description="tmp tail rule",
+    )
+
+    FileTypeRegistry.register(ft)
+    try:
+        registered: FileType = FileTypeRegistry.as_mapping_by_local_key()["tmp_tail_rule"]
+        assert registered.filenames == [".vscode/settings.json"]
+    finally:
+        FileTypeRegistry.unregister_by_local_key("tmp_tail_rule")
+
+
 def test_register_and_unregister_processors() -> None:
     """Verify that processor registration and binding mutators change behavior."""
     # Ensure the target file type exists before processor registration.

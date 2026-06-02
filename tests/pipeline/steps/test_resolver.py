@@ -529,6 +529,44 @@ def test_resolve_filename_tail_backslash_normalization(
     assert ctx.file_type and ctx.file_type.local_key == ft_vscode_name
 
 
+def test_resolve_normalized_filename_tail_beats_pattern(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """Normalized filename-tail rules must keep filename-tail precedence."""
+    folder: Path = tmp_path / ".vscode"
+    folder.mkdir()
+    file: Path = folder / "settings.json"
+    file.write_text("{}\n", encoding="utf-8")
+
+    ft_tail_name = "by-tail"
+    ft_tail: FileType = make_file_type(
+        local_key=ft_tail_name,
+        filenames=[r".vscode\settings.json"],
+    )
+
+    ft_pat_name = "by-pattern"
+    ft_pat: FileType = make_file_type(
+        local_key=ft_pat_name,
+        patterns=[r".*\.json"],
+    )
+
+    filetypes: dict[str, FileType] = {ft_tail_name: ft_tail, ft_pat_name: ft_pat}
+    processors: dict[str, HeaderProcessor] = {
+        ft_tail_name: HeaderProcessor(),
+        ft_pat_name: HeaderProcessor(),
+    }
+    ctx: ProcessingContext = _resolve(
+        file,
+        filetypes=filetypes,
+        processors=processors,
+        effective_registries=effective_registries,
+    )
+
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.file_type and ctx.file_type.local_key == ft_tail_name
+
+
 def test_resolve_multi_dot_extension_specificity(
     tmp_path: Path,
     effective_registries: EffectiveRegistries,

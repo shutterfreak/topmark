@@ -108,7 +108,7 @@ ______________________________________________________________________
 Every \[`FileType`\][topmark.filetypes.model.FileType] has two identity components:
 
 - `namespace`: identifies the producer, such as `topmark`, `acme`, or `my_plugin`
-- `name`: the local file type key within that namespace
+- `local_key`: the local file type key within that namespace
 
 TopMark reserves the namespace `topmark` (the internal constant
 \[`TOPMARK_NAMESPACE`\][topmark.core.constants.TOPMARK_NAMESPACE]) for built-in file types.
@@ -117,7 +117,7 @@ TopMark reserves the namespace `topmark` (the internal constant
 
 - Set `namespace` to your package or organization identifier, for example `"acme"` or
   `"my_company"`.
-- Choose a clear local `name`, for example `"django_html"` or `"my_lang"`.
+- Choose a clear `local_key`, for example `"django_html"` or `"my_lang"`.
 - Use qualified file type identities, such as `"acme:django_html"`, in shared configuration,
   processor bindings, and documentation.
 
@@ -125,7 +125,7 @@ Note: `namespace` is **mandatory** for both file types and processors. The built
 `topmark` is reserved for TopMark-provided types.
 
 TopMark normalizes file type identifiers to canonical qualified keys of the form
-`<namespace>:<name>`.
+`<namespace>:<local_key>`.
 
 TopMark accepts both:
 
@@ -146,6 +146,27 @@ For the complete identity contract, see
 Create a module that returns an iterable of \[`FileType`\][topmark.filetypes.model.FileType]
 objects.
 
+#### Filename matching rules
+
+`FileType.filenames` entries are registry matching rules rather than filesystem paths.
+
+Supported forms:
+
+- exact-basename rules, for example `Makefile`;
+- relative tail-subpath rules, for example `.vscode/settings.json`.
+
+Tail-subpath rules should use POSIX-style `/` separators. Backslash-containing rules are accepted as
+compatibility input and normalized during file-type construction.
+
+Invalid filename rules include:
+
+- absolute paths;
+- UNC paths;
+- Windows drive paths;
+- empty rules;
+- rules containing empty path segments;
+- rules containing `.` or `..` path segments.
+
 Example:
 
 ```python
@@ -157,7 +178,7 @@ from topmark.filetypes.model import FileType
 def provide_filetypes() -> list[FileType]:
     return [
         FileType(
-            name="my_lang",
+            local_key="my_lang",
             namespace="my_plugin",
             extensions=[".mylang"],
             filenames=[],
@@ -167,6 +188,10 @@ def provide_filetypes() -> list[FileType]:
         )
     ]
 ```
+
+TopMark stores filename rules in canonical POSIX form. Registry inspection, machine-readable output,
+and resolver diagnostics therefore always expose normalized filename-rule values regardless of
+platform.
 
 ### Using the FileType factory (recommended)
 
@@ -179,7 +204,7 @@ from topmark.filetypes.factory import make_filetype_factory
 make_my_ft = make_filetype_factory(namespace="my_plugin")
 
 MY_FILETYPE = make_my_ft(
-    name="my_lang",
+    local_key="my_lang",
     description="MyLang source files",
     extensions=[".mylang"],
 )

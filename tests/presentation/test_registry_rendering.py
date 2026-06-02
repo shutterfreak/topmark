@@ -96,7 +96,7 @@ def _filetype_item(*, bound: bool = True) -> FileTypeHumanItem:
         description="Python source",
         bound=bound,
         extensions=(".py",),
-        filenames=("SConstruct",),
+        filenames=("SConstruct", ".vscode/settings.json"),
         patterns=(".*\\.pyi",),
         skip_processing=False,
         has_content_matcher=True,
@@ -191,7 +191,7 @@ def test_render_filetypes_text_details_include_matching_and_policy_metadata() ->
     assert "      namespace       : test" in output
     assert "      bound           : no" in output
     assert "      extensions      : .py" in output
-    assert "      filenames       : SConstruct" in output
+    assert "      filenames       : SConstruct, .vscode/settings.json" in output
     assert "      patterns        : .*\\.pyi" in output
     assert "      content matcher : yes" in output
     assert "      insert checker  : yes" in output
@@ -310,6 +310,7 @@ def test_render_filetypes_markdown_compact_and_details() -> None:
         "`test`",
         "**yes**",
     ]
+    assert "SConstruct, .vscode/settings.json" in find_table_row(detail_output, "`test.python`")
     assert "**supports_shebang**=true" in detail_output
 
 
@@ -418,6 +419,7 @@ def test_build_filetypes_human_report_sorts_and_maps_policy(
         namespace="test",
         description="Alpha type",
         extensions=[".a"],
+        filenames=[r".vscode\settings.json"],
         header_policy=FileTypeHeaderPolicy(
             supports_shebang=True,
             encoding_line_regex="^# coding:",
@@ -444,6 +446,7 @@ def test_build_filetypes_human_report_sorts_and_maps_policy(
 
     assert [item.qualified_key for item in report.items] == ["test:alpha", "test:beta"]
     assert report.items[0].bound is True
+    assert report.items[0].filenames == (".vscode/settings.json",)
     assert report.items[1].bound is False
     assert report.items[0].policy.supports_shebang is True
     assert report.items[0].policy.encoding_line_regex == "^# coding:"

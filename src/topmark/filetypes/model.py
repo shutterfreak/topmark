@@ -8,14 +8,17 @@
 #
 # topmark:header:end
 
-"""Abstract base class for all file type implementations in TopMark.
+"""File type definitions and matching behavior for TopMark.
 
-Defines the FileType class, which represents a file type definition used to match files
-and generate standardized header blocks. This base class is meant to be subclassed
-by specific file type implementations.
+This module defines `FileType`, the value object used by the registry and
+resolver to recognize files and decide whether they are eligible for TopMark
+header processing.
 
-If `skip_processing` is True, the pipeline will recognize files of this type and
-skip header processing by design.
+A file type can match files by extension, filename rule, regular expression, and
+optional content probing. Filename rules are declarative registry matching rules,
+not filesystem paths. They are normalized and validated when a `FileType` is
+constructed so matching, registry output, and machine-readable serialization use
+the same canonical representation on every platform.
 """
 
 from __future__ import annotations
@@ -31,6 +34,7 @@ from typing import TypedDict
 from typing import runtime_checkable
 
 from topmark.core.logging import get_logger
+from topmark.filetypes.filename_rules import normalize_filename_rules
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.registry.identity import make_qualified_key
 from topmark.registry.identity import owner_label
@@ -224,13 +228,16 @@ class FileType:
         extensions: List of filename extensions associated with this type. Values
             should include the leading dot (e.g. ``.py``) or be consistent with the
             matcher used elsewhere in TopMark.
-        filenames: Exact basenames or POSIX-style tail subpaths to match. Values containing
-            `/` or `\` are treated as tail-subpath rules and are matched against
-            `path.as_posix()`. Built-in file type definitions should prefer POSIX `/`
-            separators for cross-platform stability.
-        patterns: Regular expressions evaluated against the basename only (see
-            `re.fullmatch`). Patterns are not path-aware and do not receive POSIX-normalized
-            subpaths; use `filenames` for exact basename or POSIX-style tail-subpath rules.
+        filenames: Exact basename or relative tail-subpath matching rules. Rules
+            are registry identifiers, not filesystem paths. Backslashes are
+            accepted as compatibility input and normalized to POSIX-style `/`
+            separators during construction. Stored values are always canonical
+            POSIX-style strings. Rules must not be empty, absolute, UNC-like,
+            Windows drive paths, or contain empty, `.` or `..` segments.
+        patterns: Regular expressions evaluated against the basename only with
+            `re.fullmatch`. Patterns are not path-aware and do not receive
+            POSIX-normalized subpaths; use `filenames` for exact basename or
+            relative tail-subpath rules.
         description: Human-readable description of the file type.
         skip_processing: When ``True``, the pipeline **recognizes** files of this
             type but intentionally **skips header processing** (e.g. JSON without
@@ -273,6 +280,10 @@ class FileType:
         * `matches` first tries extensions, filenames, and regex patterns.
           Only if those fail and `content_matcher` is set will it call the
           matcher to decide.
+        * `filenames` entries are normalized and validated during construction.
+          Tail-subpath rules are matched against `path.as_posix()`, but the
+          rules themselves are stored canonically and should be serialized as
+          POSIX-style strings.
         * Content matchers should read a small portion of the file where possible
           to remain fast on large trees. The current implementation leaves that
           policy to the callable to keep the base class simple.
@@ -309,7 +320,7 @@ class FileType:
     _compiled_patterns: list[re.Pattern[str]] | None = None
 
     def __post_init__(self) -> None:
-        """Validate file type identity attributes on instances.
+        """Validate and canonicalize file type metadata.
 
         Every concrete `FileType` instance must define a stable identity:
 
@@ -326,6 +337,11 @@ class FileType:
 
         Uniqueness of the qualified key (``"<namespace>:<local_key>"``) is validated at registry
         composition time.
+
+        Filename rules are also normalized here so all downstream consumers see
+        canonical POSIX-style rules. Invalid filename-rule definitions raise
+        `InvalidFileTypeDefinitionError` before the instance reaches registry
+        composition, matching, or serialization.
         """
         cls: type[FileType] = self.__class__
         owner: Final[str] = owner_label(cls)
@@ -342,6 +358,12 @@ class FileType:
         self.namespace = namespace
         self.local_key = local_key
 
+        # Store filename rules canonically before matching, registration, or serialization.
+        self.filenames = normalize_filename_rules(
+            self.filenames,
+            file_type=self.qualified_key,
+        )  # raises InvalidFileTypeDefinitionError
+
         # Reserve the builtin namespace for TopMark itself. Since this is an
         # instance, the defining module is the best available provenance signal.
         validate_reserved_topmark_namespace(
@@ -352,15 +374,20 @@ class FileType:
         )
 
     def matches(self, path: Path) -> bool:
-        """Determine if the file type matches the given file path.
+        """Determine whether this file type matches a path.
 
-        This method must be implemented by subclasses to define matching logic.
+        Matching is attempted in deterministic order: extensions, filename
+        rules, regex patterns, and then an optional content matcher if permitted
+        by `content_gate`. Exact basename filename rules compare against
+        `path.name`; relative tail-subpath filename rules compare against
+        `path.as_posix()`.
 
         Args:
-            path: The path to the file to check.
+            path: Path to test against this file type.
 
         Returns:
-            True if the file matches this file type, False otherwise.
+            True if the path matches this file type, False otherwise. Content
+            matcher exceptions are caught and treated as non-matches.
         """
         # Track which name rule (if any) matched; used for content gating.
         matched_by: str | None = None
@@ -383,14 +410,14 @@ class FileType:
 
         # 2) if still not matched, try filenames
         if matched_by is None and self.filenames:
-            # Filenames support exact basename matches and POSIX-style tail-subpath matches:
+            # Filename rules support exact basename and POSIX-style tail-subpath matches:
             #    - "settings.json" matches only if basename == "settings.json".
             #    - ".vscode/settings.json" matches if path.as_posix() ends with that tail.
             # Tail-subpath filename rules are matched against normalized POSIX-style paths.
             basename: str = path.name
             posix: str = path.as_posix()
             for fname in self.filenames:
-                if "/" in fname or "\\" in fname:
+                if "/" in fname:  # Path separators are already normalized
                     if posix.endswith(fname):
                         matched_by = "filename"
                         break

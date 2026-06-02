@@ -57,7 +57,7 @@ class UnusedRegistryProcessor(HeaderProcessor):
     description: ClassVar[str] = "Processor left intentionally unused in registry tests."
 
 
-pytestmark = pytest.mark.cli
+pytestmark: pytest.MarkDecorator = pytest.mark.cli
 
 
 FILETYPE_BRIEF_KEYS: frozenset[str] = frozenset(
@@ -120,7 +120,12 @@ BINDING_DETAIL_KEYS: frozenset[str] = frozenset(
     }
 )
 REF_DETAIL_KEYS: frozenset[str] = frozenset(
-    {"local_key", "namespace", "qualified_key", "description"}
+    {
+        "local_key",
+        "namespace",
+        "qualified_key",
+        "description",
+    }
 )
 
 
@@ -132,7 +137,7 @@ def registry_snapshot() -> Iterator[None]:
         namespace="pytest",
         description="Bound registry test file type.",
         extensions=[".bound"],
-        filenames=["BoundFile"],
+        filenames=["BoundFile", r".vscode\settings.json"],
         patterns=[r".*\\.bound"],
     )
     unbound_filetype: FileType = make_file_type(
@@ -268,6 +273,7 @@ def test_registry_filetypes_machine_json(
         assert unbound_entry.get("bound") is False
         assert bound_entry.get("extensions") == [".bound"]
         assert unbound_entry.get("extensions") == [".unbound"]
+        assert bound_entry.get("filenames") == ["BoundFile", ".vscode/settings.json"]
 
         bound_policy_obj: object | None = bound_entry.get("policy")
         assert is_mapping(bound_policy_obj)
@@ -473,6 +479,7 @@ def test_registry_filetypes_machine_ndjson(
     if show_details:
         assert set(bound_payload.keys()) == set(FILETYPE_DETAIL_KEYS)
         assert bound_payload.get("bound") is True
+        assert bound_payload.get("filenames") == ["BoundFile", ".vscode/settings.json"]
     else:
         assert set(bound_payload.keys()) == set(FILETYPE_BRIEF_KEYS)
 
