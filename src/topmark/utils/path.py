@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from topmark.config.resolution.synthetic import SyntheticConfigSource
+
 
 def canonicalize_existing_path(path: Path) -> Path:
     """Return a path using canonical filesystem casing.
@@ -62,23 +64,38 @@ def canonicalize_existing_path(path: Path) -> Path:
     return current
 
 
-def format_machine_path(path: Path) -> str:
-    """Serialize a path for processing machine-readable output.
+# ---- POSIX path representation ----
 
-    Machine-readable processing payloads use POSIX separators on all platforms
+
+def format_posix_path(path: Path) -> str:
+    """Return a POSIX-style string representation of a filesystem path.
+
+    Args:
+        path: Path to serialize.
+
+    Returns:
+        POSIX-style path string.
+    """
+    return path.as_posix()
+
+
+def format_machine_path(path: Path) -> str:
+    """Serialize a filesystem path for machine-readable output.
+
+    All machine-readable TopMark payloads use POSIX separators on all platforms
     so JSON and NDJSON output remain stable across operating systems.
 
     Args:
         path: Path to serialize.
 
     Returns:
-        POSIX-style path string for machine-readable processing output.
+        POSIX-style path string for machine-readable output.
     """
-    return path.as_posix()
+    return format_posix_path(path)
 
 
 def format_header_metadata_path(path: Path) -> str:
-    """Serialize a path for generated TopMark header metadata.
+    """Serialize a filesystem path for generated TopMark header metadata.
 
     Header metadata is written into source files and should remain stable across
     operating systems. Use POSIX separators for relative and absolute path
@@ -90,4 +107,22 @@ def format_header_metadata_path(path: Path) -> str:
     Returns:
         POSIX-style path string for generated header metadata.
     """
-    return path.as_posix()
+    return format_posix_path(path)
+
+
+def format_config_source_path(source: Path | SyntheticConfigSource) -> str:
+    """Format real and synthetic config source identifiers for TOML export.
+
+    Synthetic config sources use bracketed identifiers such as
+    `<built-in topmark defaults>`. These should remain stable identifiers in
+    exported output rather than being normalized relative to the current working
+    directory.
+
+    Args:
+        source: Real filesystem path or synthetic config source identifier.
+
+    Returns:
+        POSIX-style path string for real filesystem paths, or the stable label
+        for synthetic config sources.
+    """
+    return source.label if isinstance(source, SyntheticConfigSource) else format_posix_path(source)

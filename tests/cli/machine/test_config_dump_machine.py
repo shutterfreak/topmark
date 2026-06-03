@@ -37,6 +37,7 @@ All CLI invocations are executed via Click's `CliRunner`, using the helpers in
 
 from __future__ import annotations
 
+import textwrap
 from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_SUCCESS
@@ -48,12 +49,33 @@ from tests.helpers.ndjson import parse_single_ndjson_record
 from tests.helpers.ndjson import record_kinds
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.formats import OutputFormat
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from click.testing import Result
+
+
+def _write_minimal_config(path: Path) -> None:
+    """Write a minimal valid TopMark config file for config-dump tests."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        textwrap.dedent(
+            """\
+            [fields]
+            project = "Demo"
+
+            [header]
+            fields = ["project"]
+            """
+        ).lstrip(),
+        encoding="utf-8",
+    )
+
 
 # ----- JSON -----
 
@@ -70,7 +92,7 @@ def test_config_dump_json_includes_meta() -> None:
             CliCmd.CONFIG,
             CliCmd.CONFIG_DUMP,
             CliOpt.OUTPUT_FORMAT,
-            "json",
+            OutputFormat.JSON.value,
         ],
     )
     assert_SUCCESS(result)
@@ -103,7 +125,7 @@ def test_config_dump_json_show_layers_includes_config_provenance() -> None:
             CliCmd.CONFIG_DUMP,
             CliOpt.SHOW_CONFIG_LAYERS,
             CliOpt.OUTPUT_FORMAT,
-            "json",
+            OutputFormat.JSON.value,
         ],
     )
     assert_SUCCESS(result)
@@ -143,7 +165,7 @@ def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
             CliCmd.CONFIG_DUMP,
             CliOpt.SHOW_CONFIG_LAYERS,
             CliOpt.OUTPUT_FORMAT,
-            "json",
+            OutputFormat.JSON.value,
         ],
     )
     assert_SUCCESS(result)
@@ -174,6 +196,81 @@ def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
     assert "writer" in toml_fragment
 
 
+def test_config_dump_json_config_files_use_posix_paths_for_explicit_config(
+    tmp_path: Path,
+) -> None:
+    """JSON config snapshots should serialize explicit config files POSIX-style."""
+    config_file: Path = tmp_path / "workspace" / "topmark.toml"
+    _write_minimal_config(config_file)
+
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.CONFIG_FILES,
+            str(config_file),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+
+    config_obj = payload.get("config")
+    assert is_mapping(config_obj)
+    config: dict[str, object] = as_object_dict(config_obj)
+
+    files_obj = config.get("files")
+    assert is_mapping(files_obj)
+    files: dict[str, object] = as_object_dict(files_obj)
+
+    config_files_obj = files.get("config_files")
+    assert is_any_list(config_files_obj)
+    assert config_file.as_posix() in config_files_obj
+
+
+def test_config_dump_json_show_layers_uses_posix_paths_for_explicit_config_provenance(
+    tmp_path: Path,
+) -> None:
+    """JSON config provenance should serialize explicit config paths POSIX-style."""
+    config_file: Path = tmp_path / "workspace" / "topmark.toml"
+    _write_minimal_config(config_file)
+
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.CONFIG_FILES,
+            str(config_file),
+            CliOpt.SHOW_CONFIG_LAYERS,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+
+    provenance_obj = payload.get("config_provenance")
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
+
+    layers_obj = provenance.get("config_layers")
+    assert is_any_list(layers_obj)
+
+    matching_layers: list[dict[str, object]] = []
+    for layer_obj in layers_obj:
+        assert is_mapping(layer_obj)
+        layer: dict[str, object] = as_object_dict(layer_obj)
+        if layer.get("origin") == config_file.as_posix():
+            matching_layers.append(layer)
+
+    assert len(matching_layers) == 1
+    layer = matching_layers[0]
+    assert layer.get("scope_root") == config_file.parent.as_posix()
+
+
 # ----- NDJSON -----
 
 
@@ -188,7 +285,7 @@ def test_config_dump_ndjson_kinds() -> None:
             CliCmd.CONFIG,
             CliCmd.CONFIG_DUMP,
             CliOpt.OUTPUT_FORMAT,
-            "ndjson",
+            OutputFormat.NDJSON.value,
         ],
     )
     assert_SUCCESS(result)
@@ -211,7 +308,7 @@ def test_config_dump_ndjson_show_layers_kinds() -> None:
             CliCmd.CONFIG_DUMP,
             CliOpt.SHOW_CONFIG_LAYERS,
             CliOpt.OUTPUT_FORMAT,
-            "ndjson",
+            OutputFormat.NDJSON.value,
         ],
     )
     assert_SUCCESS(result)
@@ -240,7 +337,7 @@ def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
             CliCmd.CONFIG_DUMP,
             CliOpt.SHOW_CONFIG_LAYERS,
             CliOpt.OUTPUT_FORMAT,
-            "ndjson",
+            OutputFormat.NDJSON.value,
         ],
     )
     assert_SUCCESS(result)

@@ -44,6 +44,7 @@ from topmark.diagnostic.model import DiagnosticStats
 from topmark.diagnostic.model import compute_diagnostic_stats
 from topmark.runtime.writer_options import writer_options_to_toml_table
 from topmark.toml.keys import Toml
+from topmark.utils.path import format_config_source_path
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
@@ -208,7 +209,7 @@ def build_config_check_summary_payload(
         ok=ok,
         strict=strict,
         diagnostic_counts=counts_only,
-        config_files=[str(p) for p in config.config_files],
+        config_files=[format_config_source_path(p) for p in config.config_files],
     )
 
     return summary

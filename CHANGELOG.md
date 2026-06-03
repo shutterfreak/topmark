@@ -45,6 +45,9 @@ ______________________________________________________________________
   generated header metadata, TEXT rendering, Markdown rendering, and unified diff labels.
 - Clarified that unified diff file labels follow human-facing display-path policy rather than the
   machine-readable path serialization contract.
+- Extended the POSIX path-serialization contract to configuration machine-output payloads,
+  TOML/config provenance payloads, configuration-export serialization, and configuration diagnostic
+  summaries.
 
 ### Breaking Changes - Unreleased
 
@@ -99,6 +102,10 @@ ______________________________________________________________________
   different path-separator spellings.
 - Fixed STDIN-backed unified diff labels so they use the logical `--stdin-filename` instead of the
   materialized temporary file path.
+- Fixed inconsistent machine-readable path serialization across configuration payloads, TOML
+  provenance payloads, configuration export output, and configuration diagnostic summaries by
+  normalizing real filesystem paths to POSIX-style **/** separators on all platforms while
+  preserving synthetic configuration-source identifiers as stable labels.
 
 ### Documentation - Unreleased
 
@@ -112,10 +119,11 @@ ______________________________________________________________________
 - Documented the exit-code migration from `WOULD_CHANGE (2)` to `WOULD_CHANGE (3)` and the revised
   `config check` validation-failure behavior.
 - Documented use of the standard `--` delimiter for literal dash-prefixed path names.
-- Documented TopMark's path serialization contract for header metadata, processing machine output,
-  probe machine output, and human-readable display output.
-- Added temporary documentation notes for configuration/provenance machine payloads that are not yet
-  covered by the future all-machine-paths POSIX serialization contract.
+- Documented TopMark's machine-readable path serialization contract for header metadata, processing
+  output, probe output, configuration payloads, TOML/config provenance payloads, and human-readable
+  display output boundaries.
+- Removed obsolete documentation caveats that previously excluded configuration and provenance
+  payloads from the POSIX path-serialization contract.
 - Clarified that registry filename tail-subpath rules are declarative matching rules that use
   POSIX-style `/` separators, not discovered filesystem paths.
 - Documented the canonical filename-rule contract for `FileType.filenames`.
@@ -133,8 +141,8 @@ ______________________________________________________________________
 - Refreshed locked dependencies including Ruff, Hypothesis, and uv.
 - Added shared machine-path formatting helpers and regression coverage for Windows-style processing
   machine-output path serialization.
-- Documented follow-up issues for normalizing registry filename rules and extending POSIX path
-  serialization to all machine-readable path fields.
+- Centralized POSIX path-formatting helpers for machine-readable payloads, configuration/provenance
+  serialization, and synthetic configuration-source formatting.
 - Added centralized filename-rule normalization and validation helpers.
 - Added regression coverage for filename-rule normalization, validation, matching, registry
   serialization, resolver behavior, and presentation output.
