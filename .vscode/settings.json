@@ -32,8 +32,8 @@
     "makefile.configureOnOpen": false,
 
     "[markdown]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "editor.formatOnSave": true
+        // Turn off VS Code's native formatOnSave so it doesn't conflict
+        "editor.formatOnSave": false
     },
 
     "[python]": {
@@ -88,6 +88,17 @@
     },
 
     // --- Specific Tool Extensions Settings ---
+
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                // Matches any .md file in the workspace folder
+                "match": "${workspaceFolder}/.*\\.md$",
+                // Runs mdformat using the python executable in your virtual environment
+                "cmd": "\"${workspaceFolder}/.venv/bin/mdformat\" \"${file}\""
+            }
+        ]
+    },
 
     // Docstring
     "autoDocstring.docstringFormat": "google",

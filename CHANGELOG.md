@@ -133,6 +133,8 @@ ______________________________________________________________________
   presentation, including TEXT, Markdown, and unified diff output.
 - Clarified that unified diff labels are human-facing display labels and should not be treated as
   JSON/NDJSON path fields.
+- Documented and aligned the recommended VS Code workspace tooling configuration around Pylance,
+  `mdformat`, Run On Save integration, and project-maintained task entry points.
 
 ### Internal - Unreleased
 
@@ -149,6 +151,10 @@ ______________________________________________________________________
 - Added dedicated header-metadata path serialization and display-path presentation helper modules.
 - Added regression coverage for header metadata path serialization, TEXT and Markdown path labels,
   and STDIN-backed unified diff labels.
+- Refreshed editor and contributor tooling configuration, including VS Code workspace
+  recommendations, task definitions, and Markdown formatting integration.
+- Added lightweight pre-commit hygiene checks for documentation hygiene, code-documentation hygiene,
+  and docstring link validation to better align local workflows with Nox validation.
 
 ### Notes - Unreleased
 
