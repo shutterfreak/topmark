@@ -21,6 +21,7 @@ These tests exercise:
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -301,6 +302,44 @@ def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
 
 
 @pytest.mark.config
+def test_include_patterns_seed_candidates_when_no_files_are_configured(
+    tmp_path: Path,
+) -> None:
+    """Config include patterns should seed discovery without explicit files.
+
+    include_patterns should seed candidates even when no files are configured.
+    """
+    proj: Path = tmp_path / "proj"
+    src: Path = proj / "src"
+    src.mkdir(parents=True)
+    py: Path = src / "seeded.py"
+    txt: Path = src / "ignored.txt"
+    py.write_text("print('ok')\n", encoding="utf-8")
+    txt.write_text("ignored\n", encoding="utf-8")
+
+    write_toml_document(
+        path=proj / "pyproject.toml",
+        content="""
+            [tool.topmark.header]
+            relative_to = "."
+
+            [tool.topmark.files]
+            include_patterns = ["src/**/*.py"]
+        """,
+    )
+
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[],
+        extra_config_files=[proj / "pyproject.toml"],
+    )
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(
+        resolved_config.draft.freeze()
+    )
+
+    assert list(resolution.selected) == [py.resolve()]
+
+
+@pytest.mark.config
 def test_files_from_declared_in_config_normalizes_to_patternsource(
     tmp_path: Path,
 ) -> None:
@@ -323,3 +362,111 @@ def test_files_from_declared_in_config_normalizes_to_patternsource(
     ps: PatternSource = draft.files_from[0]
     assert ps.path == lst.resolve()
     assert ps.base == proj.resolve()
+
+
+@pytest.mark.config
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows drive semantics only")
+def test_cli_path_options_resolve_from_windows_drive_cwd(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CLI path-to-file options should resolve against a Windows drive CWD."""
+    cwd: Path = tmp_path / "work"
+    cwd.mkdir()
+    monkeypatch.chdir(cwd)
+
+    pattern_file: Path = cwd / "files.txt"
+    pattern_file.write_text("src/a.py\n", encoding="utf-8")
+
+    draft: MutableConfig = mutable_config_from_defaults()
+    overrides = ConfigOverrides(
+        files_from=["files.txt"],
+        include_from=["files.txt"],
+        exclude_from=["files.txt"],
+    )
+    apply_config_overrides(draft, overrides)
+
+    assert draft.files_from
+    assert draft.include_from
+    assert draft.exclude_from
+    for pattern_source in (*draft.files_from, *draft.include_from, *draft.exclude_from):
+        assert pattern_source.path == pattern_file.resolve()
+        assert pattern_source.base == cwd.resolve()
+        assert pattern_source.path.drive == cwd.resolve().drive
+
+
+@pytest.mark.config
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows drive semantics only")
+def test_relative_to_resolves_against_windows_config_drive(
+    tmp_path: Path,
+) -> None:
+    """`relative_to` should resolve against the config file's Windows drive."""
+    proj: Path = tmp_path / "proj"
+    workspace: Path = proj / "workspace"
+    workspace.mkdir(parents=True)
+
+    write_toml_document(
+        path=proj / "pyproject.toml",
+        content="""
+            [tool.topmark.header]
+            relative_to = "workspace"
+        """,
+    )
+
+    draft: MutableConfig = draft_from_topmark_toml_file(proj / "pyproject.toml")
+
+    assert draft.relative_to == workspace.resolve()
+    assert draft.relative_to is not None
+    assert draft.relative_to.drive == workspace.resolve().drive
+
+
+@pytest.mark.config
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows drive semantics only")
+def test_config_file_discovery_accepts_windows_absolute_input_path(
+    tmp_path: Path,
+) -> None:
+    """Config discovery should accept absolute Windows input paths."""
+    proj: Path = tmp_path / "proj"
+    src: Path = proj / "src"
+    src.mkdir(parents=True)
+
+    write_toml_document(
+        path=proj / "pyproject.toml",
+        content="""
+            [tool.topmark.header]
+            relative_to = "."
+        """,
+    )
+
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[src.resolve()],
+    )
+
+    assert resolved_config.draft.relative_to == proj.resolve()
+    assert resolved_config.draft.relative_to is not None
+    assert resolved_config.draft.relative_to.drive == proj.resolve().drive
+
+
+@pytest.mark.config
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows absolute path semantics only")
+def test_config_resolution_preserves_absolute_cli_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Absolute CLI path options should not be rebased onto the invocation CWD."""
+    cwd: Path = tmp_path / "work"
+    cwd.mkdir()
+    absolute_file: Path = tmp_path / "absolute" / "patterns.txt"
+    absolute_file.parent.mkdir(parents=True)
+    absolute_file.write_text("src/a.py\n", encoding="utf-8")
+    monkeypatch.chdir(cwd)
+
+    draft: MutableConfig = mutable_config_from_defaults()
+    overrides = ConfigOverrides(include_from=[str(absolute_file)])
+    apply_config_overrides(draft, overrides)
+
+    assert draft.include_from
+    ps: PatternSource = draft.include_from[0]
+    assert ps.path == absolute_file.resolve(strict=False)
+    assert ps.path.is_absolute()
+    assert ps.path.drive == absolute_file.drive
