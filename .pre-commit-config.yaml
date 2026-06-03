@@ -40,7 +40,8 @@ repos:
         # Use args to point to your config or ignore specific folders
         args: ["--config", ".markdownlint.jsonc"]
 
-  - repo: local # Use local lychee setup to overcome the 'nightly' release tag problem in autoupdate
+  # Use local lychee setup to overcome the 'nightly' release tag problem in autoupdate
+  - repo: local
     hooks:
       - id: lychee-md
         name: lychee (changed Markdown)
@@ -67,7 +68,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.14
+    rev: v0.15.15
     hooks:
       - id: ruff-format
       - id: ruff-check
@@ -82,18 +83,39 @@ repos:
       - id: topmark-apply
         # files: '\.(py|md|toml|ya?ml|sh|Makefile)$'
 
-        # Docstring semantics - Limited to source and tools
+      - id: topmark-probe
+
+  # Docstring semantics for source and tooling modules
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.4
+    rev: 0.8.6
     hooks:
       - id: pydoclint
         args: ["-q"]
         files: ^(src|tools)/.*\.py$
 
-  # Links in docstrings (code)
+  # Project-specific hygiene checks that mirror lightweight Nox sessions
   - repo: local
     hooks:
-      - id: docstring-ref-links
+      - id: code-hygiene
+        # Repository-wide check; the file filter only decides when the hook runs.
+        name: code hygiene (TopMark)
+        entry: python
+        language: system
+        args: ["tools/docs/check_code_hygiene.py"]
+        files: ^(src|tests|tools)/.*\.py$
+        pass_filenames: false
+
+      # Repository-wide docs check; snippets and cross-file rules need full context.
+      - id: docs-hygiene
+        name: docs hygiene (TopMark)
+        entry: python
+        language: system
+        args: ["tools/docs/check_docs_hygiene.py", "--docs-hygiene", "--stats"]
+        files: ^(README\.md|CHANGELOG\.md|CONTRIBUTING\.md|INSTALL\.md|docs/.*\.md)$
+        pass_filenames: false
+
+      - id: docstring-links
+        # File-oriented check; changed source files are passed to the script.
         name: docstring link style (TopMark)
         entry: python
         language: system
@@ -110,7 +132,7 @@ repos:
 
   # Type checker last
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.409
+    rev: v1.1.410
     hooks:
       - id: pyright
 

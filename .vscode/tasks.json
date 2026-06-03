@@ -23,51 +23,49 @@
   },
   "tasks": [
     {
-      "label": "Ruff: Lint (project config)",
+      "label": "Make: Verify",
       "type": "shell",
-      "command": "ruff check .",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "label": "Ruff: Lint (F401,F841,TCH)",
-      "type": "shell",
-      "command": "ruff check --select F401,F841,TCH .",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "label": "Ruff: Fix (safe)",
-      "type": "shell",
-      "command": "ruff check --fix .",
-      "group": "none",
-      "problemMatcher": []
-    },
-    {
-      "label": "Pyright: Type Check",
-      "type": "shell",
-      "command": "pyright",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "label": "Pyright: Verify Types (public API)",
-      "type": "shell",
-      "command": "pyright --verifytypes topmark",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "label": "Verify: Ruff (F401,F841,TCH) + Pyright",
-      "dependsOn": [
-        "Ruff: Lint (F401,F841,TCH)",
-        "Pyright: Verify Types (public API)"
-      ],
-      "dependsOrder": "sequence",
+      "command": "make verify",
       "group": {
         "kind": "test",
         "isDefault": true
-      }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Make: Format Check",
+      "type": "shell",
+      "command": "make format-check",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Make: Lint",
+      "type": "shell",
+      "command": "make lint",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Make: Docs Hygiene",
+      "type": "shell",
+      "command": "make docs-hygiene",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Make: Code Hygiene",
+      "type": "shell",
+      "command": "make code-hygiene",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Nox: QA",
+      "type": "shell",
+      "command": "nox -s qa",
+      "group": "test",
+      "problemMatcher": []
     }
   ]
 }
