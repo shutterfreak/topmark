@@ -143,6 +143,9 @@ ______________________________________________________________________
 - Refreshed locked dependencies including Ruff, Hypothesis, and uv.
 - Added shared machine-path formatting helpers and regression coverage for Windows-style processing
   machine-output path serialization.
+- Expanded cross-platform filesystem regression coverage for machine-readable path serialization,
+  Windows and UNC path formatting, symlink discovery and deduplication, `--files-from -` processing,
+  configuration path resolution, and include-pattern discovery seeding behavior.
 - Centralized POSIX path-formatting helpers for machine-readable payloads, configuration/provenance
   serialization, and synthetic configuration-source formatting.
 - Added centralized filename-rule normalization and validation helpers.

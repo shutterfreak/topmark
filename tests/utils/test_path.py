@@ -13,7 +13,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from pathlib import PureWindowsPath
 from typing import TYPE_CHECKING
+from typing import cast
 
 import pytest
 
@@ -83,6 +85,37 @@ def test_format_posix_path_uses_posix_separators(path: Path, expected: str) -> N
 
 
 @pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        pytest.param(
+            PureWindowsPath(r"C:\Repo\src\topmark\pipeline\machine\payloads.py"),
+            "C:/Repo/src/topmark/pipeline/machine/payloads.py",
+            id="drive-absolute",
+        ),
+        pytest.param(
+            PureWindowsPath(r"D:\Workspace\docs\usage\machine-output.md"),
+            "D:/Workspace/docs/usage/machine-output.md",
+            id="different-drive-absolute",
+        ),
+        pytest.param(
+            PureWindowsPath(r"\\server\share\project\src\example.py"),
+            "//server/share/project/src/example.py",
+            id="unc-share",
+        ),
+    ],
+)
+def test_format_posix_path_handles_windows_path_spellings(
+    path: PureWindowsPath,
+    expected: str,
+) -> None:
+    """Generic POSIX formatting should handle Windows-native path spellings."""
+    # `format_posix_path()` intentionally requires only the Path.as_posix()
+    # behavior. Cast the pure Windows path so this contract is exercised on
+    # every host platform without requiring a real Windows filesystem path.
+    assert format_posix_path(cast("Path", path)) == expected
+
+
+@pytest.mark.parametrize(
     ("formatter", "path", "expected"),
     [
         (
@@ -107,11 +140,72 @@ def test_semantic_path_formatters_use_posix_separators(
     assert formatter(path) == expected
 
 
+@pytest.mark.parametrize(
+    ("formatter", "path", "expected"),
+    [
+        pytest.param(
+            format_header_metadata_path,
+            PureWindowsPath(r"C:\Repo\src\topmark\__main__.py"),
+            "C:/Repo/src/topmark/__main__.py",
+            id="header-metadata-drive-path",
+        ),
+        pytest.param(
+            format_machine_path,
+            PureWindowsPath(r"D:\Workspace\pkg\module.py"),
+            "D:/Workspace/pkg/module.py",
+            id="machine-different-drive-path",
+        ),
+        pytest.param(
+            format_machine_path,
+            PureWindowsPath(r"\\server\share\pkg\module.py"),
+            "//server/share/pkg/module.py",
+            id="machine-unc-path",
+        ),
+    ],
+)
+def test_semantic_path_formatters_handle_windows_path_spellings(
+    formatter: Callable[[Path], str],
+    path: PureWindowsPath,
+    expected: str,
+) -> None:
+    """Semantic path formatters should normalize Windows spellings to POSIX."""
+    # `format_machine_path()` and `format_header_metadata_path()` delegate to
+    # `.as_posix()`. Cast the pure Windows path to cover cross-platform
+    # serialization without requiring host-specific path objects.
+    assert formatter(cast("Path", path)) == expected
+
+
 def test_format_config_source_path_uses_posix_separators_for_real_paths() -> None:
     """Real config source paths should serialize using POSIX separators."""
     path: Path = Path("config") / "workspace" / "topmark.toml"
 
     assert format_config_source_path(path) == "config/workspace/topmark.toml"
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        pytest.param(
+            PureWindowsPath(r"C:\Repo\topmark.toml"),
+            "C:/Repo/topmark.toml",
+            id="drive-absolute",
+        ),
+        pytest.param(
+            PureWindowsPath(r"\\server\share\topmark.toml"),
+            "//server/share/topmark.toml",
+            id="unc-share",
+        ),
+    ],
+)
+def test_format_config_source_path_handles_windows_path_spellings(
+    path: PureWindowsPath,
+    expected: str,
+) -> None:
+    """Real config source paths should normalize Windows spellings to POSIX."""
+    # `format_config_source_path()` accepts real filesystem paths and synthetic
+    # labels. Cast the pure Windows path so Windows serialization is covered on
+    # every host platform.
+    assert format_config_source_path(cast("Path", path)) == expected
 
 
 @pytest.mark.parametrize(

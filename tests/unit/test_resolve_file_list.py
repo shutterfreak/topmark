@@ -20,6 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 import topmark.resolution.files as file_resolver_mod
 
 # Import the module under test
@@ -31,8 +33,6 @@ from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    import pytest
 
     from topmark.config.model import FrozenConfig
     from topmark.filetypes.model import FileType
@@ -85,6 +85,30 @@ def write(p: Path, text: str = "") -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
     return p
+
+
+def symlink_or_skip(
+    link: Path,
+    target: Path,
+    *,
+    target_is_directory: bool = False,
+) -> Path:
+    """Create a symlink or skip when the platform disallows symlinks.
+
+    Args:
+        link: Symlink path to create.
+        target: Symlink target.
+        target_is_directory: Whether `target` is a directory.
+
+    Returns:
+        The created symlink path.
+    """
+    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        link.symlink_to(target, target_is_directory=target_is_directory)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"symlink creation is not available in this test environment: {exc}")
+    return link
 
 
 def resolve_selected(config: FrozenConfig) -> list[Path]:
@@ -700,6 +724,64 @@ def test_deduplicates_mixed_absolute_and_relative(
     rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     # Only one instance should remain
     assert rel == ["pkg/a.py"]
+
+
+def test_symlinked_file_input_resolves_to_canonical_target_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A symlinked file input should dedupe by real path and report the target."""
+    target: Path = write(tmp_path / "real" / "source.py", "x")
+    symlink_or_skip(tmp_path / "links" / "source-link.py", target)
+
+    monkeypatch.chdir(tmp_path)
+    cfg: FrozenConfig = make_frozen_config(files=["links/source-link.py"])
+
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+
+    assert rel == ["real/source.py"]
+
+
+def test_symlinked_directory_input_resolves_descendants_to_canonical_targets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A symlinked directory input should report discovered target paths."""
+    target_dir: Path = tmp_path / "real-src"
+    write(target_dir / "pkg" / "module.py", "x")
+    symlink_or_skip(
+        tmp_path / "linked-src",
+        target_dir,
+        target_is_directory=True,
+    )
+
+    monkeypatch.chdir(tmp_path)
+    cfg: FrozenConfig = make_frozen_config(files=["linked-src"])
+
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+
+    assert rel == ["real-src/pkg/module.py"]
+
+
+def test_real_file_and_symlink_input_are_deduplicated_by_real_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Real and symlink spellings of the same file should select one target."""
+    target: Path = write(tmp_path / "real" / "source.py", "x")
+    symlink_or_skip(tmp_path / "links" / "source-link.py", target)
+
+    monkeypatch.chdir(tmp_path)
+    cfg: FrozenConfig = make_frozen_config(
+        files=[
+            "real/source.py",
+            "links/source-link.py",
+        ],
+    )
+
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+
+    assert rel == ["real/source.py"]
 
 
 def test_multiple_unknown_file_types_warn_once(
