@@ -21,9 +21,7 @@ These tests exercise:
 
 from __future__ import annotations
 
-import os
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -37,6 +35,8 @@ from topmark.config.resolution.bridge import resolve_toml_sources_and_build_muta
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from topmark.config.model import MutableConfig
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.config.types import PatternSource
@@ -455,9 +455,10 @@ def test_config_resolution_preserves_absolute_cli_path(
 ) -> None:
     """Absolute CLI path options should not be rebased onto the invocation CWD."""
     cwd: Path = tmp_path / "work"
-    absolute_file: Path = (
-        Path(os.environ.get("SYSTEMDRIVE", cwd.drive)) / "topmark-test" / "patterns.txt"
-    )
+    cwd.mkdir()
+    absolute_file: Path = tmp_path / "absolute" / "patterns.txt"
+    absolute_file.parent.mkdir(parents=True)
+    absolute_file.write_text("src/a.py\n", encoding="utf-8")
     monkeypatch.chdir(cwd)
 
     draft: MutableConfig = mutable_config_from_defaults()
