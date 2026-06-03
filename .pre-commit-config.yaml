@@ -109,7 +109,8 @@ repos:
       - id: docs-hygiene
         name: docs hygiene (TopMark)
         entry: python
-        language: system
+        language: python
+        additional_dependencies: ["rich>=15.0.0,<16.0.0"]
         args: ["tools/docs/check_docs_hygiene.py", "--docs-hygiene", "--stats"]
         files: ^(README\.md|CHANGELOG\.md|CONTRIBUTING\.md|INSTALL\.md|docs/.*\.md)$
         pass_filenames: false
@@ -118,7 +119,8 @@ repos:
         # File-oriented check; changed source files are passed to the script.
         name: docstring link style (TopMark)
         entry: python
-        language: system
+        language: python
+        additional_dependencies: ["rich>=15.0.0,<16.0.0"]
         args: ["tools/docs/check_docs_hygiene.py"]
         files: ^src/.*\.py$
         pass_filenames: true
