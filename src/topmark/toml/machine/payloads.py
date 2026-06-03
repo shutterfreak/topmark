@@ -34,6 +34,8 @@ from topmark.core.typing_guards import as_object_dict
 from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.machine.schemas import TomlProvenanceLayerPayload
 from topmark.toml.machine.schemas import TomlProvenancePayload
+from topmark.utils.path import format_config_source_path
+from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -91,7 +93,9 @@ def build_toml_provenance_payload(
     remaining_sources: Iterator[ResolvedTopmarkTomlSource] = iter(resolved_toml.sources)
 
     for layer in layers:
-        scope_root: str | None = str(layer.scope_root) if layer.scope_root is not None else None
+        scope_root: str | None = (
+            format_machine_path(layer.scope_root) if layer.scope_root is not None else None
+        )
 
         if layer.kind == ConfigLayerKind.DEFAULT:
             toml_fragment: dict[str, object] = _normalize_toml_fragment(
@@ -117,7 +121,7 @@ def build_toml_provenance_payload(
 
         out_layers.append(
             TomlProvenanceLayerPayload(
-                origin=str(layer.origin),
+                origin=format_config_source_path(layer.origin),
                 kind=layer.kind.value,
                 precedence=layer.precedence,
                 scope_root=scope_root,

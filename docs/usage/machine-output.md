@@ -637,7 +637,8 @@ High-level structure (keys may be extended over time):
 - `header`: header-related configuration.
 - `formatting`: formatting-related configuration.
 - `writer`: persisted writer options and related settings (enums serialized to strings).
-- `files`: file resolution/filtering options (paths serialized to strings).
+- `files`: file resolution/filtering options (filesystem paths serialized with POSIX `/` separators;
+  synthetic config source identifiers remain stable labels).
 - `policy`: global resolved policy flags (booleans).
 - `policy_by_type`: per-file-type resolved policy overrides.
 
@@ -648,7 +649,7 @@ by a user.
 
 Normalization rules:
 
-- `Path` → string
+- `Path` → POSIX-style string using `/` separators
 - `str`-backed `Enum` / `StrEnum` → string value (`.value`)
 - other `Enum` values → enum member name (`.name`)
 - nested mappings/sequences → standard JSON objects/arrays
@@ -843,6 +844,9 @@ The payload is inspection-oriented rather than a loadable `topmark.toml` documen
 human-facing layered TOML export by preserving ordered layers and the corresponding source-local
 TopMark TOML fragments.
 
+Real filesystem `origin` and `scope_root` values use POSIX `/` separators on all platforms.
+Synthetic layer origins such as built-in defaults are stable labels rather than filesystem paths.
+
 The outer `config_layers` container key belongs to the config machine-readable output domain, while
 the inner provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_root`) are
 owned by \[`topmark.toml.machine.schemas.TomlKey`\][topmark.toml.machine.schemas.TomlKey].
@@ -877,7 +881,8 @@ configuration diagnostics, and a `config_check` status payload.
   - `ok` - whether validation succeeded
   - `strict` - whether strict config-checking mode was enabled
   - `diagnostic_counts` - counts by diagnostic level
-  - `config_files` - config files that contributed to the resolved config
+  - `config_files` - config files that contributed to the resolved config, serialized with POSIX `/`
+    separators for real filesystem paths and stable labels for synthetic sources
 
 The `strict` field reflects the **effective validation strictness** used for the run. It is derived
 from TOML source configuration (`[config].strict`) and may be overridden by CLI or API inputs. This

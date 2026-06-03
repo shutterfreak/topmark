@@ -35,7 +35,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.errors import TomlRenderError
 from topmark.core.logging import get_logger
 from topmark.toml.enums import FilesSerializationMode
@@ -44,6 +43,8 @@ from topmark.toml.utils import as_toml_string_list
 from topmark.toml.utils import as_toml_table_list
 from topmark.toml.utils import insert_if_present
 from topmark.utils.file import rebase_glob_patterns
+from topmark.utils.path import format_config_source_path
+from topmark.utils.path import format_posix_path
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
@@ -54,23 +55,6 @@ if TYPE_CHECKING:
     from topmark.utils.file import RebasedGlobPatterns
 
 logger: TopmarkLogger = get_logger(__name__)
-
-
-def _format_config_source_path(source: Path | SyntheticConfigSource) -> str:
-    """Format real and synthetic config source paths for TOML export.
-
-    Synthetic config sources use bracketed identifiers such as
-    `<built-in topmark defaults>`. These should remain stable identifiers in
-    exported output rather than being normalized relative to the current working
-    directory.
-
-    Args:
-        source: Real filesystem path or synthetic config source identifier.
-
-    Returns:
-        String representation suitable for exported config provenance.
-    """
-    return source.label if isinstance(source, SyntheticConfigSource) else str(source)
 
 
 def config_to_topmark_toml_table(
@@ -150,7 +134,7 @@ def config_to_topmark_toml_table(
         Toml.KEY_INCLUDE_FILE_TYPES: include_file_types_sorted,
         Toml.KEY_EXCLUDE_FILE_TYPES: exclude_file_types_sorted,
         Toml.KEY_CONFIG_FILES: as_toml_string_list(
-            _format_config_source_path(p) for p in config.config_files
+            format_config_source_path(p) for p in config.config_files
         ),
     }
     insert_if_present(
@@ -170,13 +154,13 @@ def config_to_topmark_toml_table(
     if files_serialization_mode == FilesSerializationMode.REBASED:
         # Add files_from, include_from, exclude_from as flattened lists
         files_tbl[Toml.KEY_FILES_FROM] = as_toml_string_list(
-            str(ps.path) for ps in config.files_from
+            format_posix_path(ps.path) for ps in config.files_from
         )
         files_tbl[Toml.KEY_INCLUDE_FROM] = as_toml_string_list(
-            str(ps.path) for ps in config.include_from
+            format_posix_path(ps.path) for ps in config.include_from
         )
         files_tbl[Toml.KEY_EXCLUDE_FROM] = as_toml_string_list(
-            str(ps.path) for ps in config.exclude_from
+            format_posix_path(ps.path) for ps in config.exclude_from
         )
 
         # Flatten pattern groups to CWD, preserving group order
@@ -216,36 +200,36 @@ def config_to_topmark_toml_table(
         # Omit flattened pattern/path lists, emit provenance-oriented tables
         files_tbl[Toml.KEY_INCLUDE_PATTERN_GROUPS] = as_toml_table_list(
             {
-                Toml.KEY_BASE: str(group.base),
+                Toml.KEY_BASE: format_posix_path(group.base),
                 Toml.KEY_PATTERNS: as_toml_string_list(group.patterns),
             }
             for group in config.include_pattern_groups
         )
         files_tbl[Toml.KEY_EXCLUDE_PATTERN_GROUPS] = as_toml_table_list(
             {
-                Toml.KEY_BASE: str(group.base),
+                Toml.KEY_BASE: format_posix_path(group.base),
                 Toml.KEY_PATTERNS: as_toml_string_list(group.patterns),
             }
             for group in config.exclude_pattern_groups
         )
         files_tbl[Toml.KEY_INCLUDE_FROM_SOURCES] = as_toml_table_list(
             {
-                Toml.KEY_BASE: str(ps.base),
-                Toml.KEY_PATH: str(ps.path),
+                Toml.KEY_BASE: format_posix_path(ps.base),
+                Toml.KEY_PATH: format_posix_path(ps.path),
             }
             for ps in config.include_from
         )
         files_tbl[Toml.KEY_EXCLUDE_FROM_SOURCES] = as_toml_table_list(
             {
-                Toml.KEY_BASE: str(ps.base),
-                Toml.KEY_PATH: str(ps.path),
+                Toml.KEY_BASE: format_posix_path(ps.base),
+                Toml.KEY_PATH: format_posix_path(ps.path),
             }
             for ps in config.exclude_from
         )
         files_tbl[Toml.KEY_FILES_FROM_SOURCES] = as_toml_table_list(
             {
-                Toml.KEY_BASE: str(ps.base),
-                Toml.KEY_PATH: str(ps.path),
+                Toml.KEY_BASE: format_posix_path(ps.base),
+                Toml.KEY_PATH: format_posix_path(ps.path),
             }
             for ps in config.files_from
         )

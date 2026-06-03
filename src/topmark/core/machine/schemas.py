@@ -41,6 +41,8 @@ from pathlib import Path
 from typing import TypedDict
 from typing import cast
 
+from topmark.utils.path import format_machine_path
+
 
 class MachineKey(str, Enum):
     """Stable keys shared by all machine-readable output envelopes.
@@ -178,7 +180,7 @@ def normalize_payload(obj: object) -> object:
     """Normalize a payload into JSON-serializable structures.
 
     Conversions:
-      - `Path` -> `str`
+      - `Path` -> POSIX path representation
       - `Enum`:
         - `str`-backed Enum (e.g. StrEnum) -> `value`
         - other Enum -> `name`
@@ -199,7 +201,7 @@ def normalize_payload(obj: object) -> object:
         A JSON-serializable representation of `obj`.
     """
     if isinstance(obj, Path):
-        return str(obj)
+        return format_machine_path(obj)
 
     if isinstance(obj, Enum):
         if isinstance(obj, str):

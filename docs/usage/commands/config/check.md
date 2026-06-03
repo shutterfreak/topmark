@@ -203,7 +203,7 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
-{% include-markdown "\_snippets/machine-path-contract-current-scope.md" %}
+{% include-markdown "\_snippets/path-serialization-contract.md" %}
 
 Notes:
 
