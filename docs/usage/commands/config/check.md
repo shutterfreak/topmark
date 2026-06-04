@@ -87,7 +87,12 @@ ______________________________________________________________________
   configuration-loading validation.
 
 TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation produces the effective runtime configuration. See
+files, and CLI overrides before staged validation produces the effective runtime configuration.
+
+For file-backed configuration sources, TopMark determines configuration-source identity using the
+resolved configuration-file target. If a configuration file is reached through a symlink,
+precedence, scope evaluation, applicability checks, and provenance operate on the resolved target
+rather than the symlink spelling. See
 [Configuration discovery, precedence, and policy](../../../configuration/discovery.md) for the full
 configuration-loading and validation contract.
 
@@ -122,6 +127,10 @@ file-processing inputs:
 
 Use `--config PATH` to validate an explicit config file, or rely on normal config discovery to
 validate the effective runtime configuration for the current working directory.
+
+When `--config PATH` refers to a symlinked configuration file, validation uses the resolved
+configuration target as the configuration source. This mirrors the configuration-source identity
+model used throughout configuration discovery and layered provenance reporting.
 
 ______________________________________________________________________
 
@@ -203,6 +212,10 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
+Machine-readable configuration provenance uses configuration-source identity based on the resolved
+configuration-file target. Configuration-source paths reported by machine-readable output therefore
+describe the resolved configuration target rather than a symlink spelling used to reach it.
+
 {% include-markdown "\_snippets/path-serialization-contract.md" %}
 
 Notes:
@@ -216,6 +229,8 @@ Notes:
   validity decision is evaluated across these staged configuration-loading validation logs
   collectively. Identifier normalization and runtime applicability evaluation participate in this
   staged validation flow.
+- Configuration provenance, scope applicability, and precedence evaluation use configuration-source
+  identity based on resolved configuration-file targets.
 
 Example (`[config].strict = true` resolved from TOML, with no CLI override):
 
@@ -360,3 +375,7 @@ ______________________________________________________________________
   [`topmark config dump`](./dump.md).
 - **Unexpected validation failures**: use `-vv` or machine-readable output to inspect staged
   validation diagnostics.
+- **Configuration path differs from invocation spelling**: configuration provenance reports the
+  resolved configuration target. If a configuration file is loaded through a symlink,
+  machine-readable provenance and layered configuration views may show the resolved target rather
+  than the symlink spelling.

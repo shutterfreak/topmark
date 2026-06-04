@@ -112,16 +112,25 @@ strict = false
 
 Each layer includes:
 
-- `origin` - where the configuration came from (e.g. `<defaults>`, file path)
+- `origin` - where the configuration came from (e.g. `<defaults>`, resolved configuration-file path)
 - `kind` - layer type (e.g. `default`, `discovered`)
 - `precedence` - merge order
-- `scope_root` - optional root for discovered configs
+- `scope_root` - optional applicability root associated with the configuration source
 - `toml` - the source-local TopMark TOML fragment after TOML-layer validation
+
+For file-backed layers, `origin` and `scope_root` describe the resolved configuration-file target
+used for configuration-source identity. If a configuration file is loaded through a symlink, layered
+provenance reports the resolved target rather than the symlink spelling.
 
 The second TOML document is identical to the standard flattened runtime configuration output.
 
 TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation produces the effective runtime configuration. See
+files, and CLI overrides before staged validation produces the effective runtime configuration.
+
+For file-backed configuration sources, TopMark determines configuration-source identity using the
+resolved configuration-file target. If a configuration file is reached through a symlink,
+precedence, scope evaluation, applicability checks, and layered provenance operate on the resolved
+target rather than the symlink spelling. See
 [Configuration discovery, precedence, and policy](../../../configuration/discovery.md) for the full
 configuration-loading and validation contract.
 
@@ -141,6 +150,10 @@ ______________________________________________________________________
 - **`--files-from`** is accepted for compatibility, but listed paths do not affect the dumped
   configuration. File lists are inputs for file-processing commands, not runtime configuration
   state.
+
+When `--config PATH` refers to a symlinked configuration file, configuration loading and layered
+provenance use the resolved configuration target as the configuration source. This mirrors the
+configuration-source identity model used throughout configuration discovery.
 
 Positional PATH arguments are rejected as invalid CLI usage. `config dump` explains configuration
 state; it does not process source files.
@@ -182,6 +195,10 @@ The canonical schema, stable `kind` values, and shared conventions are documente
 Machine-readable configuration snapshots emit normalized canonical qualified file type identities
 after configuration normalization.
 
+Machine-readable configuration provenance uses configuration-source identity based on the resolved
+configuration-file target. Configuration-source paths reported by machine-readable output therefore
+describe the resolved configuration target rather than a symlink spelling used to reach it.
+
 {% include-markdown "\_snippets/path-serialization-contract.md" %}
 
 Notes:
@@ -191,6 +208,9 @@ Notes:
   validation performed per source before layered configuration merging.
 - With `--show-layers`, machine-readable output also includes a `config_provenance` payload before
   the flattened runtime configuration snapshot.
+- File-backed provenance entries use configuration-source identity based on resolved configuration
+  targets. `origin` and `scope_root` therefore describe resolved configuration targets rather than
+  symlink spellings.
 - Diagnostics are not emitted for this command; it is an inspection view of the effective runtime
   configuration.
 
@@ -214,6 +234,9 @@ With `--show-layers`, the JSON envelope becomes:
   "config": { /* ConfigPayload */ }
 }
 ```
+
+The `config_provenance` payload reports configuration layers using configuration-source identity.
+For file-backed layers, provenance paths describe resolved configuration targets.
 
 ### NDJSON schema
 
@@ -326,3 +349,6 @@ ______________________________________________________________________
   configuration.
 - **Unexpected configuration layering**: use `--show-layers` to inspect layered provenance and
   validated TOML fragments.
+- **Configuration path differs from invocation spelling**: layered provenance and machine-readable
+  provenance report resolved configuration targets. If a configuration file is loaded through a
+  symlink, `origin` and `scope_root` may differ from the path spelling supplied on the command line.

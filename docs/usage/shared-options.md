@@ -59,6 +59,9 @@ TopMark intentionally separates:
 - machine-readable JSON and NDJSON serialization;
 - process exit-code semantics.
 
+For filesystem-processing commands, machine-readable path fields report selected processing paths
+rather than preserving the original CLI path spelling.
+
 > [!NOTE] Verbosity, quiet mode and color rendering affect only human-facing TEXT rendering.
 
 ______________________________________________________________________
@@ -171,6 +174,10 @@ Runtime file-processing commands ([`check`](commands/check.md), [`strip`](comman
 These modes are mutually exclusive: do not mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
 
+For filesystem-backed inputs, TopMark normalizes filesystem identity and selects processing paths
+before runtime processing begins. Multiple path spellings that resolve to the same filesystem target
+(for example a symlink and its target) are treated as a single processing target.
+
 > [!NOTE] **STDIN input**
 >
 > TopMark does not provide a `--stdin` option flag. Use the POSIX-style `-` PATH sentinel together
@@ -180,6 +187,10 @@ These modes are mutually exclusive: do not mix `-` (content mode) with `--files-
 
 In content STDIN mode, `--stdin-filename` is required so TopMark can resolve file type, processor
 binding, and path-sensitive policy exactly as it would for a real file path.
+
+Because content mode does not reference an existing filesystem object, filesystem-identity
+normalization and processing-path selection do not apply. The supplied `--stdin-filename` acts only
+as a virtual path for runtime resolution and policy evaluation.
 
 For mutation commands (`check` and `strip`), `--apply` in content mode writes transformed content to
 STDOUT and routes diagnostics to STDERR. This ensures consistent file-type resolution and runtime
@@ -199,6 +210,11 @@ Layered configuration loading and discovery behavior do not apply to:
 - registry commands
 - [`version`](commands/version.md)
 
+For file-backed configuration sources, configuration discovery uses configuration-source identity
+based on the resolved configuration-file target. Layered provenance, applicability evaluation, and
+configuration precedence are therefore based on resolved configuration targets rather than symlink
+spellings.
+
 ______________________________________________________________________
 
 ## See also
@@ -209,4 +225,5 @@ ______________________________________________________________________
 - [Policies](policies.md)
 - [Exit codes](exit-codes.md)
 - [Pre-commit integration](pre-commit.md)
+- [Filesystem identity and processing paths](../dev/resolution.md#filesystem-identity-and-processing-paths)
 - [Machine-readable output](../usage/machine-output.md)

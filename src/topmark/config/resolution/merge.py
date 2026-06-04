@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.logging import get_logger
+from topmark.utils.path import canonical_processing_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -40,16 +41,17 @@ logger: TopmarkLogger = get_logger(__name__)
 
 def _is_within_scope(path: Path, scope_root: Path) -> bool:
     """Return whether `path` is within the given layer scope root."""
-    resolved_path: Path = path.resolve()
+    resolved_path: Path = canonical_processing_path(path)
+    # The target path is an existing file selected for processing, so strict
+    # canonical processing identity is appropriate. Scope roots, however, may be
+    # provenance-only roots from synthetic or test config layers; normalize them
+    # non-strictly so applicability can still be evaluated.
     resolved_scope_root: Path = scope_root.resolve()
-    result: bool
     try:
         resolved_path.relative_to(resolved_scope_root)
-        result = True
     except ValueError:
-        result = False
-
-    return result
+        return False
+    return True
 
 
 # ---- Layer merge / applicability helpers ----
@@ -94,7 +96,7 @@ def select_applicable_layers(
     Returns:
         Applicable layers in their original precedence order.
     """
-    resolved_path: Path = path.resolve()
+    resolved_path: Path = canonical_processing_path(path)
     layer_list: list[ConfigLayer] = list(layers)
     applicable: list[ConfigLayer] = []
 
@@ -133,6 +135,9 @@ def build_effective_config_for_path(
     """
     applicable: list[ConfigLayer] = select_applicable_layers(layers, path)
     draft: MutableConfig = merge_layers_globally(applicable)
+    # Logging should not introduce stricter filesystem requirements than layer
+    # selection itself. Keep this non-strict so synthetic or missing-path tests
+    # fail only at the behavior under test, not while formatting diagnostics.
     logger.debug(
         "Built effective config for %s from %d applicable layer(s)",
         path.resolve(),

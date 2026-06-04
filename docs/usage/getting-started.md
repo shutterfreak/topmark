@@ -131,6 +131,12 @@ Check if the files have TopMark headers compliant with the settings defined.
 topmark check .
 ```
 
+> [!NOTE]
+>
+> TopMark normalizes filesystem identity before processing files. If a file is reachable through
+> multiple path spellings (for example a symlink and its target), TopMark selects a canonical
+> processing path and processes the target once.
+
 ______________________________________________________________________
 
 ## 4. Preview changes (unified diff)
@@ -151,6 +157,12 @@ You can add / update the TopMark headers in files by specifying `--apply`:
 ```bash
 topmark check --apply .
 ```
+
+> [!TIP]
+>
+> Generated filesystem-related header fields such as `file_relpath` and `file_abspath` describe the
+> selected processing target. If a file is reached through a symlink, header metadata reflects the
+> resolved target TopMark reads and writes.
 
 ______________________________________________________________________
 
@@ -210,6 +222,7 @@ Continue with:
 
 - [Configuration discovery and precedence](./configuration.md)
 - [Filtering](./filtering.md)
+- [Machine-readable output](./machine-output.md)
 - [Pre-commit integration](./pre-commit.md)
 - [CI integration](./ci.md)
 - [Exit codes](./exit-codes.md)

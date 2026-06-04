@@ -223,6 +223,31 @@ comparisons and joins across payloads.
 See [Registry model](../dev/registry-model.md#qualified-vs-local-identifiers) for the full identity
 contract.
 
+### Filesystem path fields
+
+Machine-readable filesystem path fields expose TopMark's selected processing paths.
+
+A processing path is selected after discovery, filtering, filesystem-identity normalization, and
+deduplication. It is not necessarily the original CLI argument, configuration entry, glob match, or
+symlink spelling supplied by the user.
+
+TopMark currently identifies existing processing inputs by resolved processing target path. For
+example, if both of these paths refer to the same target:
+
+```text
+real/source.py
+links/source-link.py
+```
+
+machine-readable output may report only:
+
+```text
+real/source.py
+```
+
+The emitted path is still serialized with POSIX `/` separators on all platforms, as documented in
+the path-representation contract above.
+
 ______________________________________________________________________
 
 ## Resolution diagnostics ([`probe`](../usage/commands/probe.md))
@@ -233,6 +258,10 @@ not compute header changes, diffs, strip plans, or write plans.
 
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
+
+Probe output also reports processing paths after discovery and filesystem-identity normalization.
+When a symlinked input reaches probing, the emitted path describes the resolved processing target
+rather than preserving the symlink spelling.
 
 Probe machine-readable output is unaffected by TEXT verbosity or quiet mode. The JSON and NDJSON
 formats expose the same resolution evidence used by the human-facing probe renderers:
@@ -395,8 +424,10 @@ Filtered probe payloads may use one of these reasons:
 
 Fields:
 
-- `path`: probed or explicitly requested filesystem path, serialized with POSIX `/` separators. For
-  filtered and missing explicit inputs, this is the path supplied to the command.
+- `path`: probed filesystem processing path, serialized with POSIX `/` separators. For normal probe
+  payloads, this is the selected processing path after filesystem-identity normalization. For
+  filtered and missing explicit inputs, this remains the explicit path supplied to the command
+  because no normal processing path was selected.
 - `status`: probe status, currently one of:
   - `resolved` - a file type and processor were selected.
   - `unsupported` - no file type candidate matched.
@@ -597,10 +628,15 @@ The canonical builders and typing live under:
 - \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers] (JSON/NDJSON
   serialization)
 
+Per-file result payloads report the selected processing path. If a file is reached through a
+symlink, the emitted `path` describes the resolved processing target rather than the symlink
+spelling. This is the same path identity used by runtime pipeline processing and generated
+filesystem-related header metadata.
+
 At a high level, per-file results include:
 
 - identity:
-  - `path` (serialized with POSIX `/` separators)
+  - `path` (selected processing path, serialized with POSIX `/` separators)
   - `file_type` (resolved canonical TopMark file type key, for example `topmark:python`)
 - pipeline execution:
   - executed step names
@@ -846,6 +882,11 @@ TopMark TOML fragments.
 
 Real filesystem `origin` and `scope_root` values use POSIX `/` separators on all platforms.
 Synthetic layer origins such as built-in defaults are stable labels rather than filesystem paths.
+
+File-backed configuration provenance uses configuration-source identity based on the resolved
+configuration-file target. If a configuration file is loaded through a symlink, `origin` and
+`scope_root` describe the resolved configuration target and its scope rather than the symlink
+spelling.
 
 The outer `config_layers` container key belongs to the config machine-readable output domain, while
 the inner provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_root`) are
@@ -1176,6 +1217,8 @@ Consumers should:
 - Assume additive fields may appear over time within the 1.x compatibility model.
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names.
+- Treat filesystem `path`, `origin`, and `scope_root` fields as serialized processing/provenance
+  paths, not as lossless echoes of the original invocation spelling.
 
 Breaking machine-readable output changes should be signaled through Conventional Commits using the
 `!` marker and documented in the changelog.

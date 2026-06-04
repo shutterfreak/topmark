@@ -22,7 +22,35 @@ TopMark runtime configuration may be provided through:
 Configuration is resolved through layered discovery, normalization, and precedence rules.
 Higher-precedence layers override lower-precedence layers.
 
+For file-backed configuration sources, TopMark determines configuration-source identity using the
+resolved configuration-file target. Symlink spellings are not preserved for precedence, scope, or
+applicability evaluation.
+
 {% include-markdown "\_snippets/terminology.md" %}
+
+______________________________________________________________________
+
+## Configuration-source identity
+
+TopMark evaluates file-backed configuration sources using configuration-source identity rather than
+invocation spelling.
+
+Examples such as:
+
+```text
+real/topmark.toml
+link-to-topmark.toml
+```
+
+may refer to the same configuration source.
+
+Configuration precedence, scope evaluation, layered configuration export, and machine-readable
+configuration provenance operate on the resolved configuration-file target.
+
+> [!NOTE]
+>
+> This behavior mirrors the processing-path contract used for runtime file processing. TopMark
+> normalizes filesystem identity before configuration applicability and runtime evaluation.
 
 ______________________________________________________________________
 
@@ -210,10 +238,17 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/runtime-configuration-model.md" %}
 
+Runtime evaluation consumes the effective configuration produced after discovery, precedence,
+normalization, and configuration-source identity resolution have completed.
+
+For configuration files loaded through symlinks, the effective configuration is associated with the
+resolved configuration target rather than the symlink spelling used to reach it.
+
 ______________________________________________________________________
 
 ## See also
 
+- [Machine-readable output](machine-output.md#tomlprovenancepayload)
 - [Filtering recipes and behavior](filtering.md)
 - [Configuration overview](../configuration/index.md)
 - [Configuration discovery, precedence, and policy](../configuration/discovery.md)

@@ -35,6 +35,11 @@ Pipeline execution consumes an immutable \[`FrozenConfig`\][topmark.config.model
 runtime options assembled from the TOML → FrozenConfig → runtime flow documented in
 [`Architecture`](architecture.md) and [`Configuration discovery`](../configuration/discovery.md).
 
+Pipeline execution also consumes a selected **processing path**. Normal file-list resolution
+normalizes filesystem identity, deduplicates multiple path spellings for the same target, and passes
+the canonical processing path into the pipeline. Pipeline steps therefore operate on processing
+paths rather than preserving original CLI, configuration, glob, or symlink spellings.
+
 Source-local TOML options such as `[config].root` and `strict` are resolved before pipeline
 execution. They influence configuration discovery and staged config-loading validation behavior, but
 do not become layered configuration fields.
@@ -61,13 +66,20 @@ ______________________________________________________________________
 
 All pipelines are built from the same core phases:
 
-1. **Discovery** - identify file type and viability
+1. **Input selection** - discover files, normalize filesystem identity, deduplicate, and select
+   processing paths
+1. **Discovery** - identify file type and viability for each processing path
 1. **Inspection** - read content and detect existing headers
 1. **Evaluation** - generate and compare expected headers
 1. **Mutation (optional)** - plan, patch, and/or write changes
 
 The `probe` pipeline is an exception: it only executes the resolution phase and stops immediately
 after producing probe results.
+
+Input selection happens before ordinary pipeline execution. This includes symlink handling: file
+symlink spellings and their targets are collapsed to the resolved processing target before pipeline
+steps run. Synthetic probe contexts for filtered or missing explicit inputs preserve diagnostic
+input information only for those paths that never became normal processing paths.
 
 ### Unified Pipeline Flow
 
@@ -130,10 +142,15 @@ TopMark pipelines are:
 - step-ordered
 - side-effect constrained
 - idempotent
+- processing-path based
 - presentation-independent
 
 Pipeline steps mutate processing context state. CLI views, API DTOs, and machine-readable output
 classify final outcomes from accumulated statuses and hints.
+
+For filesystem inputs, the processing context path is the selected processing path. It may differ
+from the path spelling supplied on the command line or in configuration when symlinks or equivalent
+relative spellings are involved.
 
 ______________________________________________________________________
 
@@ -178,6 +195,9 @@ This pipeline powers [`topmark probe`](../usage/commands/probe.md) and
 It halts immediately after probing and does not perform inspection, comparison, or mutation.
 Discovery-level filtering is reported by orchestration via synthetic probe results for explicitly
 requested paths that did not reach probing.
+
+Probe results that do reach runtime probing report processing paths. They should not be interpreted
+as a lossless echo of the original invocation spelling.
 
 ### SCAN
 
@@ -231,8 +251,10 @@ SP --> B --> T
 - No determination yet whether changes are needed
 
 `BuilderStep` derives built-in header metadata fields such as `file_relpath`, `file_abspath`,
-`relpath`, and `abspath`. These generated header metadata path fields are serialized with POSIX `/`
-separators on all platforms.
+`relpath`, and `abspath` from the selected processing target. If a file was reached through a
+symlink, these generated fields describe the resolved target TopMark reads and writes rather than
+the symlink spelling. Header metadata path fields are serialized with POSIX `/` separators on all
+platforms.
 
 Useful for debugging header generation.
 
@@ -443,20 +465,20 @@ Each step implements the \[`Step`\][topmark.pipeline.protocols.Step] protocol an
 - May halt execution via `ctx.flow.halt`
 - Emits structured hints for diagnostics
 
-| Step                                                             | Responsibility                                                                      |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, and processor binding |
-| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`Resolution`](resolution.md))        |
-| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                      |
-| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                            |
-| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                       |
-| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values and POSIX-serialized header metadata paths       |
-| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                  |
-| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                 |
-| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                               |
-| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                               |
-| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff with human-facing display labels                              |
-| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                     |
+| Step                                                             | Responsibility                                                                                            |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, and processor binding                       |
+| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`Resolution`](resolution.md))                              |
+| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                                            |
+| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                                                  |
+| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                                             |
+| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values and POSIX-serialized metadata paths for the selected processing target |
+| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                                        |
+| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                                       |
+| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                                                     |
+| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                                                     |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff with human-facing display labels                                                    |
+| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                                           |
 
 ______________________________________________________________________
 
@@ -492,6 +514,8 @@ ______________________________________________________________________
 
 - **Immutability:** Pipelines are `Final[tuple[Step, ...]]`
 - **Determinism:** Same input → same outcome
+- **Processing-path identity:** pipeline steps operate on selected processing paths, not raw
+  invocation spellings
 - **Dry-run safety:** No writes without `--apply`
 - **Separation of concerns:** Steps mutate context, views classify outcomes
 - **Runtime/configuration separation:** pipeline execution consumes resolved runtime configuration
@@ -501,13 +525,16 @@ ______________________________________________________________________
 
 ## See also
 
-- [`Architecture`](./architecture.md) - TOML → FrozenConfig → runtime overview
-- [`Pipelines (Reference)`](./pipelines-reference.md) - generated API-backed reference entry points
-- [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical definitions for pipeline,
+- [Architecture](./architecture.md) - TOML → FrozenConfig → runtime overview
+- [Resolution](./resolution.md)
+  - [Filesystem identity and processing paths](./resolution.md#filesystem-identity-and-processing-paths)
+    \- filesystem identity, symlink handling, and processing-path selection
+- [Pipelines (Reference)](./pipelines-reference.md) - generated API-backed reference entry points
+- [Terminology and Canonical Vocabulary](../terminology.md) - canonical definitions for pipeline,
   status, hint, runtime, and machine-readable terminology
-- [`Machine-readable output`](../usage/machine-output.md) - how pipeline results are exposed in JSON
+- [Machine-readable output](../usage/machine-output.md) - how pipeline results are exposed in JSON
   and NDJSON outputs
-- [`Configuration discovery`](../configuration/discovery.md) - source-local TOML options and
+- [Configuration discovery](../configuration/discovery.md) - source-local TOML options and
   precedence
 
 This pipeline model is the backbone of TopMark's reliability and extensibility. New behavior is

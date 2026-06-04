@@ -161,6 +161,11 @@ class ResolverStep(BaseStep):
     shared resolver applies a deterministic precedence and tie-break policy and
     returns at most one effective winner.
 
+    The resolver consumes `ctx.path` as the pipeline's processing path. It does
+    not retain or compare the original CLI/config spelling. Symlink-aware identity
+    decisions therefore belong to file-list/config resolution before the pipeline
+    context is bootstrapped.
+
     Axes written:
       - resolve
 

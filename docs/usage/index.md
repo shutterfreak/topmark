@@ -16,7 +16,7 @@ This section contains the user-facing documentation for installing, running, con
 integrating TopMark.
 
 The pages in this section focus on practical CLI usage, repository workflows, configuration,
-validation, and automation.
+validation, automation, filesystem identity, file discovery, and machine-readable integration.
 
 Start here if you want to:
 
@@ -24,6 +24,7 @@ Start here if you want to:
 - run TopMark from the CLI;
 - upgrade an existing repository to TopMark 1.0;
 - configure header fields, policies, filtering, and file discovery;
+- understand filesystem identity, processing paths, and symlink behavior;
 - integrate TopMark with pre-commit or CI;
 - understand exit codes, reports, and machine-readable output.
 
@@ -39,6 +40,8 @@ ______________________________________________________________________
   output selection.
 - [Configuration](configuration.md) - configure layered runtime behavior and policy settings.
 - [Filtering](filtering.md) - include, exclude, and constrain file processing.
+- [Machine-readable output](machine-output.md) - understand processing paths, configuration
+  provenance, and stable automation contracts.
 - [Policies](policies.md) - control insertion, update, validation, and stripping behavior.
 - [Header placement](header-placement.md) - understand how TopMark locates and inserts headers.
 - [Pre-commit integration](pre-commit.md) - integrate TopMark into local developer workflows.

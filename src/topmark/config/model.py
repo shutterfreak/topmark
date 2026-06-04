@@ -70,7 +70,6 @@ from topmark.core.errors import AmbiguousFileTypeIdentifierError
 from topmark.core.errors import ConfigValidationError
 from topmark.core.errors import InvalidRegistryIdentityError
 from topmark.core.logging import get_logger
-from topmark.filetypes.model import FileType
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:

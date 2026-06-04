@@ -69,6 +69,9 @@ Notes:
   configuration-loading or runtime-resolution outcomes depending on command behavior.
 - Explicit missing literal paths are treated as hard input errors (66). Unmatched glob patterns are
   soft diagnostics and do not produce 66.
+- Filesystem identity normalization and processing-path selection do not affect exit-code semantics.
+  Different path spellings that resolve to the same filesystem target contribute to the same runtime
+  processing outcome.
 
 ______________________________________________________________________
 
@@ -85,6 +88,10 @@ Exit codes communicate:
 
 Machine-readable JSON and NDJSON output communicate structured diagnostics, semantic outcomes,
 runtime-resolution details, and processing metadata.
+
+For filesystem inputs, machine-readable path fields report selected processing paths. Exit codes are
+derived from runtime outcomes and do not depend on whether a file was reached through a symlink or
+another equivalent path spelling.
 
 This separation keeps automation deterministic while preserving stable machine-readable output
 contracts independently from process exit semantics.
@@ -113,6 +120,8 @@ Notes:
 - Explicit missing input paths are reported as errors (66), even if no files are selected for
   processing.
 - Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
+- Files reached through symlinks contribute to the same runtime outcome as their selected processing
+  target and do not introduce additional exit-code states.
 
 ______________________________________________________________________
 
@@ -135,6 +144,8 @@ Notes:
 - Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
 - `3` is a semantic change signal, not a runtime failure: it indicates that headers would be
   stripped.
+- Files reached through symlinks contribute to the same runtime outcome as their selected processing
+  target and do not introduce additional exit-code states.
 
 ______________________________________________________________________
 
@@ -157,6 +168,8 @@ Notes:
   probe outcomes.
 - Unmatched glob patterns are reported as filtered semantic outcomes and result in exit code 69.
 - Ambiguous or unresolved file-type filtering may also contribute to semantic resolution outcomes.
+- Filesystem-identity normalization occurs before runtime probing. Exit-code semantics are based on
+  probe outcomes for selected processing paths rather than the original input spelling.
 
 ______________________________________________________________________
 
@@ -266,6 +279,9 @@ semantic outcomes occur during a single invocation.
 This ensures that hard runtime or environment failures take precedence over informational, semantic,
 or availability-oriented outcomes.
 
+Filesystem-identity normalization and processing-path selection occur before exit-code evaluation
+and do not introduce additional priority levels.
+
 Example:
 
 ```sh
@@ -308,3 +324,5 @@ ______________________________________________________________________
 - [Pre-commit integration](pre-commit.md)
 - [Configuration](configuration.md)
 - [Configuration discovery, precedence, and policy](../configuration/discovery.md)
+- [Machine-readable output](machine-output.md)
+- [Filesystem identity and processing paths](../dev/resolution.md#filesystem-identity-and-processing-paths)

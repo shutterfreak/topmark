@@ -25,7 +25,7 @@ Instead, it exposes the resolution decision process, including:
 - the runtime-resolution status and reason
 - all scored candidate file types
 - match signals (extension, filename, pattern, content probing)
-- explicit inputs filtered during discovery before file-type resolution
+- explicit inputs filtered during discovery before runtime probing
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -105,6 +105,14 @@ working directory; path-based filters run before file-type filters, and exclude 
 precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
 contract.
 
+During discovery, TopMark normalizes filesystem identity and selects processing paths before runtime
+probing begins. If multiple path spellings resolve to the same filesystem target (for example a
+symlink and its target), `probe` operates on the selected processing path rather than preserving the
+original spelling.
+
+Filtered and missing explicit inputs remain diagnostic records because they never became normal
+processing paths.
+
 Unlike processing commands, `probe` may report explicitly requested files as filtered diagnostic
 results instead of silently omitting them.
 
@@ -143,6 +151,13 @@ topmark probe --exclude-file-types topmark:python src/
 See [Filtering](../filtering.md#path-based-filtering) for CWD-resolution rules, missing vs unmatched
 input behavior, include/exclude precedence, and STDIN interactions.
 
+Notes:
+
+- Existing filesystem inputs are normalized to selected processing paths before runtime probing.
+- Symlink spellings are not preserved for runtime identity or machine-readable probe-path fields.
+- Missing and filtered explicit inputs may still report the original diagnostic input path because
+  no processing path was selected.
+
 ### Example
 
 ```bash
@@ -163,6 +178,8 @@ ______________________________________________________________________
   [`strip`](strip.md), while preserving filtered explicit inputs as diagnostic probe results.
 - Shared runtime resolution: uses the same normalization, scoring, and runtime resolution logic as
   [`check`](check.md) and [`strip`](strip.md).
+- Processing-path identity: runtime probing operates on selected processing paths. Multiple path
+  spellings that resolve to the same target are collapsed before ordinary probe execution.
 - Candidate visibility: exposes selected file type, processor, candidate scores, match signals,
   runtime-resolution status, and runtime-resolution reason.
 - Idempotency: repeated runs produce identical output for unchanged inputs.
@@ -203,8 +220,10 @@ For the canonical schema, see:
 - [Machine-readable output](../machine-output.md)
 - [Machine-readable format conventions](../../dev/machine-formats.md)
 
-Probe machine-readable output emits probe paths with POSIX `/` separators and resolved file type
-identities using canonical qualified identity strings when available.
+Probe machine-readable output emits processing paths with POSIX `/` separators and resolved file
+type identities using canonical qualified identity strings when available. For probe results that
+reach runtime probing, the emitted path describes the selected processing target rather than the
+original symlink or invocation spelling.
 
 ### Shared output controls
 
@@ -252,6 +271,10 @@ ______________________________________________________________________
 
 Only explicit inputs that actually fail selection are represented as filtered probe payloads.
 
+Probe payloads that reach runtime probing report the selected processing path. Filtered and missing
+explicit inputs may instead report the original diagnostic input path because no processing path was
+selected.
+
 Directories that successfully expand to selected files are not emitted as additional filtered probe
 results. Explicit missing paths are represented as missing-input probe results rather than filtered
 probe results.
@@ -286,8 +309,12 @@ Filtered probe results may use one of the following reasons:
 Canonical file type identities in machine-readable output use normalized qualified-key identities
 such as `topmark:python`.
 
-Probe payload `path` values use POSIX `/` separators on all platforms. Human TEXT output remains
-display-oriented and may use the host platform's native path representation.
+Probe payload `path` values represent selected processing paths serialized with POSIX `/` separators
+on all platforms. Human TEXT output remains display-oriented and may use the host platform's native
+path representation.
+
+Filtered and missing explicit-input probe results are an exception: they may report the original
+diagnostic input path because runtime processing-path selection never occurred.
 
 ______________________________________________________________________
 
@@ -397,6 +424,9 @@ ______________________________________________________________________
 
 - **Unsupported file**: ensure file type patterns, bindings, or extensions are configured correctly.
 - **Unexpected resolution result**: use `-vv` to inspect candidate scores and match signals.
+- **Symlink path not shown in output**: `probe` reports selected processing paths for inputs that
+  reach runtime probing. If a symlink and its target resolve to the same file, the emitted probe
+  path describes the resolved processing target rather than the symlink spelling.
 - **File type filter does not match**: prefer qualified identifiers such as `topmark:python` when
   local identifiers may be ambiguous.
 - **No processor**: check that a processor binding exists for the selected file type.

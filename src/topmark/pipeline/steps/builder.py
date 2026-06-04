@@ -42,6 +42,7 @@ from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import BuilderView
 from topmark.utils.file import compute_relpath
+from topmark.utils.path import canonical_processing_path
 from topmark.utils.path import canonicalize_existing_path
 from topmark.utils.path import format_header_metadata_path
 
@@ -120,11 +121,16 @@ class BuilderStep(BaseStep):
             `FrozenConfig.field_values`.
 
         Path semantics:
-            - `file_path` is `ctx.path` as provided by config resolution.
-              It may be relative or absolute depending on how the file was discovered.
+            - `file_path` is `ctx.path` as supplied when the processing context was bootstrapped.
+              In normal file-list processing this is TopMark's canonical processing path, not
+              necessarily the original CLI/config spelling. Lower-level callers may still pass a
+              symlink spelling directly; the builder canonicalizes filesystem metadata again.
             - For regular filesystem input, `file`, `file_relpath`, and `file_abspath`
-              are derived from the canonical filesystem spelling of the resolved path.
-              This avoids casing-only metadata drift on case-insensitive filesystems.
+              are derived from the canonical filesystem spelling of the resolved
+              processing target. Symlink spelling is not preserved in generated
+              header metadata. This keeps repeated runs idempotent when a symlink
+              and its target are both selected, and avoids casing-only metadata drift
+              on case-insensitive filesystems.
             - In stdin mode, `file`, `file_relpath`, and `file_abspath` are derived from
               the logical `stdin_filename`, not the materialized temporary file path.
             - `file_relpath` and `relpath` are computed by calling
@@ -179,11 +185,16 @@ class BuilderStep(BaseStep):
 
         # In stdin mode, use `stdin_filename` (if provided) for logical header metadata.
         # Otherwise, use the canonical filesystem spelling of the existing content path.
-        # This keeps generated metadata tied to filesystem identity instead of invocation spelling.
+        # This keeps generated metadata tied to the resolved processing target instead of
+        # invocation spelling. In particular, symlinked filesystem inputs generate path
+        # metadata for the target that TopMark will actually read/write. A separate warning
+        # about original symlink spelling would require retaining that spelling before file-list
+        # resolution canonicalizes `ctx.path`, so this step deliberately documents rather than
+        # diagnoses that policy.
         header_path: Path = (
             Path(ctx.run_options.stdin_filename)
             if (ctx.run_options.stdin_mode and ctx.run_options.stdin_filename)
-            else canonicalize_existing_path(content_path)
+            else canonical_processing_path(content_path)
         )
 
         # File absolute path is derived from the logical header path so stdin mode reports the

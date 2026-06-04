@@ -27,6 +27,7 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
 from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.logging import get_logger
+from topmark.utils.path import canonical_processing_path
 
 if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
@@ -84,36 +85,48 @@ class ConfigLayer:
 
 def _make_config_layer(
     *,
-    origin: Path | SyntheticConfigSource,
+    origin: SyntheticConfigSource,
     kind: ConfigLayerKind,
     precedence: int,
     config: MutableConfig,
-    scope_root: Path | None = None,
 ) -> ConfigLayer:
-    """Return a normalized config provenance layer.
+    """Return a config provenance layer for a synthetic origin.
 
-    Real filesystem origins and scope roots are resolved eagerly so downstream
-    precedence and applicability logic can compare normalized filesystem
-    locations. Synthetic origins are preserved as typed provenance markers and
+    File-backed TOML sources are handled by `_make_layer_from_layered_toml_table()`
+    so it can distinguish strict processing identity from best-effort provenance
+    normalization. Synthetic origins are preserved as typed provenance markers and
     never normalized as paths.
     """
-    normalized_origin: Path | SyntheticConfigSource = (
-        origin.resolve() if isinstance(origin, Path) else origin
-    )
-    normalized_scope_root: Path | None = scope_root
-
-    if normalized_scope_root is None and isinstance(normalized_origin, Path):
-        normalized_scope_root = normalized_origin.parent.resolve()
-    elif normalized_scope_root is not None:
-        normalized_scope_root = normalized_scope_root.resolve()
-
     return ConfigLayer(
-        origin=normalized_origin,
-        scope_root=normalized_scope_root,
+        origin=origin,
+        scope_root=None,
         precedence=precedence,
         kind=kind,
         config=config,
     )
+
+
+def _best_effort_provenance_path(path: Path) -> Path:
+    """Return a normalized provenance path without requiring the file to exist.
+
+    Resolved TOML source records normally point to existing files because loaded
+    sources were canonicalized by `resolve_topmark_toml_sources()`. Some machine
+    payload and bridge tests intentionally construct provenance-only paths that
+    do not exist on disk. For those records, use non-strict resolution so layer
+    construction can still preserve stable provenance without pretending the path
+    is a processable filesystem target.
+
+    Args:
+        path: File-backed provenance path.
+
+    Returns:
+        Canonical processing path when the file exists, otherwise a non-strict
+        resolved path suitable for provenance-only records.
+    """
+    try:
+        return canonical_processing_path(path)
+    except FileNotFoundError:
+        return path.resolve()
 
 
 def _make_default_config_layer() -> ConfigLayer:
@@ -122,7 +135,6 @@ def _make_default_config_layer() -> ConfigLayer:
         origin=SyntheticConfigSource(label=DEFAULT_LAYER_ORIGIN),
         kind=ConfigLayerKind.DEFAULT,
         precedence=DEFAULT_LAYER_PRECEDENCE,
-        scope_root=None,
         config=mutable_config_from_defaults(),
     )
 
@@ -149,12 +161,16 @@ def _make_layer_from_layered_toml_table(
         fragment.
     """
     if isinstance(path, Path):
-        resolved_path: Path = path.resolve()
+        # This path is provenance for a TOML layer, not necessarily a file that
+        # TopMark will process. Use best-effort normalization here; strict
+        # processing identity belongs to loaded source resolution and target-file
+        # applicability checks.
+        resolved_path: Path = _best_effort_provenance_path(path)
         config: MutableConfig = mutable_config_from_layered_toml_table(
             data,
             config_file=resolved_path,
         )
-        return _make_config_layer(
+        return ConfigLayer(
             origin=resolved_path,
             kind=kind,
             precedence=precedence,
@@ -170,7 +186,6 @@ def _make_layer_from_layered_toml_table(
         origin=path,
         kind=kind,
         precedence=precedence,
-        scope_root=None,
         config=config,
     )
 

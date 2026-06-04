@@ -22,28 +22,31 @@ TopMark provides stable and consistent behavior across:
 
 - CLI execution and dry-run workflows
 - layered TOML configuration discovery and precedence
+- filesystem identity normalization and processing-path selection
+- configuration-source identity and layered provenance reporting
 - repository filtering and file-type resolution
 - probe and diagnostics workflows
 - machine-readable reporting and explainability
 - pre-commit and CI integration
-- stable public Python API overlays
+- stable public Python API overlays and runtime contracts
 
 ______________________________________________________________________
 
 ## Start here
 
-| Goal                                               | Recommended page                                      |
-| -------------------------------------------------- | ----------------------------------------------------- |
-| Install TopMark and complete a safe first run      | [Getting started](usage/getting-started.md)           |
-| Understand the CLI structure and shared behavior   | [Command overview](usage/cli.md)                      |
-| Configure layered runtime behavior and policies    | [Configuration](usage/configuration.md)               |
-| Understand repository filtering and file discovery | [Filtering](usage/filtering.md)                       |
-| Validate repositories in CI                        | [CI integration](usage/ci.md)                         |
-| Integrate TopMark with pre-commit                  | [Pre-commit integration](usage/pre-commit.md)         |
-| Understand stable exit-code behavior               | [Exit codes](usage/exit-codes.md)                     |
-| Upgrade older repositories to TopMark 1.0          | [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md) |
-| Use the public Python API                          | [Public API](api/public.md)                           |
-| Contribute to TopMark                              | [Contributing](contributing.md)                       |
+| Goal                                                                 | Recommended page                                      |
+| -------------------------------------------------------------------- | ----------------------------------------------------- |
+| Install TopMark and complete a safe first run                        | [Getting started](usage/getting-started.md)           |
+| Understand the CLI structure and shared behavior                     | [Command overview](usage/cli.md)                      |
+| Configure layered runtime behavior and policies                      | [Configuration](usage/configuration.md)               |
+| Understand repository filtering and file discovery                   | [Filtering](usage/filtering.md)                       |
+| Understand machine-readable output, processing paths, and provenance | [Machine-readable output](usage/machine-output.md)    |
+| Validate repositories in CI                                          | [CI integration](usage/ci.md)                         |
+| Integrate TopMark with pre-commit                                    | [Pre-commit integration](usage/pre-commit.md)         |
+| Understand stable exit-code behavior                                 | [Exit codes](usage/exit-codes.md)                     |
+| Upgrade older repositories to TopMark 1.0                            | [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md) |
+| Use the public Python API                                            | [Public API](api/public.md)                           |
+| Contribute to TopMark                                                | [Contributing](contributing.md)                       |
 
 ______________________________________________________________________
 
@@ -56,7 +59,10 @@ ______________________________________________________________________
 - Supports pre-commit and CI integration
 - Explains repository filtering, file-type resolution, and processor selection via
   [`topmark probe`](usage/commands/probe.md)
+- Uses deterministic filesystem-identity normalization and processing-path selection across CLI,
+  API, CI, and machine-readable workflows
 - Exposes layered configuration provenance via `topmark config dump --show-layers`
+- Uses deterministic configuration-source identity for layered configuration evaluation
 - Provides stable machine-readable JSON and NDJSON output together with canonical registry metadata
   suitable for automation and reporting
 - Supports canonical qualified file type identifiers such as `topmark:python`
@@ -66,7 +72,11 @@ ______________________________________________________________________
 
 ## Commands
 
-TopMark exposes a small set of dry-run-first CLI commands:
+TopMark exposes a small set of dry-run-first CLI commands.
+
+Filesystem-processing commands normalize filesystem identity before runtime processing. Multiple
+path spellings that resolve to the same filesystem target (for example a symlink and its target) are
+treated as a single processing target.
 
 For command structure, shared options, applicability rules, and common workflows, see:
 
@@ -125,6 +135,9 @@ The [`registry`](usage/commands/registry.md) command has the following subcomman
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
+Machine-readable filesystem path fields report selected processing paths. Configuration provenance
+reports resolved configuration sources. Both contracts remain stable across supported platforms.
+
 Use [`config dump --show-layers`](usage/commands/config/dump.md) to inspect how configuration is
 built from individual sources and how precedence is applied.
 
@@ -152,6 +165,8 @@ ______________________________________________________________________
 Common reference pages:
 
 - [Exit codes](usage/exit-codes.md)
+- [Machine-readable output](usage/machine-output.md)
+- [Configuration discovery](configuration/discovery.md)
 - [CI integration](usage/ci.md)
 - [Release workflow](ci/release-workflow.md)
 

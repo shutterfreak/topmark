@@ -60,6 +60,13 @@ operations.
 Before path-based resolution runs, TopMark performs file discovery and filtering. Paths excluded at
 that stage do not participate in candidate generation or scoring.
 
+Before runtime file-type probing begins, discovery also establishes a canonical filesystem identity
+and processing path for each selected file.
+
+Multiple path spellings that resolve to the same processing target (for example a symlink and its
+target) are collapsed before pipeline execution. Runtime resolution therefore operates on processing
+paths rather than original CLI, configuration, glob, or symlink spellings.
+
 File-type filters accept both local identifiers such as `python` and canonical qualified identifiers
 such as `topmark:python`.
 
@@ -102,7 +109,7 @@ See also:
 
 ______________________________________________________________________
 
-### Resolution pipeline boundaries
+## Resolution pipeline boundaries
 
 TopMark intentionally separates:
 
@@ -120,13 +127,66 @@ stable machine-readable diagnostics, and explicit configuration/runtime boundari
 
 ______________________________________________________________________
 
+## Filesystem identity and processing paths
+
+Path-based runtime resolution is not the first stage that operates on a user path.
+
+Before a path reaches file-type probing, TopMark performs:
+
+1. discovery
+1. filtering
+1. filesystem-identity normalization
+1. deduplication
+1. processing-path selection
+
+The resulting processing path is then supplied to runtime probing and pipeline execution.
+
+```mermaid
+flowchart TD
+    input["CLI/config input"]
+    discovery["Discovery + filtering"]
+    identity["Filesystem identity<br/>normalization"]
+    dedupe["Deduplication"]
+    processing["Processing path"]
+    runtime["Runtime resolution"]
+    pipeline["Pipeline execution"]
+    serialization["Machine-readable<br/>serialization"]
+
+    input --> discovery
+    discovery --> identity
+    identity --> dedupe
+    dedupe --> processing
+    processing --> runtime
+    runtime --> pipeline
+    pipeline --> serialization
+```
+
+Machine-readable output serializes the selected processing path; it does not attempt to preserve the
+original invocation spelling.
+
+Filesystem identity is currently defined by the resolved processing target path.
+
+Examples such as:
+
+```text
+real/file.py
+./real/file.py
+link-to-file.py
+```
+
+may therefore collapse to a single processing path before runtime resolution begins.
+
+Hard-link detection and device/inode-based identity are outside the current compatibility contract.
+
+______________________________________________________________________
+
 ## Probe-based resolution (1.0 contract)
 
 TopMark 1.0 exposes a probe-first resolution model via
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path].
 
-Probe-based resolution operates only after discovery filtering and configuration normalization have
-completed.
+Probe-based resolution operates only after discovery filtering, filesystem- identity normalization,
+processing-path selection, and configuration normalization have completed.
 
 This function returns a \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]
 containing:
@@ -137,9 +197,9 @@ containing:
 - match signals used during resolution
 - filtered explicit inputs that did not reach file-type probing
 
-The probe result is the canonical source of truth for runtime resolution decisions once a path
-reaches file-type probing. Explicit inputs may be filtered earlier during discovery; those cases are
-represented as synthetic probe results with `status="filtered"` and one of:
+The probe result is the canonical source of truth for runtime resolution decisions once a processing
+path reaches file-type probing. Explicit inputs may be filtered earlier during discovery; those
+cases are represented as synthetic probe results with `status="filtered"` and one of:
 
 - `reason="excluded_by_path_filter"`
 - `reason="excluded_by_file_type_filter"`
@@ -376,6 +436,12 @@ This separation keeps responsibilities clear:
   file-type-to-processor relationships
 - the runtime resolver decides which file type best matches a **concrete filesystem path**
 
+The resolver deliberately does not define filesystem identity semantics.
+
+Filesystem identity, symlink handling, deduplication, and processing-path selection occur earlier
+during discovery and file-list resolution. The resolver consumes the resulting processing path and
+focuses exclusively on file-type selection.
+
 This design has several advantages:
 
 - registries remain simple and declarative
@@ -383,6 +449,24 @@ This design has several advantages:
 - runtime resolution remains deterministic and testable
 - plugin authors can define specialized file types without needing a separate override system in the
   registries
+
+______________________________________________________________________
+
+## Symlink policy
+
+The runtime resolver operates on processing paths and therefore does not preserve original symlink
+spellings.
+
+Current behavior:
+
+- file-symlink inputs are resolved to their processing target;
+- symlink and target spellings are deduplicated before runtime processing;
+- configuration-source identity is based on the resolved configuration-file target;
+- machine-readable output serializes the resulting processing path; and
+- generated filesystem-related header metadata describes the target TopMark reads and writes.
+
+This policy contributes to idempotence and prevents duplicate processing of the same target file
+through multiple spellings.
 
 ______________________________________________________________________
 

@@ -106,6 +106,11 @@ working directory; path-based filters run before file-type filters, and exclude 
 precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
 contract.
 
+During discovery, TopMark normalizes filesystem identity and selects processing paths. If multiple
+path spellings resolve to the same filesystem target (for example a symlink and its target), `check`
+processes the resolved target once. Downstream filtering, probing, header generation, and
+machine-readable output operate on the selected processing path rather than the original spelling.
+
 ### File type filters
 
 - `--include-file-types / -t` Restrict processing to the given file type identifiers. May be
@@ -142,6 +147,9 @@ Notes:
 - Patterns in `--include`, `--exclude`, and the files passed to `--include-from` / `--exclude-from`
   are also resolved **relative to CWD**. Absolute patterns are not supported.
 - Path-based filters are evaluated **before** file-type filters.
+- Existing filesystem inputs are normalized to selected processing paths before runtime processing.
+- Symlink spellings are not preserved for runtime identity, generated filesystem-related header
+  metadata, or machine-readable `result.path` fields.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
 - File-type filters are normalized to canonical qualified file type identities before filtering,
@@ -241,6 +249,9 @@ ______________________________________________________________________
     detection.
 - Newline/BOM preservation: preserved across all paths (insert/replace). Reader normalizes in
   memory; updater reattaches BOM and keeps line endings.
+- Header metadata path fields: generated from the selected processing target. If a file is reached
+  through a symlink, `file_relpath`, `file_abspath`, `relpath`, and `abspath` describe the resolved
+  target TopMark reads and writes rather than the symlink spelling.
 - Idempotency: running `topmark check` again on a file that already has a correct header produces no
   diff and exit code 0 (unless other files would change).
 
@@ -289,9 +300,11 @@ For the canonical schema, stable `kind` values, and shared conventions, see:
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine-readable output emits processing result paths with POSIX `/` separators and resolved file
-type identities using canonical qualified identity strings when available. Configuration payloads
-also emit normalized file type filters and `policy_by_type` keys.
+Machine-readable output emits selected processing paths with POSIX `/` separators and resolved file
+type identities using canonical qualified identity strings when available. If a checked file is
+reached through a symlink, per-file `result.path` describes the resolved processing target rather
+than the symlink spelling. Configuration payloads also emit normalized file type filters and
+`policy_by_type` keys.
 
 Notes:
 
@@ -299,8 +312,9 @@ Notes:
 - The `config` payload in JSON and NDJSON is the resolved runtime configuration snapshot after
   per-source TOML validation, layered configuration merge, staged configuration-loading validation,
   and CLI override application.
-- Per-file `result.path` values use POSIX `/` separators on all platforms. This path serialization
-  contract applies to processing result payloads; human TEXT output remains display-oriented.
+- Per-file `result.path` values are selected processing paths serialized with POSIX `/` separators
+  on all platforms. This path serialization contract applies to processing result payloads; human
+  TEXT output remains display-oriented.
 
 ### JSON schema (detail mode)
 
@@ -496,6 +510,9 @@ ______________________________________________________________________
   detailed TEXT rendering; use logging options for internal debug logs.
 - **Patterns do not match**: Remember that include/exclude patterns are **relative to CWD**. `cd`
   into the project root before running.
+- **Symlink path not shown in output**: `check` processes selected processing paths. If a symlink
+  and its target resolve to the same file, machine-readable output and generated header metadata
+  describe the resolved target rather than the symlink spelling.
 - **File type filter does not match**: use [`topmark probe`](probe.md) to inspect resolution
   decisions, and prefer qualified identifiers such as `topmark:python` when local identifiers may be
   ambiguous.

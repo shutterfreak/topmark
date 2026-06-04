@@ -45,6 +45,9 @@ Policy semantics behave consistently across:
 - API overlays
 - effective runtime policy evaluation and runtime resolution
 
+Runtime policy evaluation operates on selected processing paths after filesystem-identity
+normalization and processing-path selection have completed.
+
 Policy values shown here are part of the public configuration surface.
 
 > [!NOTE]
@@ -78,6 +81,11 @@ TopMark resolves policy in this order:
 1. discovered config files
 1. explicit config overlays
 1. CLI or API overrides
+
+For file-backed configuration sources, policy layering uses configuration-source identity based on
+the resolved configuration-file target. If a policy-bearing configuration file is loaded through a
+symlink, precedence, applicability, and layered provenance are evaluated using the resolved
+configuration target rather than the symlink spelling.
 
 These runtime policy layers are constructed after staged TOML-layer validation. Source-local TOML
 sections (e.g. `[config]`) do not participate in runtime policy layering.
@@ -252,6 +260,11 @@ are supported when the local identifier is unambiguous.
 Internally, TopMark resolves per-file-type runtime policy using canonical qualified file type
 identities.
 
+> [!NOTE] **File-type identity and filesystem identity**
+>
+> File-type identity and filesystem identity are separate concepts. File-type policy resolution
+> operates on the selected processing target after filesystem identity normalization has completed.
+
 Example:
 
 ```toml
@@ -369,3 +382,5 @@ ______________________________________________________________________
 - [CLI overview](cli.md)
 - [Shared options](shared-options.md)
 - [Configuration discovery, precedence, and policy](../configuration/discovery.md)
+- [Machine-readable output](machine-output.md)
+- [Filesystem identity and processing paths](../dev/resolution.md#filesystem-identity-and-processing-paths)

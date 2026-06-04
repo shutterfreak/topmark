@@ -19,10 +19,12 @@ from typing import cast
 
 import pytest
 
+from tests.helpers.paths import symlink_or_skip
 from topmark.config.resolution.synthetic import BUILTIN_DEFAULTS_TOML_SOURCE
 from topmark.config.resolution.synthetic import BUNDLED_TEMPLATE_TOML_SOURCE
 from topmark.config.resolution.synthetic import DEFAULT_CONFIG_SOURCE
 from topmark.config.resolution.synthetic import SyntheticConfigSource
+from topmark.utils.path import canonical_processing_path
 from topmark.utils.path import canonicalize_existing_path
 from topmark.utils.path import format_config_source_path
 from topmark.utils.path import format_header_metadata_path
@@ -33,7 +35,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-# ---- path canonalization tests ----
+# ---- path canonicalization tests ----
 
 
 @pytest.mark.parametrize(
@@ -61,6 +63,16 @@ def test_canonicalize_existing_path_requires_existing_path(tmp_path: Path) -> No
 
     with pytest.raises(FileNotFoundError):
         canonicalize_existing_path(path)
+
+
+def test_canonical_processing_path_uses_symlink_target_identity(tmp_path: Path) -> None:
+    """Processing identity should collapse symlink spelling to the target path."""
+    target: Path = tmp_path / "real" / "source.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("print('hello')\n", encoding="utf-8")
+    link: Path = symlink_or_skip(tmp_path / "links" / "source-link.py", target)
+
+    assert canonical_processing_path(link) == target.resolve()
 
 
 # ---- path POSIX rendering tests ----

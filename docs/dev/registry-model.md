@@ -339,6 +339,23 @@ ______________________________________________________________________
 
 The resolver and probe system operate on canonical qualified file type identities.
 
+Filesystem identity is a separate concept from file type identity.
+
+Registry identifiers such as:
+
+```text
+topmark:python
+topmark:markdown
+```
+
+identify file types within the registry model.
+
+Filesystem identity, processing-path selection, symlink handling, and configuration-source identity
+are resolved before runtime probing and are documented in [Resolution](resolution.md).
+
+The registry model operates on the resulting processing path and resolved file type identity; it
+does not define filesystem identity semantics itself.
+
 This affects:
 
 - include/exclude file-type filters;
@@ -628,6 +645,7 @@ ______________________________________________________________________
 ## Related docs
 
 - [Architecture overview](architecture.md)
+- [Resolution](resolution.md)
 - [Public API](../api/public.md)
 - [API internals](../api/internals.md)
 - Registry API internals: \[`topmark.registry`\][topmark.registry]

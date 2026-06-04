@@ -29,6 +29,8 @@ See also:
 - [Machine-readable output](../usage/machine-output.md)
 - [Machine-readable format conventions](machine-formats.md)
 - [Configuration discovery, precedence, and policy](../configuration/index.md)
+- [Resolution](resolution.md)
+  - [Filesystem identity and processing paths](resolution.md#filesystem-identity-and-processing-paths)
 - [Release Process](release-process.md)
 - [Test and validation architecture](../ci/test-validation.md)
 

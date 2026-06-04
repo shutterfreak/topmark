@@ -33,8 +33,9 @@ It helps teams avoid fragile one-off scripts by providing:
 - layered configuration and policy controls;
 - dry-run-by-default safety;
 - stable CI-friendly exit codes;
-- machine-readable output formats;
+- machine-readable output formats with stable cross-platform path serialization;
 - transparent file-type resolution diagnostics;
+- deterministic filesystem-identity and configuration-source resolution;
 - configuration, registry, and file-resolution introspection commands;
 - and a public Python API for automation and integration.
 
@@ -114,7 +115,8 @@ TopMark is useful when you need to:
 - inspect why a file was included, excluded, or matched to a specific processor;
 - integrate header checks into CI, pre-commit, Git hooks, or custom automation;
 - consume deterministic JSON or NDJSON output from scripts and tooling, with stable machine-readable
-  path serialization and canonical cross-platform registry metadata.
+  path serialization, processing-path semantics, configuration provenance, and canonical
+  cross-platform registry metadata.
 
 The goal is not to replace formatters, linters, or license scanners. TopMark focuses on one job:
 safe, deterministic, comment-aware file header management.
@@ -141,9 +143,11 @@ ______________________________________________________________________
 - Idempotent behavior designed for repeatable CI and repository automation
 - Layered configuration via `topmark.toml`, `pyproject.toml`, user config, explicit config files,
   and CLI overrides
+- Deterministic configuration-source identity and layered provenance reporting
 - Policy controls for insertion, update, empty-file behavior, file-type filtering, and content
   probing
 - Resolution diagnostics with `topmark probe`
+- Deterministic filesystem-identity normalization and processing-path selection
 - Layered configuration inspection with `topmark config dump --show-layers`
 - Registry introspection with `topmark registry filetypes`, `topmark registry processors`, and
   `topmark registry bindings`
@@ -261,6 +265,11 @@ topmark config dump --show-layers
 topmark registry filetypes
 ```
 
+TopMark normalizes filesystem identity before runtime processing. If multiple path spellings resolve
+to the same filesystem target (for example a symlink and its target), TopMark selects a processing
+path and processes the target once. Machine-readable output and generated filesystem-related header
+metadata follow this processing-path contract.
+
 All available commands, shared options, output formats, STDIN behavior, and exit codes are
 documented in:
 
@@ -307,6 +316,10 @@ Common configuration sources include:
 - explicit `--config` files
 - CLI options
 
+Configuration discovery uses configuration-source identity based on resolved configuration-file
+targets. Layered configuration provenance, applicability evaluation, and precedence therefore behave
+consistently when configuration files are accessed through symlinks.
+
 A minimal project configuration looks like this:
 
 ```toml
@@ -340,6 +353,7 @@ Detailed configuration, policy, and filtering behavior is documented in:
 - [Configuration discovery and precedence (hosted docs)](https://topmark.readthedocs.io/en/latest/configuration/discovery/)
 - [Policy guide (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/policies/)
 - [Filtering (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/filtering/)
+- [Machine-readable output (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/machine-output/)
 - [Example TOML document](https://github.com/shutterfreak/topmark/blob/main/src/topmark/toml/topmark.example.toml)
 
 ______________________________________________________________________
@@ -370,7 +384,7 @@ topmark config check --strict
 topmark check .
 ```
 
-Exit code `2` means files would require header updates.
+Exit code `3` means files would require header updates.
 
 Detailed integration guidance is documented in:
 
@@ -388,6 +402,9 @@ discovery.
 
 Public API callers should use the functions and DTOs exposed from `topmark.api`. Runtime helpers,
 resolver internals, and pipeline contexts are implementation details.
+
+Public API operations follow the same filesystem-identity, processing-path, and configuration-source
+identity contracts as the CLI.
 
 Example dry-run check:
 

@@ -64,6 +64,12 @@ Canonical file type identity semantics are documented in
 [Registry model](../dev/registry-model.md#qualified-vs-local-identifiers) and
 [Terminology and Canonical Vocabulary](../terminology.md).
 
+Filesystem identity, processing-path selection, symlink handling, and configuration-source identity
+semantics are documented in
+[Resolution](../dev/resolution.md#filesystem-identity-and-processing-paths),
+[Configuration discovery](../configuration/discovery.md#configuration-source-identity), and
+[Terminology and Canonical Vocabulary](../terminology.md).
+
 These pages are generated automatically during the MkDocs build and should not be edited manually.
 
 The generated reference pages reflect internal implementation structure and may evolve more

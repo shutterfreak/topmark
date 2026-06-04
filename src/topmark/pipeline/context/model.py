@@ -108,7 +108,10 @@ class ProcessingContext:
     Attributes:
         config: Effective layered configuration for this file.
         run_options: Invocation-wide execution-only runtime options for the current run.
-        path: The file path to process (absolute or relative to the working directory).
+        path: The processing path for the file, absolute or relative to the working directory.
+            Normal file-list resolution supplies TopMark's canonical processing path rather than
+            preserving the original CLI/config spelling. For filesystem inputs, symlink spellings
+            may therefore already be collapsed to their resolved target before pipeline steps run.
         policy_registry: The policy registry (global + file type specific overrides).
         timestamp: The file path's modification timestamp. This is distinct from
             `run_options.started_at`, which records when the invocation began.
@@ -158,7 +161,9 @@ class ProcessingContext:
     config: FrozenConfig  # Effective layered config for this file
     run_options: RunOptions  # Invocation-wide runtime options for the current run
 
-    path: Path  # The file path to process (absolute or relative to working directory)
+    # Processing path for this file. Normal file-list resolution passes the canonical
+    # processing path here, so symlink spellings may already be collapsed before steps run.
+    path: Path
 
     policy_registry: PolicyRegistry
 
@@ -462,7 +467,9 @@ class ProcessingContext:
         """Create a fresh context with no derived state.
 
         Args:
-            path: File system path for the file to process.
+            path: Processing path for the file. In normal CLI/API file-list processing this is
+                TopMark's canonical processing path; tests and lower-level callers may still pass
+                an invocation spelling directly.
             config: Effective layered configuration to attach to the context.
             run_options: Invocation-wide execution-only runtime options.
             policy_registry_override: Optional precomputed policy registry for the

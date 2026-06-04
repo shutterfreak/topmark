@@ -52,6 +52,12 @@ The detailed registry architecture is documented in [Registry model](registry-mo
 Plugin authors should treat qualified file type identifiers, such as `my_plugin:my_lang`, as the
 stable reference once custom namespaces are involved.
 
+Filesystem identity is a separate concept from registry identity.
+
+Qualified identifiers such as `my_plugin:my_lang` identify file types in the registry model. Runtime
+file processing operates on selected processing paths after filesystem-identity normalization and
+path-resolution have completed.
+
 ______________________________________________________________________
 
 ## Extension points
@@ -95,9 +101,15 @@ TopMark uses explicit base registries plus overlay registries:
 
 This means plugin-defined file types must still be available before a processor class is registered
 against them, but processor registration no longer depends on module import order or decorator side
-effects. Path-based file type selection is performed by the shared scoring resolver in
+effects.
+
+Path-based file type selection is performed by the shared scoring resolver in
 \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes]. The formal selection and ambiguity
 policy is documented in [`resolution.md`](resolution.md).
+
+The resolver operates on selected processing paths after filesystem-identity normalization. File
+type plugins therefore do not participate in filesystem identity, symlink handling, processing-path
+selection, or configuration-source identity evaluation.
 
 ______________________________________________________________________
 
@@ -148,7 +160,9 @@ objects.
 
 #### Filename matching rules
 
-`FileType.filenames` entries are registry matching rules rather than filesystem paths.
+`FileType.filenames` entries are registry matching rules rather than filesystem paths. They
+participate in file-type resolution only and do not define filesystem identity, processing-path
+selection, configuration applicability, or machine-readable path reporting semantics.
 
 Supported forms:
 
@@ -157,6 +171,9 @@ Supported forms:
 
 Tail-subpath rules should use POSIX-style `/` separators. Backslash-containing rules are accepted as
 compatibility input and normalized during file-type construction.
+
+Filename rules are matched against normalized resolver inputs and should be treated as
+platform-independent matching expressions rather than literal filesystem paths.
 
 Invalid filename rules include:
 
@@ -189,9 +206,13 @@ def provide_filetypes() -> list[FileType]:
     ]
 ```
 
-TopMark stores filename rules in canonical POSIX form. Registry inspection, machine-readable output,
-and resolver diagnostics therefore always expose normalized filename-rule values regardless of
-platform.
+TopMark stores filename rules in canonical POSIX form. This normalization applies to registry
+matching rules only. Runtime processing paths, configuration-source identity, machine-readable path
+fields, and header metadata paths follow separate filesystem-identity and processing-path contracts
+documented in the resolution model.
+
+Registry inspection, machine-readable output, and resolver diagnostics therefore always expose
+normalized filename-rule values regardless of platform.
 
 ### Using the FileType factory (recommended)
 
@@ -302,6 +323,10 @@ A typical advanced integration flow is:
 
 This keeps built-in registry construction deterministic and avoids module-import side effects.
 
+Processor registration influences runtime file-type handling only. Filesystem identity,
+processing-path selection, and configuration-source identity are resolved before processor selection
+occurs.
+
 ______________________________________________________________________
 
 ## Recommended plugin scope for TopMark 1.x
@@ -361,8 +386,8 @@ These modules are useful for advanced TopMark integrations and registry extensio
 - \[`topmark.filetypes.instances`\][topmark.filetypes.instances] - base file type discovery
 - \[`topmark.processors.instances`\][topmark.processors.instances] - base processor binding
   inventory and registry construction
-- \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] - shared scoring-based path
-  resolver
+- \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] - shared scoring-based file-type
+  resolver operating on selected processing paths
 - \[`topmark.registry.filetypes`\][topmark.registry.filetypes] - composed file type registry view
   and identifier resolution
 - \[`topmark.registry.processors`\][topmark.registry.processors] - composed processor registry view
@@ -385,3 +410,5 @@ ______________________________________________________________________
 - [`Architecture`](./architecture.md) - high-level overview of registries and runtime composition
 - [`registry.md`](../usage/commands/registry.md) - CLI-facing registry inspection commands
 - [`Resolution model`](./resolution.md) - file-type scoring and ambiguity policy
+  - [`Filesystem identity and processing paths`](./resolution.md#filesystem-identity-and-processing-paths)
+    \- filesystem identity, processing paths, and symlink handling

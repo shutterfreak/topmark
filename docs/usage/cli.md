@@ -26,6 +26,7 @@ The CLI is intentionally conservative:
 
 - commands default to dry-run behavior
 - mutations require `--apply`
+- filesystem identity is normalized before runtime processing
 - unsupported files are skipped diagnostically
 - repeated runs converge to stable results
 - command help and shell completion are available across supported platforms
@@ -43,6 +44,10 @@ ______________________________________________________________________
 | Remove TopMark headers               | `topmark strip --apply src/`        | [`topmark strip`](commands/strip.md), [Header placement](header-placement.md)                          |
 | Inspect file type resolution         | `topmark probe README.md`           | [`topmark probe`](commands/probe.md), [Filtering](filtering.md)                                        |
 | Inspect effective configuration      | `topmark config dump --show-layers` | [`topmark config dump`](commands/config/dump.md), [Configuration](configuration.md)                    |
+
+Filesystem inputs are normalized to selected processing paths before runtime processing. If multiple
+path spellings resolve to the same filesystem target (for example a symlink and its target), TopMark
+processes the target once and reports the selected processing path in machine-readable output.
 
 ______________________________________________________________________
 
@@ -91,6 +96,10 @@ topmark check --apply src/
 ```bash
 topmark strip --apply src/
 ```
+
+For commands that operate on filesystem inputs (`check`, `strip`, and `probe`), positional paths
+participate in TopMark's discovery, filtering, filesystem-identity normalization, and
+processing-path selection pipeline before runtime processing begins.
 
 ______________________________________________________________________
 
@@ -230,6 +239,10 @@ Common shared options include the following, where supported by the selected com
 For command applicability, output, verbosity, and formatting options, see
 [Shared options](shared-options.md).
 
+Machine-readable filesystem path fields report selected processing paths rather than preserving the
+original CLI argument spelling. See [Machine-readable output](machine-output.md) for the full
+contract.
+
 {% include-markdown "\_snippets/option-spelling.md" %}
 
 ______________________________________________________________________
@@ -260,6 +273,8 @@ File type filters behave consistently across:
 - TOML configuration
 - API overlays
 - resolution and probe filtering
+
+File type filtering operates after filesystem-identity normalization and processing-path selection.
 
 For canonical file-type identifier semantics and layered configuration behavior, see
 [Configuration](configuration.md).
@@ -340,6 +355,8 @@ ______________________________________________________________________
 - [Exit codes](exit-codes.md)
 - [Pre-commit integration](pre-commit.md)
 - [Configuration discovery, precedence, and policy](../configuration/discovery.md)
+  - [Configuration source identity](../configuration/discovery.md#configuration-source-identity)
+- [Machine-readable output](machine-output.md)
 
 ______________________________________________________________________
 
@@ -356,4 +373,5 @@ The CLI reports:
 - ambiguous or malformed file type identifiers
 
 Diagnostics are designed to remain deterministic and compatible with the stable machine-readable
-output contracts.
+output contracts. This includes stable processing-path reporting for runtime filesystem inputs and
+stable configuration-source identity reporting for file-backed configuration provenance.
