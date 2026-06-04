@@ -87,6 +87,28 @@ This distinction matters for
 For the canonical user-facing discovery, precedence, path-resolution, and staged validation
 contract, see [Configuration discovery, precedence, and policy](../configuration/discovery.md).
 
+For file-backed configuration sources, schema processing operates on configuration-source identity
+based on the resolved configuration-file target.
+
+Different path spellings such as:
+
+```text
+real/topmark.toml
+link-to-topmark.toml
+```
+
+may therefore identify the same configuration source.
+
+Configuration-source identity affects:
+
+- precedence and layer ordering;
+- scope-root selection;
+- applicability evaluation;
+- layered provenance exports; and
+- machine-readable configuration provenance.
+
+Symlink spellings are not preserved once a configuration source has been loaded.
+
 ## Schema validation model
 
 TopMark performs **whole-source TOML schema validation** before any layered configuration is
@@ -175,7 +197,7 @@ topmark:
     relative_to:
       type: path
       default: "."
-      description: Affects header metadata (file_relpath), not discovery.
+      description: Affects header metadata (file_relpath) for the selected processing target, not discovery.
 
   writer:
     type: table
@@ -262,27 +284,27 @@ topmark:
     include_patterns:
       type: list[str]
       default: []
-      description: Glob patterns to include (relative to declaring config source).
+      description: Glob patterns to include (resolved relative to the declaring configuration file).
 
     exclude_patterns:
       type: list[str]
       default: []
-      description: Glob patterns to exclude (relative to declaring config source).
+      description: Glob patterns to exclude (resolved relative to the declaring configuration file).
 
     include_from:
       type: list[path]
       default: []
-      description: Files containing include patterns (one per line; comments allowed).
+      description: Files containing include patterns (one per line; comments allowed; resolved relative to the declaring configuration file).
 
     exclude_from:
       type: list[path]
       default: []
-      description: Files containing exclude patterns (one per line; comments allowed).
+      description: Files containing exclude patterns (one per line; comments allowed; resolved relative to the declaring configuration file).
 
     files_from:
       type: list[path]
       default: []
-      description: Files containing explicit file lists (one path per line; comments allowed).
+      description: Files containing explicit file lists (one path per line; comments allowed; resolved relative to the declaring configuration file).
 
     include_file_types:
       type: list[str]
@@ -314,6 +336,10 @@ This normalization behavior is shared consistently across:
 - CLI options
 - API overlays
 - effective runtime policy resolution
+
+Configuration-source identity normalization follows the same model. File-backed configuration
+sources are normalized to their resolved configuration-file target before precedence, scope, and
+applicability evaluation occur.
 
 ______________________________________________________________________
 
@@ -374,3 +400,22 @@ The configuration schema intentionally does not support:
 - plugin-specific schema mutation during config loading
 
 Identifier handling intentionally remains explicit, deterministic, and ambiguity-aware.
+
+______________________________________________________________________
+
+## Configuration-source identity notes
+
+The external configuration schema does not expose a separate configuration identity field.
+
+Instead, file-backed configuration sources implicitly use the resolved configuration-file target as
+their identity.
+
+This means:
+
+- layered provenance exports report resolved configuration targets;
+- scope applicability is evaluated relative to resolved configuration targets;
+- symlink spellings are not preserved for configuration precedence; and
+- machine-readable provenance reflects configuration-source identity rather than invocation
+  spelling.
+
+This behavior mirrors TopMark's processing-path identity model for runtime file processing.

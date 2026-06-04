@@ -64,6 +64,22 @@ def canonicalize_existing_path(path: Path) -> Path:
     return current
 
 
+def canonical_processing_path(path: Path) -> Path:
+    """Return the canonical path used as TopMark's filesystem identity.
+
+    Existing filesystem inputs are identified by their resolved processing
+    target. Symlink spelling is therefore not preserved for processing identity
+    or for generated filesystem-related header metadata.
+
+    Args:
+        path: Existing filesystem path selected for processing.
+
+    Returns:
+        The canonical processing path for the filesystem target.
+    """
+    return canonicalize_existing_path(path)
+
+
 # ---- POSIX path representation ----
 
 

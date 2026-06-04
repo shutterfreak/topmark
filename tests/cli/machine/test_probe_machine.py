@@ -31,6 +31,7 @@ from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.ndjson import record_payload
+from tests.helpers.paths import symlink_or_skip
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
@@ -86,6 +87,43 @@ def test_probe_json_output_shape(tmp_path: Path) -> None:
     assert "selected_file_type" in probe
     assert "selected_processor" in probe
     assert "candidates" in probe
+
+
+def test_probe_json_symlink_input_serializes_canonical_target_path(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Probe JSON paths should use the canonical processing target for symlinked inputs."""
+    monkeypatch.chdir(tmp_path)
+    target: Path = tmp_path / "real" / "source.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("print('hello')\n", encoding="utf-8")
+    link: Path = symlink_or_skip(tmp_path / "links" / "source-link.py", target)
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(link.relative_to(tmp_path)),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+    probes_obj: object = payload["probes"]
+    assert is_any_list(probes_obj)
+    probes: list[object] = probes_obj
+    assert len(probes) == 1
+
+    probe_obj: object = probes[0]
+    assert is_mapping(probe_obj)
+    probe: dict[str, object] = as_object_dict(probe_obj)
+
+    assert probe["path"] == "real/source.py"
 
 
 def test_probe_json_candidate_structure(tmp_path: Path) -> None:
@@ -337,6 +375,40 @@ def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
 
     # Ensure no double wrapping (regression test)
     assert "probe" not in payload
+
+
+def test_probe_ndjson_symlink_input_serializes_canonical_target_path(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Probe NDJSON paths should use the canonical processing target for symlinked inputs."""
+    monkeypatch.chdir(tmp_path)
+    target: Path = tmp_path / "real" / "source.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("print('hello')\n", encoding="utf-8")
+    link: Path = symlink_or_skip(tmp_path / "links" / "source-link.py", target)
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(link.relative_to(tmp_path)),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+        ],
+    )
+
+    assert_SUCCESS(result)
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    probe_records: list[dict[str, object]] = [
+        record for record in records if record["kind"] == "probe"
+    ]
+    assert len(probe_records) == 1
+
+    payload: dict[str, object] = record_payload(probe_records[0])
+    assert payload["path"] == "real/source.py"
 
 
 def test_probe_ndjson_reports_explicit_filtered_input(

@@ -126,6 +126,30 @@ filtering, runtime policy lookup, registry composition, and resolution.
 
 Examples include qualified file-type identities and canonicalized registry matching rules.
 
+### Filesystem identity
+
+The canonical filesystem object identity used by TopMark when processing existing files,
+configuration sources, and runtime inputs.
+
+For ordinary filesystem processing, identity is based on the resolved processing target rather than
+the original invocation spelling.
+
+Examples:
+
+```text
+real/file.py
+link-to-file.py
+./real/file.py
+```
+
+may all refer to the same filesystem identity.
+
+> [!NOTE]
+>
+> Filesystem identity is distinct from machine-readable path serialization. TopMark first determines
+> filesystem identity and then serializes the selected processing path according to the
+> machine-output contract.
+
 ### Namespace
 
 A logical ownership boundary for file type identities.
@@ -141,6 +165,9 @@ ______________________________________________________________________
 ### Resolution
 
 The process of selecting the most appropriate file type for a path or input.
+
+Resolution may normalize multiple path spellings to a single filesystem identity before runtime
+processing begins.
 
 ### Filename rule
 
@@ -238,6 +265,13 @@ Example:
 The fully resolved runtime configuration applicable to a specific path, command invocation, or
 execution context.
 
+### Configuration source identity
+
+The normalized identity assigned to a loaded TOML configuration source.
+
+Configuration-source identity is based on the resolved processing target of the loaded configuration
+file. Symlink spellings are not preserved for precedence, scope, or applicability evaluation.
+
 ______________________________________________________________________
 
 ## Pipeline terminology
@@ -262,6 +296,9 @@ A mutating execution mode that performs filesystem writes.
 ### Idempotence
 
 The guarantee that repeated runs without source changes converge to the same result.
+
+Filesystem-identity normalization contributes to idempotence by preventing the same target file from
+being processed multiple times through different path or symlink spellings.
 
 ### Mutation planning
 
@@ -294,6 +331,9 @@ Formats:
 
 The compatibility guarantees governing machine-readable schemas, record kinds, field naming, payload
 structure, and semantic stability.
+
+The machine-readable contract governs path serialization but does not define filesystem identity
+semantics.
 
 ### Payload
 
@@ -356,6 +396,19 @@ A command that does not operate on filesystem paths or content-processing pipeli
 
 A command that processes filesystem paths through discovery, filtering, resolution, or runtime
 pipelines.
+
+### Processing path
+
+The canonical path selected by TopMark for runtime processing.
+
+A processing path represents the resolved filesystem target chosen after path normalization,
+discovery, filtering, and deduplication. It is the path exposed to runtime pipelines, header
+generation, and machine-readable output.
+
+> [!NOTE]
+>
+> A processing path is not necessarily identical to the original CLI argument, configuration entry,
+> glob match, or symlink spelling supplied by the user.
 
 ______________________________________________________________________
 

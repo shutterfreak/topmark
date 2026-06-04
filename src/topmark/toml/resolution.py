@@ -49,6 +49,7 @@ from typing import TypeAlias
 from topmark.core.logging import get_logger
 from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.toml.loaders import load_topmark_toml_source
+from topmark.utils.path import canonical_processing_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -84,7 +85,8 @@ class ResolvedTopmarkTomlSource:
     options or `strict`.
 
     Attributes:
-        path: Resolved filesystem path of the TOML source.
+        path: Resolved processing-target path of the TOML source. Symlink spelling
+            is not preserved for config-source identity.
         parsed: Split-parsed TOML source contents, or `None` when loading or
             parsing failed.
         kind: Discovery class of the source. Allowed values are `"user"`,
@@ -133,7 +135,7 @@ def _append_loaded_source(
     kind: TomlSourceKind,
 ) -> None:
     """Load one TOML source and append it with preserved source diagnostics."""
-    resolved_path: Path = path.resolve()
+    resolved_path: Path = canonical_processing_path(path)
     parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
     if parsed is None:
         logger.debug(
@@ -214,15 +216,20 @@ def _discover_local_config_files(start: Path) -> list[Path]:
         `pyproject.toml` is returned before `topmark.toml` so the latter has
         higher same-directory precedence.
     """
-    # Collect per-directory entries preserving same-dir precedence (pyproject → topmark)
-    per_dir: list[list[Path]] = []
-    cur: Path = start.resolve()  # Resolve symlinks and get absolute path
+    # Discovery anchors may be missing explicit file inputs or unmatched glob roots.
+    # Use non-strict path resolution here so config discovery remains tolerant and
+    # later file resolution can report user-facing diagnostics such as NOT_FOUND.
+    # Strict canonical_processing_path() is only appropriate once an existing TOML
+    # source has been selected for loading.
+    cur: Path = start.resolve()
     seen: set[Path] = set()
 
     # Ensure we start from a directory anchor
     if cur.is_file():
         cur = cur.parent
 
+    # Collect per-directory entries preserving same-dir precedence (pyproject → topmark)
+    per_dir: list[list[Path]] = []
     # Walk up to filesystem root, recording entries per directory
     while True:
         root_stop_here = False
@@ -356,6 +363,10 @@ def resolve_topmark_toml_sources(
     anchor: Path = input_path_list[0] if input_path_list else Path.cwd()
     if anchor.is_file():
         anchor = anchor.parent
+    # Keep project discovery tolerant of missing file inputs. A missing target path
+    # must not make config discovery fail before the file-resolution pipeline can
+    # classify it. Existing config sources are canonicalized later in
+    # _append_loaded_source().
     anchor = anchor.resolve()
 
     if not no_config:

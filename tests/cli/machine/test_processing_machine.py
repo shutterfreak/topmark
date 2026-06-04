@@ -51,6 +51,7 @@ from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
+from tests.helpers.paths import symlink_or_skip
 from tests.helpers.pipeline import make_pipeline_context
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -295,6 +296,50 @@ def test_processing_json_detail_path_serializes_windows_style_path_as_posix(
     assert first.get("path") == "C:/Repo/src/example.py"
 
 
+# --- Symlink canonical path serialization tests ---
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_json_detail_symlink_input_serializes_canonical_target_path(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Processing JSON detail paths should use the canonical processing target."""
+    target: Path = tmp_path / "real" / "source.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("print('hello')\n", encoding="utf-8")
+    link: Path = symlink_or_skip(tmp_path / "links" / "source-link.py", target)
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+            str(link.relative_to(tmp_path)),
+        ],
+    )
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+    results_obj: object = payload["results"]
+    assert is_any_list(results_obj)
+    results: list[object] = results_obj
+    assert len(results) == 1
+
+    first_obj: object = results[0]
+    assert is_mapping(first_obj)
+    first: dict[str, object] = as_object_dict(first_obj)
+
+    assert first.get("path") == "real/source.py"
+
+
 @pytest.mark.parametrize(
     "command",
     [
@@ -534,6 +579,47 @@ def test_processing_ndjson_detail_path_serializes_windows_style_path_as_posix(
     result: dict[str, object] = as_object_dict(result_obj)
 
     assert result.get("path") == "C:/Repo/src/example.py"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_ndjson_detail_symlink_input_serializes_canonical_target_path(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """Processing NDJSON detail paths should use the canonical processing target."""
+    target: Path = tmp_path / "real" / "source.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("print('hello')\n", encoding="utf-8")
+    link: Path = symlink_or_skip(tmp_path / "links" / "source-link.py", target)
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+            str(link.relative_to(tmp_path)),
+        ],
+    )
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    result_records: list[dict[str, object]] = [
+        record for record in records if record.get("kind") == "result"
+    ]
+    assert len(result_records) == 1
+
+    result_obj: object | None = result_records[0].get("result")
+    assert is_mapping(result_obj)
+    result_payload: dict[str, object] = as_object_dict(result_obj)
+
+    assert result_payload.get("path") == "real/source.py"
 
 
 @pytest.mark.parametrize(

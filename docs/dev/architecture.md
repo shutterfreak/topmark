@@ -25,6 +25,8 @@ The following architectural contracts are part of the stable 1.x design:
 - CLI, API, presentation, runtime, configuration, registry, and pipeline concerns remain separated.
 - Runtime execution intent is kept separate from layered configuration state.
 - File type identity is normalized to canonical qualified keys once resolved.
+- Filesystem identity for existing processing inputs is based on the resolved processing target
+  path.
 - Registry mutation is represented as explicit overlay state.
 - Pipeline execution remains independent from presentation rendering.
 - Machine-readable output remains independent from human-facing TEXT and Markdown output.
@@ -136,7 +138,12 @@ ______________________________________________________________________
 ## File resolution diagnostics and exit-code boundaries
 
 TopMark's file selection layer separates **selected processing inputs** from **discovery
-diagnostics**. The resolver returns a structured file-list resolution result containing:
+diagnostics**. Selected processing inputs are canonical processing paths. File-list resolution
+collapses multiple path spellings that resolve to the same filesystem target (for example a symlink
+and its target) before normal pipeline execution begins. This keeps downstream pipeline steps
+idempotent and avoids processing the same target file more than once through different spellings.
+
+The resolver returns a structured file-list resolution result containing:
 
 - `selected` - concrete files that should enter the processing or probe pipeline
 - `missing_literals` - explicit literal input paths that do not exist
@@ -319,11 +326,16 @@ exit code. Consumers must inspect the process exit status separately from parsin
 Path representation follows the same separation between machine-facing serialization and
 human-facing presentation:
 
-- Internal filesystem identity is represented with `Path` objects where possible.
+- Internal filesystem identity for existing processing inputs is represented by resolved processing
+  target paths where possible.
+- Symlink spelling is not preserved for processing identity, generated filesystem-related header
+  metadata, or machine-readable path fields.
 - Machine-readable filesystem path fields are serialized with POSIX `/` separators on all platforms,
   including processing, probe, configuration, and TOML/config provenance payloads.
-- Header metadata path fields are also serialized with POSIX `/` separators when TopMark renders
-  headers.
+- Header metadata path fields describe the selected processing target and are serialized with POSIX
+  `/` separators when TopMark renders headers.
+- Path serialization is a presentation contract layered on top of processing-path selection; it does
+  not define filesystem identity by itself.
 - Registry `filenames` entries are POSIX-style matching rules, not filesystem paths.
 - Synthetic configuration-source identifiers are stable labels, not filesystem paths.
 - TEXT and Markdown output use shared display-path helpers so regular paths follow human-facing

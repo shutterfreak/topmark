@@ -20,12 +20,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 import topmark.resolution.files as file_resolver_mod
 
 # Import the module under test
 from tests.helpers.config import make_frozen_config
+from tests.helpers.paths import symlink_or_skip
 from tests.helpers.registry import make_file_type
 from topmark.config.types import PatternGroup
 from topmark.filetypes.model import ContentGate
@@ -33,6 +32,8 @@ from topmark.registry.filetypes import FileTypeRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    import pytest
 
     from topmark.config.model import FrozenConfig
     from topmark.filetypes.model import FileType
@@ -85,30 +86,6 @@ def write(p: Path, text: str = "") -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
     return p
-
-
-def symlink_or_skip(
-    link: Path,
-    target: Path,
-    *,
-    target_is_directory: bool = False,
-) -> Path:
-    """Create a symlink or skip when the platform disallows symlinks.
-
-    Args:
-        link: Symlink path to create.
-        target: Symlink target.
-        target_is_directory: Whether `target` is a directory.
-
-    Returns:
-        The created symlink path.
-    """
-    link.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        link.symlink_to(target, target_is_directory=target_is_directory)
-    except (NotImplementedError, OSError) as exc:
-        pytest.skip(f"symlink creation is not available in this test environment: {exc}")
-    return link
 
 
 def resolve_selected(config: FrozenConfig) -> list[Path]:
@@ -761,6 +738,49 @@ def test_symlinked_directory_input_resolves_descendants_to_canonical_targets(
     rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
 
     assert rel == ["real-src/pkg/module.py"]
+
+
+def test_nested_directory_symlink_is_not_traversed_during_directory_walk(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Directory traversal should not recurse into nested directory symlinks."""
+    root: Path = tmp_path / "root"
+    target_dir: Path = tmp_path / "external-target"
+    write(root / "direct.py", "x")
+    write(target_dir / "nested.py", "x")
+    symlink_or_skip(
+        root / "linked-target",
+        target_dir,
+        target_is_directory=True,
+    )
+
+    monkeypatch.chdir(tmp_path)
+    cfg: FrozenConfig = make_frozen_config(files=["root"])
+
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+
+    assert rel == ["root/direct.py"]
+
+
+def test_broken_symlink_literal_is_reported_as_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A broken symlink literal should be reported as a missing input path."""
+    link: Path = symlink_or_skip(tmp_path / "links" / "missing.py", tmp_path / "missing.py")
+
+    monkeypatch.chdir(tmp_path)
+    cfg: FrozenConfig = make_frozen_config(files=["links/missing.py"])
+
+    result: file_resolver_mod.FileListResolution = (
+        file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
+    )
+
+    assert result.selected == ()
+    assert result.unmatched_patterns == ()
+    assert result.missing_literals == (Path("links/missing.py"),)
+    assert link.is_symlink()
 
 
 def test_real_file_and_symlink_input_are_deduplicated_by_real_path(

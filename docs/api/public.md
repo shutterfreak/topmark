@@ -137,6 +137,11 @@ identical file-type identity semantics. Local identifiers such as `"python"` are
 unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
 `"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
 
+Public API execution also uses the same filesystem identity semantics as the CLI. Existing
+filesystem inputs are normalized to selected processing paths before pipeline execution. Multiple
+path spellings that resolve to the same target, such as a symlink and its target, may therefore be
+reported as a single result for the resolved processing target.
+
 For the public API, the returned view is controlled via
 `report="all" | "actionable" | "noncompliant"`. This replaces the older `skip_compliant` /
 `skip_unsupported` booleans.
@@ -175,6 +180,10 @@ The probe API is read-only and returns stable JSON-friendly DTOs:
 
 Candidates are returned in resolver order (best match first).
 
+For inputs that reach normal probing, `ProbeFileResult.path` reports the selected processing path,
+not necessarily the original invocation spelling. Missing and filtered explicit inputs still report
+explicit diagnostic input paths because they did not become normal processing paths.
+
 Unlike \[`check()`\][topmark.api.commands.pipeline.check] and
 \[`strip()`\][topmark.api.commands.pipeline.strip],
 \[`probe()`\][topmark.api.commands.pipeline.probe] does not perform content processing or mutation
@@ -200,6 +209,10 @@ The probe API explains inputs across the full discovery lifecycle:
 
 This mirrors [`topmark probe`](../usage/commands/probe.md) (CLI) behavior and provides full
 explainability without exposing resolver internals.
+
+When an input does become a normal processing path, symlink spelling is not preserved in the result
+path. This keeps public API results aligned with header metadata generation and machine-readable CLI
+output.
 
 #### Low-level probe helper
 
@@ -233,6 +246,10 @@ This process follows:
 1. Staged config-loading validation
 1. Freeze into immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig]
 1. Runtime overlays (API call arguments such as `diff`, `report`, etc.)
+
+File-backed TOML sources use configuration-source identity based on the resolved configuration-file
+target. If a configuration file is reached through a symlink, provenance and applicability are based
+on the resolved target rather than the symlink spelling.
 
 The public API operates only on the flattened immutable
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Staged validation logs are not exposed

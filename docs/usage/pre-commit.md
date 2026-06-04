@@ -28,6 +28,10 @@ setup, recommended patterns, and troubleshooting.
 Hook execution uses the same runtime-resolution, filtering, policy-evaluation, and runtime
 configuration semantics as normal CLI execution.
 
+Hook execution also uses the same filesystem-identity normalization and processing-path selection
+semantics as normal CLI execution. If multiple path spellings resolve to the same filesystem target
+(for example a symlink and its target), TopMark processes the selected processing target once.
+
 ______________________________________________________________________
 
 ## Quick start (consumer repos)
@@ -40,7 +44,7 @@ Add TopMark to a project's `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/shutterfreak/topmark
-    rev: v1.0.0   # pin to a released tag
+    rev: v1.0.1   # pin to a released tag
     hooks:
       - id: topmark-check
         # Optional: limit scope to supported text types
@@ -115,6 +119,10 @@ pass policy options such as `--header-mutation-mode`, `--allow-header-in-empty-f
 These options follow the same runtime policy-resolution and file type identity semantics as normal
 CLI execution.
 
+Filesystem-processing hooks also follow the same processing-path identity semantics as normal CLI
+execution. Runtime processing operates on selected processing paths rather than preserving the
+original filename spelling supplied by pre-commit.
+
 Invoke the manual hook locally:
 
 ```bash
@@ -137,12 +145,18 @@ multiple times per invocation (for different batches). This is expected.
 
 TopMark applies the same layered runtime filtering pipeline during hook execution:
 
+1. filesystem-identity normalization and processing-path selection
 1. path filtering
 1. file-type filtering
 1. runtime-resolution and probe evaluation
 1. runtime policy evaluation
 
 {% include-markdown "\_snippets/output-contract.md" %}
+
+For filesystem-backed hook execution, machine-readable path fields and generated filesystem-related
+header metadata describe the selected processing target. If a file is reached through a symlink,
+output and generated metadata reflect the resolved target TopMark reads and writes rather than the
+symlink spelling.
 
 **Run once per repository** by setting `pass_filenames: false` in the hook manifest and letting
 TopMark perform its own file discovery from config:
@@ -166,7 +180,7 @@ Example (consumer repo):
 ```yaml
 repos:
   - repo: https://github.com/shutterfreak/topmark
-    rev: v0.10.1
+    rev: v1.0.1
     hooks:
       - id: topmark-check
         args: ["--report", "noncompliant", "--output-format=ndjson"]
@@ -245,6 +259,10 @@ topmark check --report actionable --strict
 
 You can also pass `--summary` to receive only a summary instead of per-file diagnostics.
 
+Machine-readable output emitted from pre-commit hooks follows the same processing-path contract as
+normal CLI execution. JSON and NDJSON path fields therefore report selected processing paths rather
+than preserving original pre-commit filename spellings.
+
 ### Narrow file scope in consuming repos
 
 ______________________________________________________________________
@@ -283,6 +301,8 @@ Notes:
 - Use `--quiet` in CI to suppress human-readable TEXT output and rely solely on exit status.
 - Use `topmark-probe` when a hook appears to skip, include, or classify files with unexpected
   semantic runtime outcomes.
+- Filesystem-identity normalization and processing-path selection do not affect exit-code semantics.
+  Equivalent path spellings contribute to the same runtime processing outcome.
 - For full details and edge cases (mixed-result runs, precedence), see:
   - [`Exit codes`](./exit-codes.md)
   - [`check` command](./commands/check.md)
@@ -319,6 +339,19 @@ and that the file is included as package data. In `pyproject.toml`:
 "topmark.toml" = ["topmark-example.toml"]
 ```
 
+### Symlink path differs from reported path
+
+TopMark reports selected processing paths during runtime processing.
+
+If a hook receives a symlink path from pre-commit, machine-readable output, runtime probing, and
+generated filesystem-related header metadata may report the resolved processing target rather than
+the original symlink spelling.
+
+See:
+
+- [Machine-readable output](machine-output.md)
+- [Filesystem identity and processing paths](../dev/resolution.md#filesystem-identity-and-processing-paths)
+
 ### Test your hook locally
 
 ```bash
@@ -343,3 +376,5 @@ ______________________________________________________________________
 - [Shared options](shared-options.md)
 - [CI integration](ci.md)
 - [Exit codes](exit-codes.md)
+- [Machine-readable output](machine-output.md)
+- [Filesystem identity and processing paths](../dev/resolution.md#filesystem-identity-and-processing-paths)

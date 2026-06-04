@@ -41,6 +41,10 @@ topmark check .
 This validates the selected files and exits with `WOULD_CHANGE (3)` when headers would need to be
 inserted, updated, or removed.
 
+TopMark normalizes filesystem identity before runtime processing. If multiple path spellings resolve
+to the same filesystem target (for example a symlink and its target), CI validation operates on the
+selected processing path and processes the target once.
+
 If you also want to validate the TopMark configuration, either provide `--strict` to `topmark check`
 or add a dedicated configuration validation step:
 
@@ -105,6 +109,8 @@ Notes:
 - Explicit missing literal paths are hard input errors and produce `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns are soft discovery diagnostics and do not fail `check`.
 - In mixed-result runs, hard input and filesystem errors take precedence over `WOULD_CHANGE (3)`.
+- Filesystem-identity normalization and processing-path selection do not affect exit-code semantics.
+  Equivalent path spellings contribute to the same runtime processing outcome.
 
 ### `topmark config check`
 
@@ -268,8 +274,15 @@ Machine-readable output can expose structured CI diagnostics such as:
 - layered configuration information where supported by the selected command;
 - stable fields for automation-friendly reporting.
 
+For filesystem-processing commands, machine-readable path fields report selected processing paths
+rather than preserving the original CLI argument spelling. If a file is reached through a symlink,
+JSON and NDJSON output describe the resolved processing target used by TopMark.
+
 This makes JSON and NDJSON output useful for CI annotations, dashboards, repository audits, policy
 validation, and custom reporting pipelines.
+
+This behavior helps keep CI annotations, dashboards, and automation pipelines stable across
+platforms and repository layouts.
 
 Further reading:
 
@@ -296,4 +309,6 @@ ______________________________________________________________________
 - [Pre-commit integration](pre-commit.md)
 - [Exit codes](exit-codes.md)
 - [Configuration](configuration.md)
+- [Filesystem identity and processing paths](../dev/resolution.md#filesystem-identity-and-processing-paths)
+- [Filtering](filtering.md)
 - [Machine-readable output](../usage/machine-output.md)

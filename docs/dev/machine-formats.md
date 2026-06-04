@@ -97,9 +97,10 @@ Stability guarantees:
 
 - Machine-readable payloads contain no ANSI color codes.
 - Payload shapes are JSON-safe (no Python-specific objects).
-- Machine-readable filesystem path fields are serialized with POSIX `/` separators on all platforms.
-- Header metadata path fields are also serialized with POSIX `/` separators when TopMark renders
-  headers.
+- Machine-readable filesystem path fields serialize selected processing paths with POSIX `/`
+  separators on all platforms.
+- Header metadata path fields describe the selected processing target and are serialized with POSIX
+  `/` separators when TopMark renders headers.
 - New fields may be added over time as additive 1.x evolution.
 - Existing fields are not removed or renamed without a breaking-change signal.
 - Resolved file type identities are emitted using canonical qualified keys when available.
@@ -119,10 +120,21 @@ Consumers should:
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names or user-supplied input spellings.
 
+- Treat machine-readable filesystem path fields as processing-path fields. They are stable for the
+  selected processing target, but they do not promise to preserve the original CLI argument,
+  configuration entry, glob match, or symlink spelling.
+
 Path-like values are not all part of the same contract. Machine-readable filesystem path fields use
-POSIX path serialization, while registry `filenames` entries are POSIX-style matching rules rather
-than filesystem paths. This includes processing, probe, configuration, and TOML/config provenance
-payloads. Synthetic configuration-source identifiers are stable labels rather than filesystem paths.
+POSIX path serialization for selected processing paths, while registry `filenames` entries are
+POSIX-style matching rules rather than filesystem paths. This includes processing, probe,
+configuration, and TOML/config provenance payloads. Synthetic configuration-source identifiers are
+stable labels rather than filesystem paths.
+
+Path serialization is distinct from filesystem identity. TopMark currently identifies existing
+processing inputs by their resolved processing target path before machine output is generated. As a
+result, multiple path spellings that resolve to the same target, such as a symlink and its target,
+may produce the same serialized processing path.
+
 Human-facing path labels, including unified diff file labels, follow display policy and are not
 machine-stable path fields.
 
@@ -412,6 +424,10 @@ Per-file result payloads report the resolved file type using the canonical key w
 succeeds. Consumers should not expect the original local-or-qualified input spelling to be preserved
 in result payloads.
 
+Per-file result payloads also report the selected processing path. If a file is reached through a
+symlink, the emitted path describes the resolved processing target rather than the symlink spelling.
+This mirrors the path used by the runtime pipeline and generated filesystem-related header metadata.
+
 In **summary mode**, TopMark aggregates results by the pair `(outcome, reason)` rather than
 collapsing all reasons under a single outcome bucket.
 
@@ -483,6 +499,10 @@ quiet mode.
 
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
+
+Probe payloads report processing paths after discovery, filesystem-identity normalization, and
+filtering. They are diagnostic records for the paths that reach probing, not a lossless echo of the
+original invocation spelling.
 
 Filtered probe results use machine-friendly reasons to explain why an explicit file input did not
 reach probing. Missing explicit inputs use `probe_missing` with `no_resolution_probe_result` when no
@@ -565,6 +585,10 @@ contract.
 
 For [`config dump --show-layers`](../usage/commands/config/dump.md), machine-readable output
 preserves the same logical ordering as the human-facing layered export:
+
+File-backed configuration provenance uses configuration-source identity based on the resolved
+configuration-file target. Symlink spellings for configuration files are therefore not preserved for
+machine-readable provenance, precedence, scope, or applicability evaluation.
 
 - JSON includes `config_provenance` before `config` in the top-level envelope.
 - NDJSON emits a `config_provenance` record first and a `config` record second.

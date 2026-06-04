@@ -26,20 +26,32 @@ system.
 Pipelines operate on an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] plus runtime
 options assembled via the TOML → FrozenConfig → runtime flow.
 
+Pipelines also operate on selected processing paths. Filesystem identity normalization,
+processing-path selection, and deduplication occur before ordinary pipeline execution begins.
+Pipeline steps therefore consume processing paths rather than preserving original CLI,
+configuration, glob, or symlink spellings.
+
 See [`Architecture`](./architecture.md) for the conceptual overview.
 
 Source-local TOML options such as `[config].root` and `strict` are resolved before pipeline
 execution. They influence configuration discovery and staged config-loading validation behavior, but
 do not become layered configuration fields.
 
-Path handling responsibilities are split between pipeline processing and presentation layers:
+Path and filesystem-identity responsibilities are split between input selection, pipeline
+processing, and presentation layers:
 
 - `BuilderStep` generates header metadata path fields (`file_relpath`, `file_abspath`, `relpath`,
-  and `abspath`) using POSIX `/` serialization on all platforms.
+  and `abspath`) for the selected processing target using POSIX `/` serialization on all platforms.
+  If a file was reached through a symlink, generated metadata describes the resolved target that
+  TopMark reads and writes.
 - `PatcherStep` generates unified diffs for human review; diff file labels use human-facing display
   paths rather than machine-readable path serialization.
 - TEXT and Markdown frontends share display-path helpers so STDIN-backed processing consistently
   displays the logical `--stdin-filename` when available.
+
+Machine-readable path fields are generated from the selected processing path. Serialization and
+presentation occur after filesystem identity has been established and do not preserve invocation
+spellings.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -114,5 +126,6 @@ ______________________________________________________________________
 - [`Pipelines (Concepts)`](./pipelines.md)
 - [`Terminology and Canonical Vocabulary`](../terminology.md)
 - [`Resolution`](./resolution.md)
+- [`Filesystem identity and processing paths`](./resolution.md#filesystem-identity-and-processing-paths)
 - [`Configuration discovery`](../configuration/discovery.md)
 - [`Machine-readable output`](../usage/machine-output.md)

@@ -39,4 +39,6 @@ ______________________________________________________________________
 
 - [API stability and snapshot policy](../dev/api-stability.md)
 - [Registry model](../dev/registry-model.md)
+- [Resolution](../dev/resolution.md)
+- [Configuration discovery](../configuration/discovery.md)
 - [Plugins and extensibility](../dev/plugins.md)

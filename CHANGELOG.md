@@ -48,6 +48,14 @@ ______________________________________________________________________
 - Extended the POSIX path-serialization contract to configuration machine-output payloads,
   TOML/config provenance payloads, configuration-export serialization, and configuration diagnostic
   summaries.
+- Defined TopMark's filesystem identity policy for existing processing inputs as resolved
+  processing-target identity rather than raw invocation spelling.
+- Standardized symlink handling so file symlink spellings and their targets collapse to one selected
+  processing path before runtime probing, processing, header metadata generation, and
+  machine-readable output.
+- Defined configuration-source identity for file-backed TOML sources using the resolved
+  configuration-file target for precedence, scope applicability, layered provenance, and
+  machine-readable configuration provenance.
 
 ### Breaking Changes - Unreleased
 
@@ -106,6 +114,12 @@ ______________________________________________________________________
   provenance payloads, configuration export output, and configuration diagnostic summaries by
   normalizing real filesystem paths to POSIX-style **/** separators on all platforms while
   preserving synthetic configuration-source identifiers as stable labels.
+- Fixed undocumented symlink and filesystem-identity behavior by making resolved processing-target
+  identity explicit in file discovery, configuration resolution, pipelines, generated header
+  metadata, public API behavior, and machine-readable output.
+- Fixed ambiguity around symlinked configuration files by documenting and testing that provenance,
+  precedence, and scope applicability use the resolved configuration target rather than the symlink
+  spelling.
 
 ### Documentation - Unreleased
 
@@ -135,6 +149,13 @@ ______________________________________________________________________
   JSON/NDJSON path fields.
 - Documented and aligned the recommended VS Code workspace tooling configuration around Pylance,
   `mdformat`, Run On Save integration, and project-maintained task entry points.
+- Documented filesystem identity, processing-path selection, symlink handling, and the boundary
+  between identity selection and machine-readable path serialization across user, API, and developer
+  documentation.
+- Documented configuration-source identity and symlinked configuration-file behavior across
+  configuration discovery, configuration schema, machine-output, command, and API documentation.
+- Documented that hard-link detection and device/inode-based filesystem identity are outside the
+  current compatibility contract.
 
 ### Internal - Unreleased
 
@@ -158,6 +179,11 @@ ______________________________________________________________________
   recommendations, task definitions, and Markdown formatting integration.
 - Added lightweight pre-commit hygiene checks for documentation hygiene, code-documentation hygiene,
   and docstring link validation to better align local workflows with Nox validation.
+- Added `canonical_processing_path()` as the named helper for TopMark's resolved processing-target
+  filesystem identity policy.
+- Added regression coverage for symlinked file inputs, symlinked directory behavior, broken symlink
+  diagnostics, generated header metadata for symlinked inputs, configuration-source identity,
+  layered provenance, public machine output, and processing-path serialization.
 
 ### Notes - Unreleased
 
@@ -176,6 +202,10 @@ ______________________________________________________________________
   with code `3` instead of `2` so automation can distinguish dry-run change signals from Click
   parser-level usage errors. Existing CI jobs, shell scripts, and tests that checked for exit code
   `2` must be updated.
+- TopMark now documents resolved processing-target identity as the filesystem identity model for
+  existing processing inputs. Symlink spellings are not preserved for runtime processing identity,
+  generated filesystem-related header metadata, or machine-readable path fields; consumers that need
+  the exact invocation spelling should retain it outside TopMark's processing result payloads.
 
 ______________________________________________________________________
 

@@ -18,11 +18,16 @@ serialized with POSIX separators and must therefore not contain backslashes.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from typing import Final
 
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 MACHINE_PATH_FIELD_NAMES: Final[frozenset[str]] = frozenset(
     {
@@ -84,6 +89,25 @@ def assert_machine_path_value(value: object) -> list[str]:
     return paths
 
 
+def _collect_machine_path_fields(
+    value: object,
+    path_field_names: frozenset[str],
+    paths: list[str],
+) -> None:
+    """Collect and validate path-like fields from a parsed machine payload."""
+    if is_mapping(value):
+        mapping: dict[str, object] = as_object_dict(value)
+        for key, item in mapping.items():
+            if key in path_field_names and item is not None:
+                paths.extend(assert_machine_path_value(item))
+            _collect_machine_path_fields(item, path_field_names, paths)
+        return
+
+    if is_any_list(value):
+        for item in value:
+            _collect_machine_path_fields(item, path_field_names, paths)
+
+
 def assert_machine_path_fields_are_posix(
     payload: object,
     *,
@@ -111,20 +135,27 @@ def assert_machine_path_fields_are_posix(
     return paths
 
 
-def _collect_machine_path_fields(
-    value: object,
-    path_field_names: frozenset[str],
-    paths: list[str],
-) -> None:
-    """Collect and validate path-like fields from a parsed machine payload."""
-    if is_mapping(value):
-        mapping: dict[str, object] = as_object_dict(value)
-        for key, item in mapping.items():
-            if key in path_field_names and item is not None:
-                paths.extend(assert_machine_path_value(item))
-            _collect_machine_path_fields(item, path_field_names, paths)
-        return
+def symlink_or_skip(
+    link: Path,
+    target: Path,
+    *,
+    target_is_directory: bool = False,
+) -> Path:
+    """Create a symlink or skip when the platform disallows symlinks.
 
-    if is_any_list(value):
-        for item in value:
-            _collect_machine_path_fields(item, path_field_names, paths)
+    Args:
+        link: Symlink path to create.
+        target: Symlink target.
+        target_is_directory: Whether `target` is a directory.
+
+    Returns:
+        The created symlink path.
+    """
+    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        link.symlink_to(target, target_is_directory=target_is_directory)
+    except (NotImplementedError, OSError) as exc:
+        import pytest
+
+        pytest.skip(f"symlink creation is not available in this test environment: {exc}")
+    return link

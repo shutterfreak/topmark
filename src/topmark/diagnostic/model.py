@@ -279,14 +279,17 @@ class MutableDiagnosticLog:
         """
         return compute_diagnostic_stats(self.items)
 
+    @property
     def has_info(self) -> bool:
         """Return True if the `MutableDiagnosticLog` contains info diagnostics."""
         return any(d.level == DiagnosticLevel.INFO for d in self.items)
 
+    @property
     def has_warning(self) -> bool:
         """Return True if the `MutableDiagnosticLog` contains warning diagnostics."""
         return any(d.level == DiagnosticLevel.WARNING for d in self.items)
 
+    @property
     def has_error(self) -> bool:
         """Return True if the `MutableDiagnosticLog` contains error diagnostics."""
         return any(d.level == DiagnosticLevel.ERROR for d in self.items)

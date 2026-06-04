@@ -58,6 +58,9 @@ TopMark intentionally separates:
 Header placement semantics are determined by the selected header processor after runtime probing,
 policy evaluation, and processor resolution have completed.
 
+The generated header metadata describes the selected processing target rather than the original
+invocation spelling used to reach that target.
+
 This layered runtime model keeps placement behavior deterministic while preserving stable
 processor-specific comment syntax and insertion semantics.
 
@@ -96,8 +99,6 @@ Example (Python / shell-style line comments):
 
 echo "Hello, World!"
 ```
-
-Note that header path fields such as `file_relpath` use POSIX `/` separators on all platforms.
 
 ______________________________________________________________________
 
@@ -198,9 +199,6 @@ topmark:header:end
 </configuration>
 ```
 
-Header metadata path fields are serialized with POSIX `/` separators regardless of the host
-operating system.
-
 ______________________________________________________________________
 
 ## Markdown files
@@ -237,7 +235,7 @@ ______________________________________________________________________
 ## Placement guarantees
 
 - Path serialization: generated header path fields (`file_relpath`, `file_abspath`, `relpath`, and
-  `abspath`) use POSIX `/` separators on all platforms.
+  `abspath`) describe the selected processing target and use POSIX `/` separators on all platforms.
 - Newline preservation: the inserted header uses the same newline style as the file (LF/CRLF/CR).
 - BOM preservation: if a UTF-8 BOM is present, it is preserved.
 - Idempotency: re-running TopMark on a file with a compliant header produces no runtime changes.

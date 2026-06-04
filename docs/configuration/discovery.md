@@ -46,6 +46,8 @@ Configuration sources are discovered as follows, from lowest to highest preceden
      If no input paths are given (or you read from STDIN), the anchor is the **current working
      directory**.\
      Use `--no-config` to skip this layer.
+   - **Anchor spelling:** discovery anchors are resolved before walking upward, so a symlinked
+     anchor follows the resolved target path for project-chain discovery.
    - In each directory, TopMark considers both:
      - `pyproject.toml` (`[tool.topmark]`)
      - `topmark.toml`
@@ -65,6 +67,32 @@ Configuration sources are discovered as follows, from lowest to highest preceden
 > -> `--config` (in order) -> CLI.\
 > Use `--no-config` to skip project/user discovery.
 
+### Configuration-source identity
+
+File-backed configuration sources use the resolved configuration-file target as their
+configuration-source identity.
+
+This means that different path spellings can identify the same configuration source. For example:
+
+```text
+real/topmark.toml
+link-to-topmark.toml
+```
+
+may refer to the same loaded configuration file.
+
+TopMark uses configuration-source identity for:
+
+- precedence and layer ordering;
+- scope-root selection;
+- per-path applicability checks;
+- layered provenance views; and
+- machine-readable configuration provenance.
+
+Symlink spellings are therefore not preserved as configuration identity. They may be useful at the
+shell prompt, but once TopMark has loaded the configuration source, provenance and applicability are
+based on the resolved configuration-file target.
+
 ### Layered provenance (inspection)
 
 When using [`topmark config dump --show-layers`](../usage/commands/config/dump.md), this discovery
@@ -74,6 +102,10 @@ includes the original source-local TOML fragment.
 
 This layered view is inspection-oriented and does not change merge semantics; it makes the effective
 precedence and contributions of each layer explicit.
+
+For file-backed layers, the provenance `origin` and `scope_root` describe the resolved
+configuration-file target and its scope. If a configuration file was reached through a symlink, the
+layered provenance view reports the resolved target rather than the symlink spelling.
 
 The stored TOML fragments correspond to the source-local TOML view after TOML-layer validation.
 TOML-layer diagnostics may therefore already distinguish unknown entries, malformed-present
@@ -95,6 +127,9 @@ ______________________________________________________________________
 
 TopMark resolves paths relative to **where they are defined**:
 
+The definition location for file-backed configuration is the resolved configuration-source target,
+not necessarily the spelling used to reach the configuration file.
+
 | Source                                                               | Resolution base                               |
 | -------------------------------------------------------------------- | --------------------------------------------- |
 | Config-declared globs (`include_patterns`, `exclude_patterns`)       | Directory of the config file                  |
@@ -102,6 +137,10 @@ TopMark resolves paths relative to **where they are defined**:
 | Path-to-file settings (`include_from`, `exclude_from`, `files_from`) | Directory of defining config (or CWD for CLI) |
 
 Note: `relative_to` only affects metadata fields like `file_relpath`, not file matching.
+
+When a configuration file is loaded through a symlink, config-declared paths are evaluated relative
+to the resolved configuration-file target. This keeps layered configuration behavior consistent with
+TopMark's processing-path identity model.
 
 ______________________________________________________________________
 
@@ -264,6 +303,9 @@ ______________________________________________________________________
 
 `[config].root = true` stops traversal above the directory where it is defined.\
 This defines a discovery boundary similar to tools like **Black**, **isort**, or **ruff**.
+
+For symlinked configuration files, the root boundary is associated with the resolved configuration
+source target and its containing directory.
 
 - Where to put it:
 

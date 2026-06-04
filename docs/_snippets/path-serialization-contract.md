@@ -15,6 +15,11 @@ topmark:header:end
 > TopMark serializes machine-readable filesystem path fields with POSIX `/` separators on all
 > platforms.
 >
+> Path serialization is a presentation contract and is distinct from filesystem identity.
+>
+> TopMark first determines a canonical processing path for the filesystem target being processed and
+> then serializes that processing path according to the machine-output contract.
+>
 > This contract applies to:
 >
 > - header metadata path fields;
@@ -22,6 +27,20 @@ topmark:header:end
 > - probe machine-output payloads;
 > - configuration machine-output payloads; and
 > - TOML/config provenance payloads.
+>
+> Examples:
+>
+> ```text
+> real/file.py
+> ./real/file.py
+> link-to-file.py
+> ```
+>
+> may refer to the same filesystem identity and therefore produce the same serialized processing
+> path.
+>
+> TopMark currently defines filesystem identity using the resolved processing target path. Hard-link
+> detection and device/inode-based identity are outside the current compatibility contract.
 >
 > Human-facing output follows display-path policy instead:
 >

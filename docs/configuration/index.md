@@ -19,6 +19,8 @@ topmark:header:end
 - **Globs declared in config files** are resolved relative to the **directory of that config file**.
 - **Globs declared via CLI** are resolved relative to the **current working directory** (invocation
   site).
+- **Configuration-source identity** is based on the resolved configuration-file target. Symlink
+  spellings are not preserved for precedence, scope, applicability, or layered provenance.
 - **Path-to-file settings** (e.g., `exclude_from`, `files_from`) are resolved relative to the
   **declaring config file** (or CWD for CLI-provided values).
 - **Merge semantics vary by field**: runtime behavioral settings usually use nearest-wins semantics,
@@ -42,6 +44,11 @@ TopMark also provides an inspection mode via
 configuration provenance. This shows how the effective runtime configuration is constructed from
 individual TOML sources and runtime CLI overrides, including their original TOML fragments.
 
+For file-backed configuration sources, layered provenance reports the resolved configuration target
+used for configuration-source identity. If a configuration file is loaded through a symlink,
+precedence, scope evaluation, and provenance operate on the resolved target rather than the symlink
+spelling.
+
 During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
 keys, malformed section shapes, missing known sections, etc.). Only the validated layered
 configuration fragment is then passed into layered configuration merging.
@@ -62,6 +69,9 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/runtime-configuration-model.md" %}
 
+Configuration discovery, precedence evaluation, configuration-source identity normalization, and
+scope applicability are completed before the effective runtime configuration is frozen.
+
 ______________________________________________________________________
 
 ## Configuration flow at a glance
@@ -79,6 +89,10 @@ flowchart LR
     A --> B --> C --> D --> E --> F --> G
 ```
 
+For file-backed configuration sources, configuration-source identity is established before layered
+configuration merging. Different path spellings that resolve to the same configuration-file target
+therefore contribute to the same effective configuration source.
+
 This reflects the main distinction in TopMark's layered runtime configuration model:
 
 - TOML sources are validated first at the **whole-source TOML layer**.
@@ -93,11 +107,13 @@ ______________________________________________________________________
 ## Start here
 
 - [`Configuration discovery, precedence, and policy`](./discovery.md)
-- [`Merge semantics by field`](./discovery.md#merge-semantics-overview)
-- [`Root semantics`](./discovery.md#root-semantics) for how discovery stops at
-  `[config].root = true`
-- [`Policy resolution`](./discovery.md#policy-resolution) for understanding how runtime policy
-  settings are defined and overridden at global level and per file type.
+  - [`Configuration-source identity`](./discovery.md#configuration-source-identity)
+  - [`Layered provenance (inspection)`](./discovery.md#layered-provenance-inspection)
+  - [`Merge semantics by field`](./discovery.md#merge-semantics-overview)
+  - [`Root semantics`](./discovery.md#root-semantics) for how discovery stops at
+    `[config].root = true`
+  - [`Policy resolution`](./discovery.md#policy-resolution) for understanding how runtime policy
+    settings are defined and overridden at global level and per file type.
 - [Configuration](../usage/configuration.md) for the public TOML, CLI, and API file type identity
   contract.
 - [CLI overview](../usage/cli.md) for command-line execution and shared command options.

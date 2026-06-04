@@ -25,6 +25,12 @@ Globs declared in configuration files are expanded relative to the directory of
 each declaring config file. Paths loaded from `files_from` sources are resolved
 against their declaring source base directory.
 
+For regular filesystem inputs, file-list resolution uses the resolved target path
+as the processing identity. Multiple spellings that resolve to the same target
+(such as a symlink and its target) are processed once. The selected path returned
+to the pipeline is the canonical processing path, preferably made relative to the
+current working directory for presentation and machine-output stability.
+
 The module also provides discovery-level probe helpers for `topmark probe`.
 Those helpers explain why explicitly requested paths did not reach file-type
 probing, without enumerating every recursively discovered file excluded during
@@ -50,6 +56,7 @@ from topmark.registry.filetypes import FileTypeRegistry
 from topmark.resolution.discovery import FileSelectionProbeResult
 from topmark.resolution.discovery import FileSelectionReason
 from topmark.resolution.discovery import FileSelectionStatus
+from topmark.utils.path import canonical_processing_path
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -258,36 +265,36 @@ def _explicit_input_paths(config: FrozenConfig) -> list[Path]:
     return paths
 
 
-def _real_paths(paths: Sequence[Path]) -> set[Path]:
-    """Return normalized real paths for filesystem entries.
+def _processing_identity_paths(paths: Sequence[Path]) -> set[Path]:
+    """Return canonical processing identity paths for filesystem entries.
 
     Args:
         paths: Filesystem paths to normalize.
 
     Returns:
-        Set of resolved paths. Paths that cannot be resolved are kept as
-        provided so comparison remains best-effort and non-fatal.
+        Set of canonical processing paths. Paths that cannot be resolved are kept
+        as provided so comparison remains best-effort and non-fatal.
     """
     resolved: set[Path] = set()
     for path in paths:
         try:
-            resolved.add(path.resolve())
+            resolved.add(canonical_processing_path(path))
         except OSError:
             resolved.add(path)
     return resolved
 
 
-def _selected_real_paths(selected_files: Sequence[Path]) -> set[Path]:
-    """Return normalized real paths for selected file-list entries.
+def _selected_processing_identity_paths(selected_files: Sequence[Path]) -> set[Path]:
+    """Return canonical processing identity paths for selected file-list entries.
 
     Args:
         selected_files: File-list results returned by `resolve_file_list()`.
 
     Returns:
-        Set of resolved selected paths. Paths that cannot be resolved are kept
-        as provided so comparison remains best-effort and non-fatal.
+        Set of selected processing identity paths. Paths that cannot be resolved
+        are kept as provided so comparison remains best-effort and non-fatal.
     """
-    return _real_paths(selected_files)
+    return _processing_identity_paths(selected_files)
 
 
 # --- Explicit-input selection helpers ---
@@ -295,26 +302,26 @@ def _selected_real_paths(selected_files: Sequence[Path]) -> set[Path]:
 
 def _has_selected_descendant(
     directory: Path,
-    selected_real: set[Path],
+    selected_identities: set[Path],
 ) -> bool:
     """Return whether `directory` contains at least one selected file.
 
     Args:
         directory: Explicit directory input to check.
-        selected_real: Resolved selected file paths returned by
-            [_selected_real_paths][topmark.resolution.files._selected_real_paths].
+        selected_identities: Selected canonical processing paths returned by
+            [_selected_processing_identity_paths][topmark.resolution.files._selected_processing_identity_paths].
 
     Returns:
         True if at least one selected file is below `directory`.
     """
     try:
-        directory_real: Path = directory.resolve()
+        directory_identity: Path = canonical_processing_path(directory)
     except OSError:
-        directory_real = directory
+        directory_identity = directory
 
-    for selected in selected_real:
+    for selected in selected_identities:
         try:
-            selected.relative_to(directory_real)
+            selected.relative_to(directory_identity)
         except ValueError:
             continue
         else:
@@ -435,17 +442,18 @@ def probe_explicit_file_selection(
         Discovery-level probe results for explicit inputs that did not reach
         file-type probing.
     """
-    selected_real: set[Path] = _selected_real_paths(selected_files)
-    missing_real: set[Path] = _real_paths(missing_literals)
+    selected_identities: set[Path] = _selected_processing_identity_paths(selected_files)
+    missing_identities: set[Path] = _processing_identity_paths(missing_literals)
+
     results: list[FileSelectionProbeResult] = []
 
     for explicit in _explicit_input_paths(config):
         try:
-            real: Path = explicit.resolve()
+            identity: Path = canonical_processing_path(explicit)
         except OSError:
-            real = explicit
+            identity = explicit
 
-        if real in selected_real or real in missing_real:
+        if identity in selected_identities or identity in missing_identities:
             continue
 
         if not explicit.exists():
@@ -459,7 +467,7 @@ def probe_explicit_file_selection(
             continue
 
         if not explicit.is_file():
-            if explicit.is_dir() and _has_selected_descendant(explicit, selected_real):
+            if explicit.is_dir() and _has_selected_descendant(explicit, selected_identities):
                 continue
 
             results.append(
@@ -567,7 +575,12 @@ def resolve_file_list_with_diagnostics(
          are given, remove any files matching the exclusion patterns from the set.
       5. **File type filter**: If `include_file_types` or `exclude_file_types` are specified,
          further restrict to files matching those types.
-      6. Returns a **sorted** list of Path objects for deterministic output.
+      6. **Processing identity**: Dedupe selected files by resolved target path.
+         If a file is reachable through both a symlink and its target, process
+         the resolved target once.
+      7. Returns a **sorted** list of Path objects for deterministic output.
+         Selected paths represent TopMark's canonical processing paths, not
+         necessarily the original CLI/config spelling.
 
     Args:
         config: Effective layered configuration.
@@ -646,8 +659,8 @@ def resolve_file_list_with_diagnostics(
         but is applied to directory paths so we can avoid descending into subtrees
         that would be entirely excluded anyway.
         """
-        real: Path = path.resolve()
-        return _matches_any(exclude_specs_all, real)
+        identity: Path = canonical_processing_path(path)
+        return _matches_any(exclude_specs_all, identity)
 
     def _expand_path(p: Path) -> list[Path]:
         """Expand a base path into a list of files and directories.
@@ -740,7 +753,7 @@ def resolve_file_list_with_diagnostics(
             for pat in grp.patterns:
                 for hit in base_dir.glob(pat):
                     if hit.is_file():
-                        expanded_from_includes.add(hit.resolve())
+                        expanded_from_includes.add(canonical_processing_path(hit))
         if expanded_from_includes:
             input_paths.extend(sorted(expanded_from_includes))
             logger.debug(
@@ -840,19 +853,22 @@ def resolve_file_list_with_diagnostics(
             if not _matches_any_file_type(file_path, selected_exclude_types)
         }
 
-    # Step 6 (Finalize): dedupe by real path, prefer CWD-relative presentation
-    out_by_real: dict[Path, Path] = {}
+    # Step 6 (Finalize): dedupe by resolved processing identity, then prefer
+    # CWD-relative spelling for the selected processing path when possible.
+    # This intentionally collapses symlink spellings onto their resolved target
+    # so later pipeline steps generate stable metadata and avoid duplicate writes.
+    out_by_identity: dict[Path, Path] = {}
     for p in filtered_paths:
-        real: Path = p.resolve()
+        identity: Path = canonical_processing_path(p)
         try:
-            rel_to_cwd: Path = real.relative_to(cwd.resolve())
+            rel_to_cwd: Path = identity.relative_to(cwd.resolve())
             rep: Path = rel_to_cwd
         except (OSError, ValueError):
-            rep = real  # keep absolute if not within CWD
-        if real not in out_by_real:
-            out_by_real[real] = rep
+            rep = identity  # keep absolute if not within CWD
+        if identity not in out_by_identity:
+            out_by_identity[identity] = rep
 
-    result: list[Path] = sorted(out_by_real.values(), key=lambda q: q.as_posix())
+    result: list[Path] = sorted(out_by_identity.values(), key=lambda q: q.as_posix())
     logger.trace("Files to process: %d -- %s", len(result), result)
     return FileListResolution(
         selected=tuple(result),

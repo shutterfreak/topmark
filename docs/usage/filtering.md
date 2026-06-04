@@ -44,6 +44,9 @@ TopMark applies filtering in a deterministic order:
 
 Exclude rules take precedence over include rules.
 
+Filesystem-identity normalization and processing-path selection occur during path discovery before
+runtime applicability evaluation and processor resolution.
+
 For canonical file-type identifier semantics, see [File-type filtering](#file-type-filtering). For
 layered configuration behavior, see [Configuration](configuration.md).
 
@@ -60,6 +63,8 @@ TopMark intentionally separates:
 
 1. path discovery
 1. path filtering
+1. filesystem-identity normalization
+1. deduplication and processing-path selection
 1. file-type filtering
 1. runtime applicability evaluation
 1. runtime probing and processor resolution
@@ -68,6 +73,11 @@ Each stage consumes the finalized results of the previous stage.
 
 This layered filtering model keeps runtime behavior deterministic while preserving stable probe
 diagnostics and machine-readable filtering semantics.
+
+When multiple path spellings resolve to the same filesystem target (for example a symlink and its
+target), TopMark selects a canonical processing path before runtime filtering continues. Downstream
+filtering, probing, header generation, and machine-readable output operate on that processing path
+rather than the original spelling used to reach the file.
 
 ______________________________________________________________________
 
@@ -105,6 +115,9 @@ Stable path-filtering semantics:
 - Absolute patterns are not supported.
 - Exclude rules take precedence over include rules.
 - Path-based filtering occurs before file-type filtering.
+- Existing filesystem inputs are normalized to canonical processing paths before runtime processing.
+- Symlink spellings are not preserved for runtime identity, generated filesystem-related header
+  metadata, or machine-readable path fields.
 
 ______________________________________________________________________
 
@@ -135,6 +148,7 @@ This includes:
 - file-type filtering
 - canonical file-type identifier normalization and resolution
 - ambiguity handling
+- filesystem-identity normalization and processing-path selection
 
 However, unlike processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md)),
 [`probe`](commands/probe.md) also reports \*\*explicit inputs that were filtered out before runtime
@@ -183,6 +197,10 @@ Filtered probe results may use one of the following reasons:
 
 Only explicitly requested runtime inputs (CLI paths or `--files-from`) are reported this way. Files
 excluded implicitly during recursive discovery are not enumerated.
+
+For probe records that reach runtime probing, reported filesystem paths describe the selected
+processing path. They do not guarantee preservation of the original CLI argument, glob match, or
+symlink spelling.
 
 ______________________________________________________________________
 
