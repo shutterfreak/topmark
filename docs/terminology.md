@@ -130,6 +130,12 @@ configuration-source identities, and canonicalized registry matching rules. Thes
 interchangeable across domains. Workspace-root discovery and discovery anchors are related discovery
 concepts rather than canonical identity domains.
 
+> [!NOTE]
+>
+> For the compatibility status of each identity domain, see
+> [Identity-domain compatibility boundaries](dev/api-stability.md#identity-domain-compatibility-boundaries).
+> Not every canonical identity is part of the same public compatibility surface.
+
 ### Filesystem identity
 
 The canonical filesystem object identity used by TopMark when evaluating runtime processing targets.

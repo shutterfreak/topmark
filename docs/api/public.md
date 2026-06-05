@@ -371,4 +371,7 @@ For resolution diagnostics, prefer:
 ______________________________________________________________________
 
 **Stability note:** See [API stability and snapshot policy](../dev/api-stability.md) for how TopMark
-protects the stable public API surface across supported Python versions.
+protects the stable public API surface across supported Python versions, including the
+[identity-domain compatibility boundaries](../dev/api-stability.md#identity-domain-compatibility-boundaries)
+shared by public API results, machine-readable output, configuration provenance, and documented
+processing-target behavior.
