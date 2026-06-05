@@ -55,7 +55,11 @@ link-to-topmark.toml
 may refer to the same configuration source.
 
 Configuration precedence, scope evaluation, layered configuration export, and machine-readable
-configuration provenance operate on the resolved configuration-file target.
+configuration provenance operate on the resolved configuration-file target. If multiple discovered
+or explicit entries resolve to the same configuration-source identity, TopMark keeps the
+highest-precedence occurrence and reports that source once in layered provenance. This prevents one
+physical configuration file from contributing multiple layers through different path spellings or
+discovery paths.
 
 > [!NOTE]
 >

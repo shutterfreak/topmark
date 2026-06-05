@@ -100,6 +100,12 @@ Symlink spellings are therefore not preserved as configuration identity. They ma
 shell prompt, but once TopMark has loaded the configuration source, provenance and applicability are
 based on the resolved configuration-file target.
 
+If the same resolved configuration source is reached more than once (for example through automatic
+project-chain discovery and again through `--config`, or through two spellings of the same symlinked
+configuration file), TopMark keeps the highest-precedence occurrence for TOML-side resolution and
+layered provenance. This avoids duplicate layers for one configuration-source identity while
+preserving the normal precedence model.
+
 Configuration-source identity is distinct from processing-target identity. Runtime
 filesystem-processing commands evaluate processing-target identity separately, including
 filesystem-identity normalization for selected processing paths and eligibility checks such as

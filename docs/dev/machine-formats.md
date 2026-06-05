@@ -623,9 +623,11 @@ configuration-file target. Symlink spellings for configuration files are therefo
 machine-readable provenance, precedence, scope, or applicability evaluation.
 
 Project-chain discovery begins from the resolved discovery anchor before configuration-source
-identity is established. Machine-readable provenance payloads describe the discovered configuration
-sources and, when available, their resolved scope roots. They do not currently include a separate
-field for the original discovery-anchor spelling used to start project-chain discovery.
+identity is established. Machine-readable provenance payloads describe the resolved configuration
+sources and, when available, their resolved scope roots. If multiple entries resolve to the same
+configuration-source identity, provenance keeps the highest-precedence occurrence and emits one
+layer for that source identity. Provenance payloads do not currently include a separate field for
+the original discovery-anchor spelling used to start project-chain discovery.
 
 Configuration-source identity is distinct from processing-target identity. Hard-link processing
 policy applies to runtime filesystem-processing payloads and probe diagnostics, but does not affect

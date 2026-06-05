@@ -371,6 +371,11 @@ Configuration-source identity normalization follows the same path-spelling model
 configuration sources are normalized to their resolved configuration-file target before precedence,
 scope, and applicability evaluation occur.
 
+If multiple discovered or explicit configuration entries resolve to the same configuration-source
+identity, TopMark retains only the highest-precedence occurrence for configuration layering and
+provenance evaluation. A physical configuration file therefore contributes at most one effective
+layer, even when reached through multiple discovery paths or symlink spellings.
+
 Workspace-root discovery is evaluated earlier and determines which project configuration files are
 found. Discovery uses the resolved discovery anchor when walking the project chain.
 

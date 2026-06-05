@@ -708,7 +708,9 @@ precedence evaluation, and runtime overlays have completed.
 
 `ConfigPayload` may include resolved configuration file paths in fields such as
 `files.config_files`. Those paths describe configuration sources participating in the effective
-configuration; they are not a separate serialized discovery-anchor field.
+configuration; they are not a separate serialized discovery-anchor field. If multiple inputs resolve
+to the same configuration-source identity, TopMark keeps the highest-precedence occurrence and emits
+that source identity once.
 
 Normalization rules:
 

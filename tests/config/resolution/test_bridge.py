@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.diagnostic.model import MutableDiagnosticLog
+    from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
 def test_default_template_resolves_without_errors() -> None:
@@ -72,9 +73,49 @@ def test_explicit_config_symlink_resolves_to_target_path(tmp_path: Path) -> None
     target_config.write_text("[config]\nstrict = true\n", encoding="utf-8")
     link_config: Path = symlink_or_skip(tmp_path / "links" / "topmark.toml", target_config)
 
-    resolved = resolve_topmark_toml_sources(
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
         input_paths=[tmp_path],
         extra_config_files=[link_config],
+        no_config=True,
+    )
+
+    assert len(resolved.sources) == 1
+    assert resolved.sources[0].kind == "explicit"
+    assert resolved.sources[0].path == target_config.resolve()
+    assert resolved.sources[0].path != link_config
+    assert resolved.strict is True
+
+
+def test_duplicate_config_source_identity_keeps_highest_precedence_entry(
+    tmp_path: Path,
+) -> None:
+    """Duplicate resolved config-source identities should be merged once."""
+    config_file: Path = tmp_path / "topmark.toml"
+    config_file.write_text("[config]\nstrict = true\n", encoding="utf-8")
+
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+        input_paths=[tmp_path],
+        extra_config_files=[config_file],
+    )
+
+    assert len(resolved.sources) == 1
+    assert resolved.sources[0].kind == "explicit"
+    assert resolved.sources[0].path == config_file.resolve()
+    assert resolved.strict is True
+
+
+def test_duplicate_symlinked_config_source_identity_is_deduplicated(
+    tmp_path: Path,
+) -> None:
+    """A symlinked config and its target should resolve to one source identity."""
+    target_config: Path = tmp_path / "real" / "topmark.toml"
+    target_config.parent.mkdir(parents=True)
+    target_config.write_text("[config]\nstrict = true\n", encoding="utf-8")
+    link_config: Path = symlink_or_skip(tmp_path / "links" / "topmark.toml", target_config)
+
+    resolved: ResolvedTopmarkTomlSources = resolve_topmark_toml_sources(
+        input_paths=[tmp_path],
+        extra_config_files=[target_config, link_config],
         no_config=True,
     )
 
