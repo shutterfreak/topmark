@@ -118,11 +118,15 @@ class ResolvedTopmarkTomlSources:
         strict: Resolved config-loading strictness using
             highest-precedence non-`None` wins, optionally overridden by the
             explicit function argument to `resolve_topmark_toml_sources()`.
+        discovery_anchor: Resolved anchor directory used to start project/local
+            TOML discovery, or `None` for synthetic/bundled config payloads that
+            do not perform project/local discovery.
     """
 
     sources: list[ResolvedTopmarkTomlSource]
     writer_options: WriterOptions | None
     strict: bool | None
+    discovery_anchor: Path | None = None
 
 
 # ---- Shared helpers ----
@@ -425,4 +429,5 @@ def resolve_topmark_toml_sources(
         sources=source_entries,
         writer_options=resolved_writer,
         strict=resolved_strict,
+        discovery_anchor=anchor,
     )

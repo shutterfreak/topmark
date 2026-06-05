@@ -40,8 +40,11 @@ from __future__ import annotations
 import textwrap
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
+from tests.cli.conftest import run_cli_in
 from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
@@ -103,16 +106,16 @@ def test_config_dump_json_includes_meta() -> None:
     assert "meta" in payload
     assert "config" in payload
 
-    meta_obj = payload.get("meta")
+    meta_obj: object | None = payload.get("meta")
     assert is_mapping(meta_obj)
     meta: dict[str, object] = as_object_dict(meta_obj)
 
-    tool_obj = meta.get("tool")
+    tool_obj: object | None = meta.get("tool")
     assert isinstance(tool_obj, str)
     assert tool_obj == "topmark"
 
     # Version should be a non-empty string
-    version_obj = meta.get("version")
+    version_obj: object | None = meta.get("version")
     assert isinstance(version_obj, str)
     assert version_obj != ""
 
@@ -136,11 +139,11 @@ def test_config_dump_json_show_layers_includes_config_provenance() -> None:
     assert "config_provenance" in payload
     assert "config" in payload
 
-    provenance_obj = payload.get("config_provenance")
+    provenance_obj: object | None = payload.get("config_provenance")
     assert is_mapping(provenance_obj)
     provenance: dict[str, object] = as_object_dict(provenance_obj)
 
-    layers_obj = provenance.get("config_layers")
+    layers_obj: object | None = provenance.get("config_layers")
     assert is_any_list(layers_obj)
     layers: list[object] = layers_obj
     assert layers
@@ -153,8 +156,100 @@ def test_config_dump_json_show_layers_includes_config_provenance() -> None:
     assert isinstance(first.get("kind"), str)
     assert isinstance(first.get("precedence"), int)
 
-    toml_obj = first.get("toml")
+    toml_obj: object | None = first.get("toml")
     assert is_mapping(toml_obj)
+
+
+def test_config_dump_json_show_layers_includes_discovery_anchor(tmp_path: Path) -> None:
+    """JSON config provenance should expose the resolved discovery anchor."""
+    workspace: Path = tmp_path / "workspace"
+    config_file: Path = workspace / "topmark.toml"
+    _write_minimal_config(config_file)
+
+    result: Result = run_cli_in(
+        workspace,
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.SHOW_CONFIG_LAYERS,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+
+    provenance_obj: object | None = payload.get("config_provenance")
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
+
+    discovery_anchor_obj: object | None = provenance.get("discovery_anchor")
+    assert isinstance(discovery_anchor_obj, str)
+    assert discovery_anchor_obj == workspace.resolve().as_posix()
+
+
+def test_config_dump_json_show_layers_resolves_symlinked_discovery_anchor(
+    tmp_path: Path,
+) -> None:
+    """Discovery-anchor provenance should use the resolved target for symlinked CWD."""
+    real_workspace: Path = tmp_path / "real-workspace"
+    config_file: Path = real_workspace / "topmark.toml"
+    _write_minimal_config(config_file)
+
+    linked_workspace: Path = tmp_path / "linked-workspace"
+    try:
+        linked_workspace.symlink_to(real_workspace, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlinks are unavailable in this environment: {exc}")
+
+    result: Result = run_cli_in(
+        linked_workspace,
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.SHOW_CONFIG_LAYERS,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+
+    provenance_obj: object | None = payload.get("config_provenance")
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
+
+    discovery_anchor_obj: object | None = provenance.get("discovery_anchor")
+    assert isinstance(discovery_anchor_obj, str)
+    assert discovery_anchor_obj == real_workspace.resolve().as_posix()
+
+
+def test_config_dump_json_without_show_layers_omits_discovery_anchor(tmp_path: Path) -> None:
+    """Default config snapshots should not mix provenance into `config`."""
+    workspace: Path = tmp_path / "workspace"
+    config_file: Path = workspace / "topmark.toml"
+    _write_minimal_config(config_file)
+
+    result: Result = run_cli_in(
+        workspace,
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+    assert_SUCCESS(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+    assert "config_provenance" not in payload
+
+    config_obj: object | None = payload.get("config")
+    assert is_mapping(config_obj)
+    config: dict[str, object] = as_object_dict(config_obj)
+    assert "discovery_anchor" not in config
 
 
 def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
@@ -172,11 +267,11 @@ def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
 
     payload: dict[str, object] = parse_json_object(result.output)
 
-    provenance_obj = payload.get("config_provenance")
+    provenance_obj: object | None = payload.get("config_provenance")
     assert is_mapping(provenance_obj)
     provenance: dict[str, object] = as_object_dict(provenance_obj)
 
-    layers_obj = provenance.get("config_layers")
+    layers_obj: object | None = provenance.get("config_layers")
     assert is_any_list(layers_obj)
     layers: list[object] = layers_obj
     assert layers
@@ -189,7 +284,7 @@ def test_config_dump_json_show_layers_defaults_layer_shape() -> None:
     assert first.get("kind") == "default"
     assert first.get("precedence") == 0
 
-    toml_obj = first.get("toml")
+    toml_obj: object | None = first.get("toml")
     assert is_mapping(toml_obj)
     toml_fragment: dict[str, object] = as_object_dict(toml_obj)
     assert "config" in toml_fragment
@@ -217,15 +312,15 @@ def test_config_dump_json_config_files_use_posix_paths_for_explicit_config(
 
     payload: dict[str, object] = parse_json_object(result.output)
 
-    config_obj = payload.get("config")
+    config_obj: object | None = payload.get("config")
     assert is_mapping(config_obj)
     config: dict[str, object] = as_object_dict(config_obj)
 
-    files_obj = config.get("files")
+    files_obj: object | None = config.get("files")
     assert is_mapping(files_obj)
     files: dict[str, object] = as_object_dict(files_obj)
 
-    config_files_obj = files.get("config_files")
+    config_files_obj: object | None = files.get("config_files")
     assert is_any_list(config_files_obj)
     assert config_file.as_posix() in config_files_obj
 
@@ -252,11 +347,11 @@ def test_config_dump_json_show_layers_uses_posix_paths_for_explicit_config_prove
 
     payload: dict[str, object] = parse_json_object(result.output)
 
-    provenance_obj = payload.get("config_provenance")
+    provenance_obj: object | None = payload.get("config_provenance")
     assert is_mapping(provenance_obj)
     provenance: dict[str, object] = as_object_dict(provenance_obj)
 
-    layers_obj = provenance.get("config_layers")
+    layers_obj: object | None = provenance.get("config_layers")
     assert is_any_list(layers_obj)
 
     matching_layers: list[dict[str, object]] = []
@@ -292,7 +387,7 @@ def test_config_dump_ndjson_kinds() -> None:
 
     record: dict[str, object] = parse_single_ndjson_record(result.output)
 
-    kind_obj = record.get("kind")
+    kind_obj: object | None = record.get("kind")
     assert isinstance(kind_obj, str)
     assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
     kinds: set[str] = {kind_obj}
@@ -320,13 +415,43 @@ def test_config_dump_ndjson_show_layers_kinds() -> None:
 
     assert record_kinds(records) == ["config_provenance", "config"]
 
-    provenance_obj = records[0].get("config_provenance")
+    provenance_obj: object | None = records[0].get("config_provenance")
     assert is_mapping(provenance_obj)
     provenance: dict[str, object] = as_object_dict(provenance_obj)
 
-    layers_obj = provenance.get("config_layers")
+    layers_obj: object | None = provenance.get("config_layers")
     assert is_any_list(layers_obj)
     assert layers_obj
+
+
+def test_config_dump_ndjson_show_layers_includes_discovery_anchor(tmp_path: Path) -> None:
+    """NDJSON config provenance should expose the resolved discovery anchor."""
+    workspace: Path = tmp_path / "workspace"
+    config_file: Path = workspace / "topmark.toml"
+    _write_minimal_config(config_file)
+
+    result: Result = run_cli_in(
+        workspace,
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.SHOW_CONFIG_LAYERS,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+        ],
+    )
+    assert_SUCCESS(result)
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert record_kinds(records) == ["config_provenance", "config"]
+
+    provenance_obj: object | None = records[0].get("config_provenance")
+    assert is_mapping(provenance_obj)
+    provenance: dict[str, object] = as_object_dict(provenance_obj)
+
+    discovery_anchor_obj: object | None = provenance.get("discovery_anchor")
+    assert isinstance(discovery_anchor_obj, str)
+    assert discovery_anchor_obj == workspace.resolve().as_posix()
 
 
 def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
@@ -351,11 +476,11 @@ def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
 
     assert first_record.get("kind") == "config_provenance"
 
-    provenance_obj = first_record.get("config_provenance")
+    provenance_obj: object | None = first_record.get("config_provenance")
     assert is_mapping(provenance_obj)
     provenance: dict[str, object] = as_object_dict(provenance_obj)
 
-    layers_obj = provenance.get("config_layers")
+    layers_obj: object | None = provenance.get("config_layers")
     assert is_any_list(layers_obj)
     layers: list[object] = layers_obj
     assert layers
@@ -368,5 +493,5 @@ def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
     assert first_layer.get("kind") == "default"
     assert first_layer.get("precedence") == 0
 
-    toml_obj = first_layer.get("toml")
+    toml_obj: object | None = first_layer.get("toml")
     assert is_mapping(toml_obj)

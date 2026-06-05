@@ -56,7 +56,11 @@ ______________________________________________________________________
   configuration-file target for precedence, scope applicability, layered provenance, and
   machine-readable configuration provenance.
 - Deduplicated repeated resolved configuration-source identities during TOML-side resolution,
+- Deduplicated repeated resolved configuration-source identities during TOML-side resolution,
   keeping the highest-precedence occurrence for layered configuration and provenance.
+- Extended machine-readable configuration provenance to expose the resolved configuration-discovery
+  anchor separately from configuration-source identity, scope roots, processing targets, and
+  filesystem identity.
 - Added a hard-link filesystem-identity guard: selected paths sharing `(st_dev, st_ino)` are all
   blocked as hard-linked processing targets while unrelated files continue processing normally.
 - Extended the GitHub Actions pin audit with an optional `--fix` mode that can repair stale repeated
@@ -134,6 +138,9 @@ ______________________________________________________________________
   winner, or loser path.
 - Fixed duplicate configuration-source provenance when the same resolved TOML source is reached
   through multiple discovery or explicit `--config` paths.
+- Fixed missing machine-readable visibility into configuration-discovery starting points by
+  exporting the resolved discovery anchor in configuration provenance payloads while preserving
+  existing provenance and identity semantics.
 
 ### Documentation - Unreleased
 
@@ -171,6 +178,9 @@ ______________________________________________________________________
   terminology, machine-output, command, and API documentation.
 - Documented workspace-root discovery and resolved discovery-anchor behavior across configuration,
   command, machine-output, terminology, architecture, and API-stability documentation.
+- Documented `config_provenance.discovery_anchor` and clarified its distinction from
+  configuration-source identity, scope roots, processing targets, and filesystem identity across
+  machine-output and configuration-command documentation.
 - Documented the TopMark 1.1.0 hard-link compatibility contract for processing and probe machine
   output.
 - Clarified TopMark's identity-domain terminology and compatibility boundaries for processing-target
@@ -215,6 +225,8 @@ ______________________________________________________________________
   current working directories, and repositories reached through symlinked parent paths.
 - Added regression coverage for duplicate resolved configuration-source identities across
   discovered, explicit, and symlinked configuration paths.
+- Added machine-output and TOML-provenance regression coverage for discovery-anchor serialization,
+  POSIX path formatting, provenance-only schema handling, and symlinked discovery scenarios.
 - Added regression coverage for hard-linked selected processing paths across pipeline execution,
   `check`, `strip`, `probe`, JSON output, NDJSON output, and mixed hard-linked plus unrelated file
   selections.
