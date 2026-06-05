@@ -667,20 +667,27 @@ content composition.
 
 Reusable snippets live in `docs/_snippets/`.
 
-| Snippet                       | Purpose                                                                                                                          | Status           |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| `api-internal-overrides.md`   | Explains the API-only internal override boundary for configuration behavior.                                                     | Keep             |
-| `config-strictness.md`        | Defines the short reusable staged config-loading strictness contract.                                                            | Keep             |
-| `file-type-identifiers.md`    | Defines the short reusable local/qualified file type identifier contract.                                                        | Keep             |
-| `option-spelling.md`          | Explains CLI, TOML, and API option spelling conventions.                                                                         | Keep             |
-| `output-contract.md`          | Defines shared TEXT, quiet-mode, Markdown, and machine-readable output guarantees for commands that support quiet mode.          | Keep             |
-| `output-contract-no-quiet.md` | Defines shared TEXT, Markdown, and machine-readable output guarantees for informational commands that do not support quiet mode. | Keep             |
-| `report-scope.md`             | Defines shared report-scope behavior for sibling mutation commands.                                                              | Keep but monitor |
-| `terminology.md`              | Defines the shared terminology note that links to the project-wide canonical vocabulary page.                                    | Keep             |
-| `ci/related-pages.md`         | Defines the shared related-pages block for CI workflow documentation pages.                                                      | Keep             |
+| Snippet                          | Purpose                                                                                                                          | Status           |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `api-internal-overrides.md`      | Explains the API-only internal override boundary for configuration behavior.                                                     | Keep             |
+| `config-strictness.md`           | Defines the short reusable staged config-loading strictness contract.                                                            | Keep             |
+| `file-type-identifiers.md`       | Defines the short reusable local/qualified file type identifier contract.                                                        | Keep             |
+| `option-spelling.md`             | Explains CLI, TOML, and API option spelling conventions.                                                                         | Keep             |
+| `output-contract.md`             | Defines shared TEXT, quiet-mode, Markdown, and machine-readable output guarantees for commands that support quiet mode.          | Keep             |
+| `output-contract-no-quiet.md`    | Defines shared TEXT, Markdown, and machine-readable output guarantees for informational commands that do not support quiet mode. | Keep             |
+| `path-serialization-contract.md` | Defines the shared path serialization presentation contract and distinguishes it from filesystem identity.                       | Keep             |
+| `report-scope.md`                | Defines shared report-scope behavior for sibling mutation commands.                                                              | Keep but monitor |
+| `runtime-configuration-model.md` | Defines the short layered runtime-configuration model reused by configuration overview pages.                                    | Keep             |
+| `runtime-validation-model.md`    | Defines the short staged runtime-validation model reused by policy and pre-commit pages.                                         | Keep             |
+| `terminology.md`                 | Defines the shared terminology note that links to the project-wide canonical vocabulary page.                                    | Keep             |
+| `ci/related-pages.md`            | Defines the shared related-pages block for CI workflow documentation pages.                                                      | Keep             |
 
 `docs/_snippets/.markdownlint.jsonc` configures Markdown linting for snippet files and is not a
 reusable content snippet.
+
+Keep this inventory synchronized with `docs/_snippets/` whenever snippets are added, removed, or
+repurposed. The inventory is intentionally human-maintained because it records why a snippet exists,
+not just whether the file is present.
 
 ### Appropriate snippet usage
 
