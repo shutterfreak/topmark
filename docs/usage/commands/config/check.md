@@ -86,8 +86,9 @@ ______________________________________________________________________
   Errors always fail; warnings fail only when strict config checking is enabled across staged
   configuration-loading validation.
 
-TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation produces the effective runtime configuration.
+TopMark resolves configuration from defaults, user config, the project chain discovered from the
+resolved discovery anchor, explicit `--config` files, and CLI overrides before staged validation
+produces the effective runtime configuration.
 
 For file-backed configuration sources, TopMark determines configuration-source identity using the
 resolved configuration-file target. If a configuration file is reached through a symlink,
@@ -131,6 +132,10 @@ file-processing inputs:
 
 Use `--config PATH` to validate an explicit config file, or rely on normal config discovery to
 validate the effective runtime configuration for the current working directory.
+
+Project-chain discovery starts from the resolved discovery anchor. For `config check`, that anchor
+is normally the current working directory because the command does not accept processing-path
+inputs.
 
 When `--config PATH` refers to a symlinked configuration file, validation uses the resolved
 configuration target as the configuration source. This mirrors the configuration-source identity

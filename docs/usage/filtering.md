@@ -54,6 +54,10 @@ spellings (such as symlinks), processing-path selection, and processing-target e
 For canonical file-type identifier semantics, see [File-type filtering](#file-type-filtering). For
 layered configuration behavior, see [Configuration](configuration.md).
 
+Filtering occurs after configuration discovery. Project-chain configuration files are discovered
+from the resolved discovery anchor before path filters, file-type filters, and runtime applicability
+are evaluated.
+
 > [!NOTE]
 >
 > For [`topmark probe`](commands/probe.md), paths excluded during step 1 or 2 may still be reported
@@ -77,6 +81,10 @@ Each stage consumes the finalized results of the previous stage.
 
 This layered filtering model keeps runtime behavior deterministic while preserving stable probe
 diagnostics and machine-readable filtering semantics.
+
+For path-processing commands, the configuration discovery anchor is derived from the first selected
+input path when one is available, or from the current working directory otherwise. Project-chain
+discovery walks upward from the resolved anchor location before this runtime filtering model starts.
 
 When multiple path spellings resolve to the same filesystem target (for example a symlink and its
 target), filesystem-identity normalization resolves symlink spellings to the target path and selects
@@ -118,6 +126,8 @@ Stable path-filtering semantics:
 
 - Positional arguments are parsed by Click and resolved **relative to the current working
   directory** (CWD).
+- Configuration discovery is evaluated earlier from the resolved discovery anchor; CWD-relative path
+  parsing for filters does not create a separate project-chain discovery root.
 - Unknown option-like tokens before the standard `--` delimiter are parser errors. Use `--` before
   literal path names that begin with a dash, for example `topmark check -- --generated.py`.
 - Patterns in `--include`, `--exclude`, and files referenced by `--include-from` / `--exclude-from`
@@ -154,6 +164,10 @@ ______________________________________________________________________
 
 The [`topmark probe`](commands/probe.md) command uses the same runtime filtering pipeline and
 discovery semantics described above.
+
+As with `check` and `strip`, this runtime discovery and filtering pipeline starts after
+configuration discovery has selected project-chain configuration sources from the resolved discovery
+anchor.
 
 This includes:
 

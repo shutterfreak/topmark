@@ -87,6 +87,10 @@ This distinction matters for
 For the canonical user-facing discovery, precedence, path-resolution, and staged validation
 contract, see [Configuration discovery, precedence, and policy](../configuration/discovery.md).
 
+Configuration discovery begins from a discovery anchor (the current working directory or an input
+path). Project-chain discovery walks upward from the resolved discovery anchor before layered
+configuration precedence is evaluated.
+
 For file-backed configuration sources, schema processing operates on configuration-source identity
 based on the resolved configuration-file target.
 
@@ -99,6 +103,10 @@ link-to-topmark.toml
 
 may therefore identify the same configuration source.
 
+Workspace-root and project-chain discovery are evaluated earlier. Discovery uses the resolved anchor
+location when determining which project configuration files participate in layered configuration
+construction.
+
 Configuration-source identity affects:
 
 - precedence and layer ordering;
@@ -109,10 +117,16 @@ Configuration-source identity affects:
 
 Symlink spellings are not preserved once a configuration source has been loaded.
 
-Configuration-source identity is distinct from processing-target identity. The hard-link processing
-policy used by runtime filesystem-processing commands does not affect the external configuration
-schema, configuration-source discovery, precedence, scope-root selection, applicability evaluation,
-or layered provenance exports.
+Configuration-source identity is distinct from workspace-root discovery and from processing-target
+identity.
+
+Workspace-root discovery determines where configuration discovery starts. Configuration-source
+identity determines how loaded configuration files participate in precedence, applicability, and
+provenance after discovery has completed.
+
+The hard-link processing policy used by runtime filesystem-processing commands does not affect the
+external configuration schema, workspace-root discovery, configuration-source discovery, precedence,
+scope-root selection, applicability evaluation, or layered provenance exports.
 
 ## Schema validation model
 
@@ -174,13 +188,14 @@ topmark:
     root:
       type: bool
       default: false
-      description: Stop upward config discovery when set in a discovered config.
+      description: Stop upward project-chain discovery when set in a discovered config reached from
+        the resolved discovery anchor.
     strict:
       type: bool
       default: false
       description: Source-local strictness preference applied to staged config-loading validation;
-        warnings become failures when effective strict config checking is enabled across TOML-source,
-        merged-config, and runtime-applicability diagnostics.
+        warnings become failures when effective strict config checking is enabled across
+        TOML-source, merged-config, and runtime-applicability diagnostics.
 
   header:
     fields:
@@ -202,7 +217,8 @@ topmark:
     relative_to:
       type: path
       default: "."
-      description: Affects header metadata (file_relpath) for the selected processing target, not discovery.
+      description: Affects header metadata (file_relpath) for the selected processing target, not
+        discovery.
 
   writer:
     type: table
@@ -218,12 +234,14 @@ topmark:
       type: str
       default: "all"
       enum: ["all", "add_only", "update_only"]
-      description: Controls check mutation intent: insert and update headers, insert missing headers only, or update existing headers only. Safety gates still take precedence.
+      description: Controls check mutation intent: insert and update headers, insert missing headers
+        only, or update existing headers only. Safety gates still take precedence.
 
     allow_header_in_empty_files:
       type: bool
       default: false
-      description: Allow inserting headers into files considered empty under the effective empty insertion policy.
+      description: Allow inserting headers into files considered empty under the effective empty
+        insertion policy.
 
     empty_insert_mode:
       type: str
@@ -249,7 +267,8 @@ topmark:
   policy_by_type:
     type: table
     default: {}
-    description: Per-file-type policy overrides, keyed by local or canonical qualified file type identifiers.
+    description: Per-file-type policy overrides, keyed by local or canonical qualified file type
+      identifiers.
     additionalProperties:
       # Examples:
       #
@@ -302,17 +321,20 @@ topmark:
     include_from:
       type: list[path]
       default: []
-      description: Files containing include patterns (one per line; comments allowed; resolved relative to the declaring configuration file).
+      description: Files containing include patterns (one per line; comments allowed; resolved
+        relative to the declaring configuration file).
 
     exclude_from:
       type: list[path]
       default: []
-      description: Files containing exclude patterns (one per line; comments allowed; resolved relative to the declaring configuration file).
+      description: Files containing exclude patterns (one per line; comments allowed; resolved
+        relative to the declaring configuration file).
 
     files_from:
       type: list[path]
       default: []
-      description: Files containing explicit file lists (one path per line; comments allowed; resolved relative to the declaring configuration file).
+      description: Files containing explicit file lists (one path per line; comments allowed;
+        resolved relative to the declaring configuration file).
 
     include_file_types:
       type: list[str]
@@ -348,6 +370,9 @@ This normalization behavior is shared consistently across:
 Configuration-source identity normalization follows the same path-spelling model. File-backed
 configuration sources are normalized to their resolved configuration-file target before precedence,
 scope, and applicability evaluation occur.
+
+Workspace-root discovery is evaluated earlier and determines which project configuration files are
+found. Discovery uses the resolved discovery anchor when walking the project chain.
 
 This normalization is separate from runtime processing-target eligibility. Hard-link policy is
 evaluated for selected processing paths during runtime filesystem processing and is not a
@@ -421,6 +446,9 @@ The external configuration schema does not expose a separate configuration ident
 
 Instead, file-backed configuration sources implicitly use the resolved configuration-file target as
 their identity.
+
+Workspace-root discovery is a separate concern. Discovery-anchor resolution determines which
+configuration files are discovered before configuration-source identity is evaluated.
 
 This means:
 

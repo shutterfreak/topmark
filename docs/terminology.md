@@ -127,7 +127,8 @@ domain.
 
 Examples include qualified file-type identities, selected processing paths, normalized
 configuration-source identities, and canonicalized registry matching rules. These identities are not
-interchangeable across domains.
+interchangeable across domains. Workspace-root discovery and discovery anchors are related discovery
+concepts rather than canonical identity domains.
 
 ### Filesystem identity
 
@@ -252,6 +253,25 @@ ______________________________________________________________________
 
 ## Configuration and runtime terminology
 
+### Workspace-root discovery
+
+The process of determining the starting point for project-chain configuration discovery.
+
+Workspace-root discovery begins from a discovery anchor and may traverse resolved filesystem
+locations before layered configuration construction begins.
+
+Workspace-root discovery is distinct from configuration-source identity, filesystem identity, and
+processing-target identity.
+
+### Discovery anchor
+
+The filesystem location used as the starting point for project-chain configuration discovery.
+
+For path-processing commands, the discovery anchor is derived from the current working directory or
+from selected input paths, depending on command context.
+
+Discovery anchors are evaluated before configuration-source identity is established.
+
 ### Layered configuration
 
 The merged runtime configuration state derived from one or more TOML configuration sources.
@@ -306,13 +326,19 @@ execution context.
 
 The normalized identity assigned to a loaded TOML configuration source.
 
+Configuration-source identity is evaluated after configuration discovery has identified the
+configuration sources participating in layered configuration construction.
+
 For file-backed TOML sources, configuration-source identity is based on the resolved
 configuration-file target. Symlink spellings are not preserved for precedence, scope, provenance, or
 applicability evaluation.
 
-Configuration-source identity is independent from runtime processing-target identity. Runtime
-filesystem-identity eligibility checks, including hard-link policy, do not affect configuration
-loading, layered provenance, source precedence, or applicability evaluation.
+Configuration-source identity is independent from workspace-root discovery, runtime
+processing-target identity, and filesystem identity.
+
+Runtime filesystem-identity eligibility checks, including hard-link policy, do not affect
+configuration loading, layered provenance, source precedence, applicability evaluation, discovery
+anchors, or project-chain discovery.
 
 ______________________________________________________________________
 
@@ -446,9 +472,9 @@ pipelines.
 
 The canonical path selected by TopMark for runtime processing.
 
-A processing path represents the resolved filesystem target chosen after path normalization,
-discovery, filtering, and deduplication. It is the path exposed to runtime pipelines, header
-generation, and machine-readable output.
+A processing path represents the resolved filesystem target chosen after filesystem discovery,
+filtering, filesystem-identity evaluation, and deduplication. It is the path exposed to runtime
+pipelines, header generation, and machine-readable output.
 
 > [!NOTE]
 >

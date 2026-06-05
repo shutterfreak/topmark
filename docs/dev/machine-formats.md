@@ -109,24 +109,29 @@ Stability guarantees:
   use selected processing paths. Consumers should not compare those fields as if they belonged to
   the same identity domain.
 
+Workspace-root discovery and discovery-anchor evaluation occur before either identity domain is
+established. Machine-readable output does not currently expose a dedicated `discovery_anchor` field,
+but configuration provenance may serialize discovery results such as resolved configuration-source
+origins and scope roots.
+
 Consumers should:
 
 - Treat machine-readable output as the authoritative machine-readable contract; do not rely on TEXT
   or Markdown output for programmatic use.
-
 - Switch on `kind` (NDJSON) rather than relying on ordering.
-
 - Tolerate unknown fields.
-
 - Avoid string matching against formatted output, including human-facing path labels in TEXT,
   Markdown, and unified diff output.
-
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names or user-supplied input spellings.
-
 - Treat machine-readable filesystem path fields as processing-path fields. They are stable for the
   selected processing target, but they do not promise to preserve the original CLI argument,
   configuration entry, glob match, or symlink spelling.
+
+Do not treat machine-readable configuration provenance paths as a lossless echo of invocation path
+spellings. Provenance paths belong to the configuration-source identity and discovered-scope domain:
+`origin` identifies the resolved configuration source, while `scope_root` identifies the resolved
+scope root used for that discovered layer when present.
 
 Path-like values are not all part of the same contract. Machine-readable filesystem path fields use
 POSIX path serialization for selected processing paths, while registry `filenames` entries are
@@ -134,10 +139,15 @@ POSIX-style matching rules rather than filesystem paths. This includes processin
 configuration, and TOML/config provenance payloads. Synthetic configuration-source identifiers are
 stable labels rather than filesystem paths.
 
-Path serialization is distinct from filesystem identity. TopMark evaluates filesystem identity
-before machine output is generated. Filesystem-identity normalization may collapse multiple path
-spellings that resolve to the same target, such as a symlink and its target, into the same selected
-processing path.
+Path serialization is distinct from both workspace-root discovery and filesystem identity.
+
+Workspace-root discovery determines which configuration sources participate in layered configuration
+construction. Filesystem identity determines how runtime processing paths are selected.
+Machine-readable path serialization is applied only after those earlier stages have completed.
+
+TopMark evaluates filesystem identity before machine output is generated. Filesystem-identity
+normalization may collapse multiple path spellings that resolve to the same target, such as a
+symlink and its target, into the same selected processing path.
 
 Filesystem-identity eligibility checks are represented as structured results and diagnostics rather
 than path-serialization changes. If multiple selected processing paths are hard links to the same
@@ -611,6 +621,11 @@ preserves the same logical ordering as the human-facing layered export:
 File-backed configuration provenance uses configuration-source identity based on the resolved
 configuration-file target. Symlink spellings for configuration files are therefore not preserved for
 machine-readable provenance, precedence, scope, or applicability evaluation.
+
+Project-chain discovery begins from the resolved discovery anchor before configuration-source
+identity is established. Machine-readable provenance payloads describe the discovered configuration
+sources and, when available, their resolved scope roots. They do not currently include a separate
+field for the original discovery-anchor spelling used to start project-chain discovery.
 
 Configuration-source identity is distinct from processing-target identity. Hard-link processing
 policy applies to runtime filesystem-processing payloads and probe diagnostics, but does not affect

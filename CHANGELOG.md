@@ -118,6 +118,8 @@ ______________________________________________________________________
 - Fixed undocumented symlink and filesystem-identity behavior by making resolved processing-target
   identity explicit in file discovery, configuration resolution, pipelines, generated header
   metadata, public API behavior, and machine-readable output.
+- Clarified and regression-tested workspace-root discovery through symlinked CWD, input-anchor, and
+  parent-directory spellings.
 - Fixed ambiguity around symlinked configuration files by documenting and testing that provenance,
   precedence, and scope applicability use the resolved configuration target rather than the symlink
   spelling.
@@ -158,6 +160,8 @@ ______________________________________________________________________
   machine-readable path serialization across user, API, and developer documentation.
 - Documented configuration-source identity and symlinked configuration-file behavior across
   configuration discovery, configuration schema, machine-output, command, and API documentation.
+- Documented workspace-root discovery and resolved discovery-anchor behavior across configuration,
+  command, machine-output, terminology, architecture, and API-stability documentation.
 - Documented the TopMark 1.1.0 hard-link compatibility contract for processing and probe machine
   output.
 - Clarified TopMark's identity-domain terminology and compatibility boundaries for processing-target
@@ -191,6 +195,8 @@ ______________________________________________________________________
 - Added regression coverage for symlinked file inputs, symlinked directory behavior, broken symlink
   diagnostics, generated header metadata for symlinked inputs, configuration-source identity,
   layered provenance, public machine output, and processing-path serialization.
+- Added regression coverage for workspace-root discovery through symlinked input anchors, symlinked
+  current working directories, and repositories reached through symlinked parent paths.
 - Added regression coverage for hard-linked selected processing paths across pipeline execution,
   `check`, `strip`, `probe`, JSON output, NDJSON output, and mixed hard-linked plus unrelated file
   selections.

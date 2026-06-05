@@ -137,6 +137,10 @@ topmark check .
 > resolves equivalent path spellings, such as symlink spellings, to the selected processing path
 > used for runtime processing and machine-readable output.
 >
+> Configuration discovery is evaluated earlier. When TopMark discovers project configuration files,
+> it starts from a discovery anchor (the current working directory or an input path) and walks the
+> project chain from the resolved anchor location.
+>
 > Hard-link policy is evaluated as a processing-target eligibility check. If multiple selected paths
 > refer to the same filesystem object through hard links, TopMark reports each affected path
 > independently and blocks processing for the entire hard-link group without selecting a preferred
@@ -168,6 +172,9 @@ topmark check --apply .
 > Generated filesystem-related header fields such as `file_relpath` and `file_abspath` describe the
 > selected processing target. If a file is reached through a symlink, header metadata reflects the
 > resolved target TopMark reads and writes.
+>
+> Project configuration discovery follows the same resolved-anchor model. Symlink spellings used to
+> reach a working directory or input path do not create separate project-chain discovery roots.
 >
 > Files blocked by processing-target eligibility checks, such as hard-linked processing targets, are
 > not modified and therefore do not receive updated header metadata.

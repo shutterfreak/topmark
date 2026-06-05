@@ -493,6 +493,9 @@ Current behavior:
 - file-symlink inputs are resolved to their processing target;
 - symlink spellings are resolved to the target path before runtime processing;
 - configuration-source identity is based on the resolved configuration-file target;
+- project-chain configuration discovery resolves the selected discovery anchor before walking
+  upward, so symlinked CWD and input-anchor spellings use the resolved target chain for
+  workspace/root discovery;
 - machine-readable output serializes the resulting processing path; and
 - generated filesystem-related header metadata describes the target TopMark reads and writes.
 

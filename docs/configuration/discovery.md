@@ -17,6 +17,8 @@ policy-based control over header insertion and updates.
 
 TopMark intentionally separates:
 
+- workspace-root and configuration-discovery anchoring, which determines where project-chain
+  discovery starts and how symlinked anchors are traversed before layered configuration is built;
 - whole-source TOML validation, which validates unknown sections/keys, malformed section shapes, and
   emits INFO diagnostics for missing known sections per TOML source;
 - layered configuration deserialization and merge, which consumes only the validated layered
@@ -89,6 +91,11 @@ TopMark uses configuration-source identity for:
 - layered provenance views; and
 - machine-readable configuration provenance.
 
+Configuration-source identity starts after discovery has selected a configuration file.
+Workspace-root and project-chain discovery use the resolved discovery anchor when walking upward,
+while configuration-source identity then normalizes each loaded file-backed configuration source to
+its resolved target.
+
 Symlink spellings are therefore not preserved as configuration identity. They may be useful at the
 shell prompt, but once TopMark has loaded the configuration source, provenance and applicability are
 based on the resolved configuration-file target.
@@ -131,7 +138,8 @@ ______________________________________________________________________
 
 ## Path semantics
 
-TopMark resolves paths relative to **where they are defined**:
+TopMark resolves configured paths relative to **where they are defined** after configuration-source
+identity has been established:
 
 The definition location for file-backed configuration is the resolved configuration-source target,
 not necessarily the spelling used to reach the configuration file.

@@ -24,6 +24,8 @@ The following architectural contracts are part of the stable 1.x design:
 
 - CLI, API, presentation, runtime, configuration, registry, and pipeline concerns remain separated.
 - Runtime execution intent is kept separate from layered configuration state.
+- Workspace-root discovery and configuration-discovery anchoring are evaluated before layered
+  configuration state is constructed.
 - File type identity is normalized to canonical qualified keys once resolved.
 - Filesystem-identity evaluation for existing processing inputs happens before runtime processing
   and includes both processing-path normalization and processing-target eligibility checks.
@@ -38,6 +40,7 @@ ______________________________________________________________________
 TopMark separates configuration concerns into three layers:
 
 - **TOML layer** (\[`topmark.toml`\][topmark.toml]):
+  - workspace-root and configuration-discovery anchoring from the resolved discovery anchor
   - discovery of configuration sources
   - parsing of TOML tables
   - whole-source TOML schema validation (unknown sections / keys, malformed section shapes, missing
@@ -54,7 +57,7 @@ TopMark separates configuration concerns into three layers:
 
 ```mermaid
 flowchart TD
-    A["Resolve TOML sources<br/>defaults, discovered config, --config, CLI context"]
+    A["Resolve TOML sources<br/>defaults, project config from resolved anchor, --config, CLI context"]
     B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
     D["Deserialize layered fragment into MutableConfig<br/>defensive value parsing and normalization"]
@@ -68,6 +71,10 @@ flowchart TD
 Not all TOML-defined values become layered configuration fields. Source-local options such as
 `[config].root` and `[config].strict` are resolved on the TOML side first, then applied to config
 discovery and staged config-loading validation without participating in layered config merging.
+
+Project-chain discovery starts from the resolved discovery anchor before configuration-source
+identity is evaluated. This keeps workspace-root discovery separate from configuration-source
+identity normalization and from runtime processing-target identity.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -338,6 +345,8 @@ exit code. Consumers must inspect the process exit status separately from parsin
 Path representation follows the same separation between machine-facing serialization and
 human-facing presentation:
 
+- Workspace-root discovery uses the resolved discovery anchor to find project configuration sources
+  before configuration-source identity and layered provenance are evaluated.
 - Internal filesystem identity for existing processing inputs is evaluated before runtime
   processing. Normalized processing paths represent eligible resolved processing targets where
   possible.

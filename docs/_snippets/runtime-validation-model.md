@@ -14,6 +14,7 @@ TopMark intentionally separates:
 
 1. staged configuration-loading validation
 1. layered runtime configuration resolution
+1. workspace-root and configuration-discovery evaluation
 1. filesystem-identity evaluation
 1. runtime applicability evaluation
 1. runtime probing and processor resolution
@@ -31,3 +32,8 @@ Filesystem-identity evaluation occurs before runtime processing begins and inclu
 
 Configuration-source identity is evaluated independently during configuration loading and layered
 configuration resolution.
+
+Workspace-root discovery and configuration-discovery evaluation are distinct from both
+configuration-source identity and filesystem-identity evaluation. Configuration discovery may use
+resolved filesystem locations to determine configuration search anchors, while compatibility
+contracts continue to expose a flattened runtime view rather than these internal discovery stages.

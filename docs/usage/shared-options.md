@@ -59,6 +59,10 @@ TopMark intentionally separates:
 - machine-readable JSON and NDJSON serialization;
 - process exit-code semantics.
 
+Configuration discovery is evaluated before runtime output rendering. Symlinked discovery anchors
+may affect which project configuration files are found, but they do not create separate
+machine-readable path serialization rules.
+
 For filesystem-processing commands, machine-readable path fields report selected processing paths
 rather than preserving the original CLI path spelling. Filesystem-identity normalization resolves
 equivalent path spellings, such as symlink spellings, before path serialization. Processing-target
@@ -181,6 +185,10 @@ For filesystem-backed inputs, TopMark evaluates filesystem identity and selects 
 before runtime processing begins. Filesystem-identity normalization resolves equivalent path
 spellings, such as symlink spellings, to the selected processing path used for runtime processing.
 
+Configuration discovery is evaluated earlier. For path-processing commands, project-chain discovery
+starts from the resolved discovery anchor derived from the first selected input path when available,
+or from the current working directory otherwise.
+
 Hard-link policy is evaluated as a processing-target eligibility check. If multiple selected paths
 refer to the same filesystem object through hard links, each affected path is reported independently
 and processing is blocked for the entire hard-link group without selecting a preferred source,
@@ -218,15 +226,17 @@ Layered configuration loading and discovery behavior do not apply to:
 - registry commands
 - [`version`](commands/version.md)
 
-For file-backed configuration sources, configuration discovery uses configuration-source identity
-based on the resolved configuration-file target. Layered provenance, applicability evaluation, and
-configuration precedence are therefore based on resolved configuration targets rather than symlink
-spellings.
+For project-chain configuration loading, discovery starts from the resolved discovery anchor before
+configuration-source identity is established. For file-backed configuration sources,
+configuration-source identity is then based on the resolved configuration-file target. Layered
+provenance, applicability evaluation, and configuration precedence are therefore based on resolved
+configuration targets rather than symlink spellings.
 
-Configuration-source identity is distinct from processing-target identity. Runtime
-filesystem-processing commands evaluate selected processing paths separately, including
-filesystem-identity normalization and eligibility checks such as hard-link policy. Those runtime
-checks do not affect configuration discovery, layered provenance, or configuration precedence.
+Configuration-source identity is distinct from workspace-root discovery and from processing-target
+identity. Runtime filesystem-processing commands evaluate selected processing paths separately,
+including filesystem-identity normalization and eligibility checks such as hard-link policy. Those
+runtime checks do not affect project-chain discovery, layered provenance, or configuration
+precedence.
 
 ______________________________________________________________________
 

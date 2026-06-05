@@ -28,6 +28,10 @@ overrides configured through `policy_by_type` may influence runtime mutation eli
 insertion behavior, but the selected header processor controls the concrete comment syntax and
 placement behavior.
 
+Configuration discovery is evaluated before these runtime header-placement stages. Project-chain
+configuration sources are discovered from the resolved discovery anchor before filesystem-identity
+evaluation, processor resolution, policy evaluation, or header placement begins.
+
 {% include-markdown "\_snippets/terminology.md" %}
 
 {% include-markdown "\_snippets/path-serialization-contract.md" %}
@@ -45,6 +49,9 @@ placement behavior.
 ______________________________________________________________________
 
 ## Runtime placement model
+
+Runtime placement starts only after configuration discovery has produced the effective layered
+configuration for the command invocation.
 
 TopMark intentionally separates:
 
@@ -241,6 +248,8 @@ ______________________________________________________________________
 
 ## Placement guarantees
 
+- Configuration discovery: project-chain configuration files are discovered from the resolved
+  discovery anchor before runtime placement begins.
 - Path serialization: generated header path fields (`file_relpath`, `file_abspath`, `relpath`, and
   `abspath`) describe the selected processing target and use POSIX `/` separators on all platforms.
 - Filesystem-identity safety: files blocked by processing-target eligibility checks, such as

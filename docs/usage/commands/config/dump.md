@@ -130,8 +130,9 @@ applicability evaluation, or runtime configuration serialization.
 
 The second TOML document is identical to the standard flattened runtime configuration output.
 
-TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation produces the effective runtime configuration.
+TopMark resolves configuration from defaults, user config, the project chain discovered from the
+resolved discovery anchor, explicit `--config` files, and CLI overrides before staged validation
+produces the effective runtime configuration.
 
 For file-backed configuration sources, TopMark determines configuration-source identity using the
 resolved configuration-file target. If a configuration file is reached through a symlink,
@@ -165,6 +166,10 @@ ______________________________________________________________________
 When `--config PATH` refers to a symlinked configuration file, configuration loading and layered
 provenance use the resolved configuration target as the configuration source. This mirrors the
 configuration-source identity model used throughout configuration discovery.
+
+Because `config dump` does not accept processing paths, project-chain discovery normally starts from
+the current working directory. If the working directory is reached through a symlink, discovery uses
+the resolved anchor location when walking the project chain.
 
 Positional PATH arguments are rejected as invalid CLI usage. `config dump` explains configuration
 state; it does not process source files.

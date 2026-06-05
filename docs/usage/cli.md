@@ -27,6 +27,7 @@ The CLI is intentionally conservative:
 - commands default to dry-run behavior
 - mutations require `--apply`
 - filesystem identity policies are evaluated before runtime processing
+- configuration discovery starts from the resolved discovery anchor before runtime processing
 - unsupported files are skipped diagnostically
 - repeated runs converge to stable results
 - command help and shell completion are available across supported platforms
@@ -54,6 +55,10 @@ Hard-link policy is evaluated as a processing-target eligibility check. If multi
 refer to the same filesystem object through hard links, TopMark reports each affected path
 independently and blocks processing for the entire hard-link group without selecting a preferred
 source, target, winner, or loser path.
+
+Configuration discovery is evaluated earlier. For filesystem-processing commands, project-chain
+configuration discovery starts from the resolved discovery anchor derived from the first selected
+input path when available, or from the current working directory otherwise.
 
 ______________________________________________________________________
 
@@ -106,6 +111,10 @@ topmark strip --apply src/
 For commands that operate on filesystem inputs (`check`, `strip`, and `probe`), positional paths
 participate in TopMark's discovery, filtering, filesystem-identity evaluation, and processing-path
 selection pipeline before runtime processing begins.
+
+Before that runtime pipeline starts, TopMark discovers project configuration from the resolved
+discovery anchor. This keeps configuration discovery separate from filesystem-identity evaluation
+and processing-path selection.
 
 Filesystem-identity evaluation includes filesystem-identity normalization for equivalent path
 spellings, processing-path selection, and processing-target eligibility checks such as hard-link
@@ -286,6 +295,9 @@ File type filters behave consistently across:
 
 File type filtering operates after filesystem-identity evaluation and processing-path selection.
 
+Configuration discovery has already selected project-chain configuration sources from the resolved
+discovery anchor before file type filters are evaluated.
+
 For canonical file-type identifier semantics and layered configuration behavior, see
 [Configuration](configuration.md).
 
@@ -365,6 +377,7 @@ ______________________________________________________________________
 - [Exit codes](exit-codes.md)
 - [Pre-commit integration](pre-commit.md)
 - [Configuration discovery, precedence, and policy](../configuration/discovery.md)
+  - [Discovery order](../configuration/discovery.md#discovery-order)
   - [Configuration source identity](../configuration/discovery.md#configuration-source-identity)
 - [Machine-readable output](machine-output.md)
 
@@ -383,6 +396,7 @@ The CLI reports:
 - ambiguous or malformed file type identifiers
 
 Diagnostics are designed to remain deterministic and compatible with the stable machine-readable
-output contracts. This includes stable processing-path reporting after filesystem-identity
-normalization, stable hard-link policy diagnostics for unsupported processing targets, and stable
-configuration-source identity reporting for file-backed configuration provenance.
+output contracts. This includes stable project-chain discovery from resolved discovery anchors,
+stable processing-path reporting after filesystem-identity normalization, stable hard-link policy
+diagnostics for unsupported processing targets, and stable configuration-source identity reporting
+for file-backed configuration provenance.

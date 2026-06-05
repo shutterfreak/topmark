@@ -62,9 +62,14 @@ ______________________________________________________________________
 The `config` command family is **file-agnostic**. These commands operate on configuration state and
 do not process source files.
 
-Configuration-source identity is resolved during configuration loading. Runtime processing-target
-identity, including filesystem-identity normalization and hard-link eligibility checks, is evaluated
-later by filesystem-processing commands such as `check`, `strip`, and `probe`.
+Configuration-source identity is resolved during configuration loading. Configuration discovery
+starts from a discovery anchor (typically the current working directory for `config` commands).
+Project-chain discovery walks upward from the resolved discovery anchor before configuration-source
+identity is established for discovered configuration files.
+
+Runtime processing-target identity, including filesystem-identity normalization and hard-link
+eligibility checks, is evaluated later by filesystem-processing commands such as `check`, `strip`,
+and `probe`.
 
 Across all `config` subcommands:
 

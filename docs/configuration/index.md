@@ -12,10 +12,13 @@ topmark:header:end
 
 # Configuration overview
 
--TopMark supports layered configuration with explicit precedence:
+TopMark supports layered configuration with explicit precedence:
 
 - **Defaults** -> **User** (e.g. `$HOME/.config/topmark.toml`) -> **Project chain** (root ->
   current) -> **`--config`** -> **CLI**
+- **Project-chain discovery** starts from the discovery anchor and walks upward using the resolved
+  anchor path, so symlinked working directories or input anchors are followed to their filesystem
+  targets before project configs are discovered.
 - **Globs declared in config files** are resolved relative to the **directory of that config file**.
 - **Globs declared via CLI** are resolved relative to the **current working directory** (invocation
   site).
@@ -76,12 +79,14 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/runtime-configuration-model.md" %}
 
-Configuration discovery, precedence evaluation, configuration-source identity normalization, and
-scope applicability are completed before the effective runtime configuration is frozen.
+Configuration discovery, workspace-root anchoring, precedence evaluation, configuration-source
+identity normalization, and scope applicability are completed before the effective runtime
+configuration is frozen.
 
-Configuration-source identity normalization handles configuration path spellings, such as symlinked
-configuration files. It is separate from runtime processing-target eligibility checks, such as
-hard-link policy enforcement for selected processing paths.
+Workspace-root anchoring handles symlinked discovery anchors before project-chain discovery.
+Configuration-source identity normalization then handles configuration path spellings, such as
+symlinked configuration files. Both are separate from runtime processing-target eligibility checks,
+such as hard-link policy enforcement for selected processing paths.
 
 ______________________________________________________________________
 
@@ -89,7 +94,7 @@ ______________________________________________________________________
 
 ```mermaid
 flowchart LR
-    A["Resolve TOML sources<br/>(defaults, user, project, --config)"]
+    A["Resolve TOML sources<br/>(defaults, user, project from resolved anchor, --config)"]
     B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]
     D["Merge layered configuration by precedence<br/>effective MutableConfig state"]
@@ -122,6 +127,8 @@ ______________________________________________________________________
 ## Start here
 
 - [`Configuration discovery, precedence, and policy`](./discovery.md)
+  - [`Discovery order`](./discovery.md#discovery-order) for discovery anchors, symlinked anchor
+    behavior, and precedence order
   - [`Configuration-source identity`](./discovery.md#configuration-source-identity)
   - [`Layered provenance (inspection)`](./discovery.md#layered-provenance-inspection)
   - [`Merge semantics by field`](./discovery.md#merge-semantics-overview)

@@ -31,8 +31,8 @@ TopMark policies control how the runtime pipeline detects file types, classifies
 evaluates runtime safety gates, and determines whether headers may be inserted or updated.
 
 Policy settings are part of the layered runtime configuration
-(\[`FrozenConfig`\][topmark.config.model.FrozenConfig]) and are merged according to layered
-discovery, normalization, precedence, and runtime overlay rules. See:
+(\[`FrozenConfig`\][topmark.config.model.FrozenConfig]) and are merged according to workspace-root
+discovery, layered discovery, normalization, precedence, and runtime overlay rules. See:
 
 - [`Configuration overview`](../configuration/index.md)
 - [`Discovery & Precedence`](../configuration/discovery.md)
@@ -73,6 +73,10 @@ configuration fragments contribute to runtime policy resolution.
 
 Command-line policy options override resolved config for the current run only.
 
+Project-chain discovery uses the resolved discovery anchor before policy layering begins. This keeps
+workspace-root discovery separate from configuration-source identity and from runtime
+processing-target identity.
+
 ______________________________________________________________________
 
 ## Policy layers
@@ -84,14 +88,19 @@ TopMark resolves policy in this order:
 1. explicit config overlays
 1. CLI or API overrides
 
+Discovered config files are selected by project-chain discovery from the resolved discovery anchor.
+Only after those sources have been found does configuration-source identity determine how
+file-backed configuration sources participate in precedence, applicability, and layered provenance.
+
 For file-backed configuration sources, policy layering uses configuration-source identity based on
 the resolved configuration-file target. If a policy-bearing configuration file is loaded through a
 symlink, precedence, applicability, and layered provenance are evaluated using the resolved
 configuration target rather than the symlink spelling.
 
-Configuration-source identity is distinct from processing-target identity. The hard-link processing
-policy used by filesystem-processing commands such as `check`, `strip`, and `probe` does not affect
-policy layering, configuration precedence, applicability evaluation, or layered policy provenance.
+Configuration-source identity is distinct from workspace-root discovery and from processing-target
+identity. The hard-link processing policy used by filesystem-processing commands such as `check`,
+`strip`, and `probe` does not affect project-chain discovery, policy layering, configuration
+precedence, applicability evaluation, or layered policy provenance.
 
 These runtime policy layers are constructed after staged TOML-layer validation. Source-local TOML
 sections (e.g. `[config]`) do not participate in runtime policy layering.
@@ -379,6 +388,9 @@ These settings are independent and may be combined.
 ______________________________________________________________________
 
 ## Runtime policy model
+
+Runtime policy evaluation consumes the effective configuration produced after workspace-root
+discovery and configuration-source identity normalization have completed.
 
 {% include-markdown "\_snippets/runtime-validation-model.md" %}
 
