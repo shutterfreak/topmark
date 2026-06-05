@@ -22,6 +22,11 @@ TopMark runtime configuration may be provided through:
 Configuration is resolved through layered discovery, normalization, and precedence rules.
 Higher-precedence layers override lower-precedence layers.
 
+Project-chain discovery starts from a discovery anchor: the first input path, or the current working
+directory when no input path is provided. That anchor is resolved before TopMark walks upward
+looking for project configuration files, so symlinked working directories or input anchors follow
+their filesystem targets for discovery.
+
 For file-backed configuration sources, TopMark determines configuration-source identity using the
 resolved configuration-file target. Symlink spellings are not preserved for precedence, scope, or
 applicability evaluation.
@@ -245,8 +250,8 @@ ______________________________________________________________________
 
 {% include-markdown "\_snippets/runtime-configuration-model.md" %}
 
-Runtime evaluation consumes the effective configuration produced after discovery, precedence,
-normalization, and configuration-source identity resolution have completed.
+Runtime evaluation consumes the effective configuration produced after workspace-root discovery,
+precedence, normalization, and configuration-source identity resolution have completed.
 
 For configuration files loaded through symlinks, the effective configuration is associated with the
 resolved configuration target rather than the symlink spelling used to reach it.

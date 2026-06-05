@@ -87,10 +87,17 @@ configuration-loading validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation produces the effective runtime configuration. See
-[Configuration discovery, precedence, and policy](../../configuration/discovery.md) for the full
-configuration-loading and validation contract.
+TopMark resolves configuration from defaults, user config, the project chain discovered from the
+resolved discovery anchor, explicit `--config` files, and CLI overrides before staged validation
+produces the effective runtime configuration. For path-processing commands such as `probe`, the
+discovery anchor is derived from the first selected input path when one is available, or from the
+current working directory otherwise.
+
+Configuration discovery is evaluated before runtime filesystem-identity evaluation selects
+processing paths for probing. Symlinked discovery anchors therefore affect which project
+configuration files are found before selected probe paths or machine-readable probe-path fields are
+produced. See [Configuration discovery, precedence, and policy](../../configuration/discovery.md)
+for the full configuration-loading and validation contract.
 
 ______________________________________________________________________
 
@@ -110,6 +117,10 @@ before runtime probing begins. If multiple path spellings resolve to the same fi
 example a symlink and its target), `probe` operates on the selected processing path rather than
 preserving the original spelling. Hard-link policy is evaluated as a processing-target eligibility
 check.
+
+This runtime discovery stage is separate from configuration discovery. Project-chain configuration
+files have already been selected from the resolved discovery anchor before `probe` evaluates file
+filters, selected processing paths, and runtime probing results.
 
 Filtered and missing explicit inputs remain diagnostic records because they never became normal
 processing paths.

@@ -19,16 +19,17 @@ release process, generated documentation pipeline, and post-1.0 governance model
 Use these pages when changing internals, reviewing compatibility boundaries, preparing releases, or
 understanding how the stable 1.x runtime model is organized.
 
-The 1.x runtime model distinguishes several independent identity domains:
+The 1.x runtime model distinguishes several independent identity domains and discovery concepts:
 
+- workspace-root and configuration-discovery anchoring;
 - filesystem identity (normalization, processing-path selection, and eligibility checks);
 - configuration-source identity;
 - file type identity;
 - processor identity; and
 - machine-readable serialization identity.
 
-Understanding these distinctions is important when reviewing compatibility boundaries and runtime
-behavior.
+Understanding these distinctions is important when reviewing compatibility boundaries, runtime
+behavior, configuration discovery, and symlink-related path handling.
 
 ______________________________________________________________________
 
@@ -41,8 +42,10 @@ plugin integration.
 - [Terminology and canonical vocabulary](../terminology.md)
 - [Architecture](architecture.md)
 - [Registry model](registry-model.md) - file-type, processor, and registry identity
-- [Resolution](resolution.md) - filesystem-identity evaluation, processing paths, hard-link policy,
-  and configuration-source identity
+- [Resolution](resolution.md) - workspace-root discovery, filesystem-identity evaluation, processing
+  paths, hard-link policy, and configuration-source identity
+- [Configuration discovery and layering](../configuration/index.md) - discovery anchors,
+  project-chain discovery, layered precedence, and configuration-source identity
 - [Plugins and extensibility](plugins.md)
 - [Configuration schema](configuration-schema.md)
 - [Pipelines](pipelines.md)

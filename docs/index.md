@@ -21,7 +21,7 @@ and repository automation.
 TopMark provides stable and consistent behavior across:
 
 - CLI execution and dry-run workflows
-- layered TOML configuration discovery and precedence
+- layered TOML configuration discovery from resolved discovery anchors and precedence
 - filesystem-identity evaluation, processing-path selection, and hard-link safety
 - configuration-source identity and layered provenance reporting
 - repository filtering and file-type resolution
@@ -38,7 +38,7 @@ ______________________________________________________________________
 | -------------------------------------------------------------------- | ----------------------------------------------------- |
 | Install TopMark and complete a safe first run                        | [Getting started](usage/getting-started.md)           |
 | Understand the CLI structure and shared behavior                     | [Command overview](usage/cli.md)                      |
-| Configure layered runtime behavior and policies                      | [Configuration](usage/configuration.md)               |
+| Configure discovery, layered runtime behavior, and policies          | [Configuration](usage/configuration.md)               |
 | Understand repository filtering and file discovery                   | [Filtering](usage/filtering.md)                       |
 | Understand machine-readable output, processing paths, and provenance | [Machine-readable output](usage/machine-output.md)    |
 | Validate repositories in CI                                          | [CI integration](usage/ci.md)                         |
@@ -62,7 +62,8 @@ ______________________________________________________________________
 - Uses deterministic filesystem-identity evaluation, processing-path selection, and hard-link safety
   across CLI, API, CI, and machine-readable workflows
 - Exposes layered configuration provenance via `topmark config dump --show-layers`
-- Uses deterministic configuration-source identity for layered configuration evaluation
+- Uses deterministic project-chain discovery and configuration-source identity for layered
+  configuration evaluation
 - Provides stable machine-readable JSON and NDJSON output together with canonical registry metadata
   suitable for automation and reporting
 - Supports canonical qualified file type identifiers such as `topmark:python`
@@ -73,6 +74,10 @@ ______________________________________________________________________
 ## Commands
 
 TopMark exposes a small set of dry-run-first CLI commands.
+
+Configuration discovery starts from the resolved discovery anchor before runtime processing begins.
+For filesystem-processing commands, that anchor is derived from the first selected input path when
+available, or from the current working directory otherwise.
 
 Filesystem-processing commands evaluate filesystem identity before runtime processing.
 Filesystem-identity normalization resolves equivalent path spellings, such as symlink spellings, to
@@ -139,7 +144,8 @@ The [`registry`](usage/commands/registry.md) command has the following subcomman
 {% include-markdown "\_snippets/output-contract.md" %}
 
 Machine-readable filesystem path fields report selected processing paths. Configuration provenance
-reports resolved configuration sources. Both contracts remain stable across supported platforms.
+reports resolved configuration sources discovered from the resolved discovery anchor and explicit
+configuration overlays. Both contracts remain stable across supported platforms.
 
 Use [`config dump --show-layers`](usage/commands/config/dump.md) to inspect how configuration is
 built from individual sources and how precedence is applied.

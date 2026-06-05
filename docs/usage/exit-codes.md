@@ -64,16 +64,18 @@ Notes:
 - Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
 - Commands may short-circuit on higher-severity errors (e.g., config errors before processing).
+- Configuration discovery starts from the resolved discovery anchor before runtime processing
+  begins.
 - Canonical file-type identifier normalization does not affect exit-code semantics.
 - Ambiguous or malformed file-type identifiers are reported diagnostically and may contribute to
   configuration-loading or runtime-resolution outcomes depending on command behavior.
 - Explicit missing literal paths are treated as hard input errors (66). Unmatched glob patterns are
   soft diagnostics and do not produce 66.
-- Filesystem-identity evaluation occurs before runtime processing and may affect processing-target
-  eligibility. Different path spellings that resolve to the same filesystem target contribute to the
-  same runtime processing outcome after filesystem-identity normalization. Filesystem-identity
-  eligibility checks, such as hard-link detection, may contribute diagnostic outcomes without
-  introducing command-specific exit codes.
+- Filesystem-identity evaluation occurs after configuration discovery and before runtime processing.
+  It may affect processing-target eligibility. Different path spellings that resolve to the same
+  filesystem target contribute to the same runtime processing outcome after filesystem-identity
+  normalization. Filesystem-identity eligibility checks, such as hard-link detection, may contribute
+  diagnostic outcomes without introducing command-specific exit codes.
 
 ______________________________________________________________________
 
@@ -90,6 +92,10 @@ Exit codes communicate:
 
 Machine-readable JSON and NDJSON output communicate structured diagnostics, semantic outcomes,
 runtime-resolution details, and processing metadata.
+
+Configuration-loading exit-code behavior is based on the effective configuration produced after
+project-chain discovery from the resolved discovery anchor, explicit configuration overlays, and CLI
+or API overrides have been evaluated.
 
 For filesystem inputs, machine-readable path fields report selected processing paths. Exit codes are
 derived from runtime outcomes and do not depend on whether a file was reached through a symlink or
@@ -288,6 +294,10 @@ semantic outcomes occur during a single invocation.
 
 This ensures that hard runtime or environment failures take precedence over informational, semantic,
 or availability-oriented outcomes.
+
+Configuration discovery has already selected project-chain configuration sources by this stage.
+Symlinked discovery anchors may therefore affect which configuration-loading diagnostics exist, but
+they do not introduce separate exit-code values.
 
 Filesystem-identity evaluation and processing-path selection occur before exit-code evaluation and
 do not introduce additional priority levels. Hard-link policy therefore participates through normal

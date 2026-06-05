@@ -16,7 +16,8 @@ This section contains the user-facing documentation for installing, running, con
 integrating TopMark.
 
 The pages in this section focus on practical CLI usage, repository workflows, configuration,
-validation, automation, filesystem identity, file discovery, and machine-readable integration.
+configuration discovery, validation, automation, filesystem identity, file discovery, and
+machine-readable integration.
 
 Start here if you want to:
 
@@ -24,6 +25,7 @@ Start here if you want to:
 - run TopMark from the CLI;
 - upgrade an existing repository to TopMark 1.0;
 - configure header fields, policies, filtering, and file discovery;
+- understand configuration-discovery anchors, project-chain discovery, and layered precedence;
 - understand filesystem-identity evaluation, processing paths, symlink normalization, and hard-link
   policy;
 - integrate TopMark with pre-commit or CI;
@@ -39,7 +41,8 @@ ______________________________________________________________________
 - [Command overview](cli.md) - understand the CLI structure and shared command behavior.
 - [Shared options](shared-options.md) - learn about global options, dry-run behavior, verbosity, and
   output selection.
-- [Configuration](configuration.md) - configure layered runtime behavior and policy settings.
+- [Configuration](configuration.md) - understand discovery anchors, layered precedence,
+  configuration-source identity, and runtime policy settings.
 - [Filtering](filtering.md) - include, exclude, and constrain file processing.
 - [Machine-readable output](machine-output.md) - understand processing paths, configuration
   provenance, and stable automation contracts.

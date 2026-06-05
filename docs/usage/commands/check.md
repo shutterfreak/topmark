@@ -88,8 +88,16 @@ configuration-loading validation for the run.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
-TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
-files, and CLI overrides before staged validation produces the effective runtime configuration. See
+TopMark resolves configuration from defaults, user config, the project chain discovered from the
+resolved discovery anchor, explicit `--config` files, and CLI overrides before staged validation
+produces the effective runtime configuration. For path-processing commands such as `check`, the
+discovery anchor is derived from the first selected input path when one is available, or from the
+current working directory otherwise.
+
+Configuration discovery is evaluated before runtime filesystem-identity evaluation selects
+processing paths. Symlinked discovery anchors therefore affect which project configuration files are
+found before selected processing paths, header metadata, or machine-readable `result.path` fields
+are produced. See
 [Configuration discovery, precedence, and policy](../../configuration/discovery.md) for the full
 configuration-loading and validation contract.
 
@@ -113,6 +121,10 @@ generation, and machine-readable output operate on the selected processing path 
 original spelling. Hard-link policy is evaluated as a processing-target eligibility check: if
 multiple selected processing paths are hard links to the same filesystem object, each affected path
 is reported as an unsupported, policy-blocked processing target.
+
+This runtime discovery stage is separate from configuration discovery. Project-chain configuration
+files have already been selected from the resolved discovery anchor before `check` evaluates file
+filters and processing-target identity.
 
 ### File type filters
 

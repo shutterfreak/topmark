@@ -227,6 +227,12 @@ contract.
 
 Machine-readable filesystem path fields expose TopMark's selected processing paths.
 
+Configuration discovery is evaluated earlier and is not represented by machine-readable filesystem
+path fields such as per-result `path`. Project-chain configuration discovery starts from the
+resolved discovery anchor before filesystem-identity evaluation selects processing paths. Separate
+configuration provenance payloads may serialize discovered configuration-source origins and resolved
+scope roots.
+
 A processing path is selected after discovery, filtering, filesystem-identity normalization, and
 processing-path selection. It is not necessarily the original CLI argument, configuration entry,
 glob match, or symlink spelling supplied by the user.
@@ -696,6 +702,14 @@ File type identifiers in `files.include_file_types`, `files.exclude_file_types`,
 qualified keys such as `topmark:python` rather than the exact local-or-qualified spelling supplied
 by a user.
 
+The effective runtime configuration reflected in `ConfigPayload` is produced after project-chain
+discovery from the resolved discovery anchor, configuration-source identity normalization,
+precedence evaluation, and runtime overlays have completed.
+
+`ConfigPayload` may include resolved configuration file paths in fields such as
+`files.config_files`. Those paths describe configuration sources participating in the effective
+configuration; they are not a separate serialized discovery-anchor field.
+
 Normalization rules:
 
 - `Path` → POSIX-style string using `/` separators
@@ -900,6 +914,11 @@ File-backed configuration provenance uses configuration-source identity based on
 configuration-file target. If a configuration file is loaded through a symlink, `origin` and
 `scope_root` describe the resolved configuration target and its scope rather than the symlink
 spelling.
+
+Workspace-root discovery is evaluated earlier. Project-chain discovery determines which
+configuration files participate in layered configuration construction before provenance identities
+are assigned. Provenance payloads then serialize discovered configuration-source origins and, when
+available, resolved scope roots for those layers.
 
 The outer `config_layers` container key belongs to the config machine-readable output domain, while
 the inner provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_root`) are
@@ -1232,6 +1251,10 @@ Consumers should:
   over display-oriented names.
 - Treat filesystem `path`, `origin`, and `scope_root` fields as serialized processing/provenance
   paths, not as lossless echoes of the original invocation spelling.
+
+Consumers should not infer the original workspace-root discovery-anchor spelling from
+machine-readable payloads. The stable 1.x contract serializes discovered configuration sources and
+scope roots where applicable, but does not currently expose a dedicated `discovery_anchor` field.
 
 Breaking machine-readable output changes should be signaled through Conventional Commits using the
 `!` marker and documented in the changelog.

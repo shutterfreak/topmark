@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.helpers.paths import symlink_or_skip
 from tests.toml.conftest import write_toml_document
 from topmark.config.resolution.bridge import ResolvedConfigDraft
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
@@ -101,6 +102,98 @@ def test_root_true_stops_traversal(
     )
     # Should see settings from `root`, not from `above`
     assert resolved_config.draft.align_fields is True
+
+
+@pytest.mark.config
+@pytest.mark.toml
+def test_symlinked_discovery_anchor_uses_resolved_project_chain(
+    tmp_path: Path,
+) -> None:
+    """Project discovery follows the resolved target of a symlinked input anchor."""
+    repo: Path = tmp_path / "real" / "repo"
+    package: Path = repo / "pkg"
+    package.mkdir(parents=True)
+    write_toml_document(
+        path=repo / "topmark.toml",
+        content="""
+            [formatting]
+            align_fields = true
+        """,
+    )
+    linked_package: Path = symlink_or_skip(
+        tmp_path / "links" / "pkg",
+        package,
+        target_is_directory=True,
+    )
+
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[linked_package]
+    )
+
+    assert resolved_config.draft.align_fields is True
+    assert resolved_config.draft.config_files == [repo.resolve() / "topmark.toml"]
+
+
+@pytest.mark.config
+@pytest.mark.toml
+def test_symlinked_cwd_discovery_uses_resolved_project_chain(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Project discovery from CWD follows the resolved target before walking upward."""
+    repo: Path = tmp_path / "real" / "repo"
+    package: Path = repo / "pkg"
+    package.mkdir(parents=True)
+    write_toml_document(
+        path=repo / "topmark.toml",
+        content="""
+            [formatting]
+            align_fields = true
+        """,
+    )
+    linked_package: Path = symlink_or_skip(
+        tmp_path / "links" / "pkg",
+        package,
+        target_is_directory=True,
+    )
+    monkeypatch.chdir(linked_package)
+
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config()
+
+    assert resolved_config.draft.align_fields is True
+    assert resolved_config.draft.config_files == [repo.resolve() / "topmark.toml"]
+
+
+@pytest.mark.config
+@pytest.mark.toml
+def test_repo_below_symlinked_parent_discovers_real_project_chain(
+    tmp_path: Path,
+) -> None:
+    """Project discovery resolves a symlinked parent spelling before config traversal."""
+    real_parent: Path = tmp_path / "real-parent"
+    repo: Path = real_parent / "repo"
+    package: Path = repo / "pkg"
+    package.mkdir(parents=True)
+    write_toml_document(
+        path=repo / "topmark.toml",
+        content="""
+            [formatting]
+            align_fields = true
+        """,
+    )
+    linked_parent: Path = symlink_or_skip(
+        tmp_path / "linked-parent",
+        real_parent,
+        target_is_directory=True,
+    )
+    symlink_spelled_package: Path = linked_parent / "repo" / "pkg"
+
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[symlink_spelled_package]
+    )
+
+    assert resolved_config.draft.align_fields is True
+    assert resolved_config.draft.config_files == [repo.resolve() / "topmark.toml"]
 
 
 @pytest.mark.config

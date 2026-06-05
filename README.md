@@ -35,7 +35,8 @@ It helps teams avoid fragile one-off scripts by providing:
 - stable CI-friendly exit codes;
 - machine-readable output formats with stable cross-platform path serialization;
 - transparent file-type resolution diagnostics;
-- deterministic filesystem-identity evaluation and configuration-source resolution;
+- deterministic filesystem-identity evaluation, configuration discovery, and configuration-source
+  resolution;
 - configuration, registry, and file-resolution introspection commands;
 - and a public Python API for automation and integration.
 
@@ -272,6 +273,10 @@ Hard-link policy is evaluated as a processing-target eligibility check: if multi
 refer to the same filesystem object through hard links, TopMark reports each affected path
 independently and blocks processing for the hard-link group.
 
+Configuration discovery is evaluated before runtime filesystem processing. For commands that process
+filesystem inputs, project-chain discovery starts from the resolved discovery anchor derived from
+the first selected input path when available, or from the current working directory otherwise.
+
 All available commands, shared options, output formats, STDIN behavior, and exit codes are
 documented in:
 
@@ -318,9 +323,11 @@ Common configuration sources include:
 - explicit `--config` files
 - CLI options
 
-Configuration discovery uses configuration-source identity based on resolved configuration-file
-targets. Layered configuration provenance, applicability evaluation, and precedence therefore behave
-consistently when configuration files are accessed through symlinks.
+Project-chain discovery starts from the resolved discovery anchor before layered configuration is
+built. Loaded file-backed configuration sources then use configuration-source identity based on
+resolved configuration-file targets. Layered configuration provenance, applicability evaluation, and
+precedence therefore behave consistently when working directories, input anchors, or configuration
+files are accessed through symlinks.
 
 A minimal project configuration looks like this:
 
@@ -405,8 +412,8 @@ discovery.
 Public API callers should use the functions and DTOs exposed from `topmark.api`. Runtime helpers,
 resolver internals, and pipeline contexts are implementation details.
 
-Public API operations follow the same filesystem-identity evaluation, processing-path, and
-configuration-source identity contracts as the CLI.
+Public API operations follow the same configuration-discovery, filesystem-identity evaluation,
+processing-path, and configuration-source identity contracts as the CLI.
 
 Example dry-run check:
 
