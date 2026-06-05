@@ -17,8 +17,8 @@ topmark:header:end
 >
 > Path serialization is a presentation contract and is distinct from filesystem identity.
 >
-> TopMark first determines a canonical processing path for the filesystem target being processed and
-> then serializes that processing path according to the machine-output contract.
+> TopMark first determines the selected processing path for the filesystem target being processed
+> and then serializes that processing path according to the machine-output contract.
 >
 > This contract applies to:
 >
@@ -39,8 +39,8 @@ topmark:header:end
 > may refer to the same filesystem identity and therefore produce the same serialized processing
 > path.
 >
-> TopMark's machine-readable path fields remain path-based and are derived from the canonical
-> processing path selected for each processing target.
+> TopMark's machine-readable path fields remain path-based and are derived from the selected
+> processing path for each processing target.
 >
 > Filesystem identity policy is a separate concern from path serialization. TopMark may apply
 > additional filesystem-identity rules when determining whether a processing target is eligible for

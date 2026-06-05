@@ -121,15 +121,19 @@ python
 
 ### Canonical identity
 
-The normalized representation used internally for comparison, storage, machine-readable output,
-filtering, runtime policy lookup, registry composition, and resolution.
+The normalized representation used for deterministic comparison, storage, machine-readable output,
+filtering, runtime policy lookup, registry composition, and resolution within a specific identity
+domain.
 
-Examples include qualified file-type identities and canonicalized registry matching rules.
+Examples include qualified file-type identities, selected processing paths, normalized
+configuration-source identities, and canonicalized registry matching rules. These identities are not
+interchangeable across domains.
 
 ### Filesystem identity
 
-The canonical filesystem object identity used by TopMark when processing existing files,
-configuration sources, and runtime inputs.
+The canonical filesystem object identity used by TopMark when evaluating runtime processing targets.
+It is distinct from configuration-source identity, registry identity, and machine-readable path
+serialization.
 
 Filesystem identity is evaluated before runtime processing begins.
 
@@ -163,6 +167,24 @@ select a source, target, winner, or loser path automatically.
 > Filesystem identity is distinct from machine-readable path serialization. TopMark first evaluates
 > filesystem identity and then serializes the selected processing path according to the
 > machine-output contract.
+
+### Processing-target identity
+
+The selected runtime path identity used for per-file processing after file discovery, filtering, and
+filesystem-identity evaluation.
+
+Processing-target identity is represented by the selected processing path, not by the original CLI,
+configuration, glob, or symlink spelling. It is the path identity used for runtime pipeline
+contexts, generated header metadata, public API file results, and processing machine output.
+
+### Filesystem-identity evaluation
+
+The runtime pre-processing phase that decides which selected processing paths may enter ordinary
+per-file pipeline execution. It includes filesystem-identity normalization and filesystem-identity
+eligibility checks.
+
+Filesystem-identity evaluation is a runtime processing concern. It does not define configuration
+precedence, TOML provenance, registry lookup, or JSON path serialization.
 
 ### Namespace
 
@@ -280,12 +302,17 @@ Example:
 The fully resolved runtime configuration applicable to a specific path, command invocation, or
 execution context.
 
-### Configuration source identity
+### Configuration-source identity
 
 The normalized identity assigned to a loaded TOML configuration source.
 
-Configuration-source identity is based on the resolved processing target of the loaded configuration
-file. Symlink spellings are not preserved for precedence, scope, or applicability evaluation.
+For file-backed TOML sources, configuration-source identity is based on the resolved
+configuration-file target. Symlink spellings are not preserved for precedence, scope, provenance, or
+applicability evaluation.
+
+Configuration-source identity is independent from runtime processing-target identity. Runtime
+filesystem-identity eligibility checks, including hard-link policy, do not affect configuration
+loading, layered provenance, source precedence, or applicability evaluation.
 
 ______________________________________________________________________
 
@@ -349,8 +376,9 @@ Formats:
 The compatibility guarantees governing machine-readable schemas, record kinds, field naming, payload
 structure, and semantic stability.
 
-The machine-readable contract governs path serialization but does not define filesystem identity
-semantics.
+The machine-readable contract governs schema shape, stable field names, canonical identity fields,
+and path serialization. It reports selected processing paths after filesystem-identity evaluation,
+but it does not freeze the internal algorithms used to evaluate filesystem identity.
 
 ### Payload
 

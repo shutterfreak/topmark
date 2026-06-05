@@ -98,12 +98,16 @@ Stability guarantees:
 - Machine-readable payloads contain no ANSI color codes.
 - Payload shapes are JSON-safe (no Python-specific objects).
 - Machine-readable filesystem path fields serialize selected processing paths with POSIX `/`
-  separators on all platforms.
+  separators on all platforms. This is a path-serialization contract over already-selected
+  processing paths, not a guarantee that original invocation spellings are preserved.
 - Header metadata path fields describe the selected processing target and are serialized with POSIX
   `/` separators when TopMark renders headers.
 - New fields may be added over time as additive 1.x evolution.
 - Existing fields are not removed or renamed without a breaking-change signal.
 - Resolved file type identities are emitted using canonical qualified keys when available.
+- Configuration provenance payloads use configuration-source identities; runtime processing payloads
+  use selected processing paths. Consumers should not compare those fields as if they belonged to
+  the same identity domain.
 
 Consumers should:
 

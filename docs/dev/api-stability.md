@@ -73,7 +73,21 @@ This boundary intentionally separates:
 - stable user-facing execution APIs;
 - stable machine-readable output contracts;
 - stable configuration and file type identity semantics;
+- stable documented processing-target behavior;
 - evolving registry internals and overlay helpers.
+
+### Identity-domain compatibility boundaries
+
+TopMark documents several identity domains that intentionally share vocabulary but have separate
+compatibility boundaries:
+
+| Domain                         | Stable compatibility surface                                                                                                                                                                                                   | Flexible implementation detail                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Processing-target identity     | Public/API/CLI results are based on selected processing paths after filesystem-identity evaluation. Header metadata and processing machine output use that selected processing path.                                           | The internal data structures and helper functions used to choose the selected processing path.        |
+| Configuration-source identity  | File-backed TOML provenance, precedence, and applicability are based on resolved configuration-file targets. Synthetic sources use stable labels.                                                                              | The staged config-loading objects and merge-building machinery.                                       |
+| Registry identity              | Canonical qualified identifiers such as `topmark:python`, `qualified_key`, `file_type_key`, and `processor_key` are stable machine-readable/public behavior.                                                                   | Registry composition internals, overlay mutation helpers, and scoring implementation details.         |
+| Path serialization             | Machine-readable filesystem path fields use POSIX `/` separators and report selected processing paths, not invocation spellings.                                                                                               | Human-facing path formatting and presentation labels.                                                 |
+| Filesystem-identity evaluation | Documented outcomes are stable: equivalent symlink spellings collapse to selected processing paths, and selected hard-linked processing targets are reported as unsupported policy-blocked results without selecting a winner. | Low-level platform probes, cache shape, and implementation helpers used to detect equivalent objects. |
 
 ______________________________________________________________________
 
@@ -103,11 +117,13 @@ the public façade defined by `topmark.api.__all__` is considered part of the st
 Overlay state and internal registries are intentionally excluded from the snapshot; only symbols and
 signatures exported via \[`topmark.api`\][topmark.api] are tracked.
 
-Configuration layering and TOML source resolution are internal implementation details and are not
-part of the public API contract.
+Configuration layering objects and TOML source resolution machinery are internal implementation
+details and are not part of the public API symbol contract. The documented configuration-source
+identity behavior exposed through provenance, applicability, and machine-readable output is part of
+the supported behavior contract.
 
-However, canonical file type identity semantics are part of the stable public behavior contract
-shared across:
+Canonical file type identity semantics are part of the stable public behavior contract shared
+across:
 
 - CLI filtering;
 - TOML configuration;
