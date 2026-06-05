@@ -15,9 +15,10 @@ This repository tool scans workflow files and local composite action metadata fo
 referenced with multiple refs, which can happen when Dependabot updates workflow files
 but does not update nested local composite actions under `.github/actions/`.
 
-The audit is intentionally offline and read-only. It does not query GitHub, resolve
-tags, update files, or replace Dependabot. Its only contract is to detect inconsistent
-refs already present in the repository.
+The audit is intentionally offline. By default it is read-only and reports
+inconsistent refs already present in the repository. With `--fix`, it rewrites stale
+repeated refs to the preferred ref already present in the scanned files. It never
+queries GitHub, resolves tags, upgrades actions, or replaces Dependabot.
 
 Examples:
     Run the audit from the repository root:
@@ -30,6 +31,12 @@ Examples:
 
     ```bash
     python tools/ci/audit_action_pins.py --root /path/to/repo
+    ```
+
+    Repair stale repeated refs when the preferred ref can be selected unambiguously:
+
+    ```bash
+    python tools/ci/audit_action_pins.py --fix
     ```
 
     Print an alphabetical summary of all action refs and counts:
@@ -45,7 +52,8 @@ Examples:
     ```
 
 Raises:
-    SystemExit: Exits with status code 1 when divergent refs are detected.
+    SystemExit: Exits with status code 1 when divergent refs remain or automatic repair
+        cannot select one preferred ref unambiguously.
 """
 
 from __future__ import annotations
@@ -74,11 +82,10 @@ ACTION_METADATA_GLOBS: Final[tuple[str, ...]] = (
 )
 USES_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"""
-    ^\s*
-    uses:
-    \s*
+    ^
+    (?P<prefix>\s*uses:\s*)
     (?P<target>[^\s#]+)
-    (?:\s*\#\s*(?P<comment>.*))?
+    (?P<suffix>\s*(?:\#\s*(?P<comment>.*))?)
     \s*$
     """,
     re.VERBOSE,
@@ -88,6 +95,11 @@ EXTERNAL_ACTION_PATTERN: Final[re.Pattern[str]] = re.compile(
 )
 
 REPORT_MODES: Final[tuple[str, ...]] = ("none", "summary", "files", "all")
+
+VERSION_COMMENT_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"^v(?P<parts>\d+(?:\.\d+)*)(?:[-+][A-Za-z0-9_.-]+)?$"
+)
+SHA_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[0-9a-f]{40}$", re.IGNORECASE)
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -100,6 +112,9 @@ class ActionUse:
         path: Repository-relative file path containing the reference.
         line_number: One-based source line number.
         comment: Optional trailing comment, commonly used for the human-readable tag.
+        line: Original source line containing the reference.
+        prefix: Text before the action ref, including indentation and `uses:`.
+        suffix: Text after the action ref, including any trailing comment.
     """
 
     action: str
@@ -107,6 +122,9 @@ class ActionUse:
     path: Path
     line_number: int
     comment: str | None
+    line: str
+    prefix: str
+    suffix: str
 
     @property
     def ref_display(self) -> str:
@@ -118,6 +136,46 @@ class ActionUse:
         if self.comment is None:
             return self.ref
         return f"{self.ref} # {self.comment}"
+
+    @property
+    def target(self) -> str:
+        """Return the complete external action target.
+
+        Returns:
+            The `owner/repo@ref` action target.
+        """
+        return f"{self.action}@{self.ref}"
+
+    @property
+    def replacement_line(self) -> str:
+        """Return the original line rewritten with this action target.
+
+        Returns:
+            Source line containing the current action target and original suffix.
+        """
+        return f"{self.prefix}{self.target}{self.suffix}"
+
+    def with_ref_display(self, ref_display: str) -> ActionUse:
+        """Return this action use with a different ref display.
+
+        Args:
+            ref_display: Replacement ref, optionally followed by a trailing `#` comment.
+
+        Returns:
+            Updated action use preserving the original source location and line prefix.
+        """
+        ref, comment = split_ref_display(ref_display)
+        suffix = "" if comment is None else f" # {comment}"
+        return ActionUse(
+            action=self.action,
+            ref=ref,
+            path=self.path,
+            line_number=self.line_number,
+            comment=comment,
+            line=self.line,
+            prefix=self.prefix,
+            suffix=suffix,
+        )
 
     def format_location(self) -> str:
         """Return a compact source location for reports.
@@ -135,10 +193,12 @@ class AuditResult:
     Attributes:
         uses: All discovered external action references.
         divergent_actions: Action references grouped by action name when multiple refs exist.
+        unfixable_actions: Divergent action names that cannot be repaired automatically.
     """
 
     uses: tuple[ActionUse, ...]
     divergent_actions: dict[str, tuple[ActionUse, ...]]
+    unfixable_actions: dict[str, tuple[str, ...]]
 
     @property
     def has_failures(self) -> bool:
@@ -148,6 +208,78 @@ class AuditResult:
             `True` when at least one action is pinned to multiple refs.
         """
         return bool(self.divergent_actions)
+
+    @property
+    def can_fix(self) -> bool:
+        """Return whether all divergent refs can be repaired automatically.
+
+        Returns:
+            `True` when divergent actions exist and none are ambiguous.
+        """
+        return self.has_failures and not self.unfixable_actions
+
+
+def split_ref_display(ref_display: str) -> tuple[str, str | None]:
+    """Split a ref display string into ref and optional comment.
+
+    Args:
+        ref_display: Ref text, optionally containing a trailing `#` comment.
+
+    Returns:
+        Pair of ref and optional comment text.
+    """
+    ref, separator, comment = ref_display.partition("#")
+    stripped_ref = ref.strip()
+    if not separator:
+        return stripped_ref, None
+    stripped_comment = comment.strip()
+    return stripped_ref, stripped_comment or None
+
+
+def parse_version_comment(comment: str | None) -> tuple[int, ...] | None:
+    """Parse a SemVer-like version comment.
+
+    Args:
+        comment: Optional trailing action-pin comment.
+
+    Returns:
+        Numeric version tuple when the comment looks like `v1.2.3`, otherwise `None`.
+    """
+    if comment is None:
+        return None
+    match: re.Match[str] | None = VERSION_COMMENT_PATTERN.match(comment.strip())
+    if match is None:
+        return None
+    return tuple(int(part) for part in match.group("parts").split("."))
+
+
+def choose_preferred_ref_display(action_uses: Sequence[ActionUse]) -> str | None:
+    """Choose the ref display to use when repairing one divergent action group.
+
+    The repair strategy intentionally avoids network lookups. It can only select a
+    preferred ref when exactly one ref display has the highest SemVer-like trailing
+    version comment.
+
+    Args:
+        action_uses: Divergent references for one action.
+
+    Returns:
+        Preferred ref display, or `None` when no unique preferred ref can be selected.
+    """
+    candidates: dict[str, tuple[int, ...]] = {}
+    for action_use in action_uses:
+        version = parse_version_comment(action_use.comment)
+        if version is not None and SHA_PATTERN.match(action_use.ref):
+            candidates[action_use.ref_display] = version
+
+    if not candidates:
+        return None
+
+    highest_version = max(candidates.values())
+    preferred = [ref for ref, version in candidates.items() if version == highest_version]
+    if len(preferred) != 1:
+        return None
+    return preferred[0]
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
@@ -175,6 +307,15 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         help=(
             "Optional report mode. Use 'summary' for aggregated action/ref counts, "
             "'files' for counts grouped by source file, or 'all' for both."
+        ),
+    )
+    parser.add_argument(
+        "--fix",
+        action="store_true",
+        help=(
+            "Rewrite stale repeated action refs to the preferred ref already present "
+            "in scanned files. The preferred ref is selected from the highest "
+            "SemVer-like trailing version comment, such as '# v8.2.0'."
         ),
     )
     return parser.parse_args(argv)
@@ -229,6 +370,9 @@ def parse_action_uses(root: Path, path: Path) -> tuple[ActionUse, ...]:
                 path=relative_path,
                 line_number=line_number,
                 comment=match.group("comment"),
+                line=line,
+                prefix=match.group("prefix"),
+                suffix=match.group("suffix"),
             )
         )
     return tuple(uses)
@@ -266,7 +410,63 @@ def audit_repository(root: Path) -> AuditResult:
         for action, action_uses in sorted(grouped.items())
         if len({action_use.ref for action_use in action_uses}) > 1
     }
-    return AuditResult(uses=tuple(all_uses), divergent_actions=divergent_actions)
+    unfixable_actions: dict[str, tuple[str, ...]] = {
+        action: tuple(sorted({action_use.ref_display for action_use in action_uses}))
+        for action, action_uses in divergent_actions.items()
+        if choose_preferred_ref_display(action_uses) is None
+    }
+    return AuditResult(
+        uses=tuple(all_uses),
+        divergent_actions=divergent_actions,
+        unfixable_actions=unfixable_actions,
+    )
+
+
+def fix_repository(root: Path, result: AuditResult) -> tuple[ActionUse, ...]:
+    """Rewrite stale repeated action refs to their preferred pinned refs.
+
+    Args:
+        root: Repository root to update.
+        result: Audit result containing divergent action groups.
+
+    Returns:
+        Updated action references that were rewritten.
+
+    Raises:
+        ValueError: If at least one divergent action cannot be repaired automatically.
+    """
+    if result.unfixable_actions:
+        action_names = ", ".join(sorted(result.unfixable_actions))
+        raise ValueError(f"Cannot select preferred refs for: {action_names}")
+
+    replacements_by_path: dict[Path, dict[int, ActionUse]] = defaultdict(dict)
+    for action_uses in result.divergent_actions.values():
+        preferred_ref_display = choose_preferred_ref_display(action_uses)
+        if preferred_ref_display is None:
+            continue
+        for action_use in action_uses:
+            if action_use.ref_display == preferred_ref_display:
+                continue
+            replacements_by_path[action_use.path][action_use.line_number] = (
+                action_use.with_ref_display(preferred_ref_display)
+            )
+
+    rewritten: list[ActionUse] = []
+    for relative_path, replacements in sorted(
+        replacements_by_path.items(), key=lambda item: item[0].as_posix()
+    ):
+        path = root / relative_path
+        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        for line_number, replacement in sorted(replacements.items()):
+            original = lines[line_number - 1]
+            newline = "\n" if original.endswith("\n") else ""
+            if original.endswith("\r\n"):
+                newline = "\r\n"
+            lines[line_number - 1] = f"{replacement.replacement_line}{newline}"
+            rewritten.append(replacement)
+        path.write_text("".join(lines), encoding="utf-8")
+
+    return tuple(rewritten)
 
 
 # ---- Reporting helpers ----
@@ -432,6 +632,33 @@ def format_audit_report(result: AuditResult) -> str:
     return "\n".join(lines)
 
 
+def format_fix_report(rewritten: Sequence[ActionUse]) -> str:
+    """Format a human-readable repair report.
+
+    Args:
+        rewritten: Action references rewritten by `--fix`.
+
+    Returns:
+        Text report suitable for local terminals and GitHub Actions logs.
+    """
+    lines: list[str] = []
+    lines.append("GitHub Actions pin repair")
+    lines.append("=========================")
+    lines.append("")
+
+    if not rewritten:
+        lines.append("No stale repeated action refs needed rewriting.")
+        return "\n".join(lines)
+
+    lines.append(f"Rewritten action references: {len(rewritten)}")
+    lines.append("")
+    for action_use in rewritten:
+        lines.append(f"- {action_use.format_location()}")
+        lines.append(f"  {action_use.ref_display}")
+
+    return "\n".join(lines)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the action-pin audit CLI.
 
@@ -442,11 +669,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         Process exit code. Returns 0 when refs are consistent and 1 when divergence is detected.
     """
     args: argparse.Namespace = parse_args(sys.argv[1:] if argv is None else argv)
-    result: AuditResult = audit_repository(args.root)
+    root: Path = args.root.resolve()
+    result: AuditResult = audit_repository(root)
     optional_report: str = format_optional_reports(result, args.report)
     if optional_report:
         print(optional_report)
         print()
+
+    if args.fix and result.has_failures:
+        if not result.can_fix:
+            print(format_audit_report(result))
+            print()
+            print("Automatic repair skipped: no unique preferred ref could be selected.")
+            return 1
+        try:
+            rewritten = fix_repository(root, result)
+        except ValueError as error:
+            print(format_audit_report(result))
+            print()
+            print(f"Automatic repair failed: {error}")
+            return 1
+        print(format_fix_report(rewritten))
+        print()
+        result = audit_repository(root)
+
     print(format_audit_report(result))
     return 1 if result.has_failures else 0
 
