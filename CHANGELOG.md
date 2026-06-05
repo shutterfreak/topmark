@@ -59,6 +59,8 @@ ______________________________________________________________________
   keeping the highest-precedence occurrence for layered configuration and provenance.
 - Added a hard-link filesystem-identity guard: selected paths sharing `(st_dev, st_ino)` are all
   blocked as hard-linked processing targets while unrelated files continue processing normally.
+- Extended the GitHub Actions pin audit with an optional `--fix` mode that can repair stale repeated
+  action refs using an already-present preferred pinned ref selected from version-comment metadata.
 
 ### Breaking Changes - Unreleased
 
@@ -172,6 +174,8 @@ ______________________________________________________________________
 - Clarified TopMark's identity-domain terminology and compatibility boundaries for processing-target
   identity, configuration-source identity, registry identity, path serialization, and
   filesystem-identity evaluation.
+- Documented local repair workflows, trust boundaries, and maintenance guidance for the GitHub
+  Actions pin audit, including the new `--fix` mode.
 
 ### Internal - Unreleased
 
@@ -207,6 +211,9 @@ ______________________________________________________________________
 - Added regression coverage for hard-linked selected processing paths across pipeline execution,
   `check`, `strip`, `probe`, JSON output, NDJSON output, and mixed hard-linked plus unrelated file
   selections.
+- Added deterministic repair support for GitHub Actions pin drift in local composite actions and
+  workflow files without introducing network access, dynamic version resolution, or Dependabot
+  replacement behavior.
 
 ### Notes - Unreleased
 

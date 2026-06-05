@@ -61,7 +61,7 @@ and maintenance expectations than repository-source validation or release public
 
 - [Dependabot workflow](./dependabot.md) - documents dependency-update and security-audit behavior.
 - [GitHub Action pin audit](./action-pin-audit.md) - audits GitHub Action pin consistency across
-  workflows and local composite actions.
+  workflows and local composite actions, with an explicit local repair mode for stale repeated refs.
 
 ______________________________________________________________________
 
@@ -77,7 +77,7 @@ Use this family of pages as follows:
 | How are release artifacts produced and published?                | [Release workflow](./release-workflow.md)                           |
 | How do we validate packages after publication?                   | [Published artifact validation](./published-artifact-validation.md) |
 | How are dependency updates handled?                              | [Dependabot](./dependabot.md)                                       |
-| How do we audit GitHub Action pin consistency?                   | [GitHub Action pin audit](./action-pin-audit.md)                    |
+| How do we audit or locally repair GitHub Action pin consistency? | [GitHub Action pin audit](./action-pin-audit.md)                    |
 
 ______________________________________________________________________
 

@@ -48,7 +48,9 @@ The audit helps prevent:
 - hidden maintenance drift inside local actions.
 
 The workflow intentionally complements Dependabot rather than attempting to replace it, keeping
-manual review and CI validation as the final dependency-governance gate.
+manual review and CI validation as the final dependency-governance gate. The repository tool also
+provides an explicit `--fix` mode for maintainers who want to repair stale repeated refs after a
+Dependabot update introduced drift.
 
 ______________________________________________________________________
 
@@ -88,7 +90,7 @@ The workflow intentionally operates as:
 - offline;
 - low-privilege.
 
-The audit does not:
+The scheduled, manual, and pull-request workflow runs do not:
 
 - publish packages;
 - upload artifacts;
@@ -96,7 +98,9 @@ The audit does not:
 - query GitHub APIs;
 - update dependencies automatically.
 
-The audit performs static repository analysis only.
+The default audit performs static repository analysis only. The local tool's explicit `--fix` mode
+can rewrite stale repeated refs in the working tree, but it still does not query GitHub APIs,
+resolve tags dynamically, or choose versions that are not already present in the scanned files.
 
 ______________________________________________________________________
 
@@ -140,6 +144,13 @@ Run the default repository consistency audit:
 python tools/ci/audit_action_pins.py
 ```
 
+Repair stale repeated refs when the preferred ref can be selected unambiguously from the scanned
+files:
+
+```bash
+python tools/ci/audit_action_pins.py --fix
+```
+
 Print an aggregated summary report:
 
 ```bash
@@ -160,10 +171,10 @@ python tools/ci/audit_action_pins.py --report all
 
 The default command exits with:
 
-| Exit code | Meaning                                  |
-| --------- | ---------------------------------------- |
-| `0`       | All repeated actions use consistent refs |
-| `1`       | Divergent refs were detected             |
+| Exit code | Meaning                                                                   |
+| --------- | ------------------------------------------------------------------------- |
+| `0`       | All repeated actions use consistent refs                                  |
+| `1`       | Divergent refs remain, or `--fix` could not select a unique preferred ref |
 
 Example successful output:
 
@@ -194,7 +205,8 @@ readability and maintenance review.
 When updating pinned GitHub Actions for the stable release workflow set:
 
 1. update workflow files;
-1. update local composite actions;
+1. update local composite actions, or run `python tools/ci/audit_action_pins.py --fix` after the
+   workflow update;
 1. run the audit locally;
 1. ensure the workflow remains green.
 
@@ -221,13 +233,18 @@ uses: ./.github/actions/setup-python-nox
 
 are intentionally ignored because the audit is concerned with external dependency pinning.
 
-The tool intentionally does not:
+The default audit intentionally does not:
 
 - query GitHub APIs;
 - auto-upgrade actions;
 - mutate workflow files;
 - resolve tags dynamically;
 - replace Dependabot.
+
+The explicit `--fix` mode may mutate workflow files and local composite-action metadata, but only by
+rewriting stale repeated refs to the preferred ref already present for the same action. The
+preferred ref must be selectable from a unique highest SemVer-like trailing version comment such as
+`# v8.2.0`.
 
 This keeps the audit deterministic, offline, reproducible, and lightweight enough for routine CI
 usage.
