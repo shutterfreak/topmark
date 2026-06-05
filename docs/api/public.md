@@ -137,11 +137,12 @@ identical file-type identity semantics. Local identifiers such as `"python"` are
 unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
 `"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
 
-Public API execution also uses the same filesystem-identity semantics as the CLI. Existing
-filesystem inputs undergo filesystem-identity evaluation before pipeline execution. Multiple path
-spellings that resolve to the same target, such as a symlink and its target, may therefore be
-normalized to a single selected processing path and reported as a single result for the resolved
-processing target.
+Public API execution also uses the same documented filesystem-identity semantics as the CLI.
+Existing filesystem inputs undergo filesystem-identity evaluation before pipeline execution.
+Multiple path spellings that resolve to the same target, such as a symlink and its target, may
+therefore be normalized to a single selected processing path and reported as a single result for the
+resolved processing target. The selected processing path is the public result identity used by API
+file results; original invocation spellings are not guaranteed to be preserved.
 
 Hard-link policy is evaluated separately from path-spelling normalization. If multiple selected
 processing paths refer to the same filesystem object through hard links, the public API preserves
@@ -269,7 +270,8 @@ on the resolved target rather than the symlink spelling.
 Configuration-source identity is distinct from processing-target identity. Hard-link processing
 policy applies to runtime filesystem-processing commands and public API helpers, but it does not
 affect configuration loading, layered provenance, applicability evaluation, or configuration-source
-selection.
+selection. Conversely, configuration-source identity does not determine which runtime processing
+paths enter pipeline execution.
 
 The public API operates only on the flattened immutable
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Staged validation logs are not exposed

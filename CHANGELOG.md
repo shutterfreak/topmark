@@ -160,6 +160,9 @@ ______________________________________________________________________
   configuration discovery, configuration schema, machine-output, command, and API documentation.
 - Documented the TopMark 1.1.0 hard-link compatibility contract for processing and probe machine
   output.
+- Clarified TopMark's identity-domain terminology and compatibility boundaries for processing-target
+  identity, configuration-source identity, registry identity, path serialization, and
+  filesystem-identity evaluation.
 
 ### Internal - Unreleased
 
