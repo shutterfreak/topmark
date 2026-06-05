@@ -156,8 +156,11 @@ Public API stability expectations and snapshot validation are documented in:
 Generated from live TopMark output:
 
 ```text
-usage/generated-filetypes.md
-usage/generated-processors.md
+usage/generated/filetypes.md
+usage/generated/processors.md
+usage/generated/bindings.md
+configuration/generated/example-config.md
+configuration/generated/config-defaults.md
 ```
 
 via:

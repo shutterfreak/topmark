@@ -181,7 +181,7 @@ def generate_cli_reference_pages() -> None:
         """Write a standalone generated Markdown page under `docs/`.
 
         Args:
-            dest: Docs-relative output path (e.g. `usage/generated-filetypes.md`).
+            dest: Docs-relative output path (e.g. `usage/generated/filetypes.md`).
             title: Page title to render at the top.
             body: Pre-rendered Markdown emitted by `topmark ... --output-format markdown`.
         """

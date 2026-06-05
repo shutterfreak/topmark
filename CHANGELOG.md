@@ -56,7 +56,6 @@ ______________________________________________________________________
   configuration-file target for precedence, scope applicability, layered provenance, and
   machine-readable configuration provenance.
 - Deduplicated repeated resolved configuration-source identities during TOML-side resolution,
-- Deduplicated repeated resolved configuration-source identities during TOML-side resolution,
   keeping the highest-precedence occurrence for layered configuration and provenance.
 - Extended machine-readable configuration provenance to expose the resolved configuration-discovery
   anchor separately from configuration-source identity, scope roots, processing targets, and
@@ -193,6 +192,10 @@ ______________________________________________________________________
   Actions pin audit, including the new `--fix` mode.
 - Documented that the filesystem CI job requires symlink capability through
   `TOPMARK_REQUIRE_SYMLINKS=1` on Ubuntu, macOS, and Windows.
+- Reviewed documentation clarity, consistency, governance, tooling, structure, duplication, and
+  snippet usage for issue #108.
+- Synchronized documentation-governance guidance with the current generated-reference layout and
+  snippet inventory.
 
 ### Internal - Unreleased
 
@@ -235,6 +238,7 @@ ______________________________________________________________________
   replacement behavior.
 - Added a `TOPMARK_REQUIRE_SYMLINKS` test-helper guard so symlink-dependent tests fail loudly in CI
   jobs that are expected to exercise symlink behavior.
+- Aligned generated API-page tooling prose with the current generated documentation path layout.
 
 ### Notes - Unreleased
 
