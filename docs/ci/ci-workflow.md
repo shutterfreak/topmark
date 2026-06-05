@@ -107,7 +107,9 @@ supported Python-version matrix across every operating system.
 This job also protects TopMark's filesystem-identity evaluation contract. That includes
 filesystem-identity normalization for platform-sensitive path spellings and processing-target
 eligibility checks such as hard-link policy where the host filesystem supports the required
-semantics.
+semantics. Symlink-dependent regressions are required in this job: the workflow sets
+`TOPMARK_REQUIRE_SYMLINKS=1`, so a runner that cannot create symlinks fails the job instead of
+silently skipping those tests.
 
 Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolved canonical Python
 version and the existing `nox -s coverage` session. Coverage intentionally runs outside the full
@@ -206,7 +208,10 @@ nox -s coverage -p 3.13
 
 The `filesystem-tests` job runs the same canonical `qa` session on Ubuntu, macOS, and Windows. Local
 reproduction can validate the current machine's filesystem behavior, but it cannot replace the
-cross-platform GitHub-hosted runs for case-sensitivity and path-canonicalization behavior.
+cross-platform GitHub-hosted runs for case-sensitivity and path-canonicalization behavior. In this
+job, symlink creation is mandatory through `TOPMARK_REQUIRE_SYMLINKS=1`; if a Windows runner loses
+symlink capability because Developer Mode or equivalent privileges are unavailable, the job fails
+rather than reporting a misleading skip.
 
 The concrete `3.13` commands shown here reflect the current canonical Python version. That value is
 resolved from project metadata and is expected to move when the supported Python range moves.

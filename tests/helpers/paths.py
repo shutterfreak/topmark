@@ -18,6 +18,7 @@ serialized with POSIX separators and must therefore not contain backslashes.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 from typing import Final
 
@@ -28,6 +29,8 @@ from topmark.core.typing_guards import is_mapping
 if TYPE_CHECKING:
     from pathlib import Path
 
+
+REQUIRE_SYMLINKS_ENV: Final[str] = "TOPMARK_REQUIRE_SYMLINKS"
 
 MACHINE_PATH_FIELD_NAMES: Final[frozenset[str]] = frozenset(
     {
@@ -143,6 +146,10 @@ def symlink_or_skip(
 ) -> Path:
     """Create a symlink or skip when the platform disallows symlinks.
 
+    Set `TOPMARK_REQUIRE_SYMLINKS=1` in CI jobs where symlink-dependent
+    regressions must execute. In that mode, an unavailable symlink capability is
+    reported as a test failure instead of a skip.
+
     Args:
         link: Symlink path to create.
         target: Symlink target.
@@ -157,5 +164,8 @@ def symlink_or_skip(
     except (NotImplementedError, OSError) as exc:
         import pytest
 
-        pytest.skip(f"symlink creation is not available in this test environment: {exc}")
+        message: str = f"symlink creation is not available in this test environment: {exc}"
+        if os.environ.get(REQUIRE_SYMLINKS_ENV) == "1":
+            pytest.fail(message)
+        pytest.skip(message)
     return link
