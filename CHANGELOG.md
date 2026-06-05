@@ -61,6 +61,8 @@ ______________________________________________________________________
   blocked as hard-linked processing targets while unrelated files continue processing normally.
 - Extended the GitHub Actions pin audit with an optional `--fix` mode that can repair stale repeated
   action refs using an already-present preferred pinned ref selected from version-comment metadata.
+- Required symlink-dependent regression tests to execute in the cross-platform filesystem CI job
+  instead of silently skipping when symlink creation is unavailable.
 
 ### Breaking Changes - Unreleased
 
@@ -179,6 +181,8 @@ ______________________________________________________________________
   classification.
 - Documented local repair workflows, trust boundaries, and maintenance guidance for the GitHub
   Actions pin audit, including the new `--fix` mode.
+- Documented that the filesystem CI job requires symlink capability through
+  `TOPMARK_REQUIRE_SYMLINKS=1` on Ubuntu, macOS, and Windows.
 
 ### Internal - Unreleased
 
@@ -217,6 +221,8 @@ ______________________________________________________________________
 - Added deterministic repair support for GitHub Actions pin drift in local composite actions and
   workflow files without introducing network access, dynamic version resolution, or Dependabot
   replacement behavior.
+- Added a `TOPMARK_REQUIRE_SYMLINKS` test-helper guard so symlink-dependent tests fail loudly in CI
+  jobs that are expected to exercise symlink behavior.
 
 ### Notes - Unreleased
 

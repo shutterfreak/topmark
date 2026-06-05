@@ -362,6 +362,8 @@ jobs:
           python-version: ${{ needs.python-metadata.outputs.canonical }}
 
       - name: Run canonical Python QA on ${{ matrix.os }}
+        env:
+          TOPMARK_REQUIRE_SYMLINKS: "1"
         run: |
           nox -s qa -p ${{ needs.python-metadata.outputs.canonical }}
 
