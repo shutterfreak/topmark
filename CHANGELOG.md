@@ -174,6 +174,9 @@ ______________________________________________________________________
 - Clarified TopMark's identity-domain terminology and compatibility boundaries for processing-target
   identity, configuration-source identity, registry identity, path serialization, and
   filesystem-identity evaluation.
+- Added cross-references between public API, terminology, and API-stability documentation so
+  filesystem-identity concepts link directly to the authoritative identity-domain compatibility
+  classification.
 - Documented local repair workflows, trust boundaries, and maintenance guidance for the GitHub
   Actions pin audit, including the new `--fix` mode.
 
