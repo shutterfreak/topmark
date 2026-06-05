@@ -41,6 +41,7 @@ class TomlKey(str, Enum):
         PRECEDENCE: Numeric layer precedence.
         TOML: Nested TopMark TOML fragment for the layer.
         SCOPE_ROOT: Optional scope root attached to the layer.
+        DISCOVERY_ANCHOR: Resolved project/local discovery anchor.
     """
 
     CONFIG_LAYERS = "config_layers"
@@ -49,6 +50,7 @@ class TomlKey(str, Enum):
     PRECEDENCE = "precedence"
     TOML = "toml"
     SCOPE_ROOT = "scope_root"
+    DISCOVERY_ANCHOR = "discovery_anchor"
 
 
 @dataclass(kw_only=True, slots=True)
@@ -93,16 +95,23 @@ class TomlProvenancePayload:
     Attributes:
         layers: Ordered provenance layers, starting with the built-in defaults
             layer when present.
+        discovery_anchor: Optional resolved project/local discovery anchor used
+            to find discovered TOML sources.
     """
 
     layers: list[TomlProvenanceLayerPayload]
+    discovery_anchor: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Return the provenance payload as a JSON-friendly mapping.
 
         Returns:
-            A dict containing the ordered `config_layers` export.
+            A dict containing the optional discovery anchor and ordered
+            `config_layers` export.
         """
-        return {
+        out: dict[str, object] = {
             TomlKey.CONFIG_LAYERS.value: [layer.to_dict() for layer in self.layers],
         }
+        if self.discovery_anchor is not None:
+            out[TomlKey.DISCOVERY_ANCHOR.value] = self.discovery_anchor
+        return out

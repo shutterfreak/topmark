@@ -708,9 +708,9 @@ precedence evaluation, and runtime overlays have completed.
 
 `ConfigPayload` may include resolved configuration file paths in fields such as
 `files.config_files`. Those paths describe configuration sources participating in the effective
-configuration; they are not a separate serialized discovery-anchor field. If multiple inputs resolve
-to the same configuration-source identity, TopMark keeps the highest-precedence occurrence and emits
-that source identity once.
+configuration; they are separate from `config_provenance.discovery_anchor`, which is emitted only
+when layered provenance is requested. If multiple inputs resolve to the same configuration-source
+identity, TopMark keeps the highest-precedence occurrence and emits that source identity once.
 
 Normalization rules:
 
@@ -829,7 +829,8 @@ envelope becomes:
 {
   "meta": { /* MetaPayload */ },
   "config_provenance": {
-    "layers": [
+    "discovery_anchor": "/repo",
+    "config_layers": [
       {
         "origin": "<defaults>",
         "kind": "default",
@@ -845,7 +846,13 @@ envelope becomes:
 }
 ```
 
-`config_provenance` is an inspection-oriented payload. Each layer contains:
+`config_provenance` is an inspection-oriented payload. It contains:
+
+- `discovery_anchor` - resolved project/local discovery anchor used to find discovered config
+  sources, when available
+- `config_layers` - ordered provenance layers
+
+Each layer contains:
 
 - `origin` - provenance origin label
 - `kind` - resolved config layer kind
@@ -880,7 +887,8 @@ JSON shape:
 
 ```jsonc
 {
-  "layers": [
+  "discovery_anchor": "/repo",
+  "config_layers": [
     {
       "origin": "<defaults>",
       "kind": "default",
@@ -909,8 +917,9 @@ The payload is inspection-oriented rather than a loadable `topmark.toml` documen
 human-facing layered TOML export by preserving ordered layers and the corresponding source-local
 TopMark TOML fragments.
 
-Real filesystem `origin` and `scope_root` values use POSIX `/` separators on all platforms.
-Synthetic layer origins such as built-in defaults are stable labels rather than filesystem paths.
+Real filesystem `discovery_anchor`, `origin`, and `scope_root` values use POSIX `/` separators on
+all platforms. Synthetic layer origins such as built-in defaults are stable labels rather than
+filesystem paths.
 
 File-backed configuration provenance uses configuration-source identity based on the resolved
 configuration-file target. If a configuration file is loaded through a symlink, `origin` and
@@ -919,8 +928,10 @@ spelling.
 
 Workspace-root discovery is evaluated earlier. Project-chain discovery determines which
 configuration files participate in layered configuration construction before provenance identities
-are assigned. Provenance payloads then serialize discovered configuration-source origins and, when
-available, resolved scope roots for those layers.
+are assigned. `discovery_anchor` records the resolved project/local starting directory for that
+discovery. It is not a configuration source, scope root, processing target, or filesystem identity.
+Provenance payloads then serialize discovered configuration-source origins and, when available,
+resolved scope roots for those layers.
 
 The outer `config_layers` container key belongs to the config machine-readable output domain, while
 the inner provenance-layer fragment keys (`origin`, `kind`, `precedence`, `toml`, `scope_root`) are
@@ -1251,12 +1262,13 @@ Consumers should:
 - Assume additive fields may appear over time within the 1.x compatibility model.
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names.
-- Treat filesystem `path`, `origin`, and `scope_root` fields as serialized processing/provenance
-  paths, not as lossless echoes of the original invocation spelling.
+- Treat filesystem `path`, `discovery_anchor`, `origin`, and `scope_root` fields as serialized
+  processing/provenance paths, not as lossless echoes of the original invocation spelling.
 
 Consumers should not infer the original workspace-root discovery-anchor spelling from
-machine-readable payloads. The stable 1.x contract serializes discovered configuration sources and
-scope roots where applicable, but does not currently expose a dedicated `discovery_anchor` field.
+machine-readable payloads. The stable 1.x contract serializes the resolved discovery anchor in
+`config_provenance.discovery_anchor` when provenance is requested, plus discovered configuration
+sources and scope roots where applicable.
 
 Breaking machine-readable output changes should be signaled through Conventional Commits using the
 `!` marker and documented in the changelog.

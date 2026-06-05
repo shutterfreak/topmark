@@ -118,6 +118,11 @@ Each layer includes:
 - `scope_root` - optional applicability root associated with the configuration source
 - `toml` - the source-local TopMark TOML fragment after TOML-layer validation
 
+The provenance export also records a top-level `discovery_anchor`, which identifies the resolved
+filesystem location from which project-chain configuration discovery started. The discovery anchor
+is distinct from configuration-source `origin`, layer `scope_root`, processing targets, and
+filesystem identity.
+
 For file-backed layers, `origin` and `scope_root` describe the resolved configuration-file target
 used for configuration-source identity. If a configuration file is loaded through a symlink, layered
 provenance reports the resolved target rather than the symlink spelling.
@@ -224,10 +229,11 @@ configuration sources rather than processing targets.
 Notes:
 
 - `config dump` is file-agnostic and emits the effective runtime configuration after applying
-  defaults -> discovered configuratin -> `--config` files -> CLI overrides, with whole-source TOML
+  defaults -> discovered configuration -> `--config` files -> CLI overrides, with whole-source TOML
   validation performed per source before layered configuration merging.
 - With `--show-layers`, machine-readable output also includes a `config_provenance` payload before
-  the flattened runtime configuration snapshot.
+  the flattened runtime configuration snapshot. The provenance payload includes `discovery_anchor`,
+  the resolved filesystem location from which project-chain configuration discovery started.
 - File-backed provenance entries use configuration-source identity based on resolved configuration
   targets. `origin` and `scope_root` therefore describe resolved configuration targets rather than
   symlink spellings.
@@ -255,8 +261,10 @@ With `--show-layers`, the JSON envelope becomes:
 }
 ```
 
-The `config_provenance` payload reports configuration layers using configuration-source identity.
-For file-backed layers, provenance paths describe resolved configuration targets.
+The `config_provenance` payload reports configuration layers using configuration-source identity and
+also includes `discovery_anchor`, the resolved filesystem location from which project-chain
+configuration discovery started. For file-backed layers, provenance paths describe resolved
+configuration targets.
 
 ### NDJSON schema
 
@@ -283,6 +291,10 @@ Example:
 {"kind":"config_provenance","meta":{...},"config_provenance":{...}}
 {"kind":"config","meta":{...},"config":{...}}
 ```
+
+Within `config_provenance`, `discovery_anchor` identifies the resolved filesystem location from
+which project-chain configuration discovery started. It is distinct from configuration-source
+`origin` values and layer `scope_root` values.
 
 ______________________________________________________________________
 

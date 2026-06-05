@@ -110,9 +110,9 @@ Stability guarantees:
   the same identity domain.
 
 Workspace-root discovery and discovery-anchor evaluation occur before either identity domain is
-established. Machine-readable output does not currently expose a dedicated `discovery_anchor` field,
-but configuration provenance may serialize discovery results such as resolved configuration-source
-origins and scope roots.
+established. `config_provenance.discovery_anchor` exposes the resolved project/local discovery
+anchor when provenance is requested. Configuration provenance layers separately serialize resolved
+configuration-source origins and scope roots.
 
 Consumers should:
 
@@ -315,7 +315,8 @@ Examples:
 {
   "meta": { ... },
   "config_provenance": {
-    "layers": [
+    "discovery_anchor": "/repo",
+    "config_layers": [
       {
         "origin": "<defaults>",
         "kind": "default",
@@ -623,11 +624,12 @@ configuration-file target. Symlink spellings for configuration files are therefo
 machine-readable provenance, precedence, scope, or applicability evaluation.
 
 Project-chain discovery begins from the resolved discovery anchor before configuration-source
-identity is established. Machine-readable provenance payloads describe the resolved configuration
-sources and, when available, their resolved scope roots. If multiple entries resolve to the same
-configuration-source identity, provenance keeps the highest-precedence occurrence and emits one
-layer for that source identity. Provenance payloads do not currently include a separate field for
-the original discovery-anchor spelling used to start project-chain discovery.
+identity is established. Machine-readable provenance payloads expose that resolved starting point as
+`discovery_anchor`, then describe the resolved configuration sources and, when available, their
+resolved scope roots. If multiple entries resolve to the same configuration-source identity,
+provenance keeps the highest-precedence occurrence and emits one layer for that source identity. The
+field does not preserve the original discovery-anchor spelling used to start project-chain
+discovery.
 
 Configuration-source identity is distinct from processing-target identity. Hard-link processing
 policy applies to runtime filesystem-processing payloads and probe diagnostics, but does not affect
@@ -636,9 +638,9 @@ configuration-source provenance or runtime configuration snapshots.
 - JSON includes `config_provenance` before `config` in the top-level envelope.
 - NDJSON emits a `config_provenance` record first and a `config` record second.
 
-The `config_provenance` payload is inspection-oriented. Each provenance layer preserves metadata
-such as `origin`, `kind`, `precedence`, and optional `scope_root`, and exposes the corresponding
-source-local TopMark TOML fragment under `toml`.
+The `config_provenance` payload is inspection-oriented. The payload may include `discovery_anchor`,
+and each provenance layer preserves metadata such as `origin`, `kind`, `precedence`, and optional
+`scope_root`, and exposes the corresponding source-local TopMark TOML fragment under `toml`.
 
 Config-specific payload keys and NDJSON kinds are defined in
 \[`topmark.config.machine.schemas.ConfigKey`\][topmark.config.machine.schemas.ConfigKey] and

@@ -195,6 +195,7 @@ def _resolve_single_builtin_toml_table_and_build_mutable_config(
         sources=[source],
         writer_options=parsed.writer_options if parsed is not None else None,
         strict=parsed.config_loading_options.strict if parsed is not None else None,
+        discovery_anchor=None,
     )
     return ResolvedConfigDraft(
         resolved=resolved,

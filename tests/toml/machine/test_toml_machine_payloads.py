@@ -24,6 +24,10 @@ from topmark.toml.parse import SourceConfigLoadingOptions
 from topmark.toml.parse import SourceTomlOptions
 from topmark.toml.resolution import ResolvedTopmarkTomlSource
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
+from topmark.toml.schema import TOPMARK_TOML_SCHEMA
+from topmark.toml.schema import TomlSection
+from topmark.toml.schema import TomlValidationMode
+from topmark.toml.validation import TomlDiagnosticCode
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -31,6 +35,7 @@ if TYPE_CHECKING:
     from topmark.toml.machine.schemas import TomlProvenanceLayerPayload
     from topmark.toml.machine.schemas import TomlProvenancePayload
     from topmark.toml.types import TomlTable
+    from topmark.toml.validation import TomlValidationIssue
 
 
 @pytest.mark.pipeline
@@ -56,6 +61,7 @@ def test_toml_provenance_payload_uses_posix_paths_for_file_backed_layers(
         toml_fragment=toml_fragment,
     )
     resolved = ResolvedTopmarkTomlSources(
+        discovery_anchor=config_file.parent,
         sources=[
             ResolvedTopmarkTomlSource(
                 path=config_file,
@@ -78,3 +84,48 @@ def test_toml_provenance_payload_uses_posix_paths_for_file_backed_layers(
     file_backed_layer: TomlProvenanceLayerPayload = file_backed_layers[0]
     assert file_backed_layer.scope_root == config_file.parent.as_posix()
     assert file_backed_layer.toml[Toml.SECTION_FIELDS] == {"project": "Demo"}
+
+
+@pytest.mark.pipeline
+def test_toml_provenance_payload_uses_posix_path_for_discovery_anchor(
+    tmp_path: Path,
+) -> None:
+    """TOML provenance should serialize the discovery anchor POSIX-style."""
+    workspace: Path = tmp_path / "workspace"
+    resolved = ResolvedTopmarkTomlSources(
+        sources=[],
+        writer_options=None,
+        strict=None,
+        discovery_anchor=workspace,
+    )
+
+    payload: TomlProvenancePayload = build_toml_provenance_payload(resolved)
+
+    assert payload.discovery_anchor == workspace.as_posix()
+    assert payload.to_dict()["discovery_anchor"] == workspace.as_posix()
+
+
+@pytest.mark.pipeline
+def test_toml_schema_accepts_dump_only_keys_in_provenance_mode() -> None:
+    """Provenance validation should accept dump-only schema keys."""
+    issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate_section_keys(
+        TomlSection.CONFIG,
+        {Toml.KEY_CONFIG_FILES: ["/workspace/topmark.toml"]},
+        mode=TomlValidationMode.PROVENANCE,
+    )
+
+    assert issues == ()
+
+
+@pytest.mark.pipeline
+def test_toml_schema_rejects_dump_only_keys_in_input_mode() -> None:
+    """Input validation should reject dump-only schema keys."""
+    issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate_section_keys(
+        TomlSection.CONFIG,
+        {Toml.KEY_CONFIG_FILES: ["/workspace/topmark.toml"]},
+        mode=TomlValidationMode.INPUT,
+    )
+
+    assert len(issues) == 1
+    assert issues[0].code is TomlDiagnosticCode.DUMP_ONLY_KEY_IN_INPUT
+    assert issues[0].path == (TomlSection.CONFIG.value, Toml.KEY_CONFIG_FILES)

@@ -129,4 +129,13 @@ def build_toml_provenance_payload(
             )
         )
 
-    return TomlProvenancePayload(layers=out_layers)
+    discovery_anchor: str | None = (
+        format_machine_path(resolved_toml.discovery_anchor)
+        if resolved_toml.discovery_anchor is not None
+        else None
+    )
+
+    return TomlProvenancePayload(
+        layers=out_layers,
+        discovery_anchor=discovery_anchor,
+    )
