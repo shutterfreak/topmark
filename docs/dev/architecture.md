@@ -76,6 +76,11 @@ Project-chain discovery starts from the resolved discovery anchor before configu
 identity is evaluated. This keeps workspace-root discovery separate from configuration-source
 identity normalization and from runtime processing-target identity.
 
+If multiple discovered or explicit configuration entries resolve to the same configuration-source
+identity, TopMark keeps only the highest-precedence occurrence in the layered configuration model.
+This prevents one physical configuration file from contributing multiple effective layers through
+different discovery paths, explicit `--config` spelling, or symlink spelling.
+
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 Whole-source TOML schema validation happens before layered config deserialization. The staged

@@ -286,6 +286,37 @@ def _discover_local_config_files(start: Path) -> list[Path]:
 # ---- Resolve TOML-side settings ----
 
 
+def _deduplicate_sources_by_identity(
+    sources: list[ResolvedTopmarkTomlSource],
+) -> list[ResolvedTopmarkTomlSource]:
+    """Return TOML sources deduplicated by resolved configuration-source identity.
+
+    Source lists are ordered from lowest to highest precedence. If the same
+    resolved configuration source is reached more than once, keep the highest
+    precedence occurrence so provenance and layered merging describe each
+    configuration-source identity once.
+
+    Args:
+        sources: Resolved TOML source records in precedence order.
+
+    Returns:
+        Source records in precedence order, with duplicate source identities
+        removed.
+    """
+    seen: set[object] = set()
+    retained_reversed: list[ResolvedTopmarkTomlSource] = []
+
+    for source in reversed(sources):
+        identity: object = source.path
+        if identity in seen:
+            logger.debug("Skipping duplicate TOML source identity: %s", source.path)
+            continue
+        seen.add(identity)
+        retained_reversed.append(source)
+
+    return list(reversed(retained_reversed))
+
+
 def _resolve_writer_options(
     sources: list[ResolvedTopmarkTomlSource],
 ) -> WriterOptions | None:
@@ -381,6 +412,8 @@ def resolve_topmark_toml_sources(
 
     for extra in extra_config_files or ():
         _append_loaded_source(source_entries, Path(extra), kind="explicit")
+
+    source_entries = _deduplicate_sources_by_identity(source_entries)
 
     resolved_writer: WriterOptions | None = _resolve_writer_options(source_entries)
     resolved_strict: bool | None = _resolve_strict(

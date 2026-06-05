@@ -32,6 +32,10 @@ similarly operates on selected processing paths derived from filesystem-identity
 Workspace-root discovery and configuration-discovery anchoring are evaluated independently and may
 traverse resolved filesystem locations when determining configuration search roots.
 
+If multiple discovered or explicit configuration entries resolve to the same configuration-source
+identity, TopMark retains only the highest-precedence occurrence for configuration layering and
+provenance evaluation.
+
 Filesystem-identity evaluation includes:
 
 - filesystem-identity normalization (for example symlink-path normalization and processing-path

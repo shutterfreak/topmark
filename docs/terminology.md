@@ -333,6 +333,10 @@ For file-backed TOML sources, configuration-source identity is based on the reso
 configuration-file target. Symlink spellings are not preserved for precedence, scope, provenance, or
 applicability evaluation.
 
+If multiple discovered or explicit configuration entries resolve to the same configuration-source
+identity, TopMark retains only the highest-precedence occurrence for layered configuration
+construction and provenance reporting.
+
 Configuration-source identity is independent from workspace-root discovery, runtime
 processing-target identity, and filesystem identity.
 
