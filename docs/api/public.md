@@ -137,10 +137,17 @@ identical file-type identity semantics. Local identifiers such as `"python"` are
 unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
 `"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
 
-Public API execution also uses the same filesystem identity semantics as the CLI. Existing
-filesystem inputs are normalized to selected processing paths before pipeline execution. Multiple
-path spellings that resolve to the same target, such as a symlink and its target, may therefore be
-reported as a single result for the resolved processing target.
+Public API execution also uses the same filesystem-identity semantics as the CLI. Existing
+filesystem inputs undergo filesystem-identity evaluation before pipeline execution. Multiple path
+spellings that resolve to the same target, such as a symlink and its target, may therefore be
+normalized to a single selected processing path and reported as a single result for the resolved
+processing target.
+
+Hard-link policy is evaluated separately from path-spelling normalization. If multiple selected
+processing paths refer to the same filesystem object through hard links, the public API preserves
+one result per selected path and reports each affected path as an unsupported, policy-blocked
+processing target. TopMark does not select a source, target, winner, or loser path from the
+hard-link group.
 
 For the public API, the returned view is controlled via
 `report="all" | "actionable" | "noncompliant"`. This replaces the older `skip_compliant` /
@@ -182,7 +189,9 @@ Candidates are returned in resolver order (best match first).
 
 For inputs that reach normal probing, `ProbeFileResult.path` reports the selected processing path,
 not necessarily the original invocation spelling. Missing and filtered explicit inputs still report
-explicit diagnostic input paths because they did not become normal processing paths.
+explicit diagnostic input paths because they did not become normal processing paths. Hard-linked
+processing targets remain separate probe results and are reported as unsupported with the stable
+reason string `hard_link_duplicate`.
 
 Unlike \[`check()`\][topmark.api.commands.pipeline.check] and
 \[`strip()`\][topmark.api.commands.pipeline.strip],
@@ -196,6 +205,8 @@ Design guarantees:
 - `score` is explanatory only and not part of the compatibility contract; use `selected`, `rank`,
   and `matched_by`
 - Explicit input paths are always returned, even if they are filtered or missing
+- Hard-linked selected processing paths remain separate results and do not collapse to a preferred
+  source, target, winner, or loser path
 
 #### Missing and filtered inputs
 
@@ -213,6 +224,10 @@ explainability without exposing resolver internals.
 When an input does become a normal processing path, symlink spelling is not preserved in the result
 path. This keeps public API results aligned with header metadata generation and machine-readable CLI
 output.
+
+Hard-link policy is a processing-target eligibility check rather than path normalization. If
+multiple selected processing paths are hard links to the same filesystem object, each affected path
+remains visible in public API results and is reported as unsupported.
 
 #### Low-level probe helper
 
@@ -250,6 +265,11 @@ This process follows:
 File-backed TOML sources use configuration-source identity based on the resolved configuration-file
 target. If a configuration file is reached through a symlink, provenance and applicability are based
 on the resolved target rather than the symlink spelling.
+
+Configuration-source identity is distinct from processing-target identity. Hard-link processing
+policy applies to runtime filesystem-processing commands and public API helpers, but it does not
+affect configuration loading, layered provenance, applicability evaluation, or configuration-source
+selection.
 
 The public API operates only on the flattened immutable
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig]. Staged validation logs are not exposed

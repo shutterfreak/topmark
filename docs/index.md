@@ -22,7 +22,7 @@ TopMark provides stable and consistent behavior across:
 
 - CLI execution and dry-run workflows
 - layered TOML configuration discovery and precedence
-- filesystem identity normalization and processing-path selection
+- filesystem-identity evaluation, processing-path selection, and hard-link safety
 - configuration-source identity and layered provenance reporting
 - repository filtering and file-type resolution
 - probe and diagnostics workflows
@@ -59,8 +59,8 @@ ______________________________________________________________________
 - Supports pre-commit and CI integration
 - Explains repository filtering, file-type resolution, and processor selection via
   [`topmark probe`](usage/commands/probe.md)
-- Uses deterministic filesystem-identity normalization and processing-path selection across CLI,
-  API, CI, and machine-readable workflows
+- Uses deterministic filesystem-identity evaluation, processing-path selection, and hard-link safety
+  across CLI, API, CI, and machine-readable workflows
 - Exposes layered configuration provenance via `topmark config dump --show-layers`
 - Uses deterministic configuration-source identity for layered configuration evaluation
 - Provides stable machine-readable JSON and NDJSON output together with canonical registry metadata
@@ -74,9 +74,12 @@ ______________________________________________________________________
 
 TopMark exposes a small set of dry-run-first CLI commands.
 
-Filesystem-processing commands normalize filesystem identity before runtime processing. Multiple
-path spellings that resolve to the same filesystem target (for example a symlink and its target) are
-treated as a single processing target.
+Filesystem-processing commands evaluate filesystem identity before runtime processing.
+Filesystem-identity normalization resolves equivalent path spellings, such as symlink spellings, to
+the selected processing path used by runtime processing and machine-readable output. Hard-link
+policy is evaluated as a processing-target eligibility check: if multiple selected paths refer to
+the same filesystem object through hard links, TopMark reports each affected path independently and
+blocks processing for the hard-link group.
 
 For command structure, shared options, applicability rules, and common workflows, see:
 

@@ -93,6 +93,12 @@ Symlink spellings are therefore not preserved as configuration identity. They ma
 shell prompt, but once TopMark has loaded the configuration source, provenance and applicability are
 based on the resolved configuration-file target.
 
+Configuration-source identity is distinct from processing-target identity. Runtime
+filesystem-processing commands evaluate processing-target identity separately, including
+filesystem-identity normalization for selected processing paths and eligibility checks such as
+hard-link policy. Those runtime processing-target checks do not affect configuration discovery,
+precedence, scope-root selection, applicability evaluation, or layered provenance.
+
 ### Layered provenance (inspection)
 
 When using [`topmark config dump --show-layers`](../usage/commands/config/dump.md), this discovery
@@ -139,8 +145,9 @@ not necessarily the spelling used to reach the configuration file.
 Note: `relative_to` only affects metadata fields like `file_relpath`, not file matching.
 
 When a configuration file is loaded through a symlink, config-declared paths are evaluated relative
-to the resolved configuration-file target. This keeps layered configuration behavior consistent with
-TopMark's processing-path identity model.
+to the resolved configuration-file target. This mirrors the path-spelling normalization part of
+TopMark's processing-target identity model while keeping configuration-source identity independent
+from runtime processing-target eligibility checks such as hard-link policy.
 
 ______________________________________________________________________
 
@@ -481,7 +488,7 @@ Run with `-v` or `--verbose` to increase **TEXT output** detail and observe:
 
 - Discovery anchor and workspace base
 - Configuration chain (root → current)
-- Normalization of pattern-file paths
+- Normalization of pattern-file paths and configuration-source paths
 - Active policy and per-file-type overrides
 - Canonical file type identities used by filters and policy lookup
 

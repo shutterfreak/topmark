@@ -42,7 +42,8 @@ internally by CLI/API orchestration. When using the Python API, provide plain ma
 via `config=...`, `policy=...`, and `policy_by_type=...`.
 
 API overlays follow the same identifier normalization and runtime policy-resolution semantics as
-TOML configuration and CLI filtering.
+TOML configuration and CLI filtering. These semantics are configuration concerns and are distinct
+from runtime filesystem-identity evaluation for selected processing paths.
 
 TopMark performs whole-source TOML validation during loading before layered configuration merging
 and runtime applicability evaluation. Unknown sections or keys, malformed section shapes, and
@@ -60,6 +61,10 @@ ______________________________________________________________________
 
 The `config` command family is **file-agnostic**. These commands operate on configuration state and
 do not process source files.
+
+Configuration-source identity is resolved during configuration loading. Runtime processing-target
+identity, including filesystem-identity normalization and hard-link eligibility checks, is evaluated
+later by filesystem-processing commands such as `check`, `strip`, and `probe`.
 
 Across all `config` subcommands:
 
@@ -135,7 +140,9 @@ discovered config, CLI overrides) and includes source-local TOML fragments. This
 original TOML fragments (after schema validation) that contributed to each layer.
 
 Machine-readable configuration snapshots emit normalized canonical qualified file type identities
-after configuration normalization.
+after configuration normalization. They do not apply runtime processing-target eligibility checks
+such as hard-link policy because the `config` command family operates on configuration state rather
+than source-file processing targets.
 
 ### Strictness and provenance
 
@@ -177,6 +184,7 @@ ______________________________________________________________________
 - **Unexpected file type filter behavior**: prefer qualified identifiers such as `topmark:python`
   when local identifiers may be ambiguous.
 - **Unexpected policy application**: inspect normalized identifiers using
-  [`topmark config dump`](config/dump.md).
+  [`topmark config dump`](config/dump.md), or inspect file type resolution using
+  [`topmark probe`](probe.md).
 - **Unexpected validation failures**: use [`topmark config check`](config/check.md) together with
   `-vv` or machine-readable output to inspect staged validation diagnostics.

@@ -76,6 +76,10 @@ class FsStatus(BaseStatus):
         "no write permission",
         StyleRole.ERROR,
     )
+    HARD_LINK_DUPLICATE = (
+        "hard-linked processing target",
+        StyleRole.BLOCKED_POLICY,
+    )
     BINARY = (
         "binary file",
         StyleRole.ERROR,

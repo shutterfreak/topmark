@@ -105,10 +105,11 @@ working directory; path-based filters run before file-type filters, and exclude 
 precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
 contract.
 
-During discovery, TopMark normalizes filesystem identity and selects processing paths before runtime
-probing begins. If multiple path spellings resolve to the same filesystem target (for example a
-symlink and its target), `probe` operates on the selected processing path rather than preserving the
-original spelling.
+During discovery, TopMark performs filesystem-identity evaluation and selects processing paths
+before runtime probing begins. If multiple path spellings resolve to the same filesystem target (for
+example a symlink and its target), `probe` operates on the selected processing path rather than
+preserving the original spelling. Hard-link policy is evaluated as a processing-target eligibility
+check.
 
 Filtered and missing explicit inputs remain diagnostic records because they never became normal
 processing paths.
@@ -178,8 +179,11 @@ ______________________________________________________________________
   [`strip`](strip.md), while preserving filtered explicit inputs as diagnostic probe results.
 - Shared runtime resolution: uses the same normalization, scoring, and runtime resolution logic as
   [`check`](check.md) and [`strip`](strip.md).
-- Processing-path identity: runtime probing operates on selected processing paths. Multiple path
-  spellings that resolve to the same target are collapsed before ordinary probe execution.
+- Processing-path identity: runtime probing operates on selected processing paths. Symlink spellings
+  are resolved to the target path before ordinary probe execution.
+- Hard-link policy: if multiple selected processing paths are hard links to the same filesystem
+  object, probe reports each affected path as unsupported rather than selecting a source, target,
+  winner, or loser path.
 - Candidate visibility: exposes selected file type, processor, candidate scores, match signals,
   runtime-resolution status, and runtime-resolution reason.
 - Idempotency: repeated runs produce identical output for unchanged inputs.
@@ -224,6 +228,10 @@ Probe machine-readable output emits processing paths with POSIX `/` separators a
 type identities using canonical qualified identity strings when available. For probe results that
 reach runtime probing, the emitted path describes the selected processing target rather than the
 original symlink or invocation spelling.
+
+Hard-linked processing targets remain separate probe results. Each affected selected path produces
+its own machine-readable probe payload and is reported as an unsupported processing target with
+reason `hard_link_duplicate`.
 
 ### Shared output controls
 
@@ -278,6 +286,10 @@ selected.
 Directories that successfully expand to selected files are not emitted as additional filtered probe
 results. Explicit missing paths are represented as missing-input probe results rather than filtered
 probe results.
+
+If multiple selected processing paths are hard links to the same filesystem object, probe emits one
+result per selected path. Each affected result reports an unsupported outcome with reason
+`hard_link_duplicate`. TopMark does not select a preferred path from the hard-link group.
 
 ```jsonc
 {
@@ -427,6 +439,10 @@ ______________________________________________________________________
 - **Symlink path not shown in output**: `probe` reports selected processing paths for inputs that
   reach runtime probing. If a symlink and its target resolve to the same file, the emitted probe
   path describes the resolved processing target rather than the symlink spelling.
+- **Hard-linked files are reported as unsupported**: TopMark blocks processing when multiple
+  selected paths refer to the same filesystem object through hard links. Each affected path is
+  reported independently with reason `hard_link_duplicate`; no preferred path is selected from the
+  hard-link group.
 - **File type filter does not match**: prefer qualified identifiers such as `topmark:python` when
   local identifiers may be ambiguous.
 - **No processor**: check that a processor binding exists for the selected file type.

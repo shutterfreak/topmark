@@ -55,8 +55,11 @@ stable reference once custom namespaces are involved.
 Filesystem identity is a separate concept from registry identity.
 
 Qualified identifiers such as `my_plugin:my_lang` identify file types in the registry model. Runtime
-file processing operates on selected processing paths after filesystem-identity normalization and
-path-resolution have completed.
+file processing operates on selected processing paths after filesystem-identity evaluation has
+completed.
+
+Filesystem-identity evaluation includes both path-spelling normalization (for example symlink
+handling) and processing-target eligibility checks (for example hard-link policy enforcement).
 
 ______________________________________________________________________
 
@@ -107,9 +110,10 @@ Path-based file type selection is performed by the shared scoring resolver in
 \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes]. The formal selection and ambiguity
 policy is documented in [`resolution.md`](resolution.md).
 
-The resolver operates on selected processing paths after filesystem-identity normalization. File
-type plugins therefore do not participate in filesystem identity, symlink handling, processing-path
-selection, or configuration-source identity evaluation.
+The resolver operates on selected processing paths after filesystem-identity evaluation. File type
+plugins therefore do not participate in filesystem identity, symlink handling, hard-link policy,
+processing-path selection, processing-target eligibility checks, or configuration-source identity
+evaluation.
 
 ______________________________________________________________________
 
@@ -207,9 +211,9 @@ def provide_filetypes() -> list[FileType]:
 ```
 
 TopMark stores filename rules in canonical POSIX form. This normalization applies to registry
-matching rules only. Runtime processing paths, configuration-source identity, machine-readable path
-fields, and header metadata paths follow separate filesystem-identity and processing-path contracts
-documented in the resolution model.
+matching rules only. Runtime processing paths, processing-target eligibility, configuration-source
+identity, machine-readable path fields, and header metadata paths follow separate
+filesystem-identity and processing-path contracts documented in the resolution model.
 
 Registry inspection, machine-readable output, and resolver diagnostics therefore always expose
 normalized filename-rule values regardless of platform.
@@ -323,9 +327,9 @@ A typical advanced integration flow is:
 
 This keeps built-in registry construction deterministic and avoids module-import side effects.
 
-Processor registration influences runtime file-type handling only. Filesystem identity,
-processing-path selection, and configuration-source identity are resolved before processor selection
-occurs.
+Processor registration influences runtime file-type handling only. Filesystem-identity evaluation,
+processing-path selection, processing-target eligibility, and configuration-source identity are
+resolved before processor selection occurs.
 
 ______________________________________________________________________
 
@@ -411,4 +415,4 @@ ______________________________________________________________________
 - [`registry.md`](../usage/commands/registry.md) - CLI-facing registry inspection commands
 - [`Resolution model`](./resolution.md) - file-type scoring and ambiguity policy
   - [`Filesystem identity and processing paths`](./resolution.md#filesystem-identity-and-processing-paths)
-    \- filesystem identity, processing paths, and symlink handling
+    \- filesystem-identity evaluation, processing paths, symlink normalization, and hard-link policy

@@ -25,8 +25,8 @@ The following architectural contracts are part of the stable 1.x design:
 - CLI, API, presentation, runtime, configuration, registry, and pipeline concerns remain separated.
 - Runtime execution intent is kept separate from layered configuration state.
 - File type identity is normalized to canonical qualified keys once resolved.
-- Filesystem identity for existing processing inputs is based on the resolved processing target
-  path.
+- Filesystem-identity evaluation for existing processing inputs happens before runtime processing
+  and includes both processing-path normalization and processing-target eligibility checks.
 - Registry mutation is represented as explicit overlay state.
 - Pipeline execution remains independent from presentation rendering.
 - Machine-readable output remains independent from human-facing TEXT and Markdown output.
@@ -138,10 +138,20 @@ ______________________________________________________________________
 ## File resolution diagnostics and exit-code boundaries
 
 TopMark's file selection layer separates **selected processing inputs** from **discovery
-diagnostics**. Selected processing inputs are canonical processing paths. File-list resolution
-collapses multiple path spellings that resolve to the same filesystem target (for example a symlink
-and its target) before normal pipeline execution begins. This keeps downstream pipeline steps
-idempotent and avoids processing the same target file more than once through different spellings.
+diagnostics**. Selected processing inputs are canonical processing paths that have passed
+filesystem-identity evaluation.
+
+Filesystem-identity normalization collapses multiple path spellings that resolve to the same
+filesystem target (for example a symlink and its target) before normal pipeline execution begins.
+This keeps downstream pipeline steps idempotent and avoids processing the same target file more than
+once through different spellings.
+
+Filesystem-identity eligibility checks are distinct from normalization. The pipeline engine performs
+the invocation-wide hard-link guard after processing-path selection. If multiple selected processing
+paths share `(st_dev, st_ino)` identity, the engine creates terminal per-file contexts for all
+affected paths with `fs=hard-linked processing target` and leaves unrelated paths to continue
+through the selected pipeline. This guard lives at the engine boundary because it needs the complete
+selected file list and must behave consistently for `check`, `strip`, `probe`, and API callers.
 
 The resolver returns a structured file-list resolution result containing:
 
@@ -193,6 +203,8 @@ Practical consequences:
   types or dry-run would-change signals.
 - Missing explicit inputs are visible as per-file errors instead of being collapsed into "no files
   to process".
+- Hard-linked selected processing paths are visible as per-file policy-blocked results instead of
+  being collapsed into a preferred source, target, winner, or loser path.
 - Machine payloads expose structured diagnostics and results, while process status remains external
   as the CLI exit code.
 - Public probe API payloads expose normalized strings and DTOs. Internal resolver enums,
@@ -326,10 +338,13 @@ exit code. Consumers must inspect the process exit status separately from parsin
 Path representation follows the same separation between machine-facing serialization and
 human-facing presentation:
 
-- Internal filesystem identity for existing processing inputs is represented by resolved processing
-  target paths where possible.
+- Internal filesystem identity for existing processing inputs is evaluated before runtime
+  processing. Normalized processing paths represent eligible resolved processing targets where
+  possible.
 - Symlink spelling is not preserved for processing identity, generated filesystem-related header
   metadata, or machine-readable path fields.
+- Hard-linked selected processing paths remain separate results and are reported as unsupported,
+  policy-blocked processing targets rather than being serialized as a single preferred path.
 - Machine-readable filesystem path fields are serialized with POSIX `/` separators on all platforms,
   including processing, probe, configuration, and TOML/config provenance payloads.
 - Header metadata path fields describe the selected processing target and are serialized with POSIX

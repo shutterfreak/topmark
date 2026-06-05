@@ -21,6 +21,9 @@ topmark:header:end
   site).
 - **Configuration-source identity** is based on the resolved configuration-file target. Symlink
   spellings are not preserved for precedence, scope, applicability, or layered provenance.
+- **Configuration-source identity is distinct from processing-target identity**. Runtime
+  filesystem-processing commands evaluate selected processing paths separately, including
+  filesystem-identity normalization and eligibility checks such as hard-link policy.
 - **Path-to-file settings** (e.g., `exclude_from`, `files_from`) are resolved relative to the
   **declaring config file** (or CWD for CLI-provided values).
 - **Merge semantics vary by field**: runtime behavioral settings usually use nearest-wins semantics,
@@ -49,6 +52,10 @@ used for configuration-source identity. If a configuration file is loaded throug
 precedence, scope evaluation, and provenance operate on the resolved target rather than the symlink
 spelling.
 
+Hard-link processing policy does not affect configuration discovery, layered provenance,
+configuration precedence, scope evaluation, or applicability evaluation. It is enforced later for
+runtime filesystem-processing targets selected by commands such as `check`, `strip`, and `probe`.
+
 During loading, TopMark first validates each whole-source TOML fragment (unknown sections, unknown
 keys, malformed section shapes, missing known sections, etc.). Only the validated layered
 configuration fragment is then passed into layered configuration merging.
@@ -72,6 +79,10 @@ ______________________________________________________________________
 Configuration discovery, precedence evaluation, configuration-source identity normalization, and
 scope applicability are completed before the effective runtime configuration is frozen.
 
+Configuration-source identity normalization handles configuration path spellings, such as symlinked
+configuration files. It is separate from runtime processing-target eligibility checks, such as
+hard-link policy enforcement for selected processing paths.
+
 ______________________________________________________________________
 
 ## Configuration flow at a glance
@@ -92,6 +103,10 @@ flowchart LR
 For file-backed configuration sources, configuration-source identity is established before layered
 configuration merging. Different path spellings that resolve to the same configuration-file target
 therefore contribute to the same effective configuration source.
+
+This configuration-source identity behavior mirrors only the path-spelling normalization part of
+runtime processing-target identity. Runtime processing-target eligibility checks are not part of
+configuration merging and are not represented in the effective configuration snapshot.
 
 This reflects the main distinction in TopMark's layered runtime configuration model:
 

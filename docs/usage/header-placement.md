@@ -22,10 +22,11 @@ Configuration-loading strictness (for example through `--strict` or `strict`) do
 header-placement semantics. It controls only whether a run proceeds when staged
 configuration-loading validation warnings are present.
 
-Header placement rules apply only after a file has passed runtime applicability evaluation and
-runtime processor resolution. File-type-specific runtime policy overrides configured through
-`policy_by_type` may influence runtime mutation eligibility and insertion behavior, but the selected
-header processor controls the concrete comment syntax and placement behavior.
+Header placement rules apply only after a file has passed filesystem-identity evaluation, runtime
+applicability evaluation, and runtime processor resolution. File-type-specific runtime policy
+overrides configured through `policy_by_type` may influence runtime mutation eligibility and
+insertion behavior, but the selected header processor controls the concrete comment syntax and
+placement behavior.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -48,6 +49,7 @@ ______________________________________________________________________
 TopMark intentionally separates:
 
 1. runtime file discovery
+1. filesystem-identity evaluation and processing-path selection
 1. runtime applicability evaluation
 1. runtime file-type probing
 1. runtime processor resolution
@@ -60,6 +62,11 @@ policy evaluation, and processor resolution have completed.
 
 The generated header metadata describes the selected processing target rather than the original
 invocation spelling used to reach that target.
+
+Filesystem-identity normalization resolves equivalent path spellings, such as symlink spellings, to
+that selected processing target before header metadata is generated. Processing-target eligibility
+checks, such as hard-link policy, run before placement as well; hard-linked selected processing
+paths are blocked and do not receive inserted, updated, or stripped headers.
 
 This layered runtime model keeps placement behavior deterministic while preserving stable
 processor-specific comment syntax and insertion semantics.
@@ -236,6 +243,8 @@ ______________________________________________________________________
 
 - Path serialization: generated header path fields (`file_relpath`, `file_abspath`, `relpath`, and
   `abspath`) describe the selected processing target and use POSIX `/` separators on all platforms.
+- Filesystem-identity safety: files blocked by processing-target eligibility checks, such as
+  hard-linked processing targets, do not reach header rendering or placement.
 - Newline preservation: the inserted header uses the same newline style as the file (LF/CRLF/CR).
 - BOM preservation: if a UTF-8 BOM is present, it is preserved.
 - Idempotency: re-running TopMark on a file with a compliant header produces no runtime changes.

@@ -105,10 +105,13 @@ working directory; path-based filters run before file-type filters, and exclude 
 precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
 contract.
 
-During discovery, TopMark normalizes filesystem identity and selects processing paths. If multiple
-path spellings resolve to the same filesystem target (for example a symlink and its target), `strip`
-processes the resolved target once. Downstream filtering, probing, stripping, and machine-readable
-output operate on the selected processing path rather than the original spelling.
+During discovery, TopMark performs filesystem-identity evaluation and selects processing paths. If
+multiple path spellings resolve to the same filesystem target (for example a symlink and its
+target), `strip` processes the resolved target once. Downstream filtering, probing, stripping, and
+machine-readable output operate on the selected processing path rather than the original spelling.
+Hard-link policy is evaluated separately from processing-path selection: if multiple selected
+processing paths are hard links to the same filesystem object, each affected path is reported as an
+unsupported, policy-blocked processing target.
 
 ### File type filters
 
@@ -144,6 +147,9 @@ Notes:
 
 - Existing filesystem inputs are normalized to selected processing paths before runtime processing.
 - Symlink spellings are not preserved for runtime identity or machine-readable `result.path` fields.
+- Hard-linked selected paths are handled as processing-target eligibility failures. Each affected
+  path is reported independently and blocked from processing; TopMark does not select a preferred
+  source, target, winner, or loser path.
 
 {% include-markdown "\_snippets/report-scope.md" %}
 
@@ -191,6 +197,9 @@ ______________________________________________________________________
   removed.
 - Processing-path identity: if a file is reached through a symlink, stripping operates on the
   resolved target TopMark reads and writes rather than the symlink spelling used to reach it.
+- Hard-link safety: if multiple selected paths refer to the same filesystem object through hard
+  links, `strip` blocks every affected path. No header removal is performed for those paths, and no
+  source, target, winner, or loser path is selected.
 
 ______________________________________________________________________
 
@@ -240,7 +249,9 @@ For the canonical schema, stable `kind` values, and shared conventions, see:
 Machine-readable output emits selected processing paths with POSIX `/` separators and resolved file
 type identities using canonical qualified identity strings when available. If a stripped file is
 reached through a symlink, per-file `result.path` describes the resolved processing target rather
-than the symlink spelling. Configuration payloads also emit normalized file type filters and
+than the symlink spelling. If selected paths are hard links to the same filesystem object, `strip`
+emits one result per selected path and reports each affected path as a policy-blocked unsupported
+processing target. Configuration payloads also emit normalized file type filters and
 `policy_by_type` keys.
 
 Notes:
@@ -449,6 +460,9 @@ ______________________________________________________________________
 - **Symlink path not shown in output**: `strip` operates on selected processing paths. If a symlink
   and its target resolve to the same file, machine-readable output reports the resolved processing
   target rather than the symlink spelling.
+- **Hard-linked files are reported as unsupported**: `strip` blocks processing when multiple
+  selected paths refer to the same filesystem object through hard links. Each affected path is
+  reported independently; no preferred path is selected from the hard-link group.
 - **File type filter does not match**: use [`topmark probe`](probe.md) to inspect resolution
   decisions, and prefer qualified identifiers such as `topmark:python` when local identifiers may be
   ambiguous.

@@ -45,8 +45,10 @@ Policy semantics behave consistently across:
 - API overlays
 - effective runtime policy evaluation and runtime resolution
 
-Runtime policy evaluation operates on selected processing paths after filesystem-identity
-normalization and processing-path selection have completed.
+Runtime policy evaluation operates on selected processing paths after filesystem-identity evaluation
+and processing-path selection have completed. Filesystem-identity normalization resolves equivalent
+path spellings, while processing-target eligibility checks such as hard-link policy are evaluated
+separately from policy resolution.
 
 Policy values shown here are part of the public configuration surface.
 
@@ -86,6 +88,10 @@ For file-backed configuration sources, policy layering uses configuration-source
 the resolved configuration-file target. If a policy-bearing configuration file is loaded through a
 symlink, precedence, applicability, and layered provenance are evaluated using the resolved
 configuration target rather than the symlink spelling.
+
+Configuration-source identity is distinct from processing-target identity. The hard-link processing
+policy used by filesystem-processing commands such as `check`, `strip`, and `probe` does not affect
+policy layering, configuration precedence, applicability evaluation, or layered policy provenance.
 
 These runtime policy layers are constructed after staged TOML-layer validation. Source-local TOML
 sections (e.g. `[config]`) do not participate in runtime policy layering.
@@ -263,7 +269,10 @@ identities.
 > [!NOTE] **File-type identity and filesystem identity**
 >
 > File-type identity and filesystem identity are separate concepts. File-type policy resolution
-> operates on the selected processing target after filesystem identity normalization has completed.
+> operates on the selected processing target after filesystem-identity evaluation has completed.
+> Filesystem-identity normalization resolves equivalent path spellings before policy resolution,
+> while processing-target eligibility checks such as hard-link policy are evaluated separately from
+> policy resolution.
 
 Example:
 

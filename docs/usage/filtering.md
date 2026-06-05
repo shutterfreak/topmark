@@ -44,8 +44,12 @@ TopMark applies filtering in a deterministic order:
 
 Exclude rules take precedence over include rules.
 
-Filesystem-identity normalization and processing-path selection occur during path discovery before
+Filesystem-identity evaluation and processing-path selection occur during path discovery before
 runtime applicability evaluation and processor resolution.
+
+Filesystem-identity evaluation includes filesystem-identity normalization for equivalent path
+spellings (such as symlinks), processing-path selection, and processing-target eligibility checks
+(such as hard-link detection).
 
 For canonical file-type identifier semantics, see [File-type filtering](#file-type-filtering). For
 layered configuration behavior, see [Configuration](configuration.md).
@@ -63,8 +67,8 @@ TopMark intentionally separates:
 
 1. path discovery
 1. path filtering
-1. filesystem-identity normalization
-1. deduplication and processing-path selection
+1. filesystem-identity evaluation
+1. processing-path selection
 1. file-type filtering
 1. runtime applicability evaluation
 1. runtime probing and processor resolution
@@ -75,9 +79,15 @@ This layered filtering model keeps runtime behavior deterministic while preservi
 diagnostics and machine-readable filtering semantics.
 
 When multiple path spellings resolve to the same filesystem target (for example a symlink and its
-target), TopMark selects a canonical processing path before runtime filtering continues. Downstream
-filtering, probing, header generation, and machine-readable output operate on that processing path
-rather than the original spelling used to reach the file.
+target), filesystem-identity normalization resolves symlink spellings to the target path and selects
+a canonical processing path before runtime filtering continues. Downstream filtering, probing,
+header generation, and machine-readable output operate on that processing path rather than the
+original spelling used to reach the file.
+
+Hard-link policy is evaluated as a processing-target eligibility check. If multiple selected paths
+refer to the same filesystem object through hard links, TopMark reports each affected path
+independently and blocks processing for the entire hard-link group without selecting a preferred
+source, target, winner, or loser path.
 
 ______________________________________________________________________
 
@@ -115,7 +125,10 @@ Stable path-filtering semantics:
 - Absolute patterns are not supported.
 - Exclude rules take precedence over include rules.
 - Path-based filtering occurs before file-type filtering.
-- Existing filesystem inputs are normalized to canonical processing paths before runtime processing.
+- Existing filesystem inputs undergo filesystem-identity evaluation before runtime processing.
+- Hard-linked selected paths are handled as processing-target eligibility failures. Each affected
+  path is reported independently and blocked from processing; TopMark does not select a preferred
+  source, target, winner, or loser path.
 - Symlink spellings are not preserved for runtime identity, generated filesystem-related header
   metadata, or machine-readable path fields.
 
@@ -148,7 +161,7 @@ This includes:
 - file-type filtering
 - canonical file-type identifier normalization and resolution
 - ambiguity handling
-- filesystem-identity normalization and processing-path selection
+- filesystem-identity evaluation and processing-path selection
 
 However, unlike processing commands ([`check`](commands/check.md), [`strip`](commands/strip.md)),
 [`probe`](commands/probe.md) also reports \*\*explicit inputs that were filtered out before runtime
@@ -201,6 +214,10 @@ excluded implicitly during recursive discovery are not enumerated.
 For probe records that reach runtime probing, reported filesystem paths describe the selected
 processing path. They do not guarantee preservation of the original CLI argument, glob match, or
 symlink spelling.
+
+If multiple selected paths are hard links to the same filesystem object, probe reports each affected
+path independently as an unsupported processing target with reason `hard_link_duplicate`. TopMark
+does not select a preferred source, target, winner, or loser path from the hard-link group.
 
 ______________________________________________________________________
 
@@ -358,6 +375,9 @@ Filtering decisions can influence exit codes indirectly:
   `SUCCESS (0)`), or `UNSUPPORTED_FILE_TYPE (69)` in [`probe`](commands/probe.md)
 
 Missing explicit inputs take precedence over semantic runtime probe outcomes.
+
+Hard-link processing policy participates through normal processing outcomes and diagnostics and does
+not introduce dedicated filtering exit codes.
 
 When multiple conditions occur, TopMark applies a deterministic exit-code priority model (see
 [Exit Codes documentation](exit-codes.md)), where hard input and filesystem errors take precedence.

@@ -228,8 +228,8 @@ contract.
 Machine-readable filesystem path fields expose TopMark's selected processing paths.
 
 A processing path is selected after discovery, filtering, filesystem-identity normalization, and
-deduplication. It is not necessarily the original CLI argument, configuration entry, glob match, or
-symlink spelling supplied by the user.
+processing-path selection. It is not necessarily the original CLI argument, configuration entry,
+glob match, or symlink spelling supplied by the user.
 
 TopMark currently identifies existing processing inputs by resolved processing target path. For
 example, if both of these paths refer to the same target:
@@ -248,6 +248,11 @@ real/source.py
 The emitted path is still serialized with POSIX `/` separators on all platforms, as documented in
 the path-representation contract above.
 
+Hard-link policy is intentionally separate from this path serialization contract. If two or more
+selected processing paths are hard links to the same filesystem object, TopMark keeps one
+machine-output result per selected path, but reports each affected path as an unsupported,
+policy-blocked processing target instead of selecting a source, target, winner, or loser path.
+
 ______________________________________________________________________
 
 ## Resolution diagnostics ([`probe`](../usage/commands/probe.md))
@@ -259,9 +264,9 @@ not compute header changes, diffs, strip plans, or write plans.
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
 
-Probe output also reports processing paths after discovery and filesystem-identity normalization.
-When a symlinked input reaches probing, the emitted path describes the resolved processing target
-rather than preserving the symlink spelling.
+Probe output also reports processing paths after discovery, filesystem-identity evaluation, and
+processing-path selection. When a symlinked input reaches probing, the emitted path describes the
+resolved processing target rather than preserving the symlink spelling.
 
 Probe machine-readable output is unaffected by TEXT verbosity or quiet mode. The JSON and NDJSON
 formats expose the same resolution evidence used by the human-facing probe renderers:
@@ -425,9 +430,9 @@ Filtered probe payloads may use one of these reasons:
 Fields:
 
 - `path`: probed filesystem processing path, serialized with POSIX `/` separators. For normal probe
-  payloads, this is the selected processing path after filesystem-identity normalization. For
-  filtered and missing explicit inputs, this remains the explicit path supplied to the command
-  because no normal processing path was selected.
+  payloads, this is the selected processing path after filesystem-identity evaluation. For filtered
+  and missing explicit inputs, this remains the explicit path supplied to the command because no
+  normal processing path was selected.
 - `status`: probe status, currently one of:
   - `resolved` - a file type and processor were selected.
   - `unsupported` - no file type candidate matched.
@@ -444,6 +449,7 @@ Fields:
   - `excluded_by_file_type_filter`
   - `excluded_by_discovery_filter`
   - `no_resolution_probe_result`
+  - `hard_link_duplicate`
 - `selected_file_type`: selected canonical file type identity and score, or `null` when unresolved,
   unbound, filtered, or missing.
 - `selected_processor`: selected processor identity, or `null` when unresolved, unbound, filtered,
@@ -632,6 +638,13 @@ Per-file result payloads report the selected processing path. If a file is reach
 symlink, the emitted `path` describes the resolved processing target rather than the symlink
 spelling. This is the same path identity used by runtime pipeline processing and generated
 filesystem-related header metadata.
+
+If two or more selected processing paths are hard links to the same filesystem object, processing
+machine output still contains one result per selected path. Each affected result reports
+`status.fs.label = "hard-linked processing target"` and is classified as a policy-blocked skip.
+TopMark does not choose a source, target, winner, or loser path for the hard-link group. Unrelated
+selected files continue to produce normal results. Probe machine output reports affected paths as
+`status = "unsupported"` with `reason = "hard_link_duplicate"`.
 
 At a high level, per-file results include:
 

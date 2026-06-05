@@ -69,9 +69,11 @@ Notes:
   configuration-loading or runtime-resolution outcomes depending on command behavior.
 - Explicit missing literal paths are treated as hard input errors (66). Unmatched glob patterns are
   soft diagnostics and do not produce 66.
-- Filesystem identity normalization and processing-path selection do not affect exit-code semantics.
-  Different path spellings that resolve to the same filesystem target contribute to the same runtime
-  processing outcome.
+- Filesystem-identity evaluation occurs before runtime processing and may affect processing-target
+  eligibility. Different path spellings that resolve to the same filesystem target contribute to the
+  same runtime processing outcome after filesystem-identity normalization. Filesystem-identity
+  eligibility checks, such as hard-link detection, may contribute diagnostic outcomes without
+  introducing command-specific exit codes.
 
 ______________________________________________________________________
 
@@ -91,7 +93,9 @@ runtime-resolution details, and processing metadata.
 
 For filesystem inputs, machine-readable path fields report selected processing paths. Exit codes are
 derived from runtime outcomes and do not depend on whether a file was reached through a symlink or
-another equivalent path spelling.
+another equivalent path spelling after filesystem-identity normalization. Filesystem-identity
+eligibility checks, such as hard-link detection, affect diagnostic and processing outcomes but do
+not introduce separate exit-code values.
 
 This separation keeps automation deterministic while preserving stable machine-readable output
 contracts independently from process exit semantics.
@@ -122,6 +126,8 @@ Notes:
 - Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
 - Files reached through symlinks contribute to the same runtime outcome as their selected processing
   target and do not introduce additional exit-code states.
+- Hard-linked processing targets are reported through normal processing outcomes and diagnostics;
+  they do not introduce a dedicated exit code.
 
 ______________________________________________________________________
 
@@ -146,6 +152,8 @@ Notes:
   stripped.
 - Files reached through symlinks contribute to the same runtime outcome as their selected processing
   target and do not introduce additional exit-code states.
+- Hard-linked processing targets are reported through normal processing outcomes and diagnostics;
+  they do not introduce a dedicated exit code.
 
 ______________________________________________________________________
 
@@ -168,8 +176,10 @@ Notes:
   probe outcomes.
 - Unmatched glob patterns are reported as filtered semantic outcomes and result in exit code 69.
 - Ambiguous or unresolved file-type filtering may also contribute to semantic resolution outcomes.
-- Filesystem-identity normalization occurs before runtime probing. Exit-code semantics are based on
+- Filesystem-identity evaluation occurs before runtime probing. Exit-code semantics are based on
   probe outcomes for selected processing paths rather than the original input spelling.
+- Hard-linked processing targets contribute to normal probe unsupported outcomes (`69`) and do not
+  introduce a dedicated exit code.
 
 ______________________________________________________________________
 
@@ -279,8 +289,9 @@ semantic outcomes occur during a single invocation.
 This ensures that hard runtime or environment failures take precedence over informational, semantic,
 or availability-oriented outcomes.
 
-Filesystem-identity normalization and processing-path selection occur before exit-code evaluation
-and do not introduce additional priority levels.
+Filesystem-identity evaluation and processing-path selection occur before exit-code evaluation and
+do not introduce additional priority levels. Hard-link policy therefore participates through normal
+processing outcomes rather than through a dedicated exit-code class.
 
 Example:
 

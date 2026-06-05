@@ -67,6 +67,12 @@ Multiple path spellings that resolve to the same processing target (for example 
 target) are collapsed before pipeline execution. Runtime resolution therefore operates on processing
 paths rather than original CLI, configuration, glob, or symlink spellings.
 
+Hard-linked selected paths are not collapsed by discovery because they are distinct directory
+entries and selected processing paths. Instead, the runtime engine detects selected paths that share
+the same `(st_dev, st_ino)` filesystem identity and blocks all affected paths before per-file
+pipeline steps run. This preserves one result per selected path while avoiding ambiguous writes or
+generated filesystem metadata for shared storage.
+
 File-type filters accept both local identifiers such as `python` and canonical qualified identifiers
 such as `topmark:python`.
 
@@ -116,9 +122,14 @@ TopMark intentionally separates:
 1. discovery filtering
 1. runtime configuration resolution
 1. registry composition
+1. filesystem-identity evaluation
 1. runtime file-type probing
 1. deterministic winner selection
 1. pipeline execution
+
+Filesystem-identity evaluation includes filesystem-identity normalization for equivalent path
+spellings (such as symlinks), processing-path selection, and processing-target eligibility checks
+(such as hard-link detection).
 
 Each stage operates on the finalized outputs of the previous stage.
 
@@ -136,8 +147,8 @@ Before a path reaches file-type probing, TopMark performs:
 1. discovery
 1. filtering
 1. filesystem-identity normalization
-1. deduplication
 1. processing-path selection
+1. filesystem-identity eligibility checks
 
 The resulting processing path is then supplied to runtime probing and pipeline execution.
 
@@ -146,17 +157,17 @@ flowchart TD
     input["CLI/config input"]
     discovery["Discovery + filtering"]
     identity["Filesystem identity<br/>normalization"]
-    dedupe["Deduplication"]
-    processing["Processing path"]
+    processing["Processing path<br/>selection"]
+    eligibility["Filesystem identity<br/>eligibility checks"]
     runtime["Runtime resolution"]
     pipeline["Pipeline execution"]
     serialization["Machine-readable<br/>serialization"]
 
     input --> discovery
     discovery --> identity
-    identity --> dedupe
-    dedupe --> processing
-    processing --> runtime
+    identity --> processing
+    processing --> eligibility
+    eligibility --> runtime
     runtime --> pipeline
     pipeline --> serialization
 ```
@@ -164,7 +175,14 @@ flowchart TD
 Machine-readable output serializes the selected processing path; it does not attempt to preserve the
 original invocation spelling.
 
-Filesystem identity is currently defined by the resolved processing target path.
+Filesystem-identity evaluation uses multiple identity concepts.
+
+Processing-path normalization is based on the resolved processing target path and is responsible for
+collapsing equivalent path spellings such as symlinks.
+
+Filesystem-identity eligibility checks may use additional filesystem identity information. For
+example, hard-link policy uses `(st_dev, st_ino)` identity to detect selected processing paths that
+refer to the same filesystem object.
 
 Examples such as:
 
@@ -176,7 +194,9 @@ link-to-file.py
 
 may therefore collapse to a single processing path before runtime resolution begins.
 
-Hard-link detection and device/inode-based identity are outside the current compatibility contract.
+Hard-link policy is part of the stable filesystem-identity contract. Selected processing paths that
+share `(st_dev, st_ino)` identity are reported independently and blocked before ordinary per-file
+pipeline execution begins.
 
 ______________________________________________________________________
 
@@ -185,7 +205,7 @@ ______________________________________________________________________
 TopMark 1.0 exposes a probe-first resolution model via
 \[`probe_resolution_for_path()`\][topmark.resolution.filetypes.probe_resolution_for_path].
 
-Probe-based resolution operates only after discovery filtering, filesystem- identity normalization,
+Probe-based resolution operates only after discovery filtering, filesystem-identity evaluation,
 processing-path selection, and configuration normalization have completed.
 
 This function returns a \[`ResolutionProbeResult`\][topmark.resolution.probe.ResolutionProbeResult]
@@ -438,9 +458,9 @@ This separation keeps responsibilities clear:
 
 The resolver deliberately does not define filesystem identity semantics.
 
-Filesystem identity, symlink handling, deduplication, and processing-path selection occur earlier
-during discovery and file-list resolution. The resolver consumes the resulting processing path and
-focuses exclusively on file-type selection.
+Filesystem-identity evaluation, symlink normalization, processing-target eligibility checks, and
+processing-path selection occur earlier during discovery and file-list resolution. The resolver
+consumes the resulting processing path and focuses exclusively on file-type selection.
 
 This design has several advantages:
 
@@ -452,21 +472,49 @@ This design has several advantages:
 
 ______________________________________________________________________
 
-## Symlink policy
+## Filesystem identity policy
 
-The runtime resolver operates on processing paths and therefore does not preserve original symlink
-spellings.
+The runtime resolver operates on processing paths selected before file-type probing begins. It does
+not preserve original CLI, configuration, glob, or symlink spellings.
+
+Filesystem-identity policy has two related parts:
+
+- filesystem-identity normalization, which collapses equivalent path spellings to selected
+  processing paths; and
+- filesystem-identity eligibility checks, which block selected processing paths that are unsafe or
+  unsupported for runtime processing.
+
+### Symlink normalization
+
+Symlink handling belongs to filesystem-identity normalization.
 
 Current behavior:
 
 - file-symlink inputs are resolved to their processing target;
-- symlink and target spellings are deduplicated before runtime processing;
+- symlink spellings are resolved to the target path before runtime processing;
 - configuration-source identity is based on the resolved configuration-file target;
 - machine-readable output serializes the resulting processing path; and
 - generated filesystem-related header metadata describes the target TopMark reads and writes.
 
 This policy contributes to idempotence and prevents duplicate processing of the same target file
 through multiple spellings.
+
+### Hard-link policy
+
+Hard-link handling belongs to filesystem-identity eligibility checks, not path-spelling
+normalization.
+
+Current behavior:
+
+- hard-linked files remain distinct selected processing paths;
+- selected processing paths that share `(st_dev, st_ino)` identity are all blocked;
+- machine-readable output preserves one result per selected hard-linked path;
+- probe reports affected paths as unsupported with reason `hard_link_duplicate`;
+- processing commands report affected paths as unsupported, policy-blocked processing targets; and
+- TopMark does not select a source, target, winner, or loser path from the hard-link group.
+
+This policy avoids ambiguous writes and generated filesystem metadata for shared storage while
+preserving per-path diagnostics for every selected input.
 
 ______________________________________________________________________
 

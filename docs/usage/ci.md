@@ -41,9 +41,14 @@ topmark check .
 This validates the selected files and exits with `WOULD_CHANGE (3)` when headers would need to be
 inserted, updated, or removed.
 
-TopMark normalizes filesystem identity before runtime processing. If multiple path spellings resolve
-to the same filesystem target (for example a symlink and its target), CI validation operates on the
-selected processing path and processes the target once.
+TopMark evaluates filesystem identity before runtime processing. Filesystem-identity normalization
+resolves equivalent path spellings, such as symlink spellings, to the selected processing path used
+by CI validation.
+
+Hard-link policy is evaluated as a processing-target eligibility check. If multiple selected paths
+refer to the same filesystem object through hard links, TopMark reports each affected path
+independently and blocks processing for the entire hard-link group without selecting a preferred
+source, target, winner, or loser path.
 
 If you also want to validate the TopMark configuration, either provide `--strict` to `topmark check`
 or add a dedicated configuration validation step:
@@ -109,8 +114,11 @@ Notes:
 - Explicit missing literal paths are hard input errors and produce `FILE_NOT_FOUND (66)`.
 - Unmatched glob patterns are soft discovery diagnostics and do not fail `check`.
 - In mixed-result runs, hard input and filesystem errors take precedence over `WOULD_CHANGE (3)`.
-- Filesystem-identity normalization and processing-path selection do not affect exit-code semantics.
-  Equivalent path spellings contribute to the same runtime processing outcome.
+- Filesystem-identity evaluation occurs before runtime processing and may affect processing-target
+  eligibility. Equivalent path spellings contribute to the same runtime processing outcome after
+  filesystem-identity normalization.
+- Hard-link policy participates through normal processing outcomes and diagnostics and does not
+  introduce a dedicated CI exit code.
 
 ### `topmark config check`
 
@@ -248,6 +256,10 @@ Pre-commit and CI serve complementary roles:
 - pre-commit gives contributors fast local feedback before a commit is created;
 - CI enforces the same expectation for pull requests, branches, and external contributions.
 
+Both pre-commit and CI use the same filesystem-identity evaluation rules, including
+filesystem-identity normalization for symlink spellings and hard-link policy enforcement for runtime
+file-processing commands.
+
 A practical adoption sequence is:
 
 1. run TopMark locally and apply the initial header updates;
@@ -276,7 +288,13 @@ Machine-readable output can expose structured CI diagnostics such as:
 
 For filesystem-processing commands, machine-readable path fields report selected processing paths
 rather than preserving the original CLI argument spelling. If a file is reached through a symlink,
-JSON and NDJSON output describe the resolved processing target used by TopMark.
+filesystem-identity normalization resolves the symlink spelling to the processing target used by
+TopMark, and JSON/NDJSON output reports that selected processing path.
+
+If multiple selected paths are hard links to the same filesystem object, machine-readable output
+still contains one result per selected path. Each affected path is reported independently as a
+policy-blocked processing target; TopMark does not select a preferred source, target, winner, or
+loser path.
 
 This makes JSON and NDJSON output useful for CI annotations, dashboards, repository audits, policy
 validation, and custom reporting pipelines.

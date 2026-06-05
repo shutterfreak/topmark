@@ -92,7 +92,11 @@ files, and CLI overrides before staged validation produces the effective runtime
 For file-backed configuration sources, TopMark determines configuration-source identity using the
 resolved configuration-file target. If a configuration file is reached through a symlink,
 precedence, scope evaluation, applicability checks, and provenance operate on the resolved target
-rather than the symlink spelling. See
+rather than the symlink spelling. Configuration-source identity is distinct from processing-target
+identity. Runtime filesystem-processing commands such as `check`, `strip`, and `probe` evaluate
+selected processing paths separately, including filesystem-identity normalization and eligibility
+checks such as hard-link policy. Those runtime checks do not affect configuration loading,
+configuration provenance, or configuration validation. See
 [Configuration discovery, precedence, and policy](../../../configuration/discovery.md) for the full
 configuration-loading and validation contract.
 
@@ -215,6 +219,10 @@ after configuration normalization.
 Machine-readable configuration provenance uses configuration-source identity based on the resolved
 configuration-file target. Configuration-source paths reported by machine-readable output therefore
 describe the resolved configuration target rather than a symlink spelling used to reach it.
+
+Unlike file-processing machine output, configuration machine output does not apply runtime
+processing-target eligibility checks such as hard-link policy because configuration validation
+operates on configuration sources rather than processing targets.
 
 {% include-markdown "\_snippets/path-serialization-contract.md" %}
 

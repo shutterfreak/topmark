@@ -35,10 +35,18 @@ Pipeline execution consumes an immutable \[`FrozenConfig`\][topmark.config.model
 runtime options assembled from the TOML → FrozenConfig → runtime flow documented in
 [`Architecture`](architecture.md) and [`Configuration discovery`](../configuration/discovery.md).
 
-Pipeline execution also consumes a selected **processing path**. Normal file-list resolution
-normalizes filesystem identity, deduplicates multiple path spellings for the same target, and passes
-the canonical processing path into the pipeline. Pipeline steps therefore operate on processing
-paths rather than preserving original CLI, configuration, glob, or symlink spellings.
+Pipeline execution also consumes a selected **processing path**. File-list resolution performs
+filesystem-identity evaluation before ordinary pipeline execution begins.
+
+Filesystem-identity normalization collapses equivalent path spellings, such as symlinks, into a
+selected processing path. Filesystem-identity eligibility checks determine whether selected
+processing paths are safe to process. Pipeline steps therefore operate on processing paths rather
+than preserving original CLI, configuration, glob, or symlink spellings.
+
+Hard-linked selected processing paths are handled by an invocation-wide engine guard before ordinary
+per-file pipeline execution. If multiple selected paths refer to the same filesystem object through
+hard links, every affected path is blocked as an unsupported processing target; no source, target,
+winner, or loser path is selected.
 
 Source-local TOML options such as `[config].root` and `strict` are resolved before pipeline
 execution. They influence configuration discovery and staged config-loading validation behavior, but
@@ -66,8 +74,8 @@ ______________________________________________________________________
 
 All pipelines are built from the same core phases:
 
-1. **Input selection** - discover files, normalize filesystem identity, deduplicate, and select
-   processing paths
+1. **Input selection** - discover files, evaluate filesystem identity, normalize equivalent path
+   spellings, enforce processing-target eligibility, and select processing paths
 1. **Discovery** - identify file type and viability for each processing path
 1. **Inspection** - read content and detect existing headers
 1. **Evaluation** - generate and compare expected headers
@@ -76,10 +84,13 @@ All pipelines are built from the same core phases:
 The `probe` pipeline is an exception: it only executes the resolution phase and stops immediately
 after producing probe results.
 
-Input selection happens before ordinary pipeline execution. This includes symlink handling: file
-symlink spellings and their targets are collapsed to the resolved processing target before pipeline
-steps run. Synthetic probe contexts for filtered or missing explicit inputs preserve diagnostic
-input information only for those paths that never became normal processing paths.
+Input selection happens before ordinary pipeline execution. Filesystem-identity normalization
+handles symlink behavior: file symlink spellings and their targets are collapsed to the resolved
+processing target before pipeline steps run. Filesystem-identity eligibility checks handle safety
+policy such as hard-link detection: hard-linked selected processing paths are blocked before
+ordinary step execution, while unrelated selected paths continue through the requested pipeline.
+Synthetic probe contexts for filtered or missing explicit inputs preserve diagnostic input
+information only for those paths that never became normal processing paths.
 
 ### Unified Pipeline Flow
 
@@ -152,6 +163,10 @@ For filesystem inputs, the processing context path is the selected processing pa
 from the path spelling supplied on the command line or in configuration when symlinks or equivalent
 relative spellings are involved.
 
+For hard-linked filesystem inputs, selected processing paths remain separate results but are blocked
+before ordinary per-file pipeline execution. The engine does not collapse the hard-link group into a
+preferred source, target, winner, or loser path.
+
 ______________________________________________________________________
 
 ## Available Pipelines
@@ -199,6 +214,9 @@ requested paths that did not reach probing.
 Probe results that do reach runtime probing report processing paths. They should not be interpreted
 as a lossless echo of the original invocation spelling.
 
+Hard-linked selected processing paths also remain visible in probe output. Each affected path is
+reported independently as unsupported with the stable reason string `hard_link_duplicate`.
+
 ### SCAN
 
 **Purpose:** Detect file type and existing TopMark headers
@@ -222,6 +240,7 @@ R --> S --> D --> N
 
 - Header detected / missing / malformed
 - File unsupported, unreadable, binary, or blocked by policy
+- Hard-linked processing target blocked before ordinary scan steps run
 
 This pipeline is used as the foundation for all others.
 
@@ -494,6 +513,7 @@ execution from starting.
 - Mixed line endings
 - BOM before shebang
 - Missing read/write permissions
+- Hard-linked processing targets
 - Unsupported file types
 
 In these cases:
@@ -516,6 +536,8 @@ ______________________________________________________________________
 - **Determinism:** Same input → same outcome
 - **Processing-path identity:** pipeline steps operate on selected processing paths, not raw
   invocation spellings
+- **Filesystem-identity safety:** hard-linked selected processing paths are blocked before ordinary
+  per-file step execution without choosing a preferred path
 - **Dry-run safety:** No writes without `--apply`
 - **Separation of concerns:** Steps mutate context, views classify outcomes
 - **Runtime/configuration separation:** pipeline execution consumes resolved runtime configuration
@@ -528,7 +550,8 @@ ______________________________________________________________________
 - [Architecture](./architecture.md) - TOML → FrozenConfig → runtime overview
 - [Resolution](./resolution.md)
   - [Filesystem identity and processing paths](./resolution.md#filesystem-identity-and-processing-paths)
-    \- filesystem identity, symlink handling, and processing-path selection
+    \- filesystem-identity evaluation, symlink normalization, hard-link policy, and processing-path
+    selection
 - [Pipelines (Reference)](./pipelines-reference.md) - generated API-backed reference entry points
 - [Terminology and Canonical Vocabulary](../terminology.md) - canonical definitions for pipeline,
   status, hint, runtime, and machine-readable terminology
@@ -572,6 +595,7 @@ stateDiagram-v2
   PENDING --> NOT_FOUND
   PENDING --> NO_READ_PERMISSION
   PENDING --> UNREADABLE
+  PENDING --> HARD_LINK_DUPLICATE
   PENDING --> NO_WRITE_PERMISSION
   PENDING --> BINARY
   PENDING --> BOM_BEFORE_SHEBANG

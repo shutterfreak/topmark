@@ -48,14 +48,15 @@ ______________________________________________________________________
 - Extended the POSIX path-serialization contract to configuration machine-output payloads,
   TOML/config provenance payloads, configuration-export serialization, and configuration diagnostic
   summaries.
-- Defined TopMark's filesystem identity policy for existing processing inputs as resolved
-  processing-target identity rather than raw invocation spelling.
-- Standardized symlink handling so file symlink spellings and their targets collapse to one selected
-  processing path before runtime probing, processing, header metadata generation, and
-  machine-readable output.
+- Defined TopMark's filesystem-identity evaluation model for existing processing inputs by
+  separating filesystem-identity normalization from processing-target eligibility checks.
+- Standardized symlink handling so file symlink spellings resolve to the target path before runtime
+  probing, processing, header metadata generation, and machine-readable output.
 - Defined configuration-source identity for file-backed TOML sources using the resolved
   configuration-file target for precedence, scope applicability, layered provenance, and
   machine-readable configuration provenance.
+- Added a hard-link filesystem-identity guard: selected paths sharing `(st_dev, st_ino)` are all
+  blocked as hard-linked processing targets while unrelated files continue processing normally.
 
 ### Breaking Changes - Unreleased
 
@@ -120,6 +121,9 @@ ______________________________________________________________________
 - Fixed ambiguity around symlinked configuration files by documenting and testing that provenance,
   precedence, and scope applicability use the resolved configuration target rather than the symlink
   spelling.
+- Fixed ambiguous hard-linked processing-target behavior by blocking every selected path that shares
+  `(st_dev, st_ino)` identity with another selected path instead of choosing a source, target,
+  winner, or loser path.
 
 ### Documentation - Unreleased
 
@@ -149,13 +153,13 @@ ______________________________________________________________________
   JSON/NDJSON path fields.
 - Documented and aligned the recommended VS Code workspace tooling configuration around Pylance,
   `mdformat`, Run On Save integration, and project-maintained task entry points.
-- Documented filesystem identity, processing-path selection, symlink handling, and the boundary
-  between identity selection and machine-readable path serialization across user, API, and developer
-  documentation.
+- Documented filesystem-identity evaluation, filesystem-identity normalization, processing-path
+  selection, symlink handling, hard-link policy, and the boundary between identity evaluation and
+  machine-readable path serialization across user, API, and developer documentation.
 - Documented configuration-source identity and symlinked configuration-file behavior across
   configuration discovery, configuration schema, machine-output, command, and API documentation.
-- Documented that hard-link detection and device/inode-based filesystem identity are outside the
-  current compatibility contract.
+- Documented the TopMark 1.1.0 hard-link compatibility contract for processing and probe machine
+  output.
 
 ### Internal - Unreleased
 
@@ -184,6 +188,9 @@ ______________________________________________________________________
 - Added regression coverage for symlinked file inputs, symlinked directory behavior, broken symlink
   diagnostics, generated header metadata for symlinked inputs, configuration-source identity,
   layered provenance, public machine output, and processing-path serialization.
+- Added regression coverage for hard-linked selected processing paths across pipeline execution,
+  `check`, `strip`, `probe`, JSON output, NDJSON output, and mixed hard-linked plus unrelated file
+  selections.
 
 ### Notes - Unreleased
 
@@ -206,6 +213,9 @@ ______________________________________________________________________
   existing processing inputs. Symlink spellings are not preserved for runtime processing identity,
   generated filesystem-related header metadata, or machine-readable path fields; consumers that need
   the exact invocation spelling should retain it outside TopMark's processing result payloads.
+- Hard-linked selected processing paths are now treated as unsupported processing targets. TopMark
+  reports each affected path independently and does not choose a source, target, winner, or loser
+  path from the hard-link group.
 
 ______________________________________________________________________
 

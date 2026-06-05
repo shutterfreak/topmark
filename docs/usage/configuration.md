@@ -26,6 +26,11 @@ For file-backed configuration sources, TopMark determines configuration-source i
 resolved configuration-file target. Symlink spellings are not preserved for precedence, scope, or
 applicability evaluation.
 
+Configuration-source identity is distinct from processing-target identity. The hard-link processing
+policy used by runtime file-processing commands such as `check`, `strip`, and `probe` does not
+affect configuration discovery, configuration precedence, scope evaluation, or applicability
+evaluation.
+
 {% include-markdown "\_snippets/terminology.md" %}
 
 ______________________________________________________________________
@@ -49,8 +54,10 @@ configuration provenance operate on the resolved configuration-file target.
 
 > [!NOTE]
 >
-> This behavior mirrors the processing-path contract used for runtime file processing. TopMark
-> normalizes filesystem identity before configuration applicability and runtime evaluation.
+> This behavior mirrors the processing-path contract used for runtime file processing, but the two
+> identity systems are evaluated independently. Configuration-source identity governs configuration
+> loading and precedence, while processing-target identity governs runtime file-processing behavior
+> such as path selection and hard-link policy enforcement.
 
 ______________________________________________________________________
 
@@ -243,6 +250,10 @@ normalization, and configuration-source identity resolution have completed.
 
 For configuration files loaded through symlinks, the effective configuration is associated with the
 resolved configuration target rather than the symlink spelling used to reach it.
+
+Hard-link processing policy is not represented in the runtime configuration model because it is a
+processing-target eligibility rule evaluated by runtime file-processing commands rather than a
+configuration-layering concern.
 
 ______________________________________________________________________
 

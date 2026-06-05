@@ -350,11 +350,16 @@ topmark:markdown
 
 identify file types within the registry model.
 
-Filesystem identity, processing-path selection, symlink handling, and configuration-source identity
-are resolved before runtime probing and are documented in [Resolution](resolution.md).
+Filesystem-identity evaluation, processing-path selection, symlink normalization, hard-link policy,
+and configuration-source identity are resolved before runtime probing and are documented in
+[Resolution](resolution.md).
 
 The registry model operates on the resulting processing path and resolved file type identity; it
 does not define filesystem identity semantics itself.
+
+In particular, registry normalization is limited to registry identifiers and registry matching
+metadata. It does not participate in filesystem-identity normalization, processing-target
+eligibility checks, or hard-link policy enforcement.
 
 This affects:
 
@@ -390,6 +395,11 @@ Plugin authors should:
 - define filename rules as relative registry matching rules rather than filesystem paths;
 - use POSIX-style `/` separators for tail-subpath matching rules so registry metadata remains stable
   across platforms.
+
+These filename rules are registry matching metadata, not filesystem paths. Plugin-defined file types
+participate in resolution only after filesystem-identity evaluation has selected eligible processing
+paths. Plugins do not define symlink normalization, hard-link policy, or configuration-source
+identity behavior.
 
 Header processor plugins currently use advanced runtime-overlay integration semantics. They should
 bind processor definitions to canonical qualified file type identifiers.

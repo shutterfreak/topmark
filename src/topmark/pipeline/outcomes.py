@@ -227,6 +227,12 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
             outcome=Outcome.ERROR,
             reason=ctx.status.fs.value,
         )
+    if ctx.status.fs == FsStatus.HARD_LINK_DUPLICATE:
+        return ret(
+            debug_tag="skip:fs-hard-link-duplicate",
+            outcome=Outcome.SKIPPED,
+            reason=ctx.status.fs.value,
+        )
     if ctx.status.resolve != ResolveStatus.RESOLVED:
         return ret(
             debug_tag="skip:resolve",

@@ -247,7 +247,7 @@ ______________________________________________________________________
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
 - Normalization ensures consistent diffing across OSes and Python builds.
-- Canonical file type identity normalization ensures stable identity handling across configuration,
+- Canonical file type identity normalization ensures stable file type handling across configuration,
   resolver, registry, and machine-readable output boundaries.
 - The snapshot is derived from `topmark.api.__all__`, ensuring the stable façade remains small and
   explicitly defined.

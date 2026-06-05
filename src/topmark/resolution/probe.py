@@ -55,6 +55,7 @@ class ResolutionProbeReason(str, Enum):
         SELECTED_BY_TIE_BREAK: Multiple candidates shared the top score and were
             ordered deterministically by tie-break rules.
         NO_CANDIDATES: No file type candidates matched the path.
+        HARD_LINK_DUPLICATE: The path shares storage with another selected processing path.
         SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR: The selected file type has no
             associated processor binding.
     """
@@ -65,6 +66,7 @@ class ResolutionProbeReason(str, Enum):
     SELECTED_HIGHEST_SCORE = "selected_highest_score"
     SELECTED_BY_TIE_BREAK = "selected_by_tie_break"
     NO_CANDIDATES = "no_candidates"
+    HARD_LINK_DUPLICATE = "hard_link_duplicate"
     SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR = "selected_file_type_has_no_bound_processor"
 
 
