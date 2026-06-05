@@ -184,6 +184,7 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
     # FS
     FS_BOM_BEFORE_SHEBANG = "fs:bom_before_shebang"
     FS_EMPTY = "fs:empty_file"
+    FS_HARD_LINK_DUPLICATE = "fs:hard_link_duplicate"
     FS_MIXED_NEWLINES = "fs:mixed_newlines"
     FS_NOT_FOUND = "fs:not_found"
     FS_UNREADABLE = "fs:unreadable"

@@ -14,6 +14,7 @@ TopMark intentionally separates:
 
 1. staged configuration-loading validation
 1. layered runtime configuration resolution
+1. filesystem-identity evaluation
 1. runtime applicability evaluation
 1. runtime probing and processor resolution
 1. runtime policy evaluation
@@ -21,3 +22,12 @@ TopMark intentionally separates:
 
 Machine-readable diagnostics and runtime behavior expose a flattened compatibility view derived from
 these internal runtime stages while preserving deterministic stable 1.x runtime behavior.
+
+Filesystem-identity evaluation occurs before runtime processing begins and includes:
+
+- filesystem-identity normalization (for example processing-path selection for equivalent path
+  spellings such as symlinks); and
+- filesystem-identity eligibility checks (for example hard-link policy enforcement).
+
+Configuration-source identity is evaluated independently during configuration loading and layered
+configuration resolution.

@@ -122,6 +122,12 @@ For file-backed layers, `origin` and `scope_root` describe the resolved configur
 used for configuration-source identity. If a configuration file is loaded through a symlink, layered
 provenance reports the resolved target rather than the symlink spelling.
 
+Configuration-source identity is distinct from processing-target identity. Runtime
+filesystem-processing commands such as `check`, `strip`, and `probe` evaluate selected processing
+paths separately, including filesystem-identity normalization and eligibility checks such as
+hard-link policy. Those runtime checks do not affect configuration loading, layered provenance,
+applicability evaluation, or runtime configuration serialization.
+
 The second TOML document is identical to the standard flattened runtime configuration output.
 
 TopMark resolves configuration from defaults, user config, the project chain, explicit `--config`
@@ -133,6 +139,11 @@ precedence, scope evaluation, applicability checks, and layered provenance opera
 target rather than the symlink spelling. See
 [Configuration discovery, precedence, and policy](../../../configuration/discovery.md) for the full
 configuration-loading and validation contract.
+
+This configuration-source identity behavior mirrors only the path-spelling normalization part of
+TopMark's runtime processing-target identity model. Processing-target eligibility checks such as
+hard-link policy are evaluated later by runtime filesystem-processing commands and are not part of
+configuration dumping.
 
 Configuration and policy override values shown by this command are part of the stable public
 configuration surface. Internal implementation details are not part of the user-facing CLI or Python
@@ -198,6 +209,10 @@ after configuration normalization.
 Machine-readable configuration provenance uses configuration-source identity based on the resolved
 configuration-file target. Configuration-source paths reported by machine-readable output therefore
 describe the resolved configuration target rather than a symlink spelling used to reach it.
+
+Unlike file-processing machine output, configuration machine output does not apply runtime
+processing-target eligibility checks such as hard-link policy because `config dump` operates on
+configuration sources rather than processing targets.
 
 {% include-markdown "\_snippets/path-serialization-contract.md" %}
 
@@ -352,3 +367,6 @@ ______________________________________________________________________
 - **Configuration path differs from invocation spelling**: layered provenance and machine-readable
   provenance report resolved configuration targets. If a configuration file is loaded through a
   symlink, `origin` and `scope_root` may differ from the path spelling supplied on the command line.
+- **Hard-link policy is not reflected in the output**: `config dump` reports configuration state,
+  not processing-target eligibility. Hard-link policy is enforced by runtime filesystem-processing
+  commands such as `check`, `strip`, and `probe`.

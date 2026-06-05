@@ -50,14 +50,22 @@ from topmark.config.policy import make_policy_registry
 from topmark.core.exit_codes import ExitCode
 from topmark.core.logging import get_logger
 from topmark.pipeline import runner
+from topmark.pipeline.context.model import HaltState
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.resolution.probe import ResolutionProbeReason
+from topmark.resolution.probe import ResolutionProbeResult
+from topmark.resolution.probe import ResolutionProbeStatus
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
+    from os import stat_result
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
@@ -66,6 +74,87 @@ if TYPE_CHECKING:
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class _FilesystemIdentity:
+    """Stable filesystem-object identity used for hard-link detection."""
+
+    device: int
+    inode: int
+
+
+def _filesystem_identity(path: Path) -> _FilesystemIdentity | None:
+    """Return `(st_dev, st_ino)` identity for an existing path when available."""
+    try:
+        stat_info: stat_result = path.stat()
+    except OSError:
+        return None
+
+    if stat_info.st_nlink < 2:
+        return None
+
+    return _FilesystemIdentity(device=stat_info.st_dev, inode=stat_info.st_ino)
+
+
+def _hard_link_duplicate_paths(file_list: Sequence[Path]) -> set[Path]:
+    """Return selected paths that share filesystem storage with another selected path."""
+    paths_by_identity: dict[_FilesystemIdentity, list[Path]] = {}
+
+    for path in file_list:
+        identity: _FilesystemIdentity | None = _filesystem_identity(path)
+        if identity is None:
+            continue
+        paths_by_identity.setdefault(identity, []).append(path)
+
+    duplicates: set[Path] = set()
+    for paths in paths_by_identity.values():
+        unique_paths: set[Path] = set(paths)
+        if len(unique_paths) > 1:
+            duplicates.update(unique_paths)
+
+    return duplicates
+
+
+def _build_hard_link_duplicate_context(
+    *,
+    path: Path,
+    run_options: RunOptions,
+    config: FrozenConfig,
+    policy_registry: PolicyRegistry | None,
+) -> ProcessingContext:
+    """Build a terminal context for a hard-linked processing target."""
+    ctx: ProcessingContext = ProcessingContext.bootstrap(
+        path=path,
+        config=config,
+        run_options=run_options,
+        policy_registry_override=policy_registry,
+    )
+    ctx.status.fs = FsStatus.HARD_LINK_DUPLICATE
+    ctx.halt_state = HaltState(
+        reason_code=KnownCode.FS_HARD_LINK_DUPLICATE.value,
+        step_name="HardLinkIdentityGuard",
+    )
+    ctx.resolution_probe = ResolutionProbeResult(
+        path=path,
+        status=ResolutionProbeStatus.UNSUPPORTED,
+        reason=ResolutionProbeReason.HARD_LINK_DUPLICATE,
+        candidates=(),
+        selected_file_type=None,
+        selected_processor=None,
+    )
+    ctx.hint(
+        axis=Axis.FS,
+        code=KnownCode.FS_HARD_LINK_DUPLICATE,
+        message=(
+            "Path shares storage with another selected processing path; "
+            "hard-linked targets are blocked"
+        ),
+        cluster=Cluster.BLOCKED_POLICY,
+        terminal=True,
+        reason=FsStatus.HARD_LINK_DUPLICATE.value,
+    )
+    return ctx
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -190,6 +279,7 @@ def run_steps_for_files(
     default_policy_registry: PolicyRegistry | None = (
         None if path_configs is not None else make_policy_registry(config)
     )
+    hard_link_duplicate_paths: set[Path] = _hard_link_duplicate_paths(file_list)
 
     # Process each path independently; collect contexts and degrade gracefully
     # on non-fatal errors (recording the first encountered exit code).
@@ -203,6 +293,17 @@ def run_steps_for_files(
                 if path_configs is not None
                 else default_policy_registry
             )
+            if path in hard_link_duplicate_paths:
+                results.append(
+                    _build_hard_link_duplicate_context(
+                        path=path,
+                        config=effective_config,
+                        run_options=run_options,
+                        policy_registry=policy_registry,
+                    )
+                )
+                continue
+
             # When no precomputed registry is supplied, bootstrap() derives one from config.
             ctx_obj: ProcessingContext = ProcessingContext.bootstrap(
                 path=path,

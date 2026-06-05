@@ -24,7 +24,8 @@ Start here if you want to:
 - run TopMark from the CLI;
 - upgrade an existing repository to TopMark 1.0;
 - configure header fields, policies, filtering, and file discovery;
-- understand filesystem identity, processing paths, and symlink behavior;
+- understand filesystem-identity evaluation, processing paths, symlink normalization, and hard-link
+  policy;
 - integrate TopMark with pre-commit or CI;
 - understand exit codes, reports, and machine-readable output.
 

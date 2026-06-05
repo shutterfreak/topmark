@@ -39,8 +39,14 @@ topmark:header:end
 > may refer to the same filesystem identity and therefore produce the same serialized processing
 > path.
 >
-> TopMark currently defines filesystem identity using the resolved processing target path. Hard-link
-> detection and device/inode-based identity are outside the current compatibility contract.
+> TopMark's machine-readable path fields remain path-based and are derived from the canonical
+> processing path selected for each processing target.
+>
+> Filesystem identity policy is a separate concern from path serialization. TopMark may apply
+> additional filesystem-identity rules when determining whether a processing target is eligible for
+> processing. For example, selected hard-linked files are detected using device/inode identity and
+> are reported as unsupported processing targets. Such checks do not alter the serialized path
+> values emitted in machine-readable output.
 >
 > Human-facing output follows display-path policy instead:
 >

@@ -60,7 +60,10 @@ TopMark intentionally separates:
 - process exit-code semantics.
 
 For filesystem-processing commands, machine-readable path fields report selected processing paths
-rather than preserving the original CLI path spelling.
+rather than preserving the original CLI path spelling. Filesystem-identity normalization resolves
+equivalent path spellings, such as symlink spellings, before path serialization. Processing-target
+eligibility checks such as hard-link policy are evaluated separately from path serialization and do
+not alter the emitted path representation.
 
 > [!NOTE] Verbosity, quiet mode and color rendering affect only human-facing TEXT rendering.
 
@@ -174,9 +177,14 @@ Runtime file-processing commands ([`check`](commands/check.md), [`strip`](comman
 These modes are mutually exclusive: do not mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
 
-For filesystem-backed inputs, TopMark normalizes filesystem identity and selects processing paths
-before runtime processing begins. Multiple path spellings that resolve to the same filesystem target
-(for example a symlink and its target) are treated as a single processing target.
+For filesystem-backed inputs, TopMark evaluates filesystem identity and selects processing paths
+before runtime processing begins. Filesystem-identity normalization resolves equivalent path
+spellings, such as symlink spellings, to the selected processing path used for runtime processing.
+
+Hard-link policy is evaluated as a processing-target eligibility check. If multiple selected paths
+refer to the same filesystem object through hard links, each affected path is reported independently
+and processing is blocked for the entire hard-link group without selecting a preferred source,
+target, winner, or loser path.
 
 > [!NOTE] **STDIN input**
 >
@@ -189,8 +197,8 @@ In content STDIN mode, `--stdin-filename` is required so TopMark can resolve fil
 binding, and path-sensitive policy exactly as it would for a real file path.
 
 Because content mode does not reference an existing filesystem object, filesystem-identity
-normalization and processing-path selection do not apply. The supplied `--stdin-filename` acts only
-as a virtual path for runtime resolution and policy evaluation.
+evaluation and processing-path selection do not apply. The supplied `--stdin-filename` acts only as
+a virtual path for runtime resolution and policy evaluation.
 
 For mutation commands (`check` and `strip`), `--apply` in content mode writes transformed content to
 STDOUT and routes diagnostics to STDERR. This ensures consistent file-type resolution and runtime
@@ -214,6 +222,11 @@ For file-backed configuration sources, configuration discovery uses configuratio
 based on the resolved configuration-file target. Layered provenance, applicability evaluation, and
 configuration precedence are therefore based on resolved configuration targets rather than symlink
 spellings.
+
+Configuration-source identity is distinct from processing-target identity. Runtime
+filesystem-processing commands evaluate selected processing paths separately, including
+filesystem-identity normalization and eligibility checks such as hard-link policy. Those runtime
+checks do not affect configuration discovery, layered provenance, or configuration precedence.
 
 ______________________________________________________________________
 

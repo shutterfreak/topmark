@@ -133,9 +133,14 @@ topmark check .
 
 > [!NOTE]
 >
-> TopMark normalizes filesystem identity before processing files. If a file is reachable through
-> multiple path spellings (for example a symlink and its target), TopMark selects a canonical
-> processing path and processes the target once.
+> TopMark evaluates filesystem identity before processing files. Filesystem-identity normalization
+> resolves equivalent path spellings, such as symlink spellings, to the selected processing path
+> used for runtime processing and machine-readable output.
+>
+> Hard-link policy is evaluated as a processing-target eligibility check. If multiple selected paths
+> refer to the same filesystem object through hard links, TopMark reports each affected path
+> independently and blocks processing for the entire hard-link group without selecting a preferred
+> source, target, winner, or loser path.
 
 ______________________________________________________________________
 
@@ -163,6 +168,9 @@ topmark check --apply .
 > Generated filesystem-related header fields such as `file_relpath` and `file_abspath` describe the
 > selected processing target. If a file is reached through a symlink, header metadata reflects the
 > resolved target TopMark reads and writes.
+>
+> Files blocked by processing-target eligibility checks, such as hard-linked processing targets, are
+> not modified and therefore do not receive updated header metadata.
 
 ______________________________________________________________________
 

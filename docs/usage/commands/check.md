@@ -106,10 +106,13 @@ working directory; path-based filters run before file-type filters, and exclude 
 precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
 contract.
 
-During discovery, TopMark normalizes filesystem identity and selects processing paths. If multiple
-path spellings resolve to the same filesystem target (for example a symlink and its target), `check`
-processes the resolved target once. Downstream filtering, probing, header generation, and
-machine-readable output operate on the selected processing path rather than the original spelling.
+During discovery, TopMark performs filesystem-identity evaluation and selects processing paths. If
+multiple path spellings resolve to the same filesystem target (for example a symlink and its
+target), `check` processes the resolved target once. Downstream filtering, probing, header
+generation, and machine-readable output operate on the selected processing path rather than the
+original spelling. Hard-link policy is evaluated as a processing-target eligibility check: if
+multiple selected processing paths are hard links to the same filesystem object, each affected path
+is reported as an unsupported, policy-blocked processing target.
 
 ### File type filters
 
@@ -150,6 +153,9 @@ Notes:
 - Existing filesystem inputs are normalized to selected processing paths before runtime processing.
 - Symlink spellings are not preserved for runtime identity, generated filesystem-related header
   metadata, or machine-readable `result.path` fields.
+- Hard-linked selected paths are handled as processing-target eligibility failures. Each affected
+  path is reported independently and blocked from processing; TopMark does not select a preferred
+  source, target, winner, or loser path.
 - Exclude rules win over include rules when both match a path.
 - File-type filters are applied after path-based include/exclude filtering.
 - File-type filters are normalized to canonical qualified file type identities before filtering,
@@ -252,6 +258,9 @@ ______________________________________________________________________
 - Header metadata path fields: generated from the selected processing target. If a file is reached
   through a symlink, `file_relpath`, `file_abspath`, `relpath`, and `abspath` describe the resolved
   target TopMark reads and writes rather than the symlink spelling.
+- Hard-link safety: if multiple selected paths refer to the same filesystem object through hard
+  links, `check` blocks every affected path. No header is inserted or updated for those paths, and
+  no source, target, winner, or loser path is selected.
 - Idempotency: running `topmark check` again on a file that already has a correct header produces no
   diff and exit code 0 (unless other files would change).
 
@@ -303,7 +312,9 @@ For the canonical schema, stable `kind` values, and shared conventions, see:
 Machine-readable output emits selected processing paths with POSIX `/` separators and resolved file
 type identities using canonical qualified identity strings when available. If a checked file is
 reached through a symlink, per-file `result.path` describes the resolved processing target rather
-than the symlink spelling. Configuration payloads also emit normalized file type filters and
+than the symlink spelling. If selected paths are hard links to the same filesystem object, `check`
+emits one result per selected path and reports each affected path as a policy-blocked unsupported
+processing target. Configuration payloads also emit normalized file type filters and
 `policy_by_type` keys.
 
 Notes:
@@ -513,6 +524,9 @@ ______________________________________________________________________
 - **Symlink path not shown in output**: `check` processes selected processing paths. If a symlink
   and its target resolve to the same file, machine-readable output and generated header metadata
   describe the resolved target rather than the symlink spelling.
+- **Hard-linked files are reported as unsupported**: `check` blocks processing when multiple
+  selected paths refer to the same filesystem object through hard links. Each affected path is
+  reported independently; no preferred path is selected from the hard-link group.
 - **File type filter does not match**: use [`topmark probe`](probe.md) to inspect resolution
   decisions, and prefer qualified identifiers such as `topmark:python` when local identifiers may be
   ambiguous.

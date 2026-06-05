@@ -18,19 +18,21 @@ dynamic = ["version"]
 description = "Inspect, insert, update, remove, and validate project file headers across codebases."
 readme = { file = "README.md", content-type = "text/markdown" }
 keywords = [
-  "headers",
-  "file-headers",
-  "license-header",
-  "copyright-header",
-  "source-code",
+  "automation",
+  "ci",
   "cli",
   "code-quality",
-  "project-maintenance",
   "compliance",
-  "automation",
-  "pre-commit",
-  "ci",
+  "copyright-header",
   "developer-tools",
+  "file-headers",
+  "headers",
+  "license-compliance",
+  "license-header",
+  "pre-commit",
+  "project-maintenance",
+  "repository-maintenance",
+  "source-code",
 ]
 license = "MIT"
 license-files = ["LICENSE"]

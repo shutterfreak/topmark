@@ -28,9 +28,13 @@ setup, recommended patterns, and troubleshooting.
 Hook execution uses the same runtime-resolution, filtering, policy-evaluation, and runtime
 configuration semantics as normal CLI execution.
 
-Hook execution also uses the same filesystem-identity normalization and processing-path selection
+Hook execution also uses the same filesystem-identity evaluation and processing-path selection
 semantics as normal CLI execution. If multiple path spellings resolve to the same filesystem target
 (for example a symlink and its target), TopMark processes the selected processing target once.
+
+Hard-link policy is evaluated separately. If multiple selected paths refer to the same filesystem
+object through hard links, TopMark reports each affected path independently and blocks processing
+for the entire hard-link group.
 
 ______________________________________________________________________
 
@@ -119,9 +123,12 @@ pass policy options such as `--header-mutation-mode`, `--allow-header-in-empty-f
 These options follow the same runtime policy-resolution and file type identity semantics as normal
 CLI execution.
 
-Filesystem-processing hooks also follow the same processing-path identity semantics as normal CLI
+Filesystem-processing hooks also follow the same filesystem-identity semantics as normal CLI
 execution. Runtime processing operates on selected processing paths rather than preserving the
 original filename spelling supplied by pre-commit.
+
+Hard-link processing policy is applied before runtime processing. Affected paths are reported
+independently and are not reduced to a preferred source, target, winner, or loser path.
 
 Invoke the manual hook locally:
 
@@ -145,11 +152,14 @@ multiple times per invocation (for different batches). This is expected.
 
 TopMark applies the same layered runtime filtering pipeline during hook execution:
 
-1. filesystem-identity normalization and processing-path selection
+1. filesystem-identity evaluation and processing-path selection
 1. path filtering
 1. file-type filtering
 1. runtime-resolution and probe evaluation
 1. runtime policy evaluation
+
+Filesystem-identity evaluation includes processing-path selection for equivalent path spellings
+(such as symlinks) and processing-target eligibility checks (such as hard-link detection).
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
@@ -157,6 +167,10 @@ For filesystem-backed hook execution, machine-readable path fields and generated
 header metadata describe the selected processing target. If a file is reached through a symlink,
 output and generated metadata reflect the resolved target TopMark reads and writes rather than the
 symlink spelling.
+
+If selected paths are hard links to the same filesystem object, hook execution still produces one
+result per selected path. Each affected path is reported independently as a policy-blocked
+processing target.
 
 **Run once per repository** by setting `pass_filenames: false` in the hook manifest and letting
 TopMark perform its own file discovery from config:
@@ -301,8 +315,10 @@ Notes:
 - Use `--quiet` in CI to suppress human-readable TEXT output and rely solely on exit status.
 - Use `topmark-probe` when a hook appears to skip, include, or classify files with unexpected
   semantic runtime outcomes.
-- Filesystem-identity normalization and processing-path selection do not affect exit-code semantics.
-  Equivalent path spellings contribute to the same runtime processing outcome.
+- Filesystem-identity evaluation occurs before runtime processing and may affect processing-target
+  eligibility. Equivalent path spellings contribute to the same runtime processing outcome.
+  Hard-link policy participates through normal processing outcomes and diagnostics rather than
+  through dedicated pre-commit hook exit codes.
 - For full details and edge cases (mixed-result runs, precedence), see:
   - [`Exit codes`](./exit-codes.md)
   - [`check` command](./commands/check.md)
@@ -346,6 +362,19 @@ TopMark reports selected processing paths during runtime processing.
 If a hook receives a symlink path from pre-commit, machine-readable output, runtime probing, and
 generated filesystem-related header metadata may report the resolved processing target rather than
 the original symlink spelling.
+
+See:
+
+- [Machine-readable output](machine-output.md)
+- [Filesystem identity and processing paths](../dev/resolution.md#filesystem-identity-and-processing-paths)
+
+### Hard-linked files are reported as unsupported
+
+TopMark blocks processing when multiple selected paths refer to the same filesystem object through
+hard links.
+
+Each affected path is reported independently. TopMark does not select a preferred source, target,
+winner, or loser path from the hard-link group.
 
 See:
 

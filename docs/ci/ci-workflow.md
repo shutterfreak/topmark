@@ -104,6 +104,11 @@ the canonical Python QA session across Ubuntu, macOS, and Windows so platform-de
 filesystem semantics are checked on real GitHub-hosted filesystems without multiplying the full
 supported Python-version matrix across every operating system.
 
+This job also protects TopMark's filesystem-identity evaluation contract. That includes
+filesystem-identity normalization for platform-sensitive path spellings and processing-target
+eligibility checks such as hard-link policy where the host filesystem supports the required
+semantics.
+
 Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolved canonical Python
 version and the existing `nox -s coverage` session. Coverage intentionally runs outside the full
 test matrix to avoid duplicating expensive QA work that is already covered by the compatibility

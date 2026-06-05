@@ -130,10 +130,16 @@ POSIX-style matching rules rather than filesystem paths. This includes processin
 configuration, and TOML/config provenance payloads. Synthetic configuration-source identifiers are
 stable labels rather than filesystem paths.
 
-Path serialization is distinct from filesystem identity. TopMark currently identifies existing
-processing inputs by their resolved processing target path before machine output is generated. As a
-result, multiple path spellings that resolve to the same target, such as a symlink and its target,
-may produce the same serialized processing path.
+Path serialization is distinct from filesystem identity. TopMark evaluates filesystem identity
+before machine output is generated. Filesystem-identity normalization may collapse multiple path
+spellings that resolve to the same target, such as a symlink and its target, into the same selected
+processing path.
+
+Filesystem-identity eligibility checks are represented as structured results and diagnostics rather
+than path-serialization changes. If multiple selected processing paths are hard links to the same
+filesystem object, machine-readable output preserves one result per selected path and reports each
+affected path as an unsupported, policy-blocked processing target. TopMark does not serialize the
+hard-link group as a single preferred source, target, winner, or loser path.
 
 Human-facing path labels, including unified diff file labels, follow display policy and are not
 machine-stable path fields.
@@ -428,6 +434,11 @@ Per-file result payloads also report the selected processing path. If a file is 
 symlink, the emitted path describes the resolved processing target rather than the symlink spelling.
 This mirrors the path used by the runtime pipeline and generated filesystem-related header metadata.
 
+Hard-linked selected processing paths remain separate per-file result payloads. Each affected result
+is reported as a policy-blocked unsupported processing target, using the same stable status and hint
+surface as the runtime pipeline. Processing commands do not choose a source, target, winner, or
+loser path for the hard-link group.
+
 In **summary mode**, TopMark aggregates results by the pair `(outcome, reason)` rather than
 collapsing all reasons under a single outcome bucket.
 
@@ -500,9 +511,14 @@ quiet mode.
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
 
-Probe payloads report processing paths after discovery, filesystem-identity normalization, and
-filtering. They are diagnostic records for the paths that reach probing, not a lossless echo of the
-original invocation spelling.
+Probe payloads report processing paths after discovery, filesystem-identity evaluation,
+processing-path selection, and filtering. They are diagnostic records for the paths that reach
+probing, not a lossless echo of the original invocation spelling.
+
+Filesystem-identity normalization may collapse equivalent path spellings, such as symlinks, before
+probing. Hard-link eligibility checks behave differently: if multiple selected processing paths are
+hard links to the same filesystem object, probe emits one payload per affected path and reports each
+one as unsupported with the stable reason string `hard_link_duplicate`.
 
 Filtered probe results use machine-friendly reasons to explain why an explicit file input did not
 reach probing. Missing explicit inputs use `probe_missing` with `no_resolution_probe_result` when no
@@ -523,6 +539,8 @@ Note:
   the CLI invocation with `FILE_NOT_FOUND (66)`.
 - Explicit directories that successfully expand to selected child files are treated as discovery
   sources and are not emitted as separate filtered probe payloads.
+- Hard-linked selected processing paths are emitted independently and are not collapsed into a
+  preferred source, target, winner, or loser path.
 - In mixed-input runs, probe payloads may still include filtered, missing, or unsupported entries,
   but exit-code precedence is resolved outside the payload.
 
@@ -589,6 +607,10 @@ preserves the same logical ordering as the human-facing layered export:
 File-backed configuration provenance uses configuration-source identity based on the resolved
 configuration-file target. Symlink spellings for configuration files are therefore not preserved for
 machine-readable provenance, precedence, scope, or applicability evaluation.
+
+Configuration-source identity is distinct from processing-target identity. Hard-link processing
+policy applies to runtime filesystem-processing payloads and probe diagnostics, but does not affect
+configuration-source provenance or runtime configuration snapshots.
 
 - JSON includes `config_provenance` before `config` in the top-level envelope.
 - NDJSON emits a `config_provenance` record first and a `config` record second.

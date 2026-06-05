@@ -109,6 +109,11 @@ Configuration-source identity affects:
 
 Symlink spellings are not preserved once a configuration source has been loaded.
 
+Configuration-source identity is distinct from processing-target identity. The hard-link processing
+policy used by runtime filesystem-processing commands does not affect the external configuration
+schema, configuration-source discovery, precedence, scope-root selection, applicability evaluation,
+or layered provenance exports.
+
 ## Schema validation model
 
 TopMark performs **whole-source TOML schema validation** before any layered configuration is
@@ -276,10 +281,13 @@ topmark:
         optional: true
 
   files:
-    # Filtering order:
+    # Runtime filtering order:
     # 1) Path filters (include/exclude patterns + *_from + files_from)
     # 2) File type filters (include_file_types / exclude_file_types)
-    # 3) Eligibility (supported vs unsupported)
+    # 3) Runtime eligibility (supported vs unsupported processing targets)
+    #
+    # Filesystem-identity eligibility checks such as hard-link policy are runtime
+    # processing concerns and are not represented as configuration schema fields.
 
     include_patterns:
       type: list[str]
@@ -337,9 +345,13 @@ This normalization behavior is shared consistently across:
 - API overlays
 - effective runtime policy resolution
 
-Configuration-source identity normalization follows the same model. File-backed configuration
-sources are normalized to their resolved configuration-file target before precedence, scope, and
-applicability evaluation occur.
+Configuration-source identity normalization follows the same path-spelling model. File-backed
+configuration sources are normalized to their resolved configuration-file target before precedence,
+scope, and applicability evaluation occur.
+
+This normalization is separate from runtime processing-target eligibility. Hard-link policy is
+evaluated for selected processing paths during runtime filesystem processing and is not a
+configuration-schema feature.
 
 ______________________________________________________________________
 
@@ -418,4 +430,7 @@ This means:
 - machine-readable provenance reflects configuration-source identity rather than invocation
   spelling.
 
-This behavior mirrors TopMark's processing-path identity model for runtime file processing.
+This behavior mirrors the path-spelling normalization part of TopMark's processing-target identity
+model for runtime file processing. Runtime processing-target eligibility checks, such as hard-link
+policy enforcement, are separate from configuration-source identity and are not exposed by the
+external configuration schema.

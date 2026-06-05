@@ -13,15 +13,15 @@ topmark:header:end
 # Development documentation
 
 This section contains maintainer-facing documentation for TopMark's architecture,
-filesystem-identity model, configuration-resolution model, compatibility contracts, release process,
-generated documentation pipeline, and post-1.0 governance model.
+filesystem-identity evaluation model, configuration-resolution model, compatibility contracts,
+release process, generated documentation pipeline, and post-1.0 governance model.
 
 Use these pages when changing internals, reviewing compatibility boundaries, preparing releases, or
 understanding how the stable 1.x runtime model is organized.
 
 The 1.x runtime model distinguishes several independent identity domains:
 
-- filesystem identity (processing paths);
+- filesystem identity (normalization, processing-path selection, and eligibility checks);
 - configuration-source identity;
 - file type identity;
 - processor identity; and
@@ -34,15 +34,15 @@ ______________________________________________________________________
 
 ## Architecture and runtime model
 
-The pages in this section define TopMark's canonical runtime behavior, including filesystem
-identity, path resolution, configuration layering, file-type resolution, runtime pipelines, and
+The pages in this section define TopMark's canonical runtime behavior, including filesystem-identity
+evaluation, path resolution, configuration layering, file-type resolution, runtime pipelines, and
 plugin integration.
 
 - [Terminology and canonical vocabulary](../terminology.md)
 - [Architecture](architecture.md)
 - [Registry model](registry-model.md) - file-type, processor, and registry identity
-- [Resolution](resolution.md) - filesystem identity, processing paths, and configuration-source
-  identity
+- [Resolution](resolution.md) - filesystem-identity evaluation, processing paths, hard-link policy,
+  and configuration-source identity
 - [Plugins and extensibility](plugins.md)
 - [Configuration schema](configuration-schema.md)
 - [Pipelines](pipelines.md)

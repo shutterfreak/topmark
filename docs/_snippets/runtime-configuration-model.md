@@ -19,15 +19,21 @@ TopMark intentionally separates:
 1. runtime configuration resolution
 1. runtime overlay application
 1. runtime policy evaluation
-1. filesystem-identity normalization and processing-path selection
+1. filesystem-identity evaluation
+1. processing-path selection
 1. runtime pipeline gatekeeping and execution
 
 Configuration-source identity and filesystem identity are intentionally distinct.
 
 File-backed configuration sources are normalized to resolved configuration targets before
 precedence, scope applicability, and layered provenance evaluation. Runtime file processing
-similarly operates on selected processing paths derived from filesystem-identity normalization and
-deduplication.
+similarly operates on selected processing paths derived from filesystem-identity evaluation.
+
+Filesystem-identity evaluation includes:
+
+- filesystem-identity normalization (for example symlink-path normalization and processing-path
+  selection); and
+- filesystem-identity eligibility checks (for example hard-link policy enforcement).
 
 These normalization stages occur before runtime policy evaluation and pipeline execution.
 

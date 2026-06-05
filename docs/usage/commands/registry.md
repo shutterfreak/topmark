@@ -35,6 +35,10 @@ The `registry` command family is informational and file-agnostic. These commands
 effective composed registry state and do not process project files or perform configuration
 discovery.
 
+Because registry commands do not select source-file processing targets, they do not apply
+filesystem-identity normalization, processing-path selection, or processing-target eligibility
+checks such as hard-link policy.
+
 Across all `registry` subcommands:
 
 - positional PATH arguments are rejected as invalid CLI usage
@@ -71,14 +75,15 @@ markdown
 in public CLI filters and configuration when unambiguous.
 
 Registry-oriented machine-readable output and effective runtime views use canonical qualified file
-type identities for deterministic identity handling.
+type identities for deterministic registry identity handling.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
 See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
 
 Registry commands expose the effective runtime registry view after registry composition and
-configuration normalization.
+configuration normalization. This registry normalization is independent of runtime
+filesystem-identity evaluation for selected processing paths.
 
 ______________________________________________________________________
 

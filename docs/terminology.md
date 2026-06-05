@@ -131,6 +131,15 @@ Examples include qualified file-type identities and canonicalized registry match
 The canonical filesystem object identity used by TopMark when processing existing files,
 configuration sources, and runtime inputs.
 
+Filesystem identity is evaluated before runtime processing begins.
+
+Filesystem-identity evaluation consists of two related concepts:
+
+- **Filesystem-identity normalization**: collapsing equivalent path spellings that refer to the same
+  filesystem target (for example a symlink and its target) into a selected processing path.
+- **Filesystem-identity eligibility checks**: determining whether a selected processing path is
+  eligible for processing according to filesystem-identity policy.
+
 For ordinary filesystem processing, identity is based on the resolved processing target rather than
 the original invocation spelling.
 
@@ -144,9 +153,14 @@ link-to-file.py
 
 may all refer to the same filesystem identity.
 
+Hard links are handled differently from symlink spelling aliases. When two or more selected
+processing paths have the same `(st_dev, st_ino)` filesystem identity, TopMark preserves one result
+per selected path but blocks every affected path as a hard-linked processing target. It does not
+select a source, target, winner, or loser path automatically.
+
 > [!NOTE]
 >
-> Filesystem identity is distinct from machine-readable path serialization. TopMark first determines
+> Filesystem identity is distinct from machine-readable path serialization. TopMark first evaluates
 > filesystem identity and then serializes the selected processing path according to the
 > machine-output contract.
 
@@ -166,8 +180,9 @@ ______________________________________________________________________
 
 The process of selecting the most appropriate file type for a path or input.
 
-Resolution may normalize multiple path spellings to a single filesystem identity before runtime
-processing begins.
+Resolution operates after filesystem-identity evaluation has selected eligible processing paths.
+Filesystem-identity normalization may collapse multiple path spellings, such as symlinks, to a
+single selected processing path before runtime processing begins.
 
 ### Filename rule
 
@@ -298,7 +313,9 @@ A mutating execution mode that performs filesystem writes.
 The guarantee that repeated runs without source changes converge to the same result.
 
 Filesystem-identity normalization contributes to idempotence by preventing the same target file from
-being processed multiple times through different path or symlink spellings.
+being processed multiple times through different path or symlink spellings. Filesystem-identity
+eligibility checks, such as hard-link policy, contribute to safety by blocking ambiguous write
+targets before mutation planning.
 
 ### Mutation planning
 

@@ -35,7 +35,7 @@ It helps teams avoid fragile one-off scripts by providing:
 - stable CI-friendly exit codes;
 - machine-readable output formats with stable cross-platform path serialization;
 - transparent file-type resolution diagnostics;
-- deterministic filesystem-identity and configuration-source resolution;
+- deterministic filesystem-identity evaluation and configuration-source resolution;
 - configuration, registry, and file-resolution introspection commands;
 - and a public Python API for automation and integration.
 
@@ -147,7 +147,7 @@ ______________________________________________________________________
 - Policy controls for insertion, update, empty-file behavior, file-type filtering, and content
   probing
 - Resolution diagnostics with `topmark probe`
-- Deterministic filesystem-identity normalization and processing-path selection
+- Deterministic filesystem-identity evaluation, processing-path selection, and hard-link safety
 - Layered configuration inspection with `topmark config dump --show-layers`
 - Registry introspection with `topmark registry filetypes`, `topmark registry processors`, and
   `topmark registry bindings`
@@ -265,10 +265,12 @@ topmark config dump --show-layers
 topmark registry filetypes
 ```
 
-TopMark normalizes filesystem identity before runtime processing. If multiple path spellings resolve
-to the same filesystem target (for example a symlink and its target), TopMark selects a processing
-path and processes the target once. Machine-readable output and generated filesystem-related header
-metadata follow this processing-path contract.
+TopMark evaluates filesystem identity before runtime processing. Filesystem-identity normalization
+resolves equivalent path spellings, such as symlink spellings, to the selected processing path used
+for runtime processing, machine-readable output, and generated filesystem-related header metadata.
+Hard-link policy is evaluated as a processing-target eligibility check: if multiple selected paths
+refer to the same filesystem object through hard links, TopMark reports each affected path
+independently and blocks processing for the hard-link group.
 
 All available commands, shared options, output formats, STDIN behavior, and exit codes are
 documented in:
@@ -403,8 +405,8 @@ discovery.
 Public API callers should use the functions and DTOs exposed from `topmark.api`. Runtime helpers,
 resolver internals, and pipeline contexts are implementation details.
 
-Public API operations follow the same filesystem-identity, processing-path, and configuration-source
-identity contracts as the CLI.
+Public API operations follow the same filesystem-identity evaluation, processing-path, and
+configuration-source identity contracts as the CLI.
 
 Example dry-run check:
 
