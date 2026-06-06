@@ -81,18 +81,18 @@ ______________________________________________________________________
 
 Pytest markers are declared in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
-| Marker                                                   | Purpose                                                                                            | CI expectation                                       |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `api`                                                    | Tests that exercise the public API.                                                                | Included in normal test runs.                        |
-| `cli`                                                    | Tests that exercise the command-line interface.                                                    | Included in normal test runs.                        |
-| `config`                                                 | Tests for configuration deserialization, path normalization, strictness, and layer merge behavior. | Included in normal test runs.                        |
-| `dev_validation`                                         | Developer validation tests for internal invariants such as registry consistency.                   | Included in normal test runs.                        |
-| `exit_code`                                              | Tests that validate the CLI exit-code contract.                                                    | Included in normal test runs.                        |
-| `hypothesis_slow`                                        | Long-running property tests.                                                                       | Skipped in CI unless explicitly selected.            |
-| `integration`                                            | Environment-dependent integration checks, such as shell completion.                                | Run selectively where the environment supports them. |
-| `pipeline`                                               | Tests that exercise the processing pipeline, including filesystem-identity evaluation and          |                                                      |
-| processing-target eligibility behavior where applicable. | Included in normal test runs.                                                                      |                                                      |
-| `toml`                                                   | Tests for TopMark TOML loading, extraction, schema validation, and source resolution.              | Included in normal test runs.                        |
+| Marker                | Purpose                                                                                            | CI expectation                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `api`                 | Tests that exercise the public API.                                                                | Included in normal test runs.                        |
+| `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                          | Run where the host filesystem can exercise them.     |
+| `cli`                 | Tests that exercise the command-line interface.                                                    | Included in normal test runs.                        |
+| `config`              | Tests for configuration deserialization, path normalization, strictness, and layer merge behavior. | Included in normal test runs.                        |
+| `dev_validation`      | Developer validation tests for internal invariants such as registry consistency.                   | Included in normal test runs.                        |
+| `exit_code`           | Tests that validate the CLI exit-code contract.                                                    | Included in normal test runs.                        |
+| `hypothesis_slow`     | Long-running property tests.                                                                       | Skipped in CI unless explicitly selected.            |
+| `integration`         | Environment-dependent integration checks, such as shell completion.                                | Run selectively where the environment supports them. |
+| `pipeline`            | Tests that exercise the processing pipeline, including filesystem-identity and target eligibility. | Included in normal test runs.                        |
+| `toml`                | Tests for TopMark TOML loading, extraction, schema validation, and source resolution.              | Included in normal test runs.                        |
 
 ______________________________________________________________________
 
