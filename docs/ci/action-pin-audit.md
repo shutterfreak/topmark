@@ -62,7 +62,10 @@ ______________________________________________________________________
 | `workflow_dispatch` | Manual maintainer run                                               | Run the audit on demand                  |
 | `pull_request`      | Pull requests affecting workflows, local actions, or the audit tool | Detect pin inconsistencies before merge  |
 
-Pull-request runs are path-filtered so unrelated repository changes do not trigger the audit.
+Pull-request runs are path-filtered so unrelated repository changes do not trigger the audit. They
+also use workflow-level concurrency keyed by pull-request number. New pushes to the same pull
+request cancel older in-progress audit runs. Scheduled and manual runs are keyed by their Git ref
+and are not canceled once running.
 
 The workflow monitors:
 

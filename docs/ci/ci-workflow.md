@@ -41,10 +41,18 @@ ______________________________________________________________________
 
 Pull-request runs are path-filtered at the workflow level so unrelated changes do not trigger CI.
 Within the workflow, the `changes` job performs finer-grained path filtering so jobs such as lint,
-tests, docs, link checks, pre-commit validation, and API snapshot checks run only when relevant.
+tests, docs, link checks, pre-commit validation, and API snapshot checks run only when relevant. It
+also writes a short GitHub Step Summary showing which changed-file groups were detected, making
+path-filtered job decisions easier to inspect from the workflow run.
 
 Version-tag pushes are not path-filtered by pull-request change groups. They run the
 release-artifact path after the required validation jobs succeed.
+
+The workflow also uses a workflow-level concurrency group keyed by the workflow name and either the
+pull-request number or Git ref. New pushes to the same pull request cancel older in-progress CI
+runs, so contributors see the latest failure signal without spending runner time on superseded
+commits. Pushes to `main` and version tags keep their in-progress runs instead of being canceled,
+preserving post-merge and release-tag validation.
 
 ______________________________________________________________________
 
@@ -57,8 +65,11 @@ permissions:
   contents: read
 ```
 
-The `release-artifacts` job also declares `contents: read` explicitly. The workflow does not publish
-packages, create releases, or request elevated release permissions.
+Jobs that use third-party actions or upload diagnostic artifacts declare the minimum required
+job-level permissions explicitly where useful. For example, the `changes` job grants read-only
+repository access plus read-only pull-request metadata access for path filtering, while link-check,
+pre-commit, coverage, and release-artifact jobs keep read-only repository permissions. The workflow
+does not publish packages, create releases, or request elevated release permissions.
 
 The trust boundary is intentional:
 
@@ -80,7 +91,7 @@ ______________________________________________________________________
 
 | Job                 | Purpose                                                                 | Main tools                                 |
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------ |
-| `changes`           | Detect changed file groups for PR job gating                            | `dorny/paths-filter`                       |
+| `changes`           | Detect changed file groups for PR job gating and summarize the result   | `dorny/paths-filter`                       |
 | `python-metadata`   | Resolve supported and canonical Python versions for CI jobs             | `nox`, `pyproject.toml`                    |
 | `lint`              | Validate formatting, linting, typing, and docstring links               | `nox`, `ruff`, `pyright`                   |
 | `pre-commit`        | Run configured pre-commit hooks                                         | `pre-commit`                               |
@@ -252,6 +263,7 @@ failed from the job name and log output.
 When editing this workflow:
 
 - update path filters when adding new source, docs, tooling, or workflow-maintenance files;
+- keep path-filter summaries aligned with the changed-file groups emitted by the `changes` job;
 - keep nox sessions as the canonical stable validation contracts where practical;
 - keep Python-version metadata sourced from `pyproject.toml` through `nox -s print_python_matrix`;
 - keep the coverage job canonical and lightweight rather than instrumenting the full compatibility
@@ -264,6 +276,8 @@ When editing this workflow:
 - keep release artifact building in CI unless the release trust model is deliberately redesigned;
 - avoid moving package publication into this workflow;
 - keep generated-site link validation separate from source Markdown link validation;
+- keep link-check jobs bounded with explicit timeouts so network-dependent validation cannot hang
+  indefinitely;
 - keep action pins synchronized across workflows and local composite actions;
 - keep uv cache ownership explicit and centralized rather than mixing `setup-uv` cache management
   with separate `actions/cache` ownership.

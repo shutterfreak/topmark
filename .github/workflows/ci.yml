@@ -13,6 +13,10 @@ name: CI
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   pull_request:
     paths:
@@ -46,6 +50,9 @@ jobs:
   changes:
     name: Detect changed file groups
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       python_changed: ${{ steps.filter.outputs.python }}
       docs_changed: ${{ steps.filter.outputs.docs }}
@@ -108,11 +115,24 @@ jobs:
               - 'README.md'
               - 'INSTALL.md'
               - 'CONTRIBUTING.md'
+      - name: Report changed file groups
+        shell: bash
+        run: |
+          {
+            echo "## Changed file groups"
+            echo
+            echo "| Group          | Changed                                    |"
+            echo "| -------------- | ------------------------------------------ |"
+            echo "| Python         | ${{ steps.filter.outputs.python }}         |"
+            echo "| Documentation  | ${{ steps.filter.outputs.docs }}           |"
+            echo "| Markdown links | ${{ steps.filter.outputs.markdown_links }} |"
+            echo "| Pre-commit     | ${{ steps.filter.outputs.precommit }}      |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - run: echo "python_changed=${{ steps.filter.outputs.python }}"
-      - run: echo "docs_changed=${{ steps.filter.outputs.docs }}"
-      - run: echo "markdown_links_changed=${{ steps.filter.outputs.markdown_links }}"
-      - run: echo "precommit_changed=${{ steps.filter.outputs.precommit }}"
+          echo "python_changed=${{ steps.filter.outputs.python }}"
+          echo "docs_changed=${{ steps.filter.outputs.docs }}"
+          echo "markdown_links_changed=${{ steps.filter.outputs.markdown_links }}"
+          echo "precommit_changed=${{ steps.filter.outputs.precommit }}"
 
   python-metadata:
     name: Resolve Python metadata
@@ -181,6 +201,8 @@ jobs:
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.precommit_changed == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -372,6 +394,8 @@ jobs:
     needs: [changes, python-metadata, tests]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -448,6 +472,9 @@ jobs:
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.markdown_links_changed == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -464,6 +491,9 @@ jobs:
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
