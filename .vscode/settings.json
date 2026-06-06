@@ -93,7 +93,7 @@
         "commands": [
             {
                 // Matches any .md file in the workspace folder
-                "match": "${workspaceFolder}/.*\\.md$",
+                "match": "\\.md$",
                 // Runs mdformat using the python executable in your virtual environment
                 "cmd": "\"${workspaceFolder}/.venv/bin/mdformat\" \"${file}\""
             }

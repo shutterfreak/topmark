@@ -140,6 +140,8 @@ ______________________________________________________________________
 - Fixed missing machine-readable visibility into configuration-discovery starting points by
   exporting the resolved discovery anchor in configuration provenance payloads while preserving
   existing provenance and identity semantics.
+- Fixed the VS Code Run On Save Markdown formatter integration by simplifying the workspace `match`
+  pattern so saves of `.md` files reliably trigger the configured `mdformat` command.
 
 ### Documentation - Unreleased
 
@@ -192,6 +194,8 @@ ______________________________________________________________________
   Actions pin audit, including the new `--fix` mode.
 - Documented that the filesystem CI job requires symlink capability through
   `TOPMARK_REQUIRE_SYMLINKS=1` on Ubuntu, macOS, and Windows.
+- Clarified the recommended VS Code Run On Save configuration for Markdown formatting so the
+  workspace `mdformat` integration triggers reliably for saved `.md` files.
 - Reviewed documentation clarity, consistency, governance, tooling, structure, duplication, and
   snippet usage for issue #108.
 - Synchronized documentation-governance guidance with the current generated-reference layout and
