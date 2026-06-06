@@ -10,7 +10,7 @@ topmark:header:start
 topmark:header:end
 -->
 
-# TopMark 1.0 Roadmap
+# TopMark stable 1.x roadmap
 
 ## Motivation / Why this matters
 
@@ -25,8 +25,14 @@ This roadmap now serves two purposes:
 
 - a **release-governance record** for the frozen 1.0 contracts, explicit deferrals, and stable 1.x
   maintenance posture;
-- a **historical stabilization ledger** for the architectural, documentation, CI/release, and
-  testing decisions made during the 0.12 development line and 1.0 alpha/beta series.
+- a **strategic planning reference** for broad future directions that are intentionally not yet
+  actionable issue scope.
+
+This roadmap is not the canonical backlog. Actionable work belongs in GitHub issues and pull
+requests; release outcomes belong in `CHANGELOG.md`; detailed 1.0 stabilization history belongs in
+[Road to TopMark 1.0](./road-to-1.0.md). The roadmap should only keep context that helps maintainers
+understand stable-line scope boundaries, deferred architecture directions, and why broad future work
+should not be treated as unplanned stable-line maintenance.
 
 After the final `1.0.0` release and first `1.0.1` patch-release preparation, this roadmap remains a
 concise governance reference. Detailed achievements and design decisions are tracked in
@@ -52,41 +58,64 @@ continuing to treat new integration scope as post-1.0 evolution.
 
 ______________________________________________________________________
 
-## Done so far
+## Roadmap governance
+
+Use this page as a maintainer-facing planning document, not as a parallel issue tracker.
+
+Roadmap content should be limited to:
+
+- stable-line maintenance posture and compatibility boundaries;
+- strategic directions that are too broad or early for a single GitHub issue;
+- explicit deferrals that explain why work is out of scope for the current stable line;
+- links to canonical issues, pull requests, release notes, or design documents when details already
+  live elsewhere.
+
+Do not use this page for:
+
+- task-level backlog items that can be tracked as GitHub issues;
+- release-note history that belongs in `CHANGELOG.md`;
+- completed stabilization narrative that belongs in [Road to TopMark 1.0](./road-to-1.0.md);
+- duplicated acceptance criteria from open issues or pull requests.
+
+When a roadmap item becomes actionable, create or update a GitHub issue and keep only a concise
+strategic note here. When an item is completed, either remove it from the active roadmap or move any
+lasting rationale to the appropriate design, release, or historical document.
+
+______________________________________________________________________
+
+## Stable 1.x baseline
 
 The 0.12 development line, 1.0 alpha/beta series, `1.0.0rc1` validation, final 1.0 release
-preparation, and initial 1.0.1 patch-release hardening completed the major stabilization work needed
-for the stable 1.x line. The system is now aligned around a clean *TOML → Configuration → Runtime →
-Pipeline → Presentation* model, with explicit registry bindings, separated CLI/presentation layers,
-schema-driven machine output, documented CLI behavior, hardened configuration validation, and
-artifact-based release automation.
+preparation, and initial stable-line patch-release work completed the major stabilization work
+needed for the 1.x line. Detailed historical achievements and design decisions belong in
+[Road to TopMark 1.0](./road-to-1.0.md), `CHANGELOG.md`, and the closed GitHub issues and pull
+requests that implemented them.
 
-Detailed historical achievements and design decisions have been extracted to
-[Road to TopMark 1.0](./road-to-1.0.md). This roadmap now keeps only the release-governance summary
-needed for stable 1.x governance.
+This roadmap keeps only the maintainer-facing baseline that affects stable 1.x governance:
 
-Completed stabilization themes:
-
-- registry, resolution, and file-type identity contracts are explicit and namespace-aware;
-- CLI behavior, exit codes, command applicability, STDIN handling, and human/machine output
-  contracts are frozen for 1.0;
-- configuration loading follows the TOML → layered configuration → runtime overlay split;
-- pipeline behavior is deterministic, idempotent, preview/apply aware, and policy driven;
-- documentation governance, terminology, command-page structure, snippets, and prose hygiene are
-  established and validated;
-- CI, release, packaging, install-smoke validation, coverage reporting, and uv/nox-based tooling are
-  automated, documented, and validated through real workflow runs;
-- the first stable-line patch-release work fixed concrete post-1.0 correctness issues, including
-  diff output preservation with pruned pipeline views and collision-safe Markdown diff fences;
+- registry, resolution, and file-type identity contracts are explicit, namespace-aware, and
+  compatibility-governed;
+- configuration loading follows the TOML → layered configuration → runtime overlay split, with
+  discovery anchors and source identity handled as part of the documented configuration contract;
+- filesystem identity semantics now cover symlinked workspace roots, configuration-source identity,
+  public API compatibility boundaries, and hard-link blocking for mutation targets;
+- CLI behavior, exit codes, command applicability, STDIN handling, human output, and
+  machine-readable output remain treated as externally observable contracts;
+- documentation conventions, documentation-pipeline validation, changelog hygiene, and prose
+  consistency are established as ongoing governance mechanisms;
+- CI and release workflow hardening, including Windows symlink coverage and GitHub Actions pin-audit
+  repair support, are handled through focused issues and pull requests rather than roadmap-level
+  task tracking;
 - in-memory and streaming pipeline support, richer staged diagnostics exposure, registry
-  query/filter commands, schema versioning, possible command-help documentation generation, Markdown
-  output refactoring, and broader workflow factoring remain explicitly deferred beyond 1.0, while
-  the presentation styling backend has now been migrated from `yachalk` to `rich` behind the
-  existing semantic adapter and `rich-click` has been adopted for CLI help rendering.
+  query/filter commands, schema versioning, generated command-help documentation, Markdown output
+  refactoring, and broader workflow factoring remain explicitly deferred beyond the current stable
+  maintenance scope.
 
-After the final 1.0 release, remaining work is no longer broad architectural redesign. It is limited
-to ecosystem observation, downstream compatibility checks, documentation clarifications, stable 1.x
-maintenance, and focused fixes for concrete compatibility or correctness issues.
+Recent post-1.0 governance and maintenance work confirms that TopMark now operates primarily through
+GitHub issue and pull-request tracking. The roadmap should therefore avoid repeating completed issue
+scope, PR summaries, or release-note history. It should instead explain why the stable 1.x line is
+constrained, which broad future directions are intentionally deferred, and where contributors should
+look for actionable work.
 
 ______________________________________________________________________
 
@@ -281,403 +310,92 @@ validate those contracts rather than introduce new breaking changes.
 
 ______________________________________________________________________
 
-## Still undecided / still to do
+## Active strategic directions
 
 The large architectural redesign, contract-freeze work, documentation-governance effort,
-machine-output stabilization, CI/release workflow hardening, typing cleanup, and late-beta
-validation work are complete.
+machine-output stabilization, CI/release workflow hardening, typing cleanup, late-beta validation,
+final 1.0 release, and first stable-line hardening passes are complete.
 
-The remaining work after `1.0.0` is intentionally narrow and governance-oriented:
+Remaining roadmap content should be limited to broad directions that are intentionally too large or
+too early for a single actionable issue. When a direction becomes actionable, track the concrete
+work in GitHub issues and leave only the stable-line rationale here.
+
+### Stable 1.x maintenance posture
+
+Stable 1.x maintenance is limited to:
 
 - post-release validation in realistic environments;
 - downstream ecosystem and automation compatibility observation;
 - targeted hardening from concrete post-release findings;
 - preserving documentation and output-contract consistency;
-- monitoring the finalized CI/release metadata and uv-cache ownership model across ongoing workflow
-  runs;
-- planning generated command-help documentation and help-layout refinements now that the
-  presentation layer itself uses `rich` behind the existing semantic styling adapter and CLI help
-  uses `rich-click`;
-- planning the streaming pipeline architecture direction initiated while fixing issue #52;
+- monitoring CI, release, dependency, and workflow health through focused maintenance issues;
 - and maintaining explicit post-1.0 scope boundaries.
 
-Stable 1.x maintenance is therefore not expected to introduce further architectural redesign or new
-broad contract changes.
+Stable 1.x maintenance is not expected to introduce broad architectural redesign, new output
+contracts, new configuration semantics, or new filesystem identity semantics unless a concrete
+compatibility or correctness issue requires it.
 
-### Stable 1.x patch-release work
+### Deferred architecture directions
 
-The first stable-line patch-release work after `1.0.0` is intentionally narrow. It focuses on
-correctness fixes, documentation refinement, dependency/pre-commit refreshes, and regression tests
-without reopening the frozen 1.0 contracts.
+The following remain strategic post-1.0 directions rather than active stable-line maintenance:
 
-The accepted 1.0.1 scope includes:
+- in-memory and streaming pipeline architecture for generated code, editor buffers, CI-provided
+  snippets, API-driven integrations, and lighter-weight tests;
+- richer registry query/filter and introspection commands;
+- explicit configuration schema versioning;
+- broader staged-validation exposure where it would improve public diagnostics without leaking
+  internal implementation details;
+- generated command-help documentation and help-layout refinements;
+- Markdown output refactoring where it naturally follows from presentation-layer evolution;
+- broader workflow factoring or infrastructure extraction once repeated maintenance work justifies
+  it.
 
-- preserving unified diff output when pipeline views are pruned;
-- making Markdown diff fences collision-safe when changed Markdown content contains fenced code
-  blocks;
-- refining the 1.0 documentation architecture after release;
-- adding or improving getting-started and CI integration documentation;
-- and keeping dependency and pre-commit metadata current.
+These directions should become GitHub issues only when their intended scope, compatibility impact,
+and acceptance criteria are clear enough for reviewable implementation.
 
-This work remains compatible with the stable 1.x posture because it fixes concrete post-release
-findings while preserving the CLI, configuration, registry, probe, pipeline, public API, and
-machine-readable output contracts established in `1.0.0`.
+### Frozen 1.x contract areas
 
-### Stable 1.x validation posture
-
-The following areas are frozen for 1.0 and should now primarily receive:
-
-- compatibility validation;
-- wording/documentation clarification;
-- focused confidence-building tests;
-- downstream-consumer verification;
-- or concrete release-blocking fixes.
-
-Frozen areas include:
+The following areas are frozen for 1.x and should now primarily receive compatibility validation,
+documentation clarification, focused confidence-building tests, downstream-consumer verification, or
+concrete correctness fixes:
 
 - registry and file-type identity semantics;
 - CLI applicability, STDIN, verbosity, quiet, and exit-code behavior;
 - TOML/config/runtime layering and staged-validation boundaries;
+- filesystem identity, path serialization, configuration-source identity, symlink, and hard-link
+  semantics;
 - machine-readable output schemas and naming conventions;
 - TEXT and Markdown human-output behavior;
 - artifact-based CI → release publication;
 - uv/nox-based tooling and metadata-driven CI Python-version handling;
 - and documentation/prose-governance validation.
 
-### Registry and resolution
-
-Registry and resolution behavior are frozen for 1.0.
-
-The accepted 1.0 model includes:
-
-- canonical qualified file-type identifiers;
-- unambiguous local identifiers at public boundaries;
-- explicit registry bindings;
-- deterministic ambiguity handling;
-- and `topmark probe` plus `topmark.api.probe()` as the supported explainability surfaces.
-
-Registry query/filter commands, richer discovery tooling, and broader registry introspection remain
-explicitly deferred beyond 1.0.
-
-Remaining work is limited to downstream validation, compatibility preservation, generated-reference
-consistency, and targeted hardening.
-
-### In-memory and streaming pipeline support
-
-In-memory and streaming pipeline support is explicitly deferred beyond 1.0.
-
-The 1.0 release continues using the filesystem-backed execution model together with the existing
-STDIN runtime mechanisms. Post-1.0 design work should evaluate the streaming pipeline processing
-architecture as a more sustainable fix for addressing issue #52 without destabilizing the frozen 1.x
-behavior, and for improving resource usage when processing a large number of files.
-
-Future post-1.0 work may introduce:
-
-- an `InputSource` abstraction;
-- memory-backed execution;
-- streaming processing of pipeline inputs and results;
-- mixed file/memory input models;
-- and lighter-weight memory-oriented test strategies.
-
-This is an intentional scope deferral rather than unfinished 1.0 work.
-
-### API, CLI, and presentation boundaries
-
-The API/CLI/presentation separation is frozen for 1.0.
-
-Remaining work is limited to:
-
-- consistency validation;
-- release-candidate wording cleanup;
-- preserving Click isolation from presentation/core modules;
-- preserving presentation isolation from domain/runtime logic;
-- and maintaining the documented public/internal API boundaries.
-
-The following remain intentionally internal:
-
-- `topmark.api.runtime`;
-- low-level runtime orchestration helpers;
-- `PolicyOverrides` / `ConfigOverrides`;
-- low-level resolver/probe implementation helpers;
-- and staged-validation implementation details.
-
-### Configuration and validation
-
-The TOML → layered configuration → runtime overlay architecture is frozen for 1.0.
-
-The accepted 1.0 behavior includes:
-
-- `[config].strict` as the configuration-loading strictness control;
-- canonical qualified file-type identifiers as the normalized internal representation;
-- flattened compatibility diagnostics at public boundaries;
-- internal staged validation logs;
-- and runtime-facing TOML sections such as `[writer]` remaining outside layered configuration.
-
-Explicit configuration schema versioning and broader staged-validation exposure remain deferred
-beyond 1.0.
-
-Remaining work is limited to validation, compatibility preservation, and focused documentation or
-warning/error clarification.
-
-### Output contracts
-
-Output-contract work is complete and frozen for 1.0.
-
-Machine-readable output:
-
-- remains schema driven;
-- uses flattened domain-specific envelopes;
-- emits canonical qualified identifiers where available;
-- and treats process status as the CLI exit code rather than JSON payload state.
-
-Human output:
-
-- keeps TEXT as the console-oriented format;
-- keeps Markdown document-oriented;
-- keeps verbosity/quiet behavior TEXT-specific;
-- and keeps semantic styling routed through the current `rich`-backed presentation adapter.
-
-The `yachalk` replacement has now been completed by routing semantic styling through a `rich`-backed
-presentation adapter while preserving the existing styling roles and output boundaries. The first
-`rich-click` adoption phase has also been completed for CLI help rendering only: command/group help
-uses Rich Click formatting, while Click remains the authoritative runtime, validation, state, and
-context layer. Internal command code continues to prefer `click.get_current_context()`;
-`rich_click.get_current_context()` is intentionally not used.
-
-Remaining post-1.0 presentation planning may evaluate auto-generating command help pages instead of
-fully hand-curating `docs/usage/cli.md` and `docs/usage/commands/`, improving long-option help
-layout, and refactoring Markdown output only where that naturally follows from a richer presentation
-backend.
-
-Remaining work is limited to compatibility validation, wording consistency, and downstream consumer
-verification.
-
-### Presentation and command documentation modernization
-
-Presentation modernization is explicitly post-1.0 work.
-
-Potential future work includes:
-
-- maintaining the completed `yachalk` to `rich` migration behind the existing semantic styling
-  adapter while preserving semantic styling roles, `NO_COLOR` behavior, non-TTY behavior, and
-  deterministic test output;
-- maintaining the completed first `rich-click` adoption phase for CLI help rendering only while
-  preserving Click-compatible command semantics, validation, state, and context handling;
-- improving help layout for very long option names, aliases, and boolean flag pairs where Rich Click
-  table wrapping remains awkward;
-- evaluating whether command help pages can be generated from the CLI instead of fully hand-curating
-  `docs/usage/cli.md` and `docs/usage/commands/`;
-- refactoring Markdown output if the presentation backend changes make the current implementation
-  unnecessarily indirect;
-- and keeping machine-readable JSON/NDJSON output completely separate from human presentation
-  concerns.
-
-This work should be planned as a post-1.0 architecture track, not as stable-line maintenance, unless
-a concrete compatibility or correctness issue requires a narrowly scoped fix.
-
-### Tooling, CI, and release workflow
-
-The uv/nox tooling model and artifact-based release workflow are frozen for 1.0.
-
-Accepted 1.0 behavior includes:
-
-- `uv.lock` as the canonical lock artifact;
-- metadata-driven CI Python-version resolution through `nox -s print_python_matrix`;
-- explicit uv cache ownership through `actions/cache`;
-- artifact creation in CI on tag pushes;
-- and privileged release publication consuming CI-built artifacts.
-
-Remaining work is limited to:
-
-- observing the finalized workflow model in real runs;
-- validating metadata/reporting consistency;
-- monitoring cache behavior;
-- validating downstream packaging/install behavior;
-- and targeted hardening from concrete findings.
-
-Broader workflow factoring and infrastructure extraction remain deferred beyond 1.0.
-
-### Coverage and validation posture
-
-Coverage remains a confidence-building signal rather than a release gate.
-
-The canonical CI coverage workflow is now integrated and validated through real GitHub workflow
-runs. Coverage reporting remains informational and publishes:
-
-- GitHub Step Summary output;
-- HTML artifacts;
-- XML artifacts;
-- and JSON artifacts.
-
-README coverage-badge publication remains intentionally deferred until the published signal proves
-stable and meaningful over time.
-
-Any additional coverage expansion after `1.0.0` should remain focused on:
-
-- orchestration-heavy paths;
-- integration-heavy behavior;
-- or concrete confidence gaps discovered during stable 1.x maintenance.
-
-### Human-facing policy and behavior
-
-The user-facing policy, terminology, reporting, and command-behavior decisions are frozen for 1.0.
-
-Accepted 1.0 behavior includes:
-
-- `report` replacing legacy `skip_*` behavior;
-- `header_mutation_mode` replacing legacy add/update flags;
-- the current default "all supported file types" processing model;
-- probe-based resolution explainability;
-- and stable TEXT/Markdown/machine-output separation.
-
-Public API callers continue using stable string policy tokens for 1.0. A dedicated public enum
-surface may be reconsidered after the final release.
-
-### Overall status
-
-TopMark has reached the stable 1.0 release line. Future work should preserve frozen 1.0 contracts,
-monitor real-world usage, and manage explicitly deferred post-1.0 scope.
-
-The remaining work is primarily:
-
-- post-release validation;
-- ecosystem compatibility verification;
-- downstream machine-readable output validation;
-- documentation consistency preservation;
-- coverage-confidence monitoring;
-- workflow/release observation;
-- and explicit post-1.0 follow-up management.
-
-The project should avoid introducing new broad scope or contract changes unless a concrete stable
-1.x compatibility or correctness issue requires it.
-
 ______________________________________________________________________
 
-## 1.0 readiness checklist
+## Stable-line validation checklist
 
-TopMark 1.0 follows a contract-first release strategy: externally observable behavior must remain
-stable, documented, reproducible, and well tested.
+TopMark 1.x follows a contract-first maintenance strategy: externally observable behavior should
+remain stable, documented, reproducible, and tested.
 
-The major architecture refactors, beta stabilization passes, contract freezes, documentation
-harmonization, release-path rehearsals, install-smoke validation, CI/release hardening, coverage
-integration, prose/documentation governance, late-beta typing cleanup, final 1.0 release, and
-initial 1.0.1 patch-release hardening are complete.
+Use this checklist as a stable-line validation reminder, not as a task tracker:
 
-This checklist now records:
-
-- the frozen 1.0 contract surface;
-- explicit post-1.0 deferrals;
-- and the stable 1.x validation and maintenance posture after the final `1.0.0` release.
-
-### Frozen 1.0 contract areas
-
-The following areas are considered frozen for 1.0 and should not receive new broad redesign unless
-required by a concrete release blocker:
-
-#### Architecture and runtime boundaries
-
-- [x] CLI, presentation, API, and runtime/core responsibilities separated and documented
-- [x] TOML → configuration → runtime layering stabilized
-- [x] public/internal API boundaries reviewed and frozen
-- [x] mutable/frozen runtime naming finalized
-- [x] filesystem-backed execution model accepted for 1.0
-- [x] in-memory and streaming pipeline support explicitly deferred beyond 1.0
-
-#### Registry and resolution readiness
-
-- [x] namespace-aware file-type identity contract frozen
-- [x] qualified/local identifier semantics documented and validated
-- [x] explicit registry/binding model stabilized
-- [x] deterministic ambiguity handling implemented and tested
-- [x] `topmark probe` and `topmark.api.probe()` accepted as the supported explainability surfaces
-- [x] richer registry query/filter tooling deferred beyond 1.0
-
-#### CLI behavior and human output
-
-- [x] CLI applicability rules documented and enforced
-- [x] STDIN behavior frozen around `-` plus `--stdin-filename`
-- [x] exit-code contract documented, tested, and frozen
-- [x] TEXT/Markdown/machine-output separation stabilized
-- [x] verbosity and quiet semantics stabilized
-- [x] warning/error wording reviewed for consistency
-- [x] command-page structure conventions harmonized
-- [x] `yachalk` → `rich` migration completed behind the semantic styling adapter
-- [x] initial `rich-click` adoption completed for CLI help rendering
-- [x] generated command-help documentation explicitly deferred beyond 1.0
-
-#### Machine-readable output
-
-- [x] JSON/NDJSON output schemas stabilized
-- [x] `(outcome, reason, count)` summary rows frozen
-- [x] registry/configuration/probe payload naming frozen
-- [x] canonical qualified identifiers emitted where resolved
-- [x] machine contracts covered by focused tests
-- [x] flattened compatibility diagnostics accepted as the 1.0 contract
-- [x] richer staged-validation exposure deferred beyond 1.0
-
-#### Configuration and validation readiness
-
-- [x] `[config].strict` frozen as the configuration-loading strictness control
-- [x] TOML/config/runtime split documented and implemented
-- [x] effective per-path runtime configuration implemented
-- [x] staged validation retained primarily as an internal mechanism
-- [x] flattened diagnostics stabilized at public boundaries
-- [x] runtime-facing TOML sections such as `[writer]` preserved in configuration snapshots
-- [x] configuration schema versioning deferred beyond 1.0
-
-#### Pipeline behavior and testing
-
-- [x] preview/apply behavior stabilized end-to-end
-- [x] empty and empty-like file handling stabilized
-- [x] unmatched-glob semantics frozen and tested
-- [x] namespace-aware resolution behavior covered by tests
-- [x] line-ending policy audited and frozen
-- [x] typed result-object cleanup substantially completed before RC
-- [x] coverage-driven late-beta stabilization completed
-
-#### Tooling, release workflow, and documentation governance
-
-- [x] uv/nox tooling model stabilized
-- [x] artifact-based CI → release publication validated
-- [x] metadata-driven CI Python-version handling stabilized
-- [x] explicit uv cache ownership stabilized
-- [x] install-smoke validation integrated across Linux/macOS/Windows
-- [x] `setuptools-scm` versioning model frozen
-- [x] documentation hygiene integrated into release validation
-- [x] Python code-prose hygiene integrated into release validation
-- [x] changelog hygiene validation integrated into documentation governance
-- [x] canonical documentation conventions and snippet governance stabilized
-- [x] coverage reporting integrated as a non-blocking confidence signal
-- [x] README coverage badge intentionally deferred pending longer-term signal stability
-
-### Stable 1.x maintenance posture
-
-After tagging final `1.0.0`, keep the frozen contracts validated through:
-
-- final published-artifact validation after release;
-- downstream ecosystem compatibility observation;
-- install/release workflow observation;
-- machine-readable output validation;
-- documentation consistency preservation;
-- any targeted confidence-building checks needed for concrete findings;
-- targeted stable-line patch releases for concrete correctness fixes;
-- and focused release-blocking fixes where necessary.
+- [x] CLI, presentation, API, and runtime/core responsibilities are separated and documented
+- [x] TOML → configuration → runtime layering is stabilized
+- [x] public/internal API boundaries are reviewed and documented
+- [x] filesystem-backed execution is accepted for stable 1.x
+- [x] in-memory and streaming pipeline support is explicitly deferred beyond the current stable
+  maintenance scope
+- [x] namespace-aware file-type identity and registry binding semantics are frozen
+- [x] symlink, hard-link, canonical path, and configuration-source identity semantics are documented
+  and regression-tested where practical
+- [x] CLI applicability, STDIN behavior, exit-code behavior, and human-output behavior are frozen
+- [x] JSON/NDJSON machine-readable output schemas and path serialization rules are stabilized
+- [x] documentation conventions, snippet governance, documentation-pipeline validation, prose
+  hygiene, and changelog hygiene are part of the maintenance workflow
+- [x] uv/nox tooling, metadata-driven CI Python-version handling, and artifact-based release
+  publication are established
+- [x] Windows symlink-dependent CI coverage is enforced rather than silently skipped
+- [x] CI/tooling maintenance items are handled through focused GitHub issues and pull requests
 
 The stable 1.x maintenance path should avoid introducing new broad scope, architectural churn, or
 output-contract redesign unless a concrete compatibility or correctness issue requires it.
-
-______________________________________________________________________
-
-`1.0.0rc1` has validated the frozen contract areas through local and CI release-validation gates,
-TestPyPI publication, GitHub prerelease publication, and published-artifact validation. The alpha
-series served as the contract-stabilization and release-path rehearsal phase, while the beta series
-validated the frozen contracts, release pipeline, GitHub prerelease visibility, CI/release metadata
-handling, coverage-reporting behavior, documentation governance, changelog hygiene, prose hygiene,
-terminology stability, and cross-platform installation behavior.
-
-The stable 1.x maintenance path is now limited to preserving compatibility, validating published
-artifacts after release, monitoring the CI coverage signal, observing the finalized CI/release
-metadata and cache-ownership model across real workflow runs, and applying focused compatibility or
-correctness fixes only. New broad scope, architectural churn, streaming pipeline redesign, generated
-command-help documentation, Markdown-output redesign, and output-contract redesign remain out of
-scope unless required by a concrete stable 1.x issue.

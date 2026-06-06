@@ -200,6 +200,12 @@ ______________________________________________________________________
   snippet usage for issue #108.
 - Synchronized documentation-governance guidance with the current generated-reference layout and
   snippet inventory.
+- Clarified roadmap governance by defining `docs/dev/roadmap.md` as a maintainer-facing
+  strategic-planning document rather than a parallel issue tracker.
+- Simplified the stable-line roadmap to focus on governance boundaries, deferred architecture
+  directions, frozen 1.x contract areas, and GitHub issue-driven execution.
+- Updated `Road to TopMark 1.0` to distinguish historical stabilization decisions from post-1.0
+  maintenance work, including the later completion of the Rich and `rich-click` migration.
 
 ### Internal - Unreleased
 
