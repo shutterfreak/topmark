@@ -66,6 +66,12 @@ ______________________________________________________________________
   action refs using an already-present preferred pinned ref selected from version-comment metadata.
 - Required symlink-dependent regression tests to execute in the cross-platform filesystem CI job
   instead of silently skipping when symlink creation is unavailable.
+- Added workflow-level concurrency for CI and GitHub Actions pin-audit pull-request runs so
+  superseded PR commits cancel older in-progress runs while preserving `main`, scheduled, manual,
+  and release-tag validation.
+- Clarified CI workflow maintainability by adding explicit job-level permissions for selected
+  third-party-action jobs, bounded link-check jobs with explicit timeouts, and summarized
+  path-filter decisions in the GitHub Actions step summary.
 
 ### Breaking Changes - Unreleased
 
