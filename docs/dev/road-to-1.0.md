@@ -268,9 +268,16 @@ inspection, or mutation signal.
 Markdown output is document-oriented and intentionally ignores TEXT-oriented verbosity, quiet, and
 styling controls.
 
-Semantic styling was routed through `StyleRole`, `Theme`, `TextStyler`, and `maybe_style()`. The 1.0
-decision was to keep `yachalk` because styling is confined to CLI presentation internals, while
-deferring any Rich or `rich-click` migration until after 1.0 unless a concrete blocker appears.
+Semantic styling was routed through `StyleRole`, `Theme`, `TextStyler`, and `maybe_style()`. During
+1.0 stabilization, the decision was to keep `yachalk` because styling was confined to CLI
+presentation internals, while deferring any Rich or `rich-click` migration until after 1.0 unless a
+concrete blocker appeared.
+
+That deferral was later revisited during stable-line maintenance. The presentation styling backend
+was subsequently migrated to `rich` behind the existing semantic styling adapter, and CLI help
+rendering adopted `rich-click` while preserving Click as the authoritative command, validation,
+state, and context layer. These changes occurred after the 1.0 contract freeze and are therefore not
+part of the stabilization narrative itself.
 
 Result: human output became consistent, composable, and decoupled from CLI command functions.
 
@@ -469,14 +476,18 @@ ______________________________________________________________________
 
 ## Deferred post-1.0 scope
 
-Several items were explicitly deferred beyond 1.0 to preserve release focus:
+Several items were explicitly deferred beyond 1.0 to preserve release focus.
+
+Some of the deferrals listed below were later completed during stable-line maintenance, while others
+remain deferred. They are retained here because this page records the historical stabilization-era
+planning context rather than the current roadmap state.
 
 - in-memory pipeline support and a future `InputSource` abstraction;
 - configuration schema versioning;
 - richer staged validation exposure in CLI/API/machine output;
 - registry query/filter commands;
 - multi-line TopMark header fields;
-- Rich or `rich-click` migration;
+- Rich or `rich-click` migration (later completed during stable-line maintenance);
 - broader workflow/release-infrastructure factoring;
 - deeper documentation-structure validation;
 - and README coverage badge publication.

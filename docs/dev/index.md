@@ -69,4 +69,4 @@ ______________________________________________________________________
 - [Documentation conventions](documentation-conventions.md)
 - [Release process](release-process.md)
 - [Road to TopMark 1.0](road-to-1.0.md)
-- [TopMark 1.0 roadmap](roadmap.md)
+- [TopMark stable 1.x roadmap](roadmap.md)

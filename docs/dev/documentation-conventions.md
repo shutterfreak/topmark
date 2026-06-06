@@ -898,6 +898,11 @@ Major documentation reorganizations should be avoided during stable releases unl
 substantial discoverability or maintainability benefits. Prefer small, reviewable changes that keep
 the documentation tree understandable in both rendered and source form.
 
+Roadmap maintenance follows the same stability expectation. Treat `docs/dev/roadmap.md` as a
+maintainer-facing strategic planning reference. It should clarify stable-line posture, compatibility
+boundaries, and broad deferrals, but it should not duplicate the GitHub issue backlog, release
+notes, or completed stabilization history.
+
 ______________________________________________________________________
 
 ## Related pages
