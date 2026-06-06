@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
+    from topmark.filetypes.model import PreInsertContextView
     from topmark.pipeline.context.model import ProcessingContext
 
 
@@ -269,3 +270,93 @@ def test_planner_skips_when_content_status_blocks_update(tmp_path: Path) -> None
     assert ctx.views.updated is None
     assert ctx.halt_state is not None
     assert ctx.halt_state.reason_code == "Could not update file (status: unsupported)."
+
+
+def test_planner_fails_without_render_view(tmp_path: Path) -> None:
+    """Changed content cannot be planned when the renderer produced no header."""
+    ctx: ProcessingContext = _make_context(tmp_path / "missing_render.py")
+    ctx.views.image = ListFileImageView(["body\n"])
+    ctx.views.render = None
+
+    ctx = run_planner(ctx)
+
+    assert ctx.status.plan is PlanStatus.FAILED
+    assert ctx.views.updated is None
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "Cannot update header: no rendered header available"
+
+
+def test_planner_fails_without_header_processor(tmp_path: Path) -> None:
+    """Rendered headers still require an assigned processor for insertion policy."""
+    ctx: ProcessingContext = _make_context(tmp_path / "missing_processor.py")
+    ctx.header_processor = None
+    _set_image_and_render(
+        ctx,
+        original_lines=["body\n"],
+        rendered_lines=["# header\n"],
+    )
+
+    ctx = run_planner(ctx)
+
+    assert ctx.status.plan is PlanStatus.FAILED
+    assert ctx.views.updated is None
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "Cannot update header: no header processor assigned"
+
+
+def test_planner_identical_replacement_is_skipped(tmp_path: Path) -> None:
+    """Replacing a detected header with identical rendered lines is a no-op."""
+    ctx: ProcessingContext = _make_context(tmp_path / "identical_replace.py")
+    original_lines: list[str] = ["# header\n", "body\n"]
+    _set_image_and_render(
+        ctx,
+        original_lines=original_lines,
+        rendered_lines=["# header\n"],
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.views.header = HeaderView(
+        range=(0, 0),
+        lines=["# header\n"],
+        block="# header\n",
+        mapping={},
+    )
+
+    ctx = run_planner(ctx)
+
+    assert ctx.status.plan is PlanStatus.SKIPPED
+    assert materialize_updated_lines(ctx) == original_lines
+    assert ctx.halt_state is None
+
+
+def test_planner_enforces_authoritative_pre_insert_checker_skip(tmp_path: Path) -> None:
+    """A file-type pre-insert checker can authoritatively skip insertion."""
+    from tests.helpers.registry import make_file_type
+    from topmark.filetypes.model import InsertCapability
+    from topmark.filetypes.model import InsertCheckResult
+
+    def _skip_checker(ctx: PreInsertContextView) -> InsertCheckResult:
+        _: PreInsertContextView = ctx
+        return InsertCheckResult(
+            capability=InsertCapability.SKIP_POLICY,
+            reason="test policy refused insertion",
+            origin="tests.planner",
+        )
+
+    ctx: ProcessingContext = _make_context(tmp_path / "checker_skip.py")
+    ctx.file_type = make_file_type(
+        local_key="checker_skip",
+        extensions=[".py"],
+        pre_insert_checker=_skip_checker,
+    )
+    _set_image_and_render(
+        ctx,
+        original_lines=["body\n"],
+        rendered_lines=["# header\n"],
+    )
+
+    ctx = run_planner(ctx)
+
+    assert ctx.status.plan is PlanStatus.SKIPPED
+    assert materialize_updated_lines(ctx) == ["body\n"]
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "test policy refused insertion (origin: tests.planner)"

@@ -212,6 +212,8 @@ ______________________________________________________________________
   directions, frozen 1.x contract areas, and GitHub issue-driven execution.
 - Updated `Road to TopMark 1.0` to distinguish historical stabilization decisions from post-1.0
   maintenance work, including the later completion of the Rich and `rich-click` migration.
+- Clarified pytest marker documentation by restoring the `case_insensitive_fs` marker entry and
+  fixing the malformed `pipeline` marker table row in CI test-validation guidance.
 
 ### Internal - Unreleased
 
@@ -255,6 +257,9 @@ ______________________________________________________________________
 - Added a `TOPMARK_REQUIRE_SYMLINKS` test-helper guard so symlink-dependent tests fail loudly in CI
   jobs that are expected to exercise symlink behavior.
 - Aligned generated API-page tooling prose with the current generated documentation path layout.
+- Added targeted coverage tests for coverage-strategy issue #129 across whitespace-policy helpers,
+  pipeline planning and stripping behavior, registry binding validation, and processor insertion
+  mixins.
 
 ### Notes - Unreleased
 

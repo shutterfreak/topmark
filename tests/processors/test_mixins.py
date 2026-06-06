@@ -159,3 +159,152 @@ def test_block_padding_ensures_trailing_newline() -> None:
     lines = ["/*", " header ", "*/"]
     out = b.ensure_block_padding(lines, newline="\n")
     assert out[-1].endswith("\n")
+
+
+def test_line_render_header_line_uses_optional_suffix() -> None:
+    """Line comments with suffix delimiters append that suffix exactly once."""
+
+    class _SuffixProc(LineCommentMixin):
+        line_prefix = "-- "
+        line_suffix = " --"
+
+    assert _SuffixProc().render_header_line("payload") == "-- payload --"
+
+
+def test_line_mixin_invalid_encoding_regex_does_not_break_insertion() -> None:
+    """Invalid configured encoding regexes should fall back to shebang-only skipping."""
+
+    class _P(LineCommentMixin):
+        file_type: FileType
+        line_prefix = "# "
+
+    p = _P()
+    p.file_type = make_file_type(
+        local_key="invalid_regex",
+        extensions=[".py"],
+        filenames=[],
+        patterns=[],
+        description="",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=True,
+            encoding_line_regex="[",
+        ),
+    )
+
+    lines: list[str] = ["#!/usr/bin/env python\n", "# coding: utf-8\n", "print(1)\n"]
+    assert p.find_insertion_index(lines) == 1
+
+
+def test_line_prepare_header_for_insertion_adds_policy_spacers() -> None:
+    """Line insertion adds owned leading/trailing spacers when policy requests them."""
+
+    class _P(LineCommentMixin):
+        file_type: FileType
+        line_prefix = "# "
+
+    p = _P()
+    p.file_type = make_file_type(
+        local_key="line_spacing",
+        extensions=[".py"],
+        filenames=[],
+        patterns=[],
+        description="",
+        header_policy=FileTypeHeaderPolicy(
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    )
+
+    out: list[str] = p.prepare_header_for_insertion(
+        original_lines=["preamble\n", "body\n"],
+        insert_index=1,
+        rendered_header_lines=["# header\n"],
+        newline_style="\n",
+    )
+
+    assert out == ["\n", "# header\n", "\n"]
+
+
+def test_line_prepare_header_for_insertion_preserves_user_whitespace_body() -> None:
+    """Whitespace-only body lines are not mistaken for owned exact blank separators."""
+
+    class _P(LineCommentMixin):
+        file_type: FileType
+        line_prefix = "# "
+
+    p = _P()
+    p.file_type = make_file_type(
+        local_key="line_user_whitespace",
+        extensions=[".py"],
+        filenames=[],
+        patterns=[],
+        description="",
+        header_policy=FileTypeHeaderPolicy(ensure_blank_after_header=True),
+    )
+
+    out: list[str] = p.prepare_header_for_insertion(
+        original_lines=[" \n", "body\n"],
+        insert_index=0,
+        rendered_header_lines=["# header\n"],
+        newline_style="\n",
+    )
+
+    assert out == ["# header\n", "\n"]
+
+
+def test_xml_text_insertion_padding_uses_policy() -> None:
+    """XML text insertion pads around a char-offset header according to policy."""
+
+    class _P(XmlPositionalMixin):
+        file_type: FileType
+
+    p = _P()
+    p.file_type = make_file_type(
+        local_key="xml_text_spacing",
+        extensions=[".xml"],
+        filenames=[],
+        patterns=[],
+        description="",
+        header_policy=FileTypeHeaderPolicy(
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    )
+
+    out: str = p.prepare_header_for_insertion_text(
+        original_text="<root><child />",
+        insert_offset=len("<root>"),
+        rendered_header_text="<!-- header -->\n",
+        newline_style="\n",
+    )
+
+    assert out == "\n<!-- header -->\n\n"
+
+
+def test_xml_text_insertion_padding_respects_existing_newline_and_blank() -> None:
+    """XML text insertion should not duplicate existing newline or exact blank body."""
+
+    class _P(XmlPositionalMixin):
+        file_type: FileType
+
+    p = _P()
+    p.file_type = make_file_type(
+        local_key="xml_existing_spacing",
+        extensions=[".xml"],
+        filenames=[],
+        patterns=[],
+        description="",
+        header_policy=FileTypeHeaderPolicy(
+            pre_header_blank_after_block=1,
+            ensure_blank_after_header=True,
+        ),
+    )
+
+    out: str = p.prepare_header_for_insertion_text(
+        original_text="<root>\n\n<child />",
+        insert_offset=len("<root>\n"),
+        rendered_header_text="<!-- header -->\n",
+        newline_style="\n",
+    )
+
+    assert out == "<!-- header -->\n"

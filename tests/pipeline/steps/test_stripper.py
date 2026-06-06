@@ -327,3 +327,194 @@ def test_stripper_preserves_leading_bom_on_remaining_body(tmp_path: Path) -> Non
 
     assert ctx.status.strip is StripStatus.READY
     assert materialize_updated_lines(ctx) == ["\ufeffbody\n"]
+
+
+class _NoopEmptyStripProcessor(HeaderProcessor):
+    """Processor stub that reports an empty/no-op strip result."""
+
+    namespace = "test"
+    local_key = "noop_empty_strip"
+
+    def strip_header_block(
+        self,
+        *,
+        lines: list[str],
+        span: tuple[int, int] | None = None,
+        newline_style: str = "\n",
+        ends_with_newline: bool | None = None,
+    ) -> StripHeaderResult:
+        """Return a NOOP_EMPTY diagnostic."""
+        return StripHeaderResult(
+            lines=lines,
+            removed_span=None,
+            diagnostic=StripDiagnostic(
+                kind=StripDiagKind.NOOP_EMPTY,
+                reason="stub empty no-op",
+            ),
+        )
+
+
+class _MalformedRefusedStripProcessor(HeaderProcessor):
+    """Processor stub that refuses malformed header removal."""
+
+    namespace = "test"
+    local_key = "malformed_refused_strip"
+
+    def strip_header_block(
+        self,
+        *,
+        lines: list[str],
+        span: tuple[int, int] | None = None,
+        newline_style: str = "\n",
+        ends_with_newline: bool | None = None,
+    ) -> StripHeaderResult:
+        """Return a MALFORMED_REFUSED diagnostic."""
+        return StripHeaderResult(
+            lines=lines,
+            removed_span=None,
+            diagnostic=StripDiagnostic(
+                kind=StripDiagKind.MALFORMED_REFUSED,
+                reason="stub malformed refused",
+            ),
+        )
+
+
+class _RemovedWithWhitespaceBodyStripProcessor(HeaderProcessor):
+    """Processor stub that leaves user whitespace after removal."""
+
+    namespace = "test"
+    local_key = "removed_with_whitespace_body_strip"
+
+    def strip_header_block(
+        self,
+        *,
+        lines: list[str],
+        span: tuple[int, int] | None = None,
+        newline_style: str = "\n",
+        ends_with_newline: bool | None = None,
+    ) -> StripHeaderResult:
+        """Return a removed header with a whitespace-only body line remaining."""
+        return StripHeaderResult(
+            lines=[" \n", "body\n"],
+            removed_span=(0, 2),
+            diagnostic=StripDiagnostic(
+                kind=StripDiagKind.REMOVED,
+                reason="stub removed",
+            ),
+        )
+
+
+class _RemovedWithoutSpanStripProcessor(HeaderProcessor):
+    """Processor stub that reports removal without a removed span."""
+
+    namespace = "test"
+    local_key = "removed_without_span_strip"
+
+    def strip_header_block(
+        self,
+        *,
+        lines: list[str],
+        span: tuple[int, int] | None = None,
+        newline_style: str = "\n",
+        ends_with_newline: bool | None = None,
+    ) -> StripHeaderResult:
+        """Return changed lines with an invalid missing span."""
+        return StripHeaderResult(
+            lines=lines[1:],
+            removed_span=None,
+            diagnostic=StripDiagnostic(
+                kind=StripDiagKind.REMOVED,
+                reason="stub removed without span",
+            ),
+        )
+
+
+def test_stripper_empty_image_is_not_needed(tmp_path: Path) -> None:
+    """A processable but empty image has no removable header."""
+    ctx: ProcessingContext = _make_strip_context(tmp_path / "empty.py", [])
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.NOT_NEEDED
+    assert ctx.views.updated is None
+    assert ctx.halt_state is None
+
+
+def test_stripper_noop_empty_diagnostic_is_not_needed(tmp_path: Path) -> None:
+    """Processor NOOP_EMPTY diagnostics should not produce updated lines."""
+    ctx: ProcessingContext = _make_strip_context(tmp_path / "noop.py", ["\n"])
+    ctx.header_processor = _NoopEmptyStripProcessor()
+    ctx.status.header = HeaderStatus.EMPTY
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.NOT_NEEDED
+    assert ctx.views.updated is None
+    assert ctx.halt_state is None
+
+
+def test_stripper_malformed_refused_diagnostic_halts_without_update(tmp_path: Path) -> None:
+    """Processor MALFORMED_REFUSED diagnostics are policy blocks, not removals."""
+    ctx: ProcessingContext = _make_strip_context(tmp_path / "refused.py", ["# broken\n"])
+    ctx.header_processor = _MalformedRefusedStripProcessor()
+    ctx.status.header = HeaderStatus.EMPTY
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.NOT_NEEDED
+    assert ctx.views.updated is None
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "stub malformed refused"
+
+
+def test_stripper_removed_without_span_is_treated_as_not_needed(tmp_path: Path) -> None:
+    """A processor must provide a removed span for strip normalization to proceed."""
+    ctx: ProcessingContext = _make_strip_context(
+        tmp_path / "missing_span.py",
+        ["# header\n", "body\n"],
+    )
+    ctx.header_processor = _RemovedWithoutSpanStripProcessor()
+    ctx.views.header = HeaderView(
+        range=(0, 0),
+        lines=["# header\n"],
+        block="# header\n",
+        mapping={},
+    )
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.NOT_NEEDED
+    assert ctx.views.updated is None
+    assert ctx.halt_state is None
+
+
+def test_stripper_drops_only_owned_exact_blank_separator(tmp_path: Path) -> None:
+    """Strip removes an owned exact blank after the header but preserves user whitespace."""
+    from tests.helpers.registry import make_file_type
+    from topmark.filetypes.policy import FileTypeHeaderPolicy
+
+    lines: list[str] = [
+        f"# {TOPMARK_START_MARKER}\n",
+        "# h\n",
+        f"# {TOPMARK_END_MARKER}\n",
+        " \n",
+        "body\n",
+    ]
+    ctx: ProcessingContext = _make_strip_context(tmp_path / "spacer.py", lines)
+    ctx.header_processor = _RemovedWithWhitespaceBodyStripProcessor()
+    ctx.file_type = make_file_type(
+        local_key="spacer_policy",
+        extensions=[".py"],
+        header_policy=FileTypeHeaderPolicy(ensure_blank_after_header=True),
+    )
+    ctx.views.header = HeaderView(
+        range=(0, 2),
+        lines=lines[:3],
+        block="".join(lines[:3]),
+        mapping={},
+    )
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.READY
+    assert materialize_updated_lines(ctx) == [" \n", "body\n"]
