@@ -30,6 +30,7 @@ Sessions:
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
   - `api_snapshot`: Public API snapshot test (per Python).
   - `property_test`: Long-running property tests (opt-in).
+  - `perf_baseline`: Local pipeline memory/allocation baseline benchmarks (opt-in).
   - `package_check`: Build sdist/wheel and validate metadata (twine).
   - `release_check`: Deterministic pre-release gate (single Python, offline-friendly).
   - `release_full`: Full release gate (serial QA + links + packaging + matrix).
@@ -69,6 +70,7 @@ CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1
 
 DEPS_DEV: Final[str] = ".[dev,typing,test]"
 DEPS_DOCS: Final[str] = ".[docs]"
+DEPS_QA: Final[str] = ".[dev,typing,test,docs]"
 
 
 # Global options
@@ -226,7 +228,7 @@ def qa(session: nox.Session) -> None:
     """Run tests + pyright (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install(DEPS_DEV)
+    session.install(DEPS_QA)
 
     # We add *session.posargs to the end of the command
     session.run(
@@ -262,7 +264,7 @@ def qa_api(session: nox.Session) -> None:
     """
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install(DEPS_DEV)
+    session.install(DEPS_QA)
 
     # Main test suite (posargs forwarded, e.g. "-n auto")
     session.run(
@@ -622,6 +624,24 @@ def property_test(session: nox.Session) -> None:
 
 
 @nox.session(python=CANONICAL_PYTHON)
+def perf_baseline(session: nox.Session) -> None:
+    """Run local pipeline memory/allocation baseline benchmarks.
+
+    By default this runs the full `baseline` suite and writes a preserved run
+    under `artifacts/perf/`. Pass arguments after `--` to select another suite,
+    run id, or output directory.
+    """
+    session.install(DEPS_DEV)
+
+    args: list[str] = list(session.posargs) if session.posargs else ["--suite", "baseline"]
+    session.run(
+        "python",
+        "tools/perf/pipeline_memory_baseline.py",
+        *args,
+    )
+
+
+@nox.session(python=CANONICAL_PYTHON)
 def release_check(session: nox.Session) -> None:
     """Release gate: quality + docs + packaging checks (single Python, offline-friendly).
 
@@ -638,8 +658,8 @@ def release_check(session: nox.Session) -> None:
       - Packaging build + metadata checks (build, twine)
       - Tests + pyright for the session Python
     """
-    # Tooling / QA deps
-    session.install(DEPS_DEV)
+    # Tooling / QA deps, including docs dependencies because pyright checks tools/docs/.
+    session.install(DEPS_QA)
     # Docs deps (mkdocs, plugins)
     session.install(DEPS_DOCS)
 

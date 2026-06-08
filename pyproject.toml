@@ -242,7 +242,7 @@ final-period            = true
 
 # Pyright configuration
 [tool.pyright]
-include = ["src", "tests"]
+include = ["src", "tests", "tools"]
 exclude = [
   "**/__pycache__",
   "**/.*",
@@ -317,7 +317,7 @@ line-length = 100
   docstring-code-format = true
 
   [tool.ruff.lint]
-  exclude = [".git", ".venv", ".vscode", "build", "dist", "venv"]
+  exclude = [".git", ".venv", ".vscode", "artifacts", "build", "dist", "venv"]
   select = [
     "B",      # (flake8-bugbear)
     "B904",   # raise-without-from inside except

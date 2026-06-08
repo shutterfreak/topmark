@@ -19,6 +19,7 @@
 	links links-all links-site links-src \
 	lint lint-fixall \
 	package-check \
+	perf-baseline \
 	property-test \
 	pytest pytest-full \
 	release-check release-full release-qa-api-% \
@@ -69,6 +70,7 @@ help:
 	@echo "  coverage        Run coverage testing"
 	@echo "  coverage-erase  Erase coverage testing output (.coverage coverage.xml coverage.json htmlcov .coverage.*)"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
+	@echo "  perf-baseline   Run pipeline memory/allocation baselines (manual, opt-in)"
 	@echo ""
 	@echo "  release-check   Run the deterministic pre-release gate (nox: release_check)"
 	@echo "  release-full    Run the full release gate incl. links + packaging + Python matrix"
@@ -185,6 +187,9 @@ pytest-full:
 
 property-test: check-venv
 	$(NOX) $(NOX_FLAGS) -s property_test
+
+perf-baseline: check-venv
+	$(NOX) $(NOX_FLAGS) -s perf_baseline
 
 docs-build: check-venv
 	$(NOX) $(NOX_FLAGS) -s docs

@@ -30,6 +30,9 @@ Repository-source validation starts in the main CI workflow and is delegated to 
 practical. The test suite is further organized with pytest markers so contributors can understand
 the intent and expected scope of each test group.
 
+Performance baseline measurements are documented separately because they are opt-in diagnostic
+workflows rather than correctness-validation or release-gating checks.
+
 - [CI workflow](./ci-workflow.md) - validates repository source trees, documentation, tests, typing,
   linting, API snapshots, and release artifacts produced from trusted CI runs.
 - [Setup Python + nox action](./setup-python-nox-action.md) - documents the shared Python, uv,
@@ -74,6 +77,7 @@ Use this family of pages as follows:
 | What runs on pull requests and pushes?                           | [CI workflow](./ci-workflow.md)                                     |
 | How are Python, uv, and nox bootstrapped in CI jobs?             | [Setup Python + nox action](./setup-python-nox-action.md)           |
 | Which tests are included, skipped, slow, or integration-focused? | [Test validation](./test-validation.md)                             |
+| How do I run memory/allocation baseline measurements?            | [Performance baselines](../dev/performance-baselines.md)            |
 | How are release artifacts produced and published?                | [Release workflow](./release-workflow.md)                           |
 | How do we validate packages after publication?                   | [Published artifact validation](./published-artifact-validation.md) |
 | How are dependency updates handled?                              | [Dependabot](./dependabot.md)                                       |
@@ -100,5 +104,7 @@ ______________________________________________________________________
 
 - [Contributing to TopMark](../contributing.md) - contributor workflow and dependency guidance
 - [Release process](../dev/release-process.md) - project-level release workflow and policy
+- [Performance baselines](../dev/performance-baselines.md) - memory and allocation benchmark
+  methodology and results
 - [`Configuration overview`](../configuration/index.md) - configuration entry point and links to
   discovery, precedence, and merge semantics
