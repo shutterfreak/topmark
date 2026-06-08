@@ -29,6 +29,7 @@ Outputs:
 from __future__ import annotations
 
 import difflib
+import logging
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
@@ -181,12 +182,13 @@ class PatcherStep(BaseStep):
             logger.debug("File header unchanged: %s", ctx.path)
             return
 
-        logger.info(
-            "Patch (rendered):\n%s",
-            format_patch_plain(
-                patch=patch_lines,
-            ),
-        )
+        if logger.isEnabledFor(logging.INFO):
+            logger.info(
+                "Patch (rendered):\n%s",
+                format_patch_plain(
+                    patch=patch_lines,
+                ),
+            )
 
         # Join exactly as produced by difflib. Do not introduce CRLF conversions.
         ctx.views.diff = DiffView(text="".join(patch_lines))

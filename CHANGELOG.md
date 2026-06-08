@@ -46,6 +46,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Avoided formatting a duplicate unified-diff preview during patch generation when INFO-level
+  pipeline logging is disabled, reducing transient allocations for diff-heavy workloads while
+  preserving retained diff output.
 - Pruned consumed pipeline views incrementally between steps when view pruning is enabled, reducing
   transient retention before later patch/write phases while preserving requested diff output.
 - Replaced string-based pipeline view-pruning decisions with typed `ViewSlot` consumer metadata
@@ -231,7 +234,7 @@ ______________________________________________________________________
 - Clarified the recommended VS Code Run On Save configuration for Markdown formatting so the
   workspace `mdformat` integration triggers reliably for saved `.md` files.
 - Reviewed documentation clarity, consistency, governance, tooling, structure, duplication, and
-  snippet usage for issue #108.
+  snippet usage for GitHub issue 108.
 - Synchronized documentation-governance guidance with the current generated-reference layout and
   snippet inventory.
 - Clarified roadmap governance by defining `docs/dev/roadmap.md` as a maintainer-facing
@@ -244,13 +247,16 @@ ______________________________________________________________________
   fixing the malformed `pipeline` marker table row in CI test-validation guidance.
 - Added dedicated performance-baseline documentation covering subprocess-isolated RSS measurement,
   tracemalloc methodology, benchmark-corpus scope, benchmark preservation guidance, and initial
-  memory-baseline findings from issue #134.
+  memory-baseline findings from GitHub issue 134.
 - Added cross-references from development and CI documentation to the performance-baseline workflow
   and benchmark methodology.
-- Documented issue #140 follow-up measurements showing that consumed-view pruning reduces retained
-  memory in header-heavy workloads while preserving the issue #134 baseline comparison modes.
+- Documented GitHub issue 140 follow-up measurements showing that consumed-view pruning reduces
+  retained memory in header-heavy workloads while preserving the GitHub issue 134 baseline
+  comparison modes.
 - Documented pipeline view consumer declarations, `consumes_views`, and typed `ViewSlot` pruning
   behavior in the developer pipeline documentation.
+- Documented GitHub issue 138 follow-up measurements showing reduced diff-generation allocations in
+  diff-heavy workloads after avoiding duplicate INFO-level diff-preview formatting.
 
 ### Internal - Unreleased
 
@@ -294,9 +300,9 @@ ______________________________________________________________________
 - Added a `TOPMARK_REQUIRE_SYMLINKS` test-helper guard so symlink-dependent tests fail loudly in CI
   jobs that are expected to exercise symlink behavior.
 - Aligned generated API-page tooling prose with the current generated documentation path layout.
-- Added targeted coverage tests for coverage-strategy issue #129 across whitespace-policy helpers,
-  pipeline planning and stripping behavior, registry binding validation, and processor insertion
-  mixins.
+- Added targeted coverage tests for coverage-strategy GitHub issue 129 across whitespace-policy
+  helpers, pipeline planning and stripping behavior, registry binding validation, and processor
+  insertion mixins.
 - Extended project validation tooling to type-check benchmark tooling under `tools/` and excluded
   generated benchmark artifacts from Ruff scanning.
 - Added subprocess-isolated benchmark execution so per-scenario RSS measurements reflect individual
@@ -305,6 +311,8 @@ ______________________________________________________________________
   the historical benchmark suite modes used for baseline comparability.
 - Added regression coverage for consumed-view release behavior, diff retention, and concrete
   pipeline step `consumes_views` declarations.
+- Added regression coverage for diff-preview formatting behavior so expensive unified-diff preview
+  rendering only occurs when INFO-level pipeline logging is enabled.
 
 ### Notes - Unreleased
 

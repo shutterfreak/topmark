@@ -30,6 +30,7 @@ The baseline tooling focuses on:
 - retained view ownership;
 - per-step timing;
 - diff-generation costs;
+- duplicate diff-preview formatting when verbose pipeline logging is enabled;
 - updated-file materialization costs.
 
 The tooling is intentionally measurement-only and does not modify pipeline architecture or ownership
@@ -328,6 +329,56 @@ opportunities lie in later roadmap items focused on diff generation and updated-
 - updated-file ownership and composition (GitHub issues 135, 136, and 137);
 - view release timing and pruning (GitHub issue 140, completed and measured as a baseline-preserving
   optimization).
+
+### Follow-up measurements (GitHub issue 138)
+
+GitHub issue 138 audited diff-generation materialization and retention behavior. The implemented
+change was intentionally narrow: avoid constructing a duplicate formatted diff preview when INFO
+logging is not enabled.
+
+The issue 138 measurements were collected using the same explicit `_pruned` benchmark modes used for
+the GitHub issue 140 follow-up measurements, allowing direct comparison against the already pruned
+lifecycle baseline.
+
+Representative changes relative to the GitHub issue 140 results were:
+
+| Scenario             | Mode                | Peak traced change | RSS change |
+| -------------------- | ------------------- | -----------------: | ---------: |
+| `huge_diff`          | `strip_diff_pruned` |            -34.5 % |    -13.4 % |
+| `strip_large_header` | `strip_diff_pruned` |            -35.4 % |    -19.5 % |
+
+The largest improvements were observed specifically in diff-producing workloads. Non-diff modes and
+header-oriented workloads remained effectively unchanged, which is consistent with the scope of the
+optimization.
+
+In particular, `huge_diff` and `strip_large_header` in `strip_diff_pruned` mode showed substantial
+reductions in both peak traced allocations and RSS. These results are consistent with the conclusion
+that duplicate formatting of large unified diffs represented a measurable transient allocation cost
+even after the view-pruning improvements introduced by GitHub issue 140.
+
+For historical tracking, the issue 138 results can also be compared against the original GitHub
+issue 134 baseline measurements. This shows the cumulative effect of the Track B optimizations
+implemented so far.
+
+| Scenario             | Baseline mode | Current mode        | Peak traced change | RSS change |
+| -------------------- | ------------- | ------------------- | -----------------: | ---------: |
+| `huge_diff`          | `strip_diff`  | `strip_diff_pruned` |            -31.2 % |     -8.8 % |
+| `strip_large_header` | `strip_diff`  | `strip_diff_pruned` |            -37.8 % |    -15.5 % |
+
+Relative to the original GitHub issue 134 baseline, the combined effect of incremental view pruning
+(GitHub issue 140) and reduced diff-preview duplication (GitHub issue 138) produces substantially
+larger improvements than either optimization in isolation.
+
+The measurements also reinforce the broader findings from GitHub issues 133, 134, and 140:
+
+- diff generation remains one of the largest memory hotspots in the pipeline;
+- updated-file materialization and diff generation still dominate the largest pathological cases;
+- lifecycle pruning and reduced duplication are complementary optimizations;
+- future work in GitHub issues 135, 136, and 137 remains the primary opportunity for additional
+  memory reductions.
+
+These figures should be treated as directional rather than hard thresholds because memory
+measurements remain platform-, allocator-, and workload-sensitive.
 
 ______________________________________________________________________
 

@@ -17,7 +17,10 @@ assert CRLF semantics (or explicit `\\r\\n` markers) deterministically.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
+
+import pytest
 
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import materialize_updated_lines
@@ -183,6 +186,48 @@ def test_patcher_generates_unified_diff_for_changed_updated_image(
     assert "-old\n" in diff_text
     assert "+new\n" in diff_text
     assert materialize_updated_lines(ctx) == ["new\n", "body\n"]
+
+
+@pytest.mark.parametrize(
+    ("log_level", "expect_preview_formatting"),
+    [
+        pytest.param(logging.CRITICAL, False, id="critical"),
+        pytest.param(logging.INFO, True, id="info"),
+    ],
+)
+def test_patcher_formats_log_preview_only_when_info_logging_is_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    log_level: int,
+    expect_preview_formatting: bool,
+) -> None:
+    """Diff preview formatting should follow the patcher logger's INFO-enabled state."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "changed.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=["new\n", "body\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    formatted_patches: list[list[str] | str] = []
+
+    def record_format_patch_plain(*, patch: list[str] | str) -> str:
+        formatted_patches.append(patch)
+        return "formatted preview"
+
+    monkeypatch.setattr(
+        "topmark.pipeline.steps.patcher.format_patch_plain",
+        record_format_patch_plain,
+    )
+    caplog.set_level(log_level, logger="topmark.pipeline.steps.patcher")
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+    assert bool(formatted_patches) is expect_preview_formatting
 
 
 def test_patcher_normalizes_empty_diff_to_unchanged(tmp_path: Path) -> None:
