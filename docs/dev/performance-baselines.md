@@ -162,6 +162,21 @@ measurement_isolation = "subprocess"
 
 for the canonical baseline runs.
 
+### Platform support
+
+RSS measurements currently rely on platform-specific process statistics.
+
+- Linux: RSS measurements are collected and reported.
+- macOS: RSS measurements are collected and reported.
+- Windows: RSS measurements are currently reported as unavailable (`None`).
+
+The benchmark framework continues to collect tracemalloc-based allocation metrics on Windows, but
+RSS values are omitted because the current implementation intentionally avoids introducing
+additional platform-specific dependencies solely for benchmark tooling.
+
+As a result, Windows benchmark runs remain useful for allocation analysis and relative comparisons,
+but RSS-based comparisons should be performed using Linux or macOS baseline runs.
+
 ### Retained views
 
 The benchmark tool records lightweight ownership indicators including:
@@ -270,6 +285,9 @@ The measurements therefore suggest that future optimization work should pay part
 ______________________________________________________________________
 
 ## Known caveats
+
+RSS availability is platform-dependent. Canonical RSS baselines are currently generated on Linux and
+macOS. Windows runs record allocation metrics but may report RSS values as unavailable.
 
 The benchmark corpus is synthetic.
 
