@@ -237,6 +237,7 @@ nav:
       - Configuration schema: dev/configuration-schema.md
       - Pipelines (concepts): dev/pipelines.md
       - Pipelines (reference hub): dev/pipelines-reference.md
+      - Performance baselines: dev/performance-baselines.md
       - API Stability: dev/api-stability.md
       - Machine-readable formats: dev/machine-formats.md
       - Documentation pipeline and reference hygiene: dev/documentation-pipeline.md

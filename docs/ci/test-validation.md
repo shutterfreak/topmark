@@ -23,12 +23,12 @@ validation path.
 
 ## Validation Layers
 
-| Layer            | Role                                                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| GitHub workflows | Repository, release, dependency, and published-artifact validation orchestration.          |
-| nox sessions     | Reusable validation contracts for linting, typing, tests, docs, links, and release checks. |
-| pytest markers   | Semantic grouping of tests by behavior, scope, or runtime expectations.                    |
-| Makefile targets | Local shortcuts for common contributor workflows.                                          |
+| Layer            | Role                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+| GitHub workflows | Repository, release, dependency, and published-artifact validation orchestration.                                 |
+| nox sessions     | Reusable validation contracts for linting, typing, tests, docs, links, release checks, and performance baselines. |
+| pytest markers   | Semantic grouping of tests by behavior, scope, or runtime expectations.                                           |
+| Makefile targets | Local shortcuts for common contributor workflows.                                                                 |
 
 The preferred mental model is:
 
@@ -215,6 +215,7 @@ Common mappings are:
 | Build documentation                               | `nox -s docs`                      |
 | Validate documentation links                      | `nox -s links`                     |
 | Run release checks                                | `nox -s release_check`             |
+| Run pipeline memory/allocation baselines          | `nox -s perf_baseline`             |
 
 The concrete canonical version shown above is expected to move when the supported Python range
 moves. CI consumes the JSON output from `print_python_matrix` so the test matrix and canonical
@@ -223,6 +224,32 @@ workflow.
 
 If a Makefile target wraps one of these commands, the nox session remains the canonical validation
 contract.
+
+______________________________________________________________________
+
+## Performance baseline measurements
+
+TopMark includes an opt-in performance baseline session for memory and allocation investigations.
+
+Run the canonical baseline suite:
+
+```bash
+nox -s perf_baseline
+```
+
+Or use the local convenience target:
+
+```bash
+make perf-baseline
+```
+
+The performance baseline tooling is intentionally separate from the normal quality gates.
+
+Performance measurements are exploratory diagnostics rather than correctness checks. They are not
+currently executed in CI and do not gate releases.
+
+See [Performance baselines](../dev/performance-baselines.md) for benchmark methodology, workload
+definitions, output layout, and baseline results.
 
 ______________________________________________________________________
 

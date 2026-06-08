@@ -30,6 +30,7 @@ Sessions:
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
   - `api_snapshot`: Public API snapshot test (per Python).
   - `property_test`: Long-running property tests (opt-in).
+  - `perf_baseline`: Local pipeline memory/allocation baseline benchmarks (opt-in).
   - `package_check`: Build sdist/wheel and validate metadata (twine).
   - `release_check`: Deterministic pre-release gate (single Python, offline-friendly).
   - `release_full`: Full release gate (serial QA + links + packaging + matrix).
@@ -618,6 +619,24 @@ def property_test(session: nox.Session) -> None:
         "pytest",
         "-vv",
         "tests/pipeline/test_header_bounds_property.py",
+    )
+
+
+@nox.session(python=CANONICAL_PYTHON)
+def perf_baseline(session: nox.Session) -> None:
+    """Run local pipeline memory/allocation baseline benchmarks.
+
+    By default this runs the full `baseline` suite and writes a preserved run
+    under `artifacts/perf/`. Pass arguments after `--` to select another suite,
+    run id, or output directory.
+    """
+    session.install(DEPS_DEV)
+
+    args: list[str] = list(session.posargs) if session.posargs else ["--suite", "baseline"]
+    session.run(
+        "python",
+        "tools/perf/pipeline_memory_baseline.py",
+        *args,
     )
 
 

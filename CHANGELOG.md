@@ -20,6 +20,30 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+> [!CAUTION] **Breaking changes**
+>
+> This release includes breaking changes to CLI exit-code semantics, `config check` validation
+> failures, option-like path parsing, machine-readable processing-result path serialization, and
+> filename-rule validation/normalization. Consumers should review the **Breaking Changes** and
+> **Notes** sections before upgrading automation, CI jobs, golden tests, or plugin/custom file-type
+> definitions.
+>
+> In particular, `WOULD_CHANGE` now exits with code `3` instead of `2`; Click parser-level usage
+> errors reserve exit code `2`; JSON/NDJSON `check` and `strip` result paths use POSIX `/`
+> separators on all platforms; and invalid `FileType.filenames` rules are rejected during file-type
+> construction.
+
+### Added - Unreleased
+
+- Added `tools/perf/pipeline_memory_baseline.py`, a measurement-only benchmarking tool for
+  establishing memory and allocation baselines for pipeline processing.
+- Added `docs/dev/performance-baselines.md` documenting benchmark methodology, workload definitions,
+  measurement scope, benchmark output layout, and initial baseline results.
+- Added canonical benchmark suites (`smoke`, `pathological`, and `baseline`) together with preserved
+  run metadata, JSON reports, and Markdown summaries under `artifacts/perf/`.
+- Added a local `perf_baseline` Nox session and `make perf-baseline` entry point for reproducible
+  memory/allocation baseline generation.
+
 ### Changed - Unreleased
 
 - Replaced the CLI presentation backend with Rich.
@@ -214,6 +238,11 @@ ______________________________________________________________________
   maintenance work, including the later completion of the Rich and `rich-click` migration.
 - Clarified pytest marker documentation by restoring the `case_insensitive_fs` marker entry and
   fixing the malformed `pipeline` marker table row in CI test-validation guidance.
+- Added dedicated performance-baseline documentation covering subprocess-isolated RSS measurement,
+  tracemalloc methodology, benchmark-corpus scope, benchmark preservation guidance, and initial
+  memory-baseline findings from issue #134.
+- Added cross-references from development and CI documentation to the performance-baseline workflow
+  and benchmark methodology.
 
 ### Internal - Unreleased
 
@@ -260,6 +289,10 @@ ______________________________________________________________________
 - Added targeted coverage tests for coverage-strategy issue #129 across whitespace-policy helpers,
   pipeline planning and stripping behavior, registry binding validation, and processor insertion
   mixins.
+- Extended project validation tooling to type-check benchmark tooling under `tools/` and excluded
+  generated benchmark artifacts from Ruff scanning.
+- Added subprocess-isolated benchmark execution so per-scenario RSS measurements reflect individual
+  workload peaks rather than cumulative process high-water marks.
 
 ### Notes - Unreleased
 
@@ -285,6 +318,8 @@ ______________________________________________________________________
 - Hard-linked selected processing paths are now treated as unsupported processing targets. TopMark
   reports each affected path independently and does not choose a source, target, winner, or loser
   path from the hard-link group.
+- Performance baseline outputs are written to Git-ignored `artifacts/perf/` run directories and are
+  intended for local analysis rather than source control.
 
 ______________________________________________________________________
 

@@ -78,6 +78,9 @@ coverage.xml
 coverage.json
 htmlcov/
 
+# Performance audit
+artifacts/perf
+
 # PyPI config
 .pypirc
 

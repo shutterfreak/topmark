@@ -50,6 +50,7 @@ plugin integration.
 - [Configuration schema](configuration-schema.md)
 - [Pipelines](pipelines.md)
 - [Pipelines reference hub](pipelines-reference.md)
+- [Performance baselines](performance-baselines.md) - memory and allocation measurement methodology
 
 ______________________________________________________________________
 
