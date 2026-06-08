@@ -37,6 +37,7 @@ from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import RenderView
+from topmark.pipeline.views import ViewSlot
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -68,6 +69,13 @@ class RendererStep(BaseStep):
             name=self.__class__.__name__,
             primary_axis=Axis.RENDER,
             axes_written=(Axis.RENDER,),
+            consumes_views=frozenset(
+                {
+                    ViewSlot.IMAGE,
+                    ViewSlot.HEADER,
+                    ViewSlot.BUILD,
+                }
+            ),
         )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:

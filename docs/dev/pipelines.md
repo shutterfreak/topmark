@@ -159,6 +159,12 @@ TopMark pipelines are:
 Pipeline steps mutate processing context state. CLI views, API DTOs, and machine-readable output
 classify final outcomes from accumulated statuses and hints.
 
+Some intermediate data is stored in phase-scoped pipeline views, such as the original file image,
+detected header data, generated fields, rendered headers, updated content, and unified diffs. Steps
+that read these views declare their dependencies via `consumes_views`. When runtime view pruning is
+enabled, the runner uses those declarations to release consumed view payloads after the last
+remaining consumer has run, while preserving requested output such as retained diffs.
+
 For filesystem inputs, the processing context path is the selected processing path. It may differ
 from the path spelling supplied on the command line or in configuration when symlinks or equivalent
 relative spellings are involved.
@@ -481,6 +487,7 @@ ______________________________________________________________________
 Each step implements the \[`Step`\][topmark.pipeline.protocols.Step] protocol and:
 
 - Declares which **status axes** it may write
+- Declares which pipeline view slots it may consume via `consumes_views`
 - May halt execution via `ctx.flow.halt`
 - Emits structured hints for diagnostics
 
@@ -498,6 +505,36 @@ Each step implements the \[`Step`\][topmark.pipeline.protocols.Step] protocol an
 | \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                                                     |
 | \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff with human-facing display labels                                                    |
 | \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                                           |
+
+### View consumer declarations
+
+Pipeline view consumer declarations are part of the step contract. They describe which large,
+phase-scoped view payloads a step may read during `run()` or `hint()`.
+
+These declarations are intentionally separate from `axes_written`: axes describe status ownership,
+while `consumes_views` describes data dependencies. The runner aggregates the declarations of
+remaining steps and releases views that no later step can consume. This keeps pruning tied to typed
+view slots instead of brittle step-name string checks.
+
+Current consumer declarations are:
+
+| Step                                                             | Consumed view slots                             |
+| ---------------------------------------------------------------- | ----------------------------------------------- |
+| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | none                                            |
+| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | none                                            |
+| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | none                                            |
+| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | none                                            |
+| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | `image`                                         |
+| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | none                                            |
+| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | `image`, `header`, `build`                      |
+| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | `image`, `header`, `build`, `render`, `updated` |
+| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | `image`, `header`                               |
+| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | `image`, `header`, `render`, `updated`          |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | `image`, `updated`                              |
+| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | `updated`                                       |
+
+`ReaderStep` and `BuilderStep` produce views but do not consume existing view slots. `RendererStep`
+consumes the original image because it may preserve insertion indentation from the source file.
 
 ______________________________________________________________________
 

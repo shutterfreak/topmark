@@ -8,15 +8,21 @@
 #
 # topmark:header:end
 
-"""Measure baseline memory behavior for TopMark pipeline processing.
+"""Measure memory behavior for TopMark pipeline processing.
 
-This script is intentionally measurement-only. It generates temporary benchmark
-files, runs selected TopMark pipeline variants against those files, and writes a
-JSON report containing elapsed time, tracemalloc peaks, RSS observations where
-available, per-step samples, and retained view summaries.
+The tool generates deterministic benchmark files, runs selected TopMark pipeline
+variants against them, and writes JSON plus optional Markdown summaries containing
+elapsed time, tracemalloc peaks, RSS observations where available, per-step
+samples, and retained-view summaries.
 
-The script avoids optional profiling dependencies so it can be used before the
-project decides whether tools such as memray or pympler are warranted.
+The default scenario and mode suites are intentionally stable. They preserve the
+historical baseline lifecycle established by issue #134 so memory evolution can be
+compared across later performance work. Optimized lifecycle variants are exposed
+as explicit `*_pruned` modes instead of replacing the historical mode names.
+
+The script avoids optional profiling dependencies so it can run in CI and on
+fresh source checkouts before the project decides whether heavier tools such as
+memray or pympler are warranted.
 """
 
 from __future__ import annotations
@@ -59,6 +65,7 @@ if TYPE_CHECKING:
     from topmark.config.policy import PolicyRegistry
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.protocols import Step
+    from topmark.pipeline.views import ViewSlot
 
 
 # Allow running this tool directly from a source checkout without requiring an editable install.
@@ -84,6 +91,8 @@ ScenarioName = Literal[
     "bom_file",
 ]
 
+# ---- Benchmark scenario definitions ----
+
 DEFAULT_SCENARIOS: Final[tuple[ScenarioName, ...]] = (
     "small_1kb_missing_header",
     "small_10kb_existing_header",
@@ -97,6 +106,8 @@ DEFAULT_SCENARIOS: Final[tuple[ScenarioName, ...]] = (
     "bom_file",
 )
 LARGE_SCENARIOS: Final[tuple[ScenarioName, ...]] = ("large_10mb_missing_header",)
+
+# ---- Pipeline mode definitions ----
 DEFAULT_MODES: Final[tuple[str, ...]] = (
     "check",
     "check_diff",
@@ -106,7 +117,23 @@ DEFAULT_MODES: Final[tuple[str, ...]] = (
     "strip_diff",
 )
 
-# Scenario and mode suites for --suite argument
+# Historical modes intentionally keep the unpruned lifecycle used by the #134
+# baseline. Use explicit `*_pruned` variants for #140 lifecycle measurements.
+PRUNED_MODES: Final[tuple[str, ...]] = (
+    "check_pruned",
+    "check_diff_pruned",
+    "check_apply_pruned",
+    "check_stdout_pruned",
+    "strip_pruned",
+    "strip_diff_pruned",
+)
+ALL_MODES: Final[tuple[str, ...]] = DEFAULT_MODES + PRUNED_MODES
+
+# ---- Predefined benchmark suites ----
+
+# Suites use historical mode names by default. This keeps repeated `--suite`
+# measurements comparable with the original #134 baseline unless callers opt in
+# to pruned modes explicitly via `--mode`.
 SUITE_SCENARIOS: Final[dict[SuiteName, tuple[ScenarioName, ...]]] = {
     "smoke": ("small_1kb_missing_header",),
     "baseline": (
@@ -209,6 +236,7 @@ class RunMeasurement:
     steps: list[StepSample]
 
 
+# ---- Lightweight measurement helpers ----
 def _rss_bytes() -> int | None:
     """Return current process max RSS where the platform exposes it.
 
@@ -346,6 +374,7 @@ def _write_summary(path: Path, measurements: Sequence[RunMeasurement]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+# ---- Benchmark input and output setup ----
 def _resolve_destination(args: argparse.Namespace, *, suite: SuiteName | None) -> RunDestination:
     """Resolve file and directory destinations for benchmark output."""
     output: Path | None = args.output
@@ -492,8 +521,14 @@ def _build_scenarios(root: Path, *, include_large: bool) -> list[Scenario]:
     return scenarios
 
 
+# ---- Mode resolution and pipeline execution ----
 def _mode_from_name(name: str) -> Mode:
-    """Return a configured benchmark mode by name."""
+    """Return a configured benchmark mode by name.
+
+    Historical mode names keep `prune_views=False` to preserve comparability with
+    the original #134 baseline. Names ending in `_pruned` opt into the #140
+    lifecycle policy and make before/after comparisons explicit in reports.
+    """
     match name:
         case "check":
             return Mode(
@@ -555,8 +590,68 @@ def _mode_from_name(name: str) -> Mode:
                 prune_views=False,
                 keep_diff_view=True,
             )
+        case "check_pruned":
+            return Mode(
+                name=name,
+                kind="check",
+                apply=False,
+                diff=False,
+                output_target=OutputTarget.FILE,
+                prune_views=True,
+                keep_diff_view=False,
+            )
+        case "check_diff_pruned":
+            return Mode(
+                name=name,
+                kind="check",
+                apply=False,
+                diff=True,
+                output_target=OutputTarget.FILE,
+                prune_views=True,
+                keep_diff_view=True,
+            )
+        case "check_apply_pruned":
+            return Mode(
+                name=name,
+                kind="check",
+                apply=True,
+                diff=False,
+                output_target=OutputTarget.FILE,
+                prune_views=True,
+                keep_diff_view=False,
+            )
+        case "check_stdout_pruned":
+            return Mode(
+                name=name,
+                kind="check",
+                apply=False,
+                diff=False,
+                output_target=OutputTarget.STDOUT,
+                prune_views=True,
+                keep_diff_view=False,
+            )
+        case "strip_pruned":
+            return Mode(
+                name=name,
+                kind="strip",
+                apply=False,
+                diff=False,
+                output_target=OutputTarget.FILE,
+                prune_views=True,
+                keep_diff_view=False,
+            )
+        case "strip_diff_pruned":
+            return Mode(
+                name=name,
+                kind="strip",
+                apply=False,
+                diff=True,
+                output_target=OutputTarget.FILE,
+                prune_views=True,
+                keep_diff_view=True,
+            )
         case _:
-            choices: str = ", ".join(DEFAULT_MODES)
+            choices: str = ", ".join(ALL_MODES)
             raise ValueError(f"Unknown mode {name!r}; expected one of: {choices}")
 
 
@@ -589,10 +684,21 @@ def _run_steps_with_samples(
     samples: list[StepSample] = []
     stdout_capture = io.StringIO()
 
+    step_count: int = len(pipeline)
     with contextlib.redirect_stdout(stdout_capture):
-        for step in pipeline:
+        for index, step in enumerate(pipeline):
             step_start: int = time.perf_counter_ns()
             ctx = step(ctx)
+            # Mirror the production runner lifecycle so per-step samples reflect
+            # the retained views available to later steps, not only final cleanup.
+            if mode.prune_views:
+                remaining_view_consumers: set[ViewSlot] = set()
+                for remaining_step in pipeline[index + 1 : step_count]:
+                    remaining_view_consumers.update(remaining_step.consumes_views)
+                ctx.views.release_consumed(
+                    remaining_view_consumers=remaining_view_consumers,
+                    keep_diff_view=mode.keep_diff_view,
+                )
             elapsed_ns: int = time.perf_counter_ns() - step_start
             current_bytes, peak_bytes = tracemalloc.get_traced_memory()
             views: dict[str, int | bool] = _view_sizes(ctx)
@@ -670,7 +776,7 @@ def _measure_one(
     )
 
 
-# --- Subprocess measurement helpers ---
+# ---- Subprocess isolation and JSON rehydration helpers ----
 
 
 def _object_mapping(value: object, *, message: str) -> dict[str, object]:
@@ -924,6 +1030,7 @@ def _json_default(value: object) -> object:
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
+# ---- CLI argument parsing and orchestration ----
 def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
@@ -965,8 +1072,11 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--mode",
         action="append",
-        choices=DEFAULT_MODES,
-        help="Mode to run. May be repeated. Defaults to the standard mode set.",
+        choices=ALL_MODES,
+        help=(
+            "Mode to run. May be repeated. Defaults to historical unpruned modes; "
+            "use *_pruned modes to measure view-pruning lifecycle behavior explicitly."
+        ),
     )
     parser.add_argument(
         "--scenario",

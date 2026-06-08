@@ -40,6 +40,7 @@ from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import DiffView
 from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import ViewSlot
 from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.presentation.shared.paths import get_display_path
 from topmark.utils.timestamp import format_gnu_diff_timestamp
@@ -80,6 +81,12 @@ class PatcherStep(BaseStep):
             axes_written=(
                 Axis.COMPARISON,  # For one edge case
                 Axis.PATCH,
+            ),
+            consumes_views=frozenset(
+                {
+                    ViewSlot.IMAGE,
+                    ViewSlot.UPDATED,
+                }
             ),
         )
 

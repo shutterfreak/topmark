@@ -249,7 +249,7 @@ ______________________________________________________________________
 
 The initial baseline measurements support the conclusions from the ownership audit.
 
-### Baseline results (issue #134)
+### Baseline results (GitHub issue 134)
 
 The following representative measurements were collected from the canonical baseline runs using
 subprocess-isolated RSS measurements.
@@ -276,11 +276,58 @@ The largest measured cases were associated with diff-heavy workloads and large s
 particular, `strip_large_header` / `strip_diff` produced the highest observed peak traced allocation
 (~21.9 MiB) and RSS (~80 MiB).
 
-The measurements therefore suggest that future optimization work should pay particular attention to:
+### Follow-up measurements (GitHub issue 140)
 
-- diff lifecycle management (#138);
-- updated-file ownership and composition (#135, #136, #137);
-- view release timing and pruning (#140).
+GitHub issue 140 introduced incremental consumed-view pruning between pipeline steps when pruning is
+enabled.
+
+To preserve longitudinal comparability with the GitHub issue 134 baseline, the benchmark tool
+continues to use the historical unpruned mode names in its predefined suites. Explicit `_pruned`
+mode variants were added for measuring lifecycle improvements without changing the original baseline
+reference points.
+
+The benchmark harness mirrors the production pruning lifecycle during step sampling whenever a
+pruned mode is used, so retained-view measurements reflect the views that remain available to
+downstream pipeline steps rather than only final cleanup behavior.
+
+Representative issue 140 measurements collected using the explicit pruned benchmark modes were:
+
+These measurements were collected using the explicit pruned benchmark modes introduced by GitHub
+issue 140. The original GitHub issue 134 baseline measurements remain reproducible through the
+historical mode names and predefined benchmark suites.
+
+| Scenario             | Mode                | Peak traced change | RSS change |
+| -------------------- | ------------------- | -----------------: | ---------: |
+| `huge_header`        | `check_diff_pruned` |            -33.6 % |     -8.3 % |
+| `huge_header`        | `strip_diff_pruned` |            -32.9 % |     -4.0 % |
+| `strip_large_header` | `check_diff_pruned` |            -14.7 % |     -1.9 % |
+| `strip_large_header` | `strip_diff_pruned` |             -8.1 % |     +0.1 % |
+
+The strongest improvements were observed in header-heavy workloads where multiple transient views
+(image content, detected headers, rendered headers, and updated content) would otherwise coexist for
+longer periods.
+
+For example, `huge_header` improved by roughly 33% in peak traced allocations in both
+`check_diff_pruned` and `strip_diff_pruned` modes, with corresponding RSS reductions of roughly 4%
+to 8% on the measured platform.
+
+The largest pathological diff workload (`strip_large_header` / `strip_diff_pruned`) showed a more
+modest improvement of roughly 8% in peak traced allocations and essentially unchanged RSS. This is
+consistent with the ownership audit and baseline findings: the remaining dominant costs in that
+scenario are updated-file materialization and diff generation rather than retention of consumed
+header-related views.
+
+These figures should be treated as directional rather than hard thresholds because memory
+measurements are platform-, allocator-, and workload-sensitive.
+
+The GitHub issue 140 results therefore validate that earlier release of consumed views is a
+worthwhile low-risk optimization, while also confirming that the largest remaining memory
+opportunities lie in later roadmap items focused on diff generation and updated-file ownership.
+
+- diff lifecycle management (GitHub issue 138);
+- updated-file ownership and composition (GitHub issues 135, 136, and 137);
+- view release timing and pruning (GitHub issue 140, completed and measured as a baseline-preserving
+  optimization).
 
 ______________________________________________________________________
 
@@ -301,11 +348,11 @@ ______________________________________________________________________
 
 ## Related issues
 
-- #133 Audit pipeline materialization points and memory ownership
-- #134 Establish memory and allocation baselines for pipeline processing
-- #135 Design lazy updated-file composition for pipeline updates
-- #136 Implement iterable-backed UpdatedView generation
-- #137 Stream updated content through WriterStep
-- #138 Audit diff-generation materialization and retention behavior
-- #140 Review view-pruning lifecycle and memory-release opportunities
-- #141 Evaluate alternative FileImageView implementations
+- GitHub issue 133: Audit pipeline materialization points and memory ownership
+- GitHub issue 134: Establish memory and allocation baselines for pipeline processing
+- GitHub issue 135: Design lazy updated-file composition for pipeline updates
+- GitHub issue 136: Implement iterable-backed UpdatedView generation
+- GitHub issue 137: Stream updated content through WriterStep
+- GitHub issue 138: Audit diff-generation materialization and retention behavior
+- GitHub issue 140: Review view-pruning lifecycle and memory-release opportunities
+- GitHub issue 141: Evaluate alternative FileImageView implementations
