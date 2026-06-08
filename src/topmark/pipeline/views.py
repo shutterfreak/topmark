@@ -23,6 +23,7 @@ dataclasses per phase.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING
 from typing import Protocol
 from typing import runtime_checkable
@@ -38,6 +39,21 @@ if TYPE_CHECKING:
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+class ViewSlot(str, Enum):
+    """Named view slots that pipeline steps may consume.
+
+    The values are intentionally plain strings so they remain stable in logs,
+    tests, and machine-oriented diagnostics if exposed later.
+    """
+
+    IMAGE = "image"
+    HEADER = "header"
+    BUILD = "build"
+    RENDER = "render"
+    UPDATED = "updated"
+    DIFF = "diff"
 
 
 @runtime_checkable
@@ -277,21 +293,75 @@ class Views:
             keep_diff_view: Whether to preserve the diff view.
         """
         logger.debug("keep_diff_view: %r", keep_diff_view)
+        self.release_image()
+        self.release_header()
+        self.release_build()
+        self.release_render()
+        self.release_updated()
+
+        if not keep_diff_view:
+            self.release_diff()
+
+    def release_image(self) -> None:
+        """Release the original file image view when it is no longer needed."""
         if self.image:
             self.image.release()
+
+    def release_header(self) -> None:
+        """Release detected-header payloads when they are no longer needed."""
         if self.header:
             self.header.release()
+
+    def release_build(self) -> None:
+        """Release builder payloads when they are no longer needed."""
         if self.build:
             self.build.release()
+
+    def release_render(self) -> None:
+        """Release rendered-header payloads when they are no longer needed."""
         if self.render:
             self.render.release()
+
+    def release_updated(self) -> None:
+        """Release updated-file payloads when they are no longer needed."""
         if self.updated:
             self.updated.release()
 
-        if self.diff and not keep_diff_view:
+    def release_diff(self) -> None:
+        """Release diff payloads when they are no longer needed."""
+        if self.diff:
             self.diff.release()
 
-        # HeaderView is intentionally light; no release.
+    def release_consumed(
+        self,
+        *,
+        remaining_view_consumers: set[ViewSlot],
+        keep_diff_view: bool = False,
+    ) -> None:
+        """Release views that no remaining pipeline step declares as consumed.
+
+        Args:
+            remaining_view_consumers: View slots consumed by steps that have not run yet.
+            keep_diff_view: Whether to preserve the diff view for callers that render it after the
+                pipeline completes.
+        """
+        if ViewSlot.IMAGE not in remaining_view_consumers:
+            self.release_image()
+
+        if ViewSlot.HEADER not in remaining_view_consumers:
+            self.release_header()
+
+        if ViewSlot.BUILD not in remaining_view_consumers:
+            self.release_build()
+
+        if ViewSlot.RENDER not in remaining_view_consumers:
+            self.release_render()
+
+        if ViewSlot.UPDATED not in remaining_view_consumers:
+            self.release_updated()
+
+        if not keep_diff_view and ViewSlot.DIFF not in remaining_view_consumers:
+            self.release_diff()
 
     def as_dict(self) -> dict[str, object]:
         """Short machine-friendly summary; avoid heavy text blobs."""

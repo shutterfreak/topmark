@@ -31,6 +31,7 @@ from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import ViewSlot
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
 from topmark.processors.types import StripHeaderResult
@@ -111,6 +112,12 @@ class StripperStep(BaseStep):
             name=self.__class__.__name__,
             primary_axis=Axis.STRIP,
             axes_written=(Axis.STRIP,),
+            consumes_views=frozenset(
+                {
+                    ViewSlot.IMAGE,
+                    ViewSlot.HEADER,
+                }
+            ),
         )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:

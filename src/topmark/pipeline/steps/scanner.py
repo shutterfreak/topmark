@@ -38,6 +38,7 @@ from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
+from topmark.pipeline.views import ViewSlot
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
 
@@ -72,6 +73,11 @@ class ScannerStep(BaseStep):
             name=self.__class__.__name__,
             primary_axis=Axis.HEADER,
             axes_written=(Axis.HEADER,),
+            consumes_views=frozenset(
+                {
+                    ViewSlot.IMAGE,
+                }
+            ),
         )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:

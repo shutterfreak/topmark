@@ -58,6 +58,7 @@ from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import ViewSlot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -394,6 +395,11 @@ class WriterStep(BaseStep):
             name=self.__class__.__name__,
             primary_axis=Axis.WRITE,
             axes_written=(Axis.WRITE,),
+            consumes_views=frozenset(
+                {
+                    ViewSlot.UPDATED,
+                }
+            ),
         )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:

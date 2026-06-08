@@ -46,6 +46,10 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Pruned consumed pipeline views incrementally between steps when view pruning is enabled, reducing
+  transient retention before later patch/write phases while preserving requested diff output.
+- Replaced string-based pipeline view-pruning decisions with typed `ViewSlot` consumer metadata
+  declared by concrete pipeline steps.
 - Replaced the CLI presentation backend with Rich.
 - Adopted `rich-click` for CLI help rendering while preserving Click runtime semantics.
 - Centralized CLI option metadata and command-applicability groups used by diagnostics.
@@ -243,6 +247,10 @@ ______________________________________________________________________
   memory-baseline findings from issue #134.
 - Added cross-references from development and CI documentation to the performance-baseline workflow
   and benchmark methodology.
+- Documented issue #140 follow-up measurements showing that consumed-view pruning reduces retained
+  memory in header-heavy workloads while preserving the issue #134 baseline comparison modes.
+- Documented pipeline view consumer declarations, `consumes_views`, and typed `ViewSlot` pruning
+  behavior in the developer pipeline documentation.
 
 ### Internal - Unreleased
 
@@ -293,6 +301,10 @@ ______________________________________________________________________
   generated benchmark artifacts from Ruff scanning.
 - Added subprocess-isolated benchmark execution so per-scenario RSS measurements reflect individual
   workload peaks rather than cumulative process high-water marks.
+- Added explicit pruned benchmark modes to measure view-pruning lifecycle behavior without changing
+  the historical benchmark suite modes used for baseline comparability.
+- Added regression coverage for consumed-view release behavior, diff retention, and concrete
+  pipeline step `consumes_views` declarations.
 
 ### Notes - Unreleased
 

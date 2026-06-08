@@ -63,6 +63,7 @@ from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import RenderView
 from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import ViewSlot
 from topmark.processors.base import NO_LINE_ANCHOR
 
 if TYPE_CHECKING:
@@ -215,6 +216,14 @@ class PlannerStep(BaseStep):
             name=self.__class__.__name__,
             primary_axis=Axis.PLAN,
             axes_written=(Axis.PLAN,),
+            consumes_views=frozenset(
+                {
+                    ViewSlot.IMAGE,
+                    ViewSlot.HEADER,
+                    ViewSlot.RENDER,
+                    ViewSlot.UPDATED,
+                }
+            ),
         )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:

@@ -45,6 +45,7 @@ from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
+from topmark.pipeline.views import ViewSlot
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -78,6 +79,15 @@ class ComparerStep(BaseStep):
             name=self.__class__.__name__,
             primary_axis=Axis.COMPARISON,
             axes_written=(Axis.COMPARISON,),
+            consumes_views=frozenset(
+                {
+                    ViewSlot.IMAGE,
+                    ViewSlot.HEADER,
+                    ViewSlot.BUILD,
+                    ViewSlot.RENDER,
+                    ViewSlot.UPDATED,
+                }
+            ),
         )
 
     def may_proceed(self, ctx: ProcessingContext) -> bool:

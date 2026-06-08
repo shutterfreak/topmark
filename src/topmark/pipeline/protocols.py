@@ -28,6 +28,10 @@ name : str
     Fully qualified name used for tracing/telemetry.
 axes_written : tuple[Axis, ...]
     Declares which status axes this step is allowed to set (e.g. ("fs", "content")).
+
+    Steps also declare the view slots they consume. The runner uses this metadata
+    to release consumed view payloads after the last remaining consumer has run,
+    without keying pruning behavior to step-name strings.
 """
 
 from __future__ import annotations
@@ -41,6 +45,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.pipeline.hints import Axis
+    from topmark.pipeline.views import ViewSlot
 
 
 Ctx = TypeVar("Ctx")
@@ -63,6 +68,7 @@ class Step(Protocol[Ctx]):
     name: str
     primary_axis: Axis | None
     axes_written: tuple[Axis, ...]
+    consumes_views: frozenset[ViewSlot]
 
     def may_proceed(self, ctx: Ctx) -> bool:
         """Return whether the step should run given the current context.

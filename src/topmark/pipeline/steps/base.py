@@ -25,9 +25,11 @@ Design goals
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
+from topmark.pipeline.views import ViewSlot
 
 if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
@@ -49,11 +51,13 @@ class BaseStep:
         name: Fully qualified, stable step identifier for logs/tracing.
         primary_axis: The axis this step "represents" in summaries
         axes_written: Status axes this step is allowed to write (e.g. ("fs",)).
+        consumes_views: View slots this step may read during `run()` or `hint()`.
     """
 
     name: str
     primary_axis: Axis | None  # new: axis this step "represents" in summaries
     axes_written: tuple[Axis, ...] = ()
+    consumes_views: frozenset[ViewSlot] = field(default_factory=frozenset[ViewSlot])
 
     def __call__(self, ctx: ProcessingContext) -> ProcessingContext:
         """Invoke the step lifecycle: gate → run (if allowed) → hint.

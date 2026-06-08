@@ -66,6 +66,13 @@ Hard-linked selected processing paths remain separate result payloads and are re
 unsupported, policy-blocked processing targets rather than being serialized as a single preferred
 path.
 
+Pipeline steps may also produce and consume phase-scoped view payloads. The `Step` protocol exposes
+`consumes_views`, and `BaseStep` stores those declarations as instance metadata. Runtime view
+pruning uses this typed metadata to release consumed view payloads between steps without relying on
+step-name string matching. The authoritative slot names are exposed by
+\[`ViewSlot`\][topmark.pipeline.views.ViewSlot], and the view bundle is exposed by
+\[`Views`\][topmark.pipeline.views.Views].
+
 {% include-markdown "\_snippets/config-strictness.md" %}
 
 ## Line-ending handling (contract)
@@ -97,6 +104,11 @@ API module.
 
 - Pipelines module (pipeline definitions and the `Pipeline` enum):
   - [`topmark.pipeline.pipelines`](../api/internals/topmark/pipeline/pipelines.md)
+- Step protocol and base lifecycle contract:
+  - [`topmark.pipeline.protocols`](../api/internals/topmark/pipeline/protocols.md)
+  - [`topmark.pipeline.steps.base`](../api/internals/topmark/pipeline/steps/base.md)
+- Pipeline view slots and view bundle:
+  - [`topmark.pipeline.views`](../api/internals/topmark/pipeline/views.md)
 - Conceptual overview:
   - [`Pipelines (Concepts)`](./pipelines.md)
 
