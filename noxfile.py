@@ -70,6 +70,7 @@ CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1
 
 DEPS_DEV: Final[str] = ".[dev,typing,test]"
 DEPS_DOCS: Final[str] = ".[docs]"
+DEPS_QA: Final[str] = ".[dev,typing,test,docs]"
 
 
 # Global options
@@ -227,7 +228,7 @@ def qa(session: nox.Session) -> None:
     """Run tests + pyright (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install(DEPS_DEV)
+    session.install(DEPS_QA)
 
     # We add *session.posargs to the end of the command
     session.run(
@@ -263,7 +264,7 @@ def qa_api(session: nox.Session) -> None:
     """
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install(DEPS_DEV)
+    session.install(DEPS_QA)
 
     # Main test suite (posargs forwarded, e.g. "-n auto")
     session.run(
@@ -657,8 +658,8 @@ def release_check(session: nox.Session) -> None:
       - Packaging build + metadata checks (build, twine)
       - Tests + pyright for the session Python
     """
-    # Tooling / QA deps
-    session.install(DEPS_DEV)
+    # Tooling / QA deps, including docs dependencies because pyright checks tools/docs/.
+    session.install(DEPS_QA)
     # Docs deps (mkdocs, plugins)
     session.install(DEPS_DOCS)
 
