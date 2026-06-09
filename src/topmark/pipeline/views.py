@@ -32,6 +32,7 @@ from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from collections.abc import Iterator
     from collections.abc import Mapping
     from collections.abc import Sequence
 
@@ -79,6 +80,8 @@ class Releasable(Protocol):
         ...
 
 
+# Keep Protocol explicit so Pyright treats this as a structural protocol,
+# not as a nominal subclass of Releasable.
 class FileImageView(Releasable, Protocol):
     """Protocol for read-only access to a file's logical lines.
 
@@ -223,13 +226,79 @@ class RenderView(Releasable):
         self.block = None
 
 
+@runtime_checkable
+class UpdatedContent(Protocol):
+    """Repeatable updated-file content abstraction.
+
+    Implementations expose updated file lines without requiring callers to own
+    one eagerly materialized ``list[str]``. Unlike a bare iterator, each call to
+    `iter_lines` must return a fresh iterator so comparer, patcher, and writer
+    can consume the same updated content independently.
+    """
+
+    def iter_lines(self) -> Iterable[str]:
+        """Iterate updated file lines repeatably."""
+        ...
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterate updated file lines repeatably."""
+        ...
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class SegmentUpdatedContent:
+    """Segment-backed repeatable updated file content.
+
+    The content is represented as ordered line segments, typically slices of the
+    original image plus a rendered-header segment. The segments themselves are
+    not copied by this class. Each iteration walks the segments in order.
+
+    Attributes:
+        segments: Ordered, repeatable line segments composing the updated image.
+    """
+
+    segments: tuple[Sequence[str], ...]
+
+    def iter_lines(self) -> Iterable[str]:
+        """Iterate the composed updated image without materializing it as one list.
+
+        Returns:
+            Iterable[str]: Updated lines from every segment in order.
+        """
+        return iter(self)
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterate the composed updated image as a repeatable iterable.
+
+        Yields:
+            str: Updated lines from every segment in order.
+        """
+        for segment in self.segments:
+            yield from segment
+
+
+def compose_updated_content(*segments: Sequence[str]) -> SegmentUpdatedContent:
+    """Create a repeatable segment-backed updated-content view.
+
+    Args:
+        *segments: Ordered line segments. Empty segments are retained only when
+            all segments are empty so an explicitly empty updated image remains
+            representable.
+
+    Returns:
+        SegmentUpdatedContent: Repeatable content composed from the supplied
+        segments.
+    """
+    return SegmentUpdatedContent(segments=tuple(segments))
+
+
 @dataclass(kw_only=True, slots=True)
 class UpdatedView(Releasable):
     """View of the pipeline's updated file image.
 
-    ``lines`` may be a sequence (e.g., ``list[str]``) or a lazy iterable
-    (e.g., a generator composing a three-segment view) to avoid materializing
-    large buffers up-front.
+    ``lines`` may be a sequence or an `UpdatedContent` implementation. Bare
+    iterables remain accepted for backward compatibility, but repeatable
+    `UpdatedContent` is preferred for pipeline-generated updates.
 
     Attributes:
         lines: Updated file image as a sequence or iterable of lines, or ``None`` when no update
@@ -237,11 +306,11 @@ class UpdatedView(Releasable):
 
     Notes:
         Pruning is handled by calling `release()`, which clears the updated file
-        image reference. If ``lines`` is an iterator, callers must treat this view
-        as single-pass.
+        image reference. Pipeline-generated lazy content should be repeatable;
+        arbitrary caller-provided iterables may still be single-pass.
     """
 
-    lines: Sequence[str] | Iterable[str] | None
+    lines: UpdatedContent | Sequence[str] | None
 
     def release(self) -> None:
         """Release the updated file image payload to reduce memory usage."""

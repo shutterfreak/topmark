@@ -53,6 +53,9 @@ ______________________________________________________________________
   transient retention before later patch/write phases while preserving requested diff output.
 - Replaced string-based pipeline view-pruning decisions with typed `ViewSlot` consumer metadata
   declared by concrete pipeline steps.
+- Replaced eager replacement-image composition with a repeatable updated-content abstraction and
+  segment-backed updated-file views, allowing replacement planning to retain composed updated
+  content without requiring one materialized updated-file list.
 - Replaced the CLI presentation backend with Rich.
 - Adopted `rich-click` for CLI help rendering while preserving Click runtime semantics.
 - Centralized CLI option metadata and command-applicability groups used by diagnostics.
@@ -257,6 +260,9 @@ ______________________________________________________________________
   behavior in the developer pipeline documentation.
 - Documented GitHub issue 138 follow-up measurements showing reduced diff-generation allocations in
   diff-heavy workloads after avoiding duplicate INFO-level diff-preview formatting.
+- Documented GitHub issues 135 and 136, including repeatable updated-content architecture, remaining
+  materialization boundaries, follow-up benchmark measurements, and cumulative Track B
+  memory-allocation improvements relative to the GitHub issue 134 baseline.
 
 ### Internal - Unreleased
 
@@ -313,6 +319,10 @@ ______________________________________________________________________
   pipeline step `consumes_views` declarations.
 - Added regression coverage for diff-preview formatting behavior so expensive unified-diff preview
   rendering only occurs when INFO-level pipeline logging is enabled.
+- Added repeatable UpdatedContent pipeline abstractions together with segment-backed updated-file
+  composition for replacement-planning paths.
+- Added regression coverage for repeatable updated-content iteration and updated-view lifecycle
+  behavior.
 
 ### Notes - Unreleased
 

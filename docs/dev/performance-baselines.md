@@ -15,9 +15,10 @@ topmark:header:end
 This document describes the memory and allocation baseline methodology established for TopMark Track
 B performance work.
 
-The goal of these baselines is to measure current behavior before introducing optimizations. The
-measurements provide a factual reference for future work such as lazy updated-file composition,
-iterable-backed views, streaming writes, diff lifecycle improvements, and view-pruning changes.
+The goal of these baselines is to measure current behavior before and after incremental
+optimizations. The measurements provide a factual reference for work such as lazy updated-file
+composition, iterable-backed views, streaming writes, diff lifecycle improvements, and view-pruning
+changes.
 
 ______________________________________________________________________
 
@@ -379,6 +380,68 @@ The measurements also reinforce the broader findings from GitHub issues 133, 134
 
 These figures should be treated as directional rather than hard thresholds because memory
 measurements remain platform-, allocator-, and workload-sensitive.
+
+### Lazy updated-content composition follow-up (GitHub issues 135 and 136)
+
+GitHub issues 135 and 136 introduced a repeatable updated-content abstraction for pipeline-generated
+updated views. The implementation is intentionally narrow: replacement planning can now retain a
+segment-backed composition of the original prefix, rendered header, and original suffix instead of
+retaining one eager updated-file list.
+
+The updated-view contract now rejects arbitrary one-shot iterables in favor of repeatable updated
+content or materialized sequences. This preserves current CLI and API behavior while making the
+pipeline ownership model more explicit: pipeline-generated lazy content must be repeatable so
+comparer, patcher, and writer can consume updated content independently.
+
+The issue 135 and 136 measurements were collected using the same explicit `_pruned` benchmark modes
+used for the GitHub issue 140 and GitHub issue 138 follow-up measurements. Representative changes
+relative to the GitHub issue 138 results were:
+
+| Scenario             | Mode                | Peak traced change | RSS change |
+| -------------------- | ------------------- | -----------------: | ---------: |
+| `huge_diff`          | `strip_diff_pruned` |             +1.8 % |     +0.1 % |
+| `strip_large_header` | `strip_diff_pruned` |             +1.9 % |     +0.4 % |
+| `huge_header`        | `check_diff_pruned` |              0.0 % |     +0.3 % |
+| `strip_large_header` | `check_diff_pruned` |             +3.7 % |     +5.0 % |
+
+These results should be interpreted as effectively flat rather than as a regression. The measured
+pathological workloads remain dominated by comparison, patch generation, scanner/header ownership,
+or current consumers that still materialize updated lines when required by existing behavior.
+
+A follow-up materialization audit after the issue 135 and 136 changes did not identify an obvious
+additional low-risk optimization that belonged in the same change set. The remaining relevant
+materialization points are primarily:
+
+- comparison, where old and updated line sequences are currently materialized for equality checks;
+- patch generation, where updated lines and unified diff output are materialized;
+- writer sinks and stdout handling, which remain the focus of GitHub issue 137;
+- scanner/header extraction and processor-local normalization paths.
+
+For historical tracking, the issue 135 and 136 results can also be compared against the original
+GitHub issue 134 baseline measurements. This shows the cumulative effect of the Track B
+optimizations implemented so far.
+
+| Scenario             | Baseline mode | Current mode        | Peak traced change | RSS change |
+| -------------------- | ------------- | ------------------- | -----------------: | ---------: |
+| `huge_header`        | `check_diff`  | `check_diff_pruned` |            -37.2 % |     -9.0 % |
+| `huge_header`        | `strip_diff`  | `strip_diff_pruned` |            -38.6 % |     -5.5 % |
+| `huge_diff`          | `strip_diff`  | `strip_diff_pruned` |            -33.3 % |    -16.8 % |
+| `strip_large_header` | `strip_diff`  | `strip_diff_pruned` |            -39.5 % |    -19.1 % |
+
+Relative to the original GitHub issue 134 baseline, the cumulative Track B improvements remain
+substantial. The largest measured reductions are still attributable to earlier release of consumed
+views and reduced duplicate diff-preview formatting, while the issue 135 and 136 work primarily
+improves the architecture and ownership contract for updated content.
+
+The measurements confirm that lazy updated-content composition is now in place, but they also show
+that the current pathological benchmark set does not expose a large additional memory win from this
+change alone. This is consistent with the benchmark design: the largest measured cases still require
+comparison or unified diff generation, both of which continue to materialize updated content or diff
+text.
+
+GitHub issue 137 therefore remains a separate follow-up focused on streaming updated content through
+writer-related paths. Further diff-generation redesign should also remain separate from issues 135
+and 136 so that benchmark comparisons stay attributable to one architectural change at a time.
 
 ______________________________________________________________________
 
