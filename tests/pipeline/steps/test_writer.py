@@ -26,7 +26,9 @@ from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.pipeline.views import UpdatedContent
 from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import compose_updated_content
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
@@ -34,6 +36,7 @@ if TYPE_CHECKING:
 
     import pytest
     from _pytest.capture import CaptureResult
+    from _pytest.monkeypatch import MonkeyPatch
 
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
@@ -43,7 +46,7 @@ if TYPE_CHECKING:
 def _make_writer_context(
     path: Path,
     *,
-    updated_lines: list[str] | None = None,
+    updated_lines: UpdatedContent | list[str] | None = None,
     apply_changes: bool = True,
     plan_status: PlanStatus = PlanStatus.REPLACED,
     output_target: OutputTarget = OutputTarget.FILE,
@@ -64,8 +67,24 @@ def _make_writer_context(
     ctx.status.plan = plan_status
     ctx.views.updated = None if updated_lines is None else UpdatedView(lines=updated_lines)
     ctx.newline_style = "\n"
-    ctx.ends_with_newline = bool(updated_lines and updated_lines[-1].endswith("\n"))
+    ctx.ends_with_newline = (
+        bool(updated_lines and updated_lines[-1].endswith("\n"))
+        if isinstance(updated_lines, list)
+        else True
+    )
     return ctx
+
+
+def _forbid_updated_materialization(monkeypatch: MonkeyPatch) -> None:
+    """Fail the test if WriterStep falls back to eager updated-line materialization."""
+
+    def fail_materialize(self: ProcessingContext) -> list[str]:
+        raise AssertionError("WriterStep must stream updated content")
+
+    monkeypatch.setattr(
+        "topmark.pipeline.context.model.ProcessingContext.materialize_updated_lines",
+        fail_materialize,
+    )
 
 
 def test_writer_dry_run_skips_filesystem_mutation(tmp_path: Path) -> None:
@@ -254,3 +273,109 @@ def test_writer_write_failure_sets_failed_status_and_preserves_original_file(
     assert ctx.status.write is WriteStatus.FAILED
     assert not path.exists()
     assert any("Atomic write failed:" in diagnostic.message for diagnostic in ctx.diagnostics)
+
+
+def test_writer_atomic_apply_streams_updated_content(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Atomic file writes should consume UpdatedContent without materializing it first."""
+    path: Path = tmp_path / "atomic_lazy.py"
+    path.write_text("original\n", encoding="utf-8")
+    _forbid_updated_materialization(monkeypatch)
+    content: UpdatedContent = compose_updated_content(["updated\n"], ["body\n"])
+    ctx: ProcessingContext = _make_writer_context(
+        path,
+        updated_lines=content,
+        apply_changes=True,
+        plan_status=PlanStatus.REPLACED,
+        file_write_strategy=FileWriteStrategy.ATOMIC,
+    )
+
+    ctx = run_writer(ctx)
+
+    assert ctx.status.write is WriteStatus.WRITTEN
+    assert path.read_text(encoding="utf-8") == "updated\nbody\n"
+
+
+def test_writer_inplace_apply_streams_updated_content(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """In-place file writes should consume UpdatedContent without materializing it first."""
+    path: Path = tmp_path / "inplace_lazy.py"
+    path.write_text("original\n", encoding="utf-8")
+    _forbid_updated_materialization(monkeypatch)
+    content: UpdatedContent = compose_updated_content(["updated\n"], ["body\n"])
+    ctx: ProcessingContext = _make_writer_context(
+        path,
+        updated_lines=content,
+        apply_changes=True,
+        plan_status=PlanStatus.REPLACED,
+        file_write_strategy=FileWriteStrategy.INPLACE,
+    )
+
+    ctx = run_writer(ctx)
+
+    assert ctx.status.write is WriteStatus.WRITTEN
+    assert path.read_text(encoding="utf-8") == "updated\nbody\n"
+
+
+def test_writer_stdout_preview_streams_updated_content(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """STDOUT writes should consume UpdatedContent without materializing it first."""
+    path: Path = tmp_path / "stdout_lazy.py"
+    path.write_text("original\n", encoding="utf-8")
+    _forbid_updated_materialization(monkeypatch)
+    content: UpdatedContent = compose_updated_content(["updated\n"], ["body\n"])
+    ctx: ProcessingContext = _make_writer_context(
+        path,
+        updated_lines=content,
+        apply_changes=False,
+        plan_status=PlanStatus.PREVIEWED,
+        output_target=OutputTarget.STDOUT,
+    )
+
+    ctx = run_writer(ctx)
+
+    captured: CaptureResult[str] = capsys.readouterr()
+    assert ctx.status.write is WriteStatus.WRITTEN
+    assert captured.out == "updated\nbody\n"
+    assert path.read_text(encoding="utf-8") == "original\n"
+
+
+def test_writer_stdout_preview_failure_sets_failed_status(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """STDOUT write failures should set FAILED and record a diagnostic."""
+    path: Path = tmp_path / "stdout_failure.py"
+    path.write_text("original\n", encoding="utf-8")
+    ctx: ProcessingContext = _make_writer_context(
+        path,
+        updated_lines=["updated\n"],
+        apply_changes=False,
+        plan_status=PlanStatus.PREVIEWED,
+        output_target=OutputTarget.STDOUT,
+    )
+
+    class FailingStdout:
+        """Minimal stdout replacement that fails on writes."""
+
+        def write(self, text: str) -> int:
+            """Raise an output failure for any attempted write."""
+            raise OSError("stdout unavailable")
+
+    monkeypatch.setattr("topmark.pipeline.steps.writer.sys.stdout", FailingStdout())
+
+    ctx = run_writer(ctx)
+
+    assert ctx.status.write is WriteStatus.FAILED
+    assert path.read_text(encoding="utf-8") == "original\n"
+    assert any(
+        "Stdout write failed: stdout unavailable" in diagnostic.message
+        for diagnostic in ctx.diagnostics
+    )

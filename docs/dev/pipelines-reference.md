@@ -77,8 +77,9 @@ without relying on step-name string matching. The authoritative slot names are e
 The updated-file view may contain either a materialized line sequence or an implementation of the
 repeatable \[`UpdatedContent`\][topmark.pipeline.views.UpdatedContent] protocol. This allows
 pipeline steps to represent updated content without necessarily materializing a full replacement
-file image while still supporting repeated consumption by comparison, patch-generation, and write
-steps.
+file image while still supporting repeated consumption by comparison, patch generation, and writing.
+`WriterStep` streams both file writes and STDOUT emission through the updated-line iterator;
+comparer and patcher materialization remain explicit algorithm-level ownership points.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
