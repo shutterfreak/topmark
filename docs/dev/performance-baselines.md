@@ -473,6 +473,55 @@ Follow-up:
 - stdout presentation outside writer-owned updated-content emission, which remains the focus of
   GitHub issue 139;
 
+### Stdout rendering and end-to-end output architecture audits (GitHub issues 139 and 147)
+
+GitHub issue 139 audited stdout rendering after the writer-owned streaming work. The audit found
+that writer STDOUT emission already streams updated content, and that the remaining stdout and
+presentation ownership is concentrated in human report rendering and machine-readable output
+serialization rather than in file-content writing. No implementation was justified because the
+current benchmark scenarios did not show stdout presentation as a meaningful contributor.
+
+GitHub issue 147 extended that audit to the end-to-end CLI, API, reporting, and machine-output
+architecture. The current ownership map is:
+
+- command orchestration keeps the ordered `ProcessingContext` result list so exit-code precedence,
+  missing-input synthesis, report-scope filtering, summaries, and machine-readable output all use
+  one consistent result set;
+- human TEXT and Markdown renderers build a filtered `view_results` list for per-file presentation
+  and then render one complete output string from small presentation fragments;
+- JSON machine output builds a complete envelope and serializes it as one pretty-printed JSON
+  document, as required by the existing machine-output contract;
+- NDJSON machine output already streams record strings from iterator-based serializers after the
+  command has completed result collection;
+- public API entry points assemble immutable DTO tuples and summary dictionaries because their
+  contract is an in-memory return value, not a streaming sink;
+- patch previews still depend on the diff view produced by patch generation, which remains a known
+  algorithm-level materialization point rather than a presentation-only concern.
+
+The realistic streaming alternatives were evaluated as follows:
+
+| Candidate                                                  | Compatibility impact                                                                                                         | Expected benchmark relevance                                                        | Recommendation                    |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------- |
+| Streaming NDJSON record emission during pipeline execution | Would complicate ordering, error precedence, and synthetic missing/filtered results                                          | Low unless repositories contain very large numbers of files                         | Do not implement now              |
+| Incremental JSON generation                                | Would preserve less of the existing pretty JSON/envelope contract and still needs full result knowledge for summaries/errors | Low in current file-size-oriented benchmarks                                        | Do not implement now              |
+| Sink-oriented human report rendering                       | Would replace simple string renderers with writer/sink plumbing while retaining the same filtered result list                | Low; current evidence points to file views, diff generation, and comparison instead | Do not implement now              |
+| Lazy patch preview rendering                               | Potentially useful only if diff generation itself becomes lazy                                                               | Not separable from the known diff-generation ownership point                        | Keep as future diff-work input    |
+| Streaming public API results                               | Would be a new API contract rather than an internal optimization                                                             | Not applicable to current CLI benchmark comparability                               | Defer unless API users request it |
+
+The audit therefore does not recommend an end-to-end streaming-output redesign for the current Track
+B scope. The existing architecture is already partially streaming where it is low-risk and
+contract-compatible: updated-content writing streams through `WriterStep`, and NDJSON serialization
+streams records from iterators. The remaining output materialization is intentional and tied to
+stable CLI/API contracts. Converting those layers to sinks or incremental emitters would add
+substantial orchestration complexity while leaving the historically measured hotspots largely
+unchanged.
+
+This conclusion is consistent with the GitHub issue 139 finding that stdout presentation is not a
+benchmark-dominant contributor, and with the GitHub issue 141 finding that replacing the
+authoritative file-image representation would not provide a realistic measurable improvement under
+the current benchmark evidence. Track B should therefore treat end-to-end output streaming as
+evaluated but not currently warranted.
+
 ______________________________________________________________________
 
 ## Known caveats
@@ -498,5 +547,7 @@ ______________________________________________________________________
 - GitHub issue 136: Implement iterable-backed UpdatedView generation
 - GitHub issue 137: Stream updated content through WriterStep
 - GitHub issue 138: Audit diff-generation materialization and retention behavior
+- GitHub issue 139: Audit stdout rendering and output materialization behavior
 - GitHub issue 140: Review view-pruning lifecycle and memory-release opportunities
 - GitHub issue 141: Evaluate alternative FileImageView implementations
+- GitHub issue 147: Design end-to-end streaming output architecture for CLI and machine formats
