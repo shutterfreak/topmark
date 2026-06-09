@@ -235,19 +235,6 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
     PATCH_FAILED = "patch:failed"
 
 
-# Higher is more severe/important
-_CLUSTER_SCORE: dict[str, int] = {
-    Cluster.ERROR.value: 100,
-    Cluster.BLOCKED_POLICY.value: 90,
-    Cluster.SKIPPED.value: 80,
-    Cluster.UNSUPPORTED.value: 80,
-    Cluster.CHANGED.value: 70,
-    Cluster.WOULD_CHANGE.value: 60,
-    Cluster.UNCHANGED.value: 50,
-    Cluster.PENDING.value: 10,
-}
-
-
 @dataclass(frozen=True, kw_only=True, slots=True)
 class Hint:
     """Normalized hint payload attached to a `ProcessingContext`.

@@ -32,6 +32,8 @@ The following architectural contracts are part of the stable 1.x design:
 - Registry mutation is represented as explicit overlay state.
 - Pipeline execution remains independent from presentation rendering.
 - Machine-readable output remains independent from human-facing TEXT and Markdown output.
+- Mutable pipeline execution state can be reduced to durable result snapshots without changing
+  runner, CLI, API, or presentation behavior.
 
 ______________________________________________________________________
 
