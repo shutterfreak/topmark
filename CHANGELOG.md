@@ -335,6 +335,9 @@ ______________________________________________________________________
   handling.
 - Added regression coverage for repeatable updated-content iteration and updated-view lifecycle
   behavior.
+- Added immutable `StatusSnapshot` and `ProcessingResult` result-reduction primitives as the first
+  stage of separating volatile pipeline execution state from durable processing outcomes (GitHub
+  issue #148).
 
 ### Notes - Unreleased
 

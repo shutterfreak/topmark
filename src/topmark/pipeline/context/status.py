@@ -50,6 +50,7 @@ status evaluation remains predictable, testable, and import-safe.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import fields
 from typing import TypedDict
 
 from topmark.pipeline.hints import Axis
@@ -80,6 +81,125 @@ class AxisStatusPayload(TypedDict):
     axis: str
     name: str
     label: str
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class StatusSnapshot:
+    """Immutable snapshot of per-axis pipeline status.
+
+    A `StatusSnapshot` captures the durable result-facing status values from a
+    mutable [`ProcessingStatus`][topmark.pipeline.context.status.ProcessingStatus]
+    instance without retaining the mutable source object. It is intended for
+    post-run result models that should remain stable after the pipeline context
+    continues to mutate or is released.
+
+    Attributes:
+        resolve: Snapshot of file-type resolution status.
+        fs: Snapshot of file system status.
+        content: Snapshot of content-level status.
+        header: Snapshot of header detection and parsing status.
+        generation: Snapshot of header generation status.
+        render: Snapshot of header rendering status.
+        strip: Snapshot of header stripping status.
+        comparison: Snapshot of comparison status.
+        plan: Snapshot of update-planning status.
+        patch: Snapshot of patch generation status.
+        write: Snapshot of write status.
+    """
+
+    resolve: ResolveStatus
+    fs: FsStatus
+    content: ContentStatus
+    header: HeaderStatus
+    generation: GenerationStatus
+    render: RenderStatus
+    strip: StripStatus
+    comparison: ComparisonStatus
+    plan: PlanStatus
+    patch: PatchStatus
+    write: WriteStatus
+
+    @classmethod
+    def from_status(cls, status: ProcessingStatus) -> StatusSnapshot:
+        """Create an immutable status snapshot from mutable pipeline status.
+
+        Args:
+            status: Mutable status object to snapshot.
+
+        Returns:
+            Detached immutable status snapshot containing the current per-axis values.
+        """
+        return cls(
+            resolve=status.resolve,
+            fs=status.fs,
+            content=status.content,
+            header=status.header,
+            generation=status.generation,
+            render=status.render,
+            strip=status.strip,
+            comparison=status.comparison,
+            plan=status.plan,
+            patch=status.patch,
+            write=status.write,
+        )
+
+    def get(self, axis: Axis) -> BaseStatus:
+        """Get the status for a given Axis.
+
+        Args:
+            axis: The Axis we want to get the status for.
+
+        Returns:
+            The status for the given Axis.
+        """
+        match axis:
+            case Axis.RESOLVE:
+                return self.resolve
+            case Axis.FS:
+                return self.fs
+            case Axis.CONTENT:
+                return self.content
+            case Axis.HEADER:
+                return self.header
+            case Axis.GENERATION:
+                return self.generation
+            case Axis.RENDER:
+                return self.render
+            case Axis.STRIP:
+                return self.strip
+            case Axis.COMPARISON:
+                return self.comparison
+            case Axis.PLAN:
+                return self.plan
+            case Axis.PATCH:
+                return self.patch
+            case Axis.WRITE:
+                return self.write
+
+    def to_dict(self) -> dict[str, AxisStatusPayload]:
+        """Return axis → {axis, name, label} payload for all axes.
+
+        Returns:
+            Mapping from axis name to its status payload.
+        """
+        data: dict[str, AxisStatusPayload] = {}
+        for item in fields(self):
+            axis_name: str = item.name
+            status: BaseStatus = getattr(self, axis_name)
+            data[axis_name] = {
+                "axis": axis_name,
+                "name": status.name,
+                "label": status.value,
+            }
+        return data
+
+    def has_write_outcome(self) -> bool:
+        """Return True if the write axis has reached a non-pending outcome.
+
+        Returns:
+            `True` when the write status is anything other than `PENDING`.
+        """
+        return self.write is not WriteStatus.PENDING
 
 
 @dataclass(kw_only=True, slots=True)
