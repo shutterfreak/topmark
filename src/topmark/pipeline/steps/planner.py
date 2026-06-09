@@ -62,8 +62,10 @@ from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import RenderView
+from topmark.pipeline.views import UpdatedContent
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import ViewSlot
+from topmark.pipeline.views import compose_updated_content
 from topmark.processors.base import NO_LINE_ANCHOR
 
 if TYPE_CHECKING:
@@ -335,8 +337,17 @@ class PlannerStep(BaseStep):
                 return
 
             # ✅ Preserve empty list as a valid updated image
-            seq: Sequence[str] | Iterable[str] = updated_view.lines
-            stripped_lines: list[str] = seq if isinstance(seq, list) else list(seq)
+            seq: UpdatedContent | Sequence[str] | Iterable[str] = updated_view.lines
+            if not ctx.leading_bom:
+                ctx.views.updated = UpdatedView(lines=seq)
+                ctx.status.plan = PlanStatus.REMOVED if apply else PlanStatus.PREVIEWED
+                return
+
+            stripped_lines: list[str]
+            if isinstance(seq, UpdatedContent):
+                stripped_lines = list(seq.iter_lines())
+            else:
+                stripped_lines = seq if isinstance(seq, list) else list(seq)
 
             # Re-attach BOM only if needed (no-op for empty)
             stripped_lines = _prepend_bom_to_lines_if_needed(stripped_lines, ctx)
@@ -470,20 +481,36 @@ class PlannerStep(BaseStep):
             start: int
             end: int
             start, end = existing_range
-            new_lines: list[str] = (
-                original_lines[:start] + rendered_expected_header_lines + original_lines[end + 1 :]
+            new_content: UpdatedContent | list[str]
+            if ctx.leading_bom:
+                # BOM reattachment may need to alter the first line, so keep this
+                # uncommon path materialized and policy-identical to the previous
+                # implementation.
+                new_lines: list[str] = (
+                    original_lines[:start]
+                    + rendered_expected_header_lines
+                    + original_lines[end + 1 :]
+                )
+                new_content = _prepend_bom_to_lines_if_needed(new_lines, ctx)
+            else:
+                new_content = compose_updated_content(
+                    original_lines[:start],
+                    rendered_expected_header_lines,
+                    original_lines[end + 1 :],
+                )
+
+            materialized_new_lines: list[str] = (
+                new_content if isinstance(new_content, list) else list(new_content.iter_lines())
             )
-            # Prepend BOM if needed
-            new_lines = _prepend_bom_to_lines_if_needed(new_lines, ctx)
             # If replacement is identical to the original, treat as a no-op.
-            if new_lines == original_lines:
+            if materialized_new_lines == original_lines:
                 ctx.status.plan = PlanStatus.SKIPPED
                 ctx.views.updated = UpdatedView(lines=original_lines)
                 logger.trace("Updater: replacement yields no changes for %s", ctx.path)
                 return
             ctx.status.plan = PlanStatus.REPLACED if apply else PlanStatus.PREVIEWED
-            ctx.views.updated = UpdatedView(lines=new_lines)
-            logger.trace("Updated file (replace):\n%s", "".join(new_lines))
+            ctx.views.updated = UpdatedView(lines=new_content)
+            logger.trace("Updated file (replace):\n%s", "".join(materialized_new_lines))
             return
 
         # --- Insert: text-based first ---

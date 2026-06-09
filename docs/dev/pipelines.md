@@ -165,6 +165,11 @@ that read these views declare their dependencies via `consumes_views`. When runt
 enabled, the runner uses those declarations to release consumed view payloads after the last
 remaining consumer has run, while preserving requested output such as retained diffs.
 
+Updated-file views may be represented either as materialized line sequences or as repeatable
+updated-content abstractions. This allows replacement planning to compose updated content lazily
+while preserving existing comparer, patcher, and writer behavior. Pipeline-generated lazy updated
+content must remain repeatable because multiple downstream steps may consume the same updated view.
+
 For filesystem inputs, the processing context path is the selected processing path. It may differ
 from the path spelling supplied on the command line or in configuration when symlinks or equivalent
 relative spellings are involved.

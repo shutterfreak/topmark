@@ -28,6 +28,7 @@ Sections:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
@@ -50,6 +51,7 @@ from topmark.pipeline.hints import HintLog
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.hints import make_hint
 from topmark.pipeline.status import FsStatus
+from topmark.pipeline.views import UpdatedContent
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import Views
 from topmark.utils.path import format_machine_path
@@ -307,6 +309,15 @@ class ProcessingContext:
             return self.views.image.iter_lines()
         return iter(())  # empty
 
+    def materialize_image_lines(self) -> list[str]:
+        """Return the original file image as a materialized list of lines.
+
+        Returns:
+            List of logical lines from the current image view. An empty list is returned if no image
+            is available.
+        """
+        return list(self.iter_image_lines())
+
     def image_line_count(self) -> int:
         """Return the number of logical lines without materializing.
 
@@ -325,23 +336,12 @@ class ProcessingContext:
             returns an empty iterator.
         """
         uv: UpdatedView | None = self.views.updated
-        if not uv or uv.lines is None:
+        if uv is None or uv.lines is None:
             return iter(())
-        seq_or_it: Sequence[str] | Iterable[str] = uv.lines
-        # If it's already a concrete sequence, avoid copying:
-        if isinstance(seq_or_it, list | tuple):
-            return iter(seq_or_it)
-        # Fallback: it's an arbitrary iterable (possibly a generator)
-        return iter(seq_or_it)
-
-    def materialize_image_lines(self) -> list[str]:
-        """Return the original file image as a materialized list of lines.
-
-        Returns:
-            List of logical lines from the current image view. An empty list is returned if no image
-            is available.
-        """
-        return list(self.iter_image_lines())
+        lines: UpdatedContent | Sequence[str] = uv.lines
+        if isinstance(lines, UpdatedContent):
+            return lines.iter_lines()
+        return iter(lines)
 
     def materialize_updated_lines(self) -> list[str]:
         """Return the updated file image as a materialized list of lines.
@@ -350,10 +350,12 @@ class ProcessingContext:
             List of updated lines if present, otherwise an empty list.
         """
         uv: UpdatedView | None = self.views.updated
-        if not uv or uv.lines is None:
+        if uv is None or uv.lines is None:
             return []
-        seq_or_it: Sequence[str] | Iterable[str] = uv.lines
-        return seq_or_it if isinstance(seq_or_it, list) else list(seq_or_it)
+        lines: UpdatedContent | Sequence[str] = uv.lines
+        if isinstance(lines, UpdatedContent):
+            return list(lines.iter_lines())
+        return list(lines)
 
     def to_dict(self) -> dict[str, object]:
         """Return a machine-readable representation of this processing result.
