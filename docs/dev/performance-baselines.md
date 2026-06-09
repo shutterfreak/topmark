@@ -439,9 +439,39 @@ change alone. This is consistent with the benchmark design: the largest measured
 comparison or unified diff generation, both of which continue to materialize updated content or diff
 text.
 
-GitHub issue 137 therefore remains a separate follow-up focused on streaming updated content through
-writer-related paths. Further diff-generation redesign should also remain separate from issues 135
-and 136 so that benchmark comparisons stay attributable to one architectural change at a time.
+### Stream updated content through WriterStep (GitHub issue 137)
+
+GitHub issue 137 completed the writer-owned part of that follow-up by keeping file sinks streaming
+through `ctx.iter_updated_lines()` and changing the STDOUT sink to emit updated content line by line
+while accounting for UTF-8 bytes incrementally. This removes the remaining writer-local eager
+updated-line materialization without changing comparison, patch generation, or broader stdout
+presentation behavior. Further diff-generation redesign and stdout rendering/materialization work
+should remain separate so that benchmark comparisons stay attributable to one architectural change
+at a time.
+
+Benchmark results after GitHub issue 137 were effectively flat relative to the previous checkpoint
+(GitHub issues 140, 138, 135 and 136). This was expected because the remaining writer-local
+materialization occurred only in STDOUT emission paths, while the pathological benchmark scenarios
+remain dominated by comparison, patch generation, diff retention, scanner ownership, and file-image
+ownership. The change therefore improves ownership clarity and removes the final writer-local eager
+updated-line materialization without producing a measurable benchmark shift in the current benchmark
+suite.
+
+Relative to the
+[lazy updated-content composition follow-up (GitHub issues 135 and 136)](#lazy-updated-content-composition-follow-up-github-issues-135-and-136):
+
+| Scenario           | Mode              | Peak traced | RSS   |
+| ------------------ | ----------------- | ----------- | ----- |
+| huge_diff          | strip_diff_pruned | ~0.0%       | 0.0%  |
+| strip_large_header | strip_diff_pruned | ~0.0%       | -0.6% |
+| huge_header        | check_diff_pruned | 0.0%        | -0.4% |
+
+The results are interpreted as effectively flat.
+
+Follow-up:
+
+- stdout presentation outside writer-owned updated-content emission, which remains the focus of
+  GitHub issue 139;
 
 ______________________________________________________________________
 

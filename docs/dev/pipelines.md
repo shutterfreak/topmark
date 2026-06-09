@@ -166,9 +166,11 @@ enabled, the runner uses those declarations to release consumed view payloads af
 remaining consumer has run, while preserving requested output such as retained diffs.
 
 Updated-file views may be represented either as materialized line sequences or as repeatable
-updated-content abstractions. This allows replacement planning to compose updated content lazily
-while preserving existing comparer, patcher, and writer behavior. Pipeline-generated lazy updated
-content must remain repeatable because multiple downstream steps may consume the same updated view.
+updated-content abstractions. This allows replacement planning to compose updated content lazily.
+Pipeline-generated lazy updated content must remain repeatable because comparison, patch generation,
+and writing may consume the same updated view. Writer file sinks and STDOUT emission stream through
+the context's updated-line iterator; comparison and patch generation still materialize updated lines
+where required by their current algorithms.
 
 For filesystem inputs, the processing context path is the selected processing path. It may differ
 from the path spelling supplied on the command line or in configuration when symlinks or equivalent

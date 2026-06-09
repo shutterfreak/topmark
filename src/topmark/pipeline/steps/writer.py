@@ -16,7 +16,9 @@ and public API.
 
 This step is responsible for the final I/O after all other steps have computed
 `ctx.views.updated` and selected the intended `PlanStatus` (INSERTED, REPLACED, REMOVED,
-or PREVIEWED for stdout output).
+or PREVIEWED for stdout output). File and stdout sinks stream from repeatable updated
+content via `ProcessingContext.iter_updated_lines()` instead of requiring an eagerly
+materialized updated-line list.
 It also applies policy gates (e.g., header mutation mode) so that command-line intent
 and config policies are centralized here.
 
@@ -27,7 +29,7 @@ Sinks
   POSIX-only durability and permission helpers such as `os.fchmod()` and `os.O_DIRECTORY` are used
   only when available; Windows falls back to best-effort path-based permission handling and skips
   directory `fsync()`.
-- StdoutSink: writes the updated content to stdout (stdin-content mode).
+- StdoutSink: streams the updated content to stdout (stdin-content mode).
 - NullSink: no-op (dry-run).
 
 The step respects
@@ -42,6 +44,7 @@ import contextlib
 import os
 import secrets
 import stat
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Protocol
@@ -57,11 +60,11 @@ from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.steps.base import BaseStep
-from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import ViewSlot
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import BinaryIO
 
     from topmark.config.policy import FrozenPolicy
     from topmark.core.logging import TopmarkLogger
@@ -73,22 +76,54 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # --- DRY helpers for writer sinks ---
-def _updated_lines(ctx: ProcessingContext) -> list[str] | None:
-    """Materialize updated lines or return None if unavailable.
+def _has_updated_lines(ctx: ProcessingContext) -> bool:
+    """Return whether an updated image exists without materializing it.
 
     Args:
         ctx: Processing context.
 
     Returns:
-        Updated lines as a list, or None if no updated image exists.
+        True when the context holds updated content, otherwise False.
     """
     uv: UpdatedView | None = ctx.views.updated
-    if not uv or uv.lines is None:
-        return None
-    return ctx.materialize_updated_lines()
+    return uv is not None and uv.lines is not None
 
 
-# TODO: currently `_normalize_eof` isn't applied by _InplaceFileSink / _AtomicFileSink. Verify
+def _write_encoded_lines(*, ctx: ProcessingContext, file: BinaryIO) -> int:
+    """Stream updated lines to a binary file object.
+
+    Args:
+        ctx: Processing context containing repeatable updated content.
+        file: Binary file object to receive UTF-8 encoded lines.
+
+    Returns:
+        Number of UTF-8 bytes written.
+    """
+    bytes_written: int = 0
+    for line in ctx.iter_updated_lines():
+        encoded: bytes = line.encode("utf-8")
+        file.write(encoded)
+        bytes_written += len(encoded)
+    return bytes_written
+
+
+def _write_stdout_lines(ctx: ProcessingContext) -> int:
+    """Stream updated lines to standard output.
+
+    Args:
+        ctx: Processing context containing repeatable updated content.
+
+    Returns:
+        Number of UTF-8 bytes emitted.
+    """
+    bytes_written: int = 0
+    for line in ctx.iter_updated_lines():
+        bytes_written += len(line.encode("utf-8"))
+        sys.stdout.write(line)
+    return bytes_written
+
+
+# TODO: currently `_normalize_eof` isn't applied by InplaceFileSink / AtomicFileSink. Verify
 # whether we still need to add this "no trailing newline" semantics for file writes in the real
 # sinks (likely by adjusting what ctx.iter_updated_lines() yields).
 # def _normalize_eof(text: str, ctx: ProcessingContext) -> str:
@@ -135,8 +170,9 @@ class WriteResult:
 
     Attributes:
         status: Final status reported by the sink.
-        bytes_written: Number of bytes written when the sink can report one;
-            zero for dry-run, skipped, failed, or unreported file writes.
+        bytes_written: Number of bytes written when reported by the sink. Stdout
+            reports emitted UTF-8 bytes; file sinks currently report zero after
+            successful writes.
     """
 
     status: WriteStatus
@@ -174,17 +210,18 @@ class StdoutSink:
             ``WRITTEN`` with the number of UTF-8 bytes printed when content is available;
             otherwise ``SKIPPED`` with zero bytes written.
         """
-        lines: list[str] | None = _updated_lines(ctx)
-        if lines is None:
+        if not _has_updated_lines(ctx):
             logger.debug(
                 "StdoutSink: ctx.views.updated not defined or ctx.views.updated.lines not defined: "
                 "nothing to do"
             )
             return WriteResult(status=WriteStatus.SKIPPED, bytes_written=0)
 
-        text: str = "".join(lines)
-        size: int = len(text.encode("utf-8"))
-        print(text, end="")  # noqa: T201 (intentional: pipeline handles stdout here)
+        try:
+            size: int = _write_stdout_lines(ctx)
+        except (OSError, UnicodeError) as e:
+            ctx.diagnostics.add_error(f"Stdout write failed: {e}")
+            return WriteResult(status=WriteStatus.FAILED, bytes_written=0)
         return WriteResult(status=WriteStatus.WRITTEN, bytes_written=size)
 
 
@@ -202,13 +239,14 @@ class InplaceFileSink(WriteSink):
     def write(self, *, ctx: ProcessingContext) -> WriteResult:
         """Write updated content directly into the original file (in-place).
 
-        Opens the file in binary write mode, truncates its contents, and writes
-        `ctx.views.updated.lines` directly. This operation preserves the inode identity
-        but may leave a truncated file if the process is interrupted mid-write.
+        Opens the file in binary write mode, truncates its contents, and streams
+        `ctx.iter_updated_lines()` to the target file. This operation preserves the
+        inode identity but may leave a truncated file if the process is interrupted
+        mid-write.
 
         Args:
-            ctx: The active processing context, expected to contain `ctx.views.updated.lines`
-                with UTF-8-encoded text to write.
+            ctx: The active processing context, expected to provide repeatable updated
+                content through `ctx.iter_updated_lines()`.
 
         Returns:
             Structured write result containing `WriteStatus.WRITTEN` on success,
@@ -224,9 +262,7 @@ class InplaceFileSink(WriteSink):
                 mode = None
 
             with path.open("wb") as f:
-                # Prefer streaming via the iterator (good for memory)
-                for line in ctx.iter_updated_lines():
-                    f.write(line.encode("utf-8"))
+                _write_encoded_lines(ctx=ctx, file=f)
                 f.flush()
                 os.fsync(f.fileno())
             if mode is not None:
@@ -260,14 +296,14 @@ class AtomicFileSink(WriteSink):
     def write(self, *, ctx: ProcessingContext) -> WriteResult:
         """Atomically replace the target file by writing to a temp file first.
 
-        Writes `ctx.views.updated.lines` to a temporary file in the same directory,
+        Streams `ctx.iter_updated_lines()` to a temporary file in the same directory,
         calls `os.fsync()` to ensure durability, and performs `os.replace()` to
         atomically swap it in place. The operation guarantees that readers will
         either see the old file or the complete new file, never a partial write.
 
         Args:
-            ctx: The active processing context, expected to
-                contain `ctx.views.updated.lines` with UTF-8-encoded text to write.
+            ctx: The active processing context, expected to provide repeatable updated
+                content through `ctx.iter_updated_lines()`.
 
         Returns:
             Structured write result with `WriteStatus.WRITTEN` on success, or
@@ -304,9 +340,7 @@ class AtomicFileSink(WriteSink):
                         # directly as a best-effort fallback.
                         with contextlib.suppress(OSError):
                             tmp.chmod(mode)
-                # Prefer streaming via the iterator (good for memory)
-                for line in ctx.iter_updated_lines():
-                    f.write(line.encode("utf-8"))
+                _write_encoded_lines(ctx=ctx, file=f)
                 f.flush()
                 os.fsync(f.fileno())
 
