@@ -25,6 +25,7 @@ from topmark.pipeline.result import reduce_processing_context
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,7 +95,7 @@ def test_processing_result_to_dict_excludes_runtime_views(
     payload: dict[str, object] = ProcessingResult.from_context(ctx).to_dict()
 
     assert "views" not in payload
-    assert payload["path"] == str(tmp_path / "sample.py")
+    assert payload["path"] == format_machine_path(tmp_path / "sample.py")
     assert "status" in payload
     assert "diagnostics" in payload
     assert "diagnostic_counts" in payload
