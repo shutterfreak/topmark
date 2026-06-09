@@ -269,6 +269,9 @@ ______________________________________________________________________
 - Documented GitHub issue 137, including writer-owned updated-content streaming, remaining
   materialization boundaries, follow-up benchmark measurements, and the separation between writer
   streaming and broader stdout-rendering ownership.
+- Documented GitHub issue 147, including output ownership findings, streaming-output architecture
+  alternatives, benchmark relevance, and the rationale for closing Track B without further
+  implementation.
 
 ### Internal - Unreleased
 
