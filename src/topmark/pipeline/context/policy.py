@@ -21,7 +21,6 @@ empty files or tolerating mixed newlines) are permitted.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from typing import Protocol
 
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
@@ -35,56 +34,16 @@ from topmark.pipeline.status import StripStatus
 if TYPE_CHECKING:
     from topmark.config.policy import FrozenPolicy
     from topmark.core.logging import TopmarkLogger
-    from topmark.pipeline.context.status import ProcessingStatus
+    from topmark.pipeline.context.protocols import SupportsPolicyEvaluation
 
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class PolicyContext(Protocol):
-    """Minimum context surface required by policy helpers."""
-
-    @property
-    def status(self) -> ProcessingStatus:
-        """Current aggregated pipeline status for this file."""
-        ...
-
-    def get_effective_policy(self) -> FrozenPolicy:
-        """Return the effective policy for this processing context."""
-        ...
-
-    @property
-    def is_effectively_empty(self) -> bool:
-        """Whether the file image is effectively empty.
-
-        Returns whether the decoded, BOM-stripped text image contains **no
-        non-whitespace characters**. Newlines and other whitespace are allowed.
-        This is the broad notion of "empty" used for most policy decisions.
-        """
-        ...
-
-    @property
-    def is_logically_empty(self) -> bool:
-        """Whether the file is "logically empty".
-
-        Returns whether the file is "logically empty": after BOM stripping,
-        it contains optional horizontal whitespace and **at most one** trailing
-        newline sequence (LF/CRLF/CR), and nothing else. This is a stricter subset
-        of `is_effectively_empty` and is useful to preserve stable round-trips for
-        files that are effectively placeholders.
-        """
-        ...
-
-    @property
-    def is_empty_like(self) -> bool:
-        """Whether a file image is "empty-like"."""
-        ...
-
-
 # ---- Classification helpers ----
 
 
-def is_empty_for_insert(ctx: PolicyContext) -> bool:
+def is_empty_for_insert(ctx: SupportsPolicyEvaluation) -> bool:
     """Return whether this file should be treated as "empty" for *insertion* decisions.
 
     This helper interprets the effective per-type policy setting
@@ -125,7 +84,7 @@ def is_empty_for_insert(ctx: PolicyContext) -> bool:
     return ctx.is_effectively_empty or ctx.status.fs == FsStatus.EMPTY
 
 
-def is_empty_for_insert_unchanged_by_default(ctx: PolicyContext) -> bool:
+def is_empty_for_insert_unchanged_by_default(ctx: SupportsPolicyEvaluation) -> bool:
     """Return True when an insertion-empty file should default to `UNCHANGED`.
 
     This helper is for *bucketing/reporting*, not mutation.
@@ -175,7 +134,7 @@ def is_empty_for_insert_unchanged_by_default(ctx: PolicyContext) -> bool:
 # ---- Policy permission helpers ----
 
 
-def allow_insert_into_empty_like(ctx: PolicyContext) -> bool:
+def allow_insert_into_empty_like(ctx: SupportsPolicyEvaluation) -> bool:
     """Return True if policy permits inserting a header into an empty-like file.
 
     This is the primary policy gate used by planner/updater when a file has no
@@ -210,7 +169,7 @@ def allow_insert_into_empty_like(ctx: PolicyContext) -> bool:
     return is_empty_for_insert(ctx) and bool(policy.allow_header_in_empty_files)
 
 
-def allow_empty_header(ctx: PolicyContext) -> bool:
+def allow_empty_header(ctx: SupportsPolicyEvaluation) -> bool:
     """Return True if the effective policy allows empty header insertion.
 
     This helper inspects the effective per-type policy (global configuration
@@ -229,7 +188,7 @@ def allow_empty_header(ctx: PolicyContext) -> bool:
     return policy.render_empty_header_when_no_fields
 
 
-def allow_content_reflow(ctx: PolicyContext) -> bool:
+def allow_content_reflow(ctx: SupportsPolicyEvaluation) -> bool:
     """Return True if the effective policy allows content reflow.
 
     This covers transformations that may adjust layout or whitespace around
@@ -247,7 +206,7 @@ def allow_content_reflow(ctx: PolicyContext) -> bool:
     return policy.allow_reflow
 
 
-def allow_mixed_line_endings(ctx: PolicyContext) -> bool:
+def allow_mixed_line_endings(ctx: SupportsPolicyEvaluation) -> bool:
     """Return True if policy allows proceeding despite mixed line endings.
 
     This helper is used by early pipeline steps (e.g., ReaderStep) when the
@@ -286,7 +245,7 @@ def allow_mixed_line_endings(ctx: PolicyContext) -> bool:
     return False
 
 
-def allow_bom_before_shebang(ctx: PolicyContext) -> bool:
+def allow_bom_before_shebang(ctx: SupportsPolicyEvaluation) -> bool:
     """Return True if policy allows proceeding despite a BOM before the shebang.
 
     This helper is used by early pipeline steps (e.g., ReaderStep) when the
@@ -328,7 +287,7 @@ def allow_bom_before_shebang(ctx: PolicyContext) -> bool:
 # ---- Mutation intent / feasibility / pipeline decision logic ----
 
 
-def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
+def check_permitted_by_policy(ctx: SupportsPolicyEvaluation) -> bool | None:
     """Whether the active check policy allows the intended header mutation.
 
     Args:
@@ -428,7 +387,7 @@ def check_permitted_by_policy(ctx: PolicyContext) -> bool | None:
     return True
 
 
-def would_change(ctx: PolicyContext) -> bool | None:
+def would_change(ctx: SupportsPolicyEvaluation) -> bool | None:
     """Return whether a change *would* occur (tri-state).
 
     Args:
@@ -458,7 +417,7 @@ def would_change(ctx: PolicyContext) -> bool | None:
     return None
 
 
-def can_change(ctx: PolicyContext) -> bool:
+def can_change(ctx: SupportsPolicyEvaluation) -> bool:
     """Return whether a mutation can be applied safely for this file.
 
     This helper answers a narrow question:
@@ -533,7 +492,7 @@ def can_change(ctx: PolicyContext) -> bool:
     return False
 
 
-def would_add_or_update(ctx: PolicyContext) -> bool:
+def would_add_or_update(ctx: SupportsPolicyEvaluation) -> bool:
     """Intent for check/apply: True if we'd insert or replace a header.
 
     Args:
@@ -549,7 +508,7 @@ def would_add_or_update(ctx: PolicyContext) -> bool:
     )
 
 
-def effective_would_add_or_update(ctx: PolicyContext) -> bool:
+def effective_would_add_or_update(ctx: SupportsPolicyEvaluation) -> bool:
     """True iff add/update is intended, feasible, and allowed by policy.
 
     Args:
@@ -566,7 +525,7 @@ def effective_would_add_or_update(ctx: PolicyContext) -> bool:
     )
 
 
-def would_strip(ctx: PolicyContext) -> bool:
+def would_strip(ctx: SupportsPolicyEvaluation) -> bool:
     """Intent for strip: True if a removal would occur.
 
     Args:
@@ -579,7 +538,7 @@ def would_strip(ctx: PolicyContext) -> bool:
     return ctx.status.strip == StripStatus.READY
 
 
-def effective_would_strip(ctx: PolicyContext) -> bool:
+def effective_would_strip(ctx: SupportsPolicyEvaluation) -> bool:
     """True iff a strip is intended and feasible.
 
     Args:

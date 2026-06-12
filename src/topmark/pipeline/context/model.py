@@ -67,6 +67,7 @@ if TYPE_CHECKING:
     from topmark.config.policy import PolicyRegistry
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
+    from topmark.pipeline.outcome_snapshot import OutcomeSnapshot
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
     from topmark.resolution.probe import ResolutionProbeResult
@@ -356,6 +357,22 @@ class ProcessingContext:
         if isinstance(lines, UpdatedContent):
             return list(lines.iter_lines())
         return list(lines)
+
+    @property
+    def outcome(self) -> OutcomeSnapshot:
+        """Return the current outcome-facing decision snapshot.
+
+        This property provides the durable outcome vocabulary for callers that
+        need to classify either a live context or a reduced result through the
+        same narrow protocol. The snapshot is computed from the current mutable
+        context state and is not cached.
+
+        Returns:
+            Outcome-facing flags derived from the current context state.
+        """
+        from topmark.pipeline.outcome_snapshot import OutcomeSnapshot
+
+        return OutcomeSnapshot.from_context(self)
 
     def to_dict(self) -> dict[str, object]:
         """Return a machine-readable representation of this processing result.
