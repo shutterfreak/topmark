@@ -39,16 +39,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
+from typing import Protocol
 
 from topmark.core.logging import get_logger
 from topmark.core.outcomes import NO_REASON_PROVIDED
 from topmark.core.outcomes import OUTCOME_ORDER
 from topmark.core.outcomes import Outcome
-from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.context.policy import check_permitted_by_policy
-from topmark.pipeline.context.policy import effective_would_add_or_update
-from topmark.pipeline.context.policy import effective_would_strip
-from topmark.pipeline.context.policy import is_empty_for_insert_unchanged_by_default
 from topmark.pipeline.status import ComparisonStatus  # temporary
 from topmark.pipeline.status import ContentStatus  # temporary
 from topmark.pipeline.status import FsStatus  # temporary
@@ -60,11 +56,120 @@ from topmark.pipeline.status import StripStatus  # temporary
 from topmark.pipeline.status import WriteStatus  # temporary
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+class SupportsOutcomeStatus(Protocol):
+    """Minimum status surface required for outcome classification."""
+
+    @property
+    def resolve(self) -> ResolveStatus:
+        """Resolution status used by the classifier."""
+        ...
+
+    @property
+    def fs(self) -> FsStatus:
+        """Filesystem status used by the classifier."""
+        ...
+
+    @property
+    def content(self) -> ContentStatus:
+        """Content status used by the classifier."""
+        ...
+
+    @property
+    def header(self) -> HeaderStatus:
+        """Header status used by the classifier."""
+        ...
+
+    @property
+    def generation(self) -> GenerationStatus:
+        """Generation status used by the classifier."""
+        ...
+
+    @property
+    def strip(self) -> StripStatus:
+        """Strip status used by the classifier."""
+        ...
+
+    @property
+    def comparison(self) -> ComparisonStatus:
+        """Comparison status used by the classifier."""
+        ...
+
+    @property
+    def plan(self) -> PlanStatus:
+        """Plan status used by the classifier."""
+        ...
+
+    @property
+    def write(self) -> WriteStatus:
+        """Write status used by the classifier."""
+        ...
+
+
+class SupportsOutcomeFlags(Protocol):
+    """Minimum precomputed outcome-flag surface required for bucketing."""
+
+    @property
+    def would_change(self) -> bool | None:
+        """Whether the context/result represents a pending or completed change."""
+        ...
+
+    @property
+    def can_change(self) -> bool:
+        """Whether the context/result can change according to feasibility checks."""
+        ...
+
+    @property
+    def permitted_by_policy(self) -> bool | None:
+        """Whether policy permits the effective change, when inferable."""
+        ...
+
+    @property
+    def would_add_or_update(self) -> bool:
+        """Whether check/update processing would add or update a header."""
+        ...
+
+    @property
+    def effective_would_add_or_update(self) -> bool:
+        """Policy-aware add/update result used by dry-run bucketing."""
+        ...
+
+    @property
+    def would_strip(self) -> bool:
+        """Whether strip processing would remove a header."""
+        ...
+
+    @property
+    def effective_would_strip(self) -> bool:
+        """Policy-aware strip result used by dry-run bucketing."""
+        ...
+
+    @property
+    def empty_for_insert_unchanged_by_default(self) -> bool:
+        """Whether empty-for-insert files default to unchanged under policy."""
+        ...
+
+
+class SupportsOutcomeClassification(Protocol):
+    """Minimum durable surface required by outcome classification helpers."""
+
+    @property
+    def status(self) -> SupportsOutcomeStatus:
+        """Per-axis status values used by the classifier."""
+        ...
+
+    @property
+    def outcome(self) -> SupportsOutcomeFlags:
+        """Precomputed policy-aware outcome flags used by the classifier."""
+        ...
 
 
 class Intent(Enum):
@@ -84,7 +189,7 @@ class Intent(Enum):
     NONE = "none"  # insufficient information to infer a concrete action
 
 
-def determine_intent(ctx: ProcessingContext) -> Intent:
+def determine_intent(ctx: SupportsOutcomeClassification) -> Intent:
     """Infer the high-level action intent from the current context.
 
     The inferred intent is used only for public bucketing. It is intentionally
@@ -152,7 +257,11 @@ class OutcomeReasonCount:
     count: int
 
 
-def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
+def map_bucket(
+    ctx: SupportsOutcomeClassification,
+    *,
+    apply: bool,
+) -> ResultBucket:
     """Map a processing context to a public bucket (`Outcome` + reason).
 
     This logic is precedence-ordered: the first matching rule wins. The ordering matters because
@@ -276,7 +385,7 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
     # This covers true empty files as well as empty-like placeholders such as
     # BOM-only, newline-only, or other images covered by the configured
     # `EmptyInsertMode`.
-    if is_empty_for_insert_unchanged_by_default(ctx):
+    if ctx.outcome.empty_for_insert_unchanged_by_default:
         return ret(
             debug_tag="unchanged:empty-for-insert",
             outcome=Outcome.UNCHANGED,
@@ -314,7 +423,7 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
 
     # 6) Policy veto (add-only / update-only)
     # Policy veto is tri-state: False means forbidden; True/None both mean "not vetoed".
-    permitted_by_policy: bool | None = check_permitted_by_policy(ctx)
+    permitted_by_policy: bool | None = ctx.outcome.permitted_by_policy
     if permitted_by_policy is False:
         return ret(
             debug_tag="skip:policy",
@@ -402,7 +511,7 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
     # steps (planner/writer) may not have run.
     if not apply:
         if intent in (Intent.INSERT, Intent.UPDATE):
-            if effective_would_add_or_update(ctx):
+            if ctx.outcome.effective_would_add_or_update:
                 return ret(
                     debug_tag="would-change:header",
                     outcome=outcome_if_changed,
@@ -414,7 +523,7 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
                 reason=header_lbl,
             )
         if intent == Intent.STRIP:
-            if effective_would_strip(ctx):
+            if ctx.outcome.effective_would_strip:
                 # Prefer the strip axis label for summaries.
                 return ret(
                     debug_tag="would-strip",
@@ -462,7 +571,11 @@ def map_bucket(ctx: ProcessingContext, *, apply: bool) -> ResultBucket:
     )
 
 
-def classify_outcome(ctx: ProcessingContext, *, apply: bool) -> Outcome:
+def classify_outcome(
+    ctx: SupportsOutcomeClassification,
+    *,
+    apply: bool,
+) -> Outcome:
     """Return the public `Outcome` classification for a processing context.
 
     This is a thin convenience wrapper around `map_bucket()` when only the
@@ -478,8 +591,10 @@ def classify_outcome(ctx: ProcessingContext, *, apply: bool) -> Outcome:
     return map_bucket(ctx, apply=apply).outcome
 
 
-def collect_outcome_reason_counts(
-    results: list[ProcessingContext],
+def collect_outcome_reason_counts_for_apply(
+    results: Iterable[SupportsOutcomeClassification],
+    *,
+    apply: bool,
 ) -> list[OutcomeReasonCount]:
     """Collect summary counts grouped by `(outcome, reason)`.
 
@@ -490,6 +605,41 @@ def collect_outcome_reason_counts(
     Ordering is deterministic and stable:
     1. Fixed public `OUTCOME_ORDER`
     2. Alphabetical `reason` within each outcome
+
+    Args:
+        results: Processing contexts or durable results to bucket and count.
+        apply: Whether to classify the supplied results as apply-mode output.
+
+    Returns:
+        Sorted list of `OutcomeReasonCount` rows.
+    """
+    counts: dict[tuple[Outcome, str], int] = {}
+    for r in results:
+        bucket: ResultBucket = map_bucket(r, apply=apply)
+        outcome: Outcome = bucket.outcome
+        reason: str = bucket.reason or NO_REASON_PROVIDED
+        key: tuple[Outcome, str] = (outcome, reason)
+        counts[key] = counts.get(key, 0) + 1
+
+    order_index: dict[Outcome, int] = {outcome: idx for idx, outcome in enumerate(OUTCOME_ORDER)}
+
+    rows: list[OutcomeReasonCount] = [
+        OutcomeReasonCount(outcome=outcome, reason=reason, count=count)
+        for (outcome, reason), count in counts.items()
+    ]
+    rows.sort(key=lambda row: (order_index.get(row.outcome, 10_000), row.reason))
+    return rows
+
+
+def collect_outcome_reason_counts(
+    results: list[ProcessingContext],
+) -> list[OutcomeReasonCount]:
+    """Collect summary counts grouped by `(outcome, reason)`.
+
+    This compatibility wrapper preserves existing context-based behavior by
+    deriving apply mode from each context's runtime options. New result-oriented
+    callers that no longer retain runtime options should use
+    `collect_outcome_reason_counts_for_apply()`.
 
     Args:
         results: Processing contexts to bucket and count.

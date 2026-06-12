@@ -26,8 +26,10 @@ from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import classify_outcome
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
+from topmark.pipeline.outcomes import collect_outcome_reason_counts_for_apply
 from topmark.pipeline.outcomes import determine_intent
 from topmark.pipeline.outcomes import map_bucket
+from topmark.pipeline.result import ProcessingResult
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
@@ -366,6 +368,136 @@ def test_map_bucket_falls_back_to_pending(tmp_path: Path) -> None:
 
     assert bucket.outcome is Outcome.PENDING
     assert bucket.reason == NO_REASON_PROVIDED
+
+
+def test_map_bucket_supports_processing_result_snapshot(tmp_path: Path) -> None:
+    """ProcessingResult should classify like the source ProcessingContext."""
+    ctx: ProcessingContext = _make_context(tmp_path)
+    ctx.status.header = HeaderStatus.MISSING
+    ctx.status.comparison = ComparisonStatus.CHANGED
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    context_bucket: ResultBucket = map_bucket(ctx, apply=False)
+    result_bucket: ResultBucket = map_bucket(result, apply=False)
+
+    assert result_bucket == context_bucket
+
+
+def test_map_bucket_supports_processing_result_empty_policy_snapshot(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult should preserve empty-for-insert policy classification."""
+    ctx: ProcessingContext = _make_context(tmp_path)
+    ctx.status.fs = FsStatus.EMPTY
+    ctx.status.header = HeaderStatus.MISSING
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    context_bucket: ResultBucket = map_bucket(ctx, apply=False)
+    result_bucket: ResultBucket = map_bucket(result, apply=False)
+
+    assert result_bucket == context_bucket
+
+
+def test_map_bucket_supports_processing_result_policy_veto_snapshot(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult should preserve policy-veto classification."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path,
+        mutation_mode=HeaderMutationMode.ADD_ONLY,
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.comparison = ComparisonStatus.CHANGED
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    context_bucket: ResultBucket = map_bucket(ctx, apply=False)
+    result_bucket: ResultBucket = map_bucket(result, apply=False)
+
+    assert result_bucket == context_bucket
+    assert result_bucket.outcome is Outcome.SKIPPED
+    assert result_bucket.reason == "skipped by policy"
+
+
+def test_map_bucket_supports_processing_result_write_failure_snapshot(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult should preserve apply-mode write failure classification."""
+    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    ctx.status.header = HeaderStatus.MISSING
+    ctx.status.comparison = ComparisonStatus.CHANGED
+    ctx.status.write = WriteStatus.FAILED
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    context_bucket: ResultBucket = map_bucket(ctx, apply=True)
+    result_bucket: ResultBucket = map_bucket(result, apply=True)
+
+    assert result_bucket == context_bucket
+    assert result_bucket.outcome is Outcome.ERROR
+    assert result_bucket.reason == WriteStatus.FAILED.value
+
+
+def test_collect_outcome_reason_counts_for_apply_supports_processing_results(
+    tmp_path: Path,
+) -> None:
+    """Apply-explicit summaries should work without runtime options."""
+    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    ctx.status.header = HeaderStatus.MISSING
+    ctx.status.comparison = ComparisonStatus.CHANGED
+    ctx.status.write = WriteStatus.WRITTEN
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
+        [result],
+        apply=True,
+    )
+
+    assert [(row.outcome, row.reason, row.count) for row in rows] == [
+        (
+            Outcome.INSERTED,
+            f"{HeaderStatus.MISSING.value}, {ComparisonStatus.CHANGED.value}",
+            1,
+        )
+    ]
+
+
+def test_collect_outcome_reason_counts_for_apply_groups_processing_results(
+    tmp_path: Path,
+) -> None:
+    """Apply-explicit summaries should group multiple reduced results by bucket."""
+    first_insert: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    first_insert.status.header = HeaderStatus.MISSING
+    first_insert.status.comparison = ComparisonStatus.CHANGED
+    first_insert.status.write = WriteStatus.WRITTEN
+
+    second_insert: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    second_insert.status.header = HeaderStatus.MISSING
+    second_insert.status.comparison = ComparisonStatus.CHANGED
+    second_insert.status.write = WriteStatus.WRITTEN
+
+    policy_veto: ProcessingContext = _make_context(
+        tmp_path,
+        mutation_mode=HeaderMutationMode.ADD_ONLY,
+    )
+    policy_veto.status.header = HeaderStatus.DETECTED
+    policy_veto.status.comparison = ComparisonStatus.CHANGED
+
+    rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
+        [
+            ProcessingResult.from_context(first_insert),
+            ProcessingResult.from_context(second_insert),
+            ProcessingResult.from_context(policy_veto),
+        ],
+        apply=True,
+    )
+
+    assert [(row.outcome, row.reason, row.count) for row in rows] == [
+        (Outcome.SKIPPED, "skipped by policy", 1),
+        (
+            Outcome.INSERTED,
+            f"{HeaderStatus.MISSING.value}, {ComparisonStatus.CHANGED.value}",
+            2,
+        ),
+    ]
 
 
 def test_classify_outcome_returns_bucket_outcome(tmp_path: Path) -> None:

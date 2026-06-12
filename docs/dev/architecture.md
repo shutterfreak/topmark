@@ -34,6 +34,10 @@ The following architectural contracts are part of the stable 1.x design:
 - Machine-readable output remains independent from human-facing TEXT and Markdown output.
 - Mutable pipeline execution state can be reduced to durable result snapshots without changing
   runner, CLI, API, or presentation behavior.
+- Outcome bucketing is based on a narrow status + outcome-flag contract so live
+  \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances and durable
+  \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] snapshots can be classified
+  through the same presentation-free logic.
 
 ______________________________________________________________________
 

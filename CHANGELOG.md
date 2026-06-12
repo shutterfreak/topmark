@@ -109,6 +109,9 @@ ______________________________________________________________________
 - Clarified CI workflow maintainability by adding explicit job-level permissions for selected
   third-party-action jobs, bounded link-check jobs with explicit timeouts, and summarized
   path-filter decisions in the GitHub Actions step summary.
+- Made pipeline outcome bucketing compatible with durable `ProcessingResult` snapshots by
+  introducing typed outcome and pre-insert advisory snapshots, while preserving existing
+  `ProcessingContext` consumers and machine-output shapes.
 
 ### Breaking Changes - Unreleased
 
@@ -338,6 +341,8 @@ ______________________________________________________________________
 - Added immutable `StatusSnapshot` and `ProcessingResult` result-reduction primitives as the first
   stage of separating volatile pipeline execution state from durable processing outcomes (GitHub
   issue #148).
+- Added typed outcome-classification and pre-insert advisory snapshots so policy-derived bucketing
+  state can be reduced from mutable pipeline contexts without retaining volatile execution objects.
 
 ### Notes - Unreleased
 

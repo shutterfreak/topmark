@@ -30,14 +30,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.pipeline.context.policy import can_change
-from topmark.pipeline.context.policy import check_permitted_by_policy
-from topmark.pipeline.context.policy import effective_would_add_or_update
-from topmark.pipeline.context.policy import effective_would_strip
-from topmark.pipeline.context.policy import would_add_or_update
-from topmark.pipeline.context.policy import would_change
-from topmark.pipeline.context.policy import would_strip
 from topmark.pipeline.context.status import StatusSnapshot
+from topmark.pipeline.outcome_snapshot import OutcomeSnapshot
+from topmark.pipeline.pre_insert_advisory import PreInsertAdvisorySnapshot
 from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
@@ -45,7 +40,6 @@ if TYPE_CHECKING:
 
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.filetypes.model import FileType
-    from topmark.filetypes.model import InsertCapability
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
 
@@ -103,101 +97,6 @@ class StepAxesSnapshot:
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
-class PreInsertCheckSnapshot:
-    """Durable pre-insert advisory state captured from a context.
-
-    Attributes:
-        capability: Advisory insert capability value.
-        reason: Optional human-readable reason for the advisory.
-        origin: Optional producer of the advisory.
-    """
-
-    capability: InsertCapability
-    reason: str | None
-    origin: str | None
-
-    def to_dict(self) -> dict[str, str | None]:
-        """Return a JSON-friendly pre-insert advisory payload.
-
-        Returns:
-            Mapping with capability name, reason, and origin.
-        """
-        return {
-            "capability": self.capability.name,
-            "reason": self.reason,
-            "origin": self.origin,
-        }
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class OutcomeSnapshot:
-    """Durable outcome-facing flags captured from a processing context.
-
-    These flags mirror the current high-level outcome payload produced by
-    `ProcessingContext.to_dict()` without retaining the mutable context itself.
-
-    Attributes:
-        would_change: Whether the context represents any pending or completed change,
-            or `None` when the current status is not sufficient to decide.
-        can_change: Whether the context can change according to current feasibility checks.
-        permitted_by_policy: Whether policy permits the effective change, or `None`
-            when there is no clear mutation intent yet.
-        would_add_or_update: Whether check/update processing would add or update a header.
-        effective_would_add_or_update: Policy-aware add/update result.
-        would_strip: Whether strip processing would remove a header.
-        effective_would_strip: Policy-aware strip result.
-    """
-
-    would_change: bool | None
-    can_change: bool
-    permitted_by_policy: bool | None
-    would_add_or_update: bool
-    effective_would_add_or_update: bool
-    would_strip: bool
-    effective_would_strip: bool
-
-    @classmethod
-    def from_context(cls, ctx: ProcessingContext) -> OutcomeSnapshot:
-        """Create an outcome snapshot from a mutable processing context.
-
-        Args:
-            ctx: Source context to evaluate.
-
-        Returns:
-            Durable outcome-facing flag snapshot.
-        """
-        return cls(
-            would_change=would_change(ctx),
-            can_change=can_change(ctx),
-            permitted_by_policy=check_permitted_by_policy(ctx),
-            would_add_or_update=would_add_or_update(ctx),
-            effective_would_add_or_update=effective_would_add_or_update(ctx),
-            would_strip=would_strip(ctx),
-            effective_would_strip=effective_would_strip(ctx),
-        )
-
-    def to_dict(self) -> dict[str, object]:
-        """Return a JSON-friendly outcome payload.
-
-        Returns:
-            Mapping matching the existing high-level outcome payload shape.
-        """
-        return {
-            "would_change": self.would_change,
-            "can_change": self.can_change,
-            "permitted_by_policy": self.permitted_by_policy,
-            "check": {
-                "would_add_or_update": self.would_add_or_update,
-                "effective_would_add_or_update": self.effective_would_add_or_update,
-            },
-            "strip": {
-                "would_strip": self.would_strip,
-                "effective_would_strip": self.effective_would_strip,
-            },
-        }
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessingResult:
     """Durable reduced outcome for one processed file.
 
@@ -228,7 +127,7 @@ class ProcessingResult:
     diagnostics: FrozenDiagnosticLog
     diagnostic_counts: Mapping[str, int]
     hints: tuple[Hint, ...]
-    pre_insert_check: PreInsertCheckSnapshot
+    pre_insert_check: PreInsertAdvisorySnapshot
     outcome: OutcomeSnapshot
 
     @classmethod
@@ -261,11 +160,7 @@ class ProcessingResult:
             diagnostics=diagnostics,
             diagnostic_counts=diagnostics.to_dict(),
             hints=tuple(ctx.diagnostic_hints),
-            pre_insert_check=PreInsertCheckSnapshot(
-                capability=ctx.pre_insert_capability,
-                reason=ctx.pre_insert_reason,
-                origin=ctx.pre_insert_origin,
-            ),
+            pre_insert_check=PreInsertAdvisorySnapshot.from_context(ctx),
             outcome=OutcomeSnapshot.from_context(ctx),
         )
 
