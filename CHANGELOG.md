@@ -46,6 +46,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Made human report-scope filtering result-compatible by introducing protocol-based filtering
+  support for durable `ProcessingResult` snapshots while preserving existing context-based detail
+  rendering contracts.
 - Avoided formatting a duplicate unified-diff preview during patch generation when INFO-level
   pipeline logging is disabled, reducing transient allocations for diff-heavy workloads while
   preserving retained diff output.
