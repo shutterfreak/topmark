@@ -485,8 +485,11 @@ GitHub issue 147 extended that audit to the end-to-end CLI, API, reporting, and 
 architecture. The current ownership map is:
 
 - command orchestration keeps the ordered `ProcessingContext` result list so exit-code precedence,
-  missing-input synthesis, report-scope filtering, summaries, and machine-readable output all use
+  missing-input synthesis, human rendering, probe rendering, and machine-readable output still share
   one consistent result set;
+- public API `check()` and `strip()` result packaging now consumes durable `ProcessingResult`
+  snapshots after reduction for report filtering, summaries, diagnostics, write counts, and public
+  diff exposure;
 - human TEXT and Markdown renderers build a filtered `view_results` list for per-file presentation
   and then render one complete output string from small presentation fragments;
 - JSON machine output builds a complete envelope and serializes it as one pretty-printed JSON

@@ -49,6 +49,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Migrated public API `check()` and `strip()` result packaging to consume durable `ProcessingResult`
+  snapshots after context reduction, using reduced detail snapshots for public diff exposure while
+  preserving existing API DTO behavior.
 - Made human report-scope filtering result-compatible by introducing protocol-based filtering
   support for durable `ProcessingResult` snapshots while preserving existing context-based detail
   rendering contracts.

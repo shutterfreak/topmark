@@ -69,9 +69,14 @@ field is `diff_text`, copied from the diff view by
 \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] without
 retaining the view object, original file image, or updated file image.
 
-Human and machine detail rendering still consume contexts today. Durable result serialization now
-includes the reduced detail snapshot, but the machine-output pipeline has not yet migrated to
-`ProcessingResult` and therefore continues to project data from live
+The public Python API `check()` and `strip()` result packaging now consumes durable
+`ProcessingResult` snapshots after the reduction boundary. This keeps API DTO assembly, report
+filtering, write counting, diagnostics aggregation, outcome bucketing, and public diff exposure on
+reduced result state rather than on live context views.
+
+Human rendering, probe rendering, and machine detail rendering still consume contexts today. Durable
+result serialization includes the reduced detail snapshot, but the machine-output pipeline has not
+yet migrated to `ProcessingResult` and therefore continues to project data from live
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances. That is
 transitional rather than a target architecture: later result-boundary work can migrate detail
 renderers to the snapshot and then release volatile views immediately after result reduction.
@@ -229,14 +234,18 @@ By contrast, invalid command/option combinations and inappropriate STDIN modes a
 by the CLI layer as usage errors. They are not represented as synthetic contexts because no valid
 file-selection request exists yet.
 
-The public Python API mirrors this boundary for probe diagnostics.
-\[`topmark.api.probe()`\][topmark.api.commands.pipeline.probe] returns stable public DTOs
-(\[`ProbeRunResult`\][topmark.api.types.ProbeRunResult],
+The public Python API mirrors this boundary for probe diagnostics and content-processing results.
+\[`topmark.api.check()`\][topmark.api.commands.pipeline.check] and
+\[`topmark.api.strip()`\][topmark.api.commands.pipeline.strip] reduce completed contexts to durable
+\[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] snapshots before assembling stable
+\[`RunResult`\][topmark.api.types.RunResult] DTOs. Probe output still depends on resolver-specific
+probe state stored on contexts. \[`topmark.api.probe()`\][topmark.api.commands.pipeline.probe]
+returns stable public DTOs (\[`ProbeRunResult`\][topmark.api.types.ProbeRunResult],
 \[`ProbeFileResult`\][topmark.api.types.ProbeFileResult], and
 \[`ProbeCandidateInfo`\][topmark.api.types.ProbeCandidateInfo]) rather than raw pipeline contexts or
-resolver objects. Internally, the API runtime still uses synthetic
+resolver objects. Internally, probe API runtime still uses synthetic
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances so CLI output,
-machine-readable output, API summaries, and exit-code selection can share the same resolver-level
+machine-readable output, probe summaries, and exit-code selection can share the same resolver-level
 result model.
 
 - Unmatched glob patterns are soft discovery diagnostics for processing commands

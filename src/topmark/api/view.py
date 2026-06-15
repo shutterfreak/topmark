@@ -10,17 +10,26 @@
 
 """View and packaging helpers for the public API.
 
-These helpers convert internal `ProcessingContext` objects into stable,
+These helpers convert internal processing results into stable,
 JSON-friendly public shapes, apply view-level filtering where appropriate, and
 assemble public run-result DTOs.
 
-Why this exists:
-- `check()` and `strip()` share post-run behavior: filtering, summaries, diagnostics, and counts.
-- `probe()` has a different result contract but shares diagnostics and DTO packaging conventions.
-- Keeping this logic in one place avoids drift between API functions and keeps the façade small.
+Current reduction boundary:
+- `check()` and `strip()` consume durable `ProcessingResult` snapshots.
+- `probe()` still consumes `ProcessingContext` instances because probe details
+  depend on `resolution_probe` state that has not yet been reduced into a
+  durable snapshot.
 
-This module performs no I/O and produces no formatted/ANSI output; presentation belongs to
-CLI/UI layers.
+Why this exists:
+- `check()` and `strip()` share post-run behavior: filtering, summaries,
+  diagnostics, and counts.
+- `probe()` has a different result contract but shares diagnostics and DTO
+  packaging conventions.
+- Keeping this logic in one place avoids drift between API functions and keeps
+  the façade small.
+
+This module performs no I/O and produces no formatted/ANSI output;
+presentation belongs to CLI/UI layers.
 """
 
 from __future__ import annotations
@@ -43,6 +52,7 @@ from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.reporting import ReportFilterResult
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import filter_results_for_report
+from topmark.pipeline.reporting import would_change_result
 from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import WriteStatus
 
@@ -53,37 +63,37 @@ if TYPE_CHECKING:
 
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
+    from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.views import DiffView
+    from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.probe import ResolutionProbeMatchSignals
     from topmark.resolution.probe import ResolutionProbeResult
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def to_file_result(ctx: ProcessingContext, *, apply: bool) -> FileResult:
-    """Convert a content-processing context into a public `FileResult`.
+def to_file_result(result: ProcessingResult, *, apply: bool) -> FileResult:
+    """Convert a durable processing result into a public `FileResult`.
 
     Args:
-        ctx: The source processing context.
+        result: The source durable processing result.
         apply: Whether the run is in apply mode (affects outcome mapping).
 
     Returns:
         Public, JSON-friendly per-file result.
     """
-    # Prefer a unified diff when available; otherwise None (human views may omit diffs).
-    diff_view: DiffView | None = ctx.views.diff
-    diff: str | None = diff_view.text if diff_view else None
+    # Prefer a reduced unified diff when available; otherwise None.
+    diff: str | None = result.detail.diff_text
 
     # Bucket: stable key plus display-oriented label. The key is stable; the
     # label may change between versions.
-    bucket: ResultBucket = map_bucket(ctx, apply=apply)
+    bucket: ResultBucket = map_bucket(result, apply=apply)
     key: str = bucket.outcome.value
     label: str = bucket.reason or NO_REASON_PROVIDED
 
     return FileResult(
-        path=Path(str(ctx.path)),
-        outcome=classify_outcome(ctx, apply=apply),
+        path=Path(str(result.path)),
+        outcome=classify_outcome(result, apply=apply),
         diff=diff,
         bucket_key=key,
         bucket_label=label,
@@ -209,7 +219,7 @@ def summarize_probe_file_results(files: Sequence[ProbeFileResult]) -> Mapping[st
 
 
 def count_writes(
-    results: Sequence[ProcessingContext],
+    results: Sequence[ProcessingResult],
     *,
     apply: bool,
     eligible: set[PlanStatus],
@@ -217,7 +227,7 @@ def count_writes(
     """Return `(written, failed)` counts for the given results.
 
     Args:
-        results: Pipeline results.
+        results: Durable pipeline results.
         apply: Whether the run was in apply mode (counts are zero when False).
         eligible: Which `WriteStatus` values count as "written".
 
@@ -234,7 +244,7 @@ def count_writes(
 
 
 def collect_diagnostics(
-    results: list[ProcessingContext],
+    results: Sequence[ProcessingResult],
 ) -> dict[str, list[DiagnosticEntry]]:
     """Collect per-file diagnostics as `{path: [diagnostic, ...]}`.
 
@@ -242,7 +252,7 @@ def collect_diagnostics(
     expose internal classes or enums.
 
     Args:
-        results: Pipeline results (typically the filtered view).
+        results: Durable pipeline results (typically the filtered view).
 
     Returns:
         Mapping from file path to diagnostic entries.
@@ -260,11 +270,11 @@ def collect_diagnostics(
     return diags
 
 
-def collect_diagnostic_totals(results: list[ProcessingContext]) -> DiagnosticTotals:
+def collect_diagnostic_totals(results: Sequence[ProcessingResult]) -> DiagnosticTotals:
     """Return aggregate counts of diagnostics across the given results.
 
     Args:
-        results: Pipeline results (typically the filtered view).
+        results: Durable pipeline results (typically the filtered view).
 
     Returns:
         Aggregate counts (info/warning/error/total).
@@ -292,13 +302,78 @@ def collect_diagnostic_totals(results: list[ProcessingContext]) -> DiagnosticTot
     )
 
 
+# ---- Context-based diagnostic helpers for probe pipeline ----
+
+
+def collect_context_diagnostics(
+    results: Sequence[ProcessingContext],
+) -> dict[str, list[DiagnosticEntry]]:
+    """Collect per-file diagnostics from context-based probe results.
+
+    Probe result assembly intentionally still consumes `ProcessingContext`
+    instances because probe details depend on `resolution_probe` state that is
+    not yet part of the durable result boundary.
+
+    Args:
+        results: Probe pipeline contexts.
+
+    Returns:
+        Mapping from file path to diagnostic entries.
+    """
+    diags: dict[str, list[DiagnosticEntry]] = {}
+    for ctx in results:
+        diagnostics: MutableDiagnosticLog = ctx.diagnostics
+        if diagnostics:
+            diags[str(ctx.path)] = [
+                DiagnosticEntry(
+                    level=d.level.value,
+                    message=d.message,
+                )
+                for d in diagnostics
+            ]
+    return diags
+
+
+def collect_context_diagnostic_totals(results: Sequence[ProcessingContext]) -> DiagnosticTotals:
+    """Return aggregate diagnostic counts from context-based probe results.
+
+    Args:
+        results: Probe pipeline contexts.
+
+    Returns:
+        Aggregate counts (info/warning/error/total).
+    """
+    total_info: int = 0
+    total_warn: int = 0
+    total_error: int = 0
+    for ctx in results:
+        diagnostics: MutableDiagnosticLog = ctx.diagnostics
+        if not diagnostics:
+            continue
+        for d in diagnostics:
+            match d.level.value:
+                case "info":
+                    total_info += 1
+                case "warning":
+                    total_warn += 1
+                case "error":
+                    total_error += 1
+    total: int = total_info + total_warn + total_error
+    return DiagnosticTotals(
+        info=total_info,
+        warning=total_warn,
+        error=total_error,
+        total=total,
+    )
+
+
 def finalize_run_result(
     *,
-    results: list[ProcessingContext],
+    results: Sequence[ProcessingResult],
     file_list: list[Path],
     apply: bool,
     report_scope: ReportScope,
-    would_change: Callable[[ProcessingContext], bool],
+    would_change: Callable[[ProcessingResult], bool] = would_change_result,
     update_statuses: set[PlanStatus],
     encountered_exit_code: ExitCode | None,
 ) -> RunResult:
@@ -309,7 +384,7 @@ def finalize_run_result(
     and write/failed counts).
 
     Args:
-        results: Raw pipeline results (unfiltered).
+        results: Raw durable pipeline results (unfiltered).
         file_list: Resolved input files for the run.
         apply: Whether the run was in apply mode (affects counting).
         report_scope: Active report scope for the current view.
@@ -328,12 +403,12 @@ def finalize_run_result(
             had_errors=False,
         )
 
-    filtered: ReportFilterResult[ProcessingContext] = filter_results_for_report(
+    filtered: ReportFilterResult[ProcessingResult] = filter_results_for_report(
         results,
         report_scope=report_scope,
         would_change=would_change,
     )
-    view_results: list[ProcessingContext] = filtered.view_results
+    view_results: list[ProcessingResult] = filtered.view_results
     files: tuple[FileResult, ...] = tuple(
         to_file_result(
             r,
@@ -410,8 +485,8 @@ def finalize_probe_result(
     files: tuple[ProbeFileResult, ...] = tuple(to_probe_file_result(r) for r in results)
     summary: Mapping[str, int] = summarize_probe_file_results(files)
 
-    diagnostics: dict[str, list[DiagnosticEntry]] = collect_diagnostics(results)
-    diagnostic_totals: DiagnosticTotals = collect_diagnostic_totals(results)
+    diagnostics: dict[str, list[DiagnosticEntry]] = collect_context_diagnostics(results)
+    diagnostic_totals: DiagnosticTotals = collect_context_diagnostic_totals(results)
     had_errors: bool = (diagnostic_totals["error"] > 0) or (encountered_exit_code is not None)
 
     return ProbeRunResult(

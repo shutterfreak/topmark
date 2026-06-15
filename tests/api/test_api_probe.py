@@ -18,10 +18,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from topmark import api
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.api.types import DiagnosticTotals
 
 
 def test_probe_empty_explicit_dir_is_reported_as_filtered(tmp_path: Path) -> None:
@@ -127,6 +131,69 @@ def test_probe_missing_explicit_path_reports_error(tmp_path: Path) -> None:
     assert file_result.selected_file_type is None
     assert file_result.selected_processor is None
     assert file_result.candidates == ()
+
+    assert result.diagnostics == {}
+    assert result.diagnostic_totals == {
+        "info": 0,
+        "warning": 0,
+        "error": 0,
+        "total": 0,
+    }
+
+
+@pytest.mark.parametrize(
+    (
+        "filename",
+        "content",
+        "include_file_types",
+        "expected_status",
+        "expected_diagnostic_totals",
+    ),
+    [
+        (
+            "sample.py",
+            "print('hello')\n",
+            ("python",),
+            "resolved",
+            {"info": 0, "warning": 0, "error": 0, "total": 0},
+        ),
+        (
+            "notes.xyz",
+            "TopMark notes\n",
+            None,
+            "unsupported",
+            {"info": 1, "warning": 0, "error": 0, "total": 1},
+        ),
+    ],
+)
+def test_probe_diagnostic_totals_match_context_diagnostics(
+    tmp_path: Path,
+    filename: str,
+    content: str,
+    include_file_types: tuple[str, ...] | None,
+    expected_status: str,
+    expected_diagnostic_totals: DiagnosticTotals,
+) -> None:
+    """Probe diagnostic totals reflect context diagnostics when present."""
+    target: Path = tmp_path / filename
+    target.write_text(content, encoding="utf-8")
+
+    result: api.ProbeRunResult = api.probe(
+        [target],
+        include_file_types=include_file_types,
+    )
+
+    assert result.had_errors is False
+    assert len(result.files) == 1
+    assert result.files[0].status == expected_status
+    assert result.diagnostic_totals == expected_diagnostic_totals
+
+    if expected_diagnostic_totals["total"] == 0:
+        assert result.diagnostics == {}
+    else:
+        assert result.diagnostics is not None
+        assert str(target) in result.diagnostics
+        assert len(result.diagnostics[str(target)]) == expected_diagnostic_totals["total"]
 
 
 def test_probe_explicit_input_filtered_by_file_type_is_reported(tmp_path: Path) -> None:
