@@ -277,6 +277,9 @@ ______________________________________________________________________
   implementation.
 - Clarified the architecture boundary between mutable `ProcessingContext` execution state and
   durable `ProcessingResult` snapshots for outcome classification.
+- Added an internal batch reduction boundary from mutable processing contexts to durable processing
+  results, preparing reporting logic for future streaming consolidation without changing current
+  runner behavior.
 
 ### Internal - Unreleased
 
