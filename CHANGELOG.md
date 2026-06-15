@@ -35,6 +35,9 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added a durable `ProcessingDetailSnapshot` on `ProcessingResult` that captures generated
+  unified-diff text without retaining volatile pipeline views and exposes reduced detail state
+  through `ProcessingResult` serialization.
 - Added `tools/perf/pipeline_memory_baseline.py`, a measurement-only benchmarking tool for
   establishing memory and allocation baselines for pipeline processing.
 - Added `docs/dev/performance-baselines.md` documenting benchmark methodology, workload definitions,
@@ -279,10 +282,11 @@ ______________________________________________________________________
   alternatives, benchmark relevance, and the rationale for closing Track B without further
   implementation.
 - Clarified the architecture boundary between mutable `ProcessingContext` execution state and
-  durable `ProcessingResult` snapshots for outcome classification.
+  durable `ProcessingResult` snapshots, including outcome classification, report filtering, and
+  reduced detail snapshots.
 - Added an internal batch reduction boundary from mutable processing contexts to durable processing
-  results, preparing reporting logic for future streaming consolidation without changing current
-  runner behavior.
+  results, including durable detail-state capture that prepares reporting logic for future streaming
+  consolidation without changing current runner behavior.
 
 ### Internal - Unreleased
 

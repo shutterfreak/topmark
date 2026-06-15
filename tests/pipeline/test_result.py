@@ -23,6 +23,7 @@ from topmark.pipeline.result import ProcessingResult
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.pipeline.views import DiffView
 from topmark.runtime.model import RunOptions
 from topmark.utils.path import format_machine_path
 
@@ -165,3 +166,46 @@ def test_processing_result_to_dict_preserves_execution_mode(
         "pipeline_kind": "check",
         "apply_changes": True,
     }
+
+
+def test_processing_result_snapshots_diff_text_without_retaining_diff_view(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult should capture diff text as durable detail state."""
+    ctx: ProcessingContext = _make_result_context(tmp_path)
+    ctx.views.diff = DiffView(text="--- current\n+++ updated\n")
+
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    assert result.detail.diff_text == "--- current\n+++ updated\n"
+
+    ctx.views.diff.release()
+
+    assert result.detail.diff_text == "--- current\n+++ updated\n"
+
+
+def test_processing_result_to_dict_includes_detail_snapshot(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult serialization should expose durable detail snapshots."""
+    ctx: ProcessingContext = _make_result_context(tmp_path)
+    ctx.views.diff = DiffView(text="--- current\n+++ updated\n")
+
+    payload: dict[str, object] = ProcessingResult.from_context(ctx).to_dict()
+    detail: object = payload["detail"]
+
+    assert is_mapping(detail)
+    assert detail == {"diff_text": "--- current\n+++ updated\n"}
+
+
+def test_processing_result_to_dict_includes_empty_detail_snapshot(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult serialization should keep detail shape without a diff."""
+    ctx: ProcessingContext = _make_result_context(tmp_path)
+
+    payload: dict[str, object] = ProcessingResult.from_context(ctx).to_dict()
+    detail: object = payload["detail"]
+
+    assert is_mapping(detail)
+    assert detail == {"diff_text": None}
