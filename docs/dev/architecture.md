@@ -43,6 +43,28 @@ The following architectural contracts are part of the stable 1.x design:
 
 ______________________________________________________________________
 
+## Mutable-context to durable-result handover
+
+TopMark currently uses a batch handover boundary after the existing runner has produced its per-file
+\[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances.
+\[`reduce_processing_contexts()`\][topmark.pipeline.reduction.reduce_processing_contexts] preserves
+the source contexts and creates matching durable
+\[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] snapshots in the same order.
+
+This boundary is intentionally conservative:
+
+- it does **not** introduce per-file streaming consolidation;
+- it does **not** update summaries incrementally while files are processed;
+- it does **not** release \[`ProcessingContext.views`\][topmark.pipeline.views.Views] early;
+- it does make summary and exit-code logic testable against durable results without changing current
+  CLI, API, human-output, probe-output, or machine-detail contracts.
+
+Future streaming-oriented work can use this seam to evaluate whether reduction can move from an
+end-of-run batch step into the per-file processing loop, followed by incremental reporting updates
+and earlier release of memory-heavy context state.
+
+______________________________________________________________________
+
 ## High-level configuration architecture
 
 TopMark separates configuration concerns into three layers:

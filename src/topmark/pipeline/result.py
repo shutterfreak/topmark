@@ -21,7 +21,8 @@ configuration objects, policy registries, or flow-control objects.
 The initial reducer is intentionally conservative. Existing runners, CLI code,
 and public API adapters may continue to return and consume
 `ProcessingContext`; this module provides the vocabulary and conversion seam
-for staged migration toward durable post-run results.
+for staged migration toward durable post-run results. The batch handover helper
+lives in [`topmark.pipeline.reduction`][topmark.pipeline.reduction].
 """
 
 from __future__ import annotations

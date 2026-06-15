@@ -44,6 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from typing import Protocol
 
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
@@ -74,6 +75,34 @@ if TYPE_CHECKING:
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+class SupportsPipelineExitStatus(Protocol):
+    """Minimum result surface required for pipeline exit-code selection."""
+
+    @property
+    def fs(self) -> FsStatus:
+        """Filesystem status used by exit-code selection."""
+        ...
+
+    @property
+    def content(self) -> ContentStatus:
+        """Content status used by exit-code selection."""
+        ...
+
+    @property
+    def write(self) -> WriteStatus:
+        """Write status used by exit-code selection."""
+        ...
+
+
+class SupportsPipelineExitResult(Protocol):
+    """Minimum context/result surface required for pipeline exit-code selection."""
+
+    @property
+    def status(self) -> SupportsPipelineExitStatus:
+        """Per-axis status values used by exit-code selection."""
+        ...
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -174,7 +203,7 @@ class PipelineExecution:
 
 
 def exit_code_from_pipeline_results(
-    results: Sequence[ProcessingContext],
+    results: Sequence[SupportsPipelineExitResult],
 ) -> ExitCode | None:
     """Return the highest-priority non-success exit code implied by pipeline results.
 
@@ -196,7 +225,8 @@ def exit_code_from_pipeline_results(
     command-specific non-zero meaning.
 
     Args:
-        results: Pipeline contexts returned by `run_steps_for_files`.
+        results: Pipeline contexts or durable processing results returned by
+            `run_steps_for_files` or the batch reduction boundary.
 
     Returns:
         The highest-priority `ExitCode` implied by the results, or `None` when
