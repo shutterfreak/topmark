@@ -34,8 +34,7 @@ from topmark.api.runtime import select_pipeline
 from topmark.api.view import finalize_probe_result
 from topmark.api.view import finalize_run_result
 from topmark.core.errors import InvalidReportScopeError
-from topmark.pipeline.context.policy import effective_would_add_or_update
-from topmark.pipeline.context.policy import effective_would_strip
+from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import PlanStatus
 from topmark.runtime.model import RunOptions
@@ -166,11 +165,10 @@ def check(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=api_run.results,
+        results=reduce_processing_contexts(api_run.results).results,
         file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
-        would_change=effective_would_add_or_update,
         update_statuses=update_statuses,
         encountered_exit_code=api_run.exit_code,
     )
@@ -257,11 +255,10 @@ def strip(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=api_run.results,
+        results=reduce_processing_contexts(api_run.results).results,
         file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
-        would_change=effective_would_strip,
         update_statuses=update_statuses,
         encountered_exit_code=api_run.exit_code,
     )
