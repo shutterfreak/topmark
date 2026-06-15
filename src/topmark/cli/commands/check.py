@@ -509,7 +509,7 @@ def check_command(
     # - Human summary mode must also use the full raw result set so aggregated
     #   counts are not distorted by per-file report filtering.
     # - Human non-summary output uses the filtered per-file view.
-    filtered: ReportFilterResult = filter_results_for_report(
+    filtered: ReportFilterResult[ProcessingContext] = filter_results_for_report(
         results,
         report_scope=report_scope,
         would_change=effective_would_add_or_update,

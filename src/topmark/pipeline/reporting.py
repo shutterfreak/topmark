@@ -25,6 +25,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
+from typing import Generic
+from typing import Protocol
+from typing import TypeVar
 
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
@@ -32,8 +35,11 @@ from topmark.pipeline.status import ResolveStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from collections.abc import Iterable
+    from collections.abc import Sequence
 
-    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.diagnostic.model import Diagnostic
+    from topmark.pipeline.outcomes import SupportsOutcomeClassification
 
 
 class ReportScope(str, Enum):
@@ -74,11 +80,59 @@ class ReportScope(str, Enum):
     ALL = "all"
 
 
-@dataclass(frozen=True, kw_only=True, slots=True)
-class ReportFilterResult:
-    """Result of applying a report scope to pipeline contexts."""
+class SupportsReportStatus(Protocol):
+    """Minimum status surface required by report-scope filtering."""
 
-    view_results: list[ProcessingContext]
+    @property
+    def resolve(self) -> ResolveStatus:
+        """Resolution status used to detect unsupported entries."""
+        ...
+
+    @property
+    def fs(self) -> FsStatus:
+        """Filesystem status used to detect problem entries."""
+        ...
+
+    @property
+    def content(self) -> ContentStatus:
+        """Content status used to detect problem entries."""
+        ...
+
+
+class SupportsReportFiltering(Protocol):
+    """Minimum result surface required by report-scope filtering.
+
+    The protocol is intentionally satisfied by both mutable
+    `ProcessingContext` instances and durable `ProcessingResult` snapshots.
+    This lets reporting helpers move to the result side of the reduction
+    boundary without changing human detail rendering yet.
+    """
+
+    @property
+    def status(self) -> SupportsReportStatus:
+        """Per-axis status values used by report filtering."""
+        ...
+
+    @property
+    def diagnostics(self) -> Iterable[Diagnostic]:
+        """Diagnostics used to decide whether a result needs attention."""
+        ...
+
+
+TReportResult = TypeVar("TReportResult", bound=SupportsReportFiltering)
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ReportFilterResult(Generic[TReportResult]):
+    """Result of applying a report scope to pipeline results.
+
+    Attributes:
+        view_results: Filtered result list for the selected human report scope.
+        skipped_count: Number of entries hidden by report filtering.
+        unsupported_count_all: Unsupported entries counted across the full input.
+    """
+
+    view_results: list[TReportResult]
     skipped_count: int
     unsupported_count_all: int
 
@@ -92,18 +146,16 @@ _UNSUPPORTED_RESOLVE: frozenset[ResolveStatus] = frozenset(
 )
 
 
-def _is_unsupported(r: ProcessingContext) -> bool:
+def _is_unsupported(r: SupportsReportFiltering) -> bool:
     return r.status.resolve in _UNSUPPORTED_RESOLVE
 
 
-def _has_problem_diagnostics(r: ProcessingContext) -> bool:
+def _has_problem_diagnostics(r: SupportsReportFiltering) -> bool:
     # Treat warnings and errors as "problems"; info is intentionally ignored.
-    if not r.diagnostics:
-        return False
     return any(d.level.value in {"warning", "error"} for d in r.diagnostics)
 
 
-def _needs_attention(r: ProcessingContext) -> bool:
+def _needs_attention(r: SupportsReportFiltering) -> bool:
     """Return True when a result deserves human attention in per-file output.
 
     This is intentionally broader than "would change". In addition to
@@ -122,19 +174,38 @@ def _needs_attention(r: ProcessingContext) -> bool:
         return True
     if r.status.fs not in {FsStatus.OK, FsStatus.EMPTY}:
         return True
-    return r.status.content not in {ContentStatus.OK, ContentStatus.SKIPPED_MIXED_LINE_ENDINGS}
+    return r.status.content not in {
+        ContentStatus.OK,
+        ContentStatus.SKIPPED_MIXED_LINE_ENDINGS,
+    }
+
+
+def would_change_result(result: SupportsOutcomeClassification) -> bool:
+    """Return the policy-aware change flag stored on a reduced result.
+
+    This predicate is intended for result-primary report filtering after the
+    reduction boundary. It also accepts mutable contexts because they expose the
+    same outcome-flag protocol.
+
+    Args:
+        result: Mutable context or durable result carrying outcome flags.
+
+    Returns:
+        True when the result represents an effective pending or completed change.
+    """
+    return result.outcome.would_change is True
 
 
 def filter_results_for_report(
-    results: list[ProcessingContext],
+    results: Sequence[TReportResult],
     *,
     report_scope: ReportScope,
-    would_change: Callable[[ProcessingContext], bool],
-) -> ReportFilterResult:
+    would_change: Callable[[TReportResult], bool],
+) -> ReportFilterResult[TReportResult]:
     """Filter raw pipeline results for human per-file rendering.
 
     This helper is intentionally scoped to **human per-file output**. Callers
-    should keep the original `results` list for summary mode and for
+    should keep the original `results` sequence for summary mode and for
     machine-readable output.
 
     Semantics:
@@ -146,13 +217,13 @@ def filter_results_for_report(
           separately.
 
     Args:
-        results: Raw pipeline results.
+        results: Raw pipeline results or durable result snapshots.
         report_scope: Active report scope for the current view.
         would_change: Predicate describing whether a result represents a file
             TopMark would change (or did change, depending on caller context).
 
     Returns:
-        `(view_results, unsupported_count_all)` where:
+        Filter result where:
         - `view_results` is the filtered per-file list for human output.
         - `unsupported_count_all` is counted across the full raw result set so
             it can still be summarized even when hidden from the per-file list.
@@ -164,16 +235,16 @@ def filter_results_for_report(
     if report_scope == ReportScope.ALL:
         skipped_count = 0
         return ReportFilterResult(
-            view_results=results,
+            view_results=list(results),
             skipped_count=skipped_count,
             unsupported_count_all=unsupported_count,
         )
 
-    def is_noncompliant(r: ProcessingContext) -> bool:
+    def is_noncompliant(r: TReportResult) -> bool:
         return would_change(r) or _needs_attention(r)
 
     if report_scope == ReportScope.NONCOMPLIANT:
-        view: list[ProcessingContext] = [r for r in results if is_noncompliant(r)]
+        view: list[TReportResult] = [r for r in results if is_noncompliant(r)]
         skipped_count = count - len(view)
         return ReportFilterResult(
             view_results=view,

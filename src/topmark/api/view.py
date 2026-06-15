@@ -328,7 +328,7 @@ def finalize_run_result(
             had_errors=False,
         )
 
-    filtered: ReportFilterResult = filter_results_for_report(
+    filtered: ReportFilterResult[ProcessingContext] = filter_results_for_report(
         results,
         report_scope=report_scope,
         would_change=would_change,
