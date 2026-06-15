@@ -20,7 +20,6 @@ import pytest
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.registry import make_file_type
 from tests.presentation.conftest import find_table_row
-from topmark.cli.keys import CliCmd
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.diagnostic.model import Diagnostic
 from topmark.diagnostic.model import DiagnosticLevel
@@ -52,14 +51,15 @@ from topmark.runtime.model import RunOptions
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from topmark.api.types import PipelineKindLiteral
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
 
 
 def _make_context(
     path: Path,
     *,
+    pipeline_kind: PipelineKindLiteral = "check",
     apply_changes: bool = False,
     stdin_mode: bool = False,
     stdin_filename: str | None = None,
@@ -68,6 +68,7 @@ def _make_context(
     cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = make_pipeline_context(path, cfg)
     ctx.run_options = RunOptions(
+        pipeline_kind=pipeline_kind,
         apply_changes=apply_changes,
         stdin_mode=stdin_mode,
         stdin_filename=stdin_filename,
@@ -88,8 +89,7 @@ def _make_context(
 
 def _make_report(
     *,
-    cmd: str = CliCmd.CHECK,
-    pipeline_kind: PipelineKindLiteral = CliCmd.CHECK,
+    pipeline_kind: PipelineKindLiteral = "check",
     view_results: list[ProcessingContext],
     file_list_total: int | None = None,
     verbosity_level: int = 0,
@@ -103,7 +103,6 @@ def _make_report(
     return PipelineCommandHumanReport(
         verbosity_level=verbosity_level,
         styled=False,
-        cmd=cmd,
         pipeline_kind=pipeline_kind,
         file_list_total=file_list_total if file_list_total is not None else len(view_results),
         view_results=view_results,
@@ -300,8 +299,7 @@ def test_render_pipeline_output_text_strip_guidance_uses_strip_command(
 
     output: str = render_pipeline_output_text(
         _make_report(
-            cmd=CliCmd.STRIP,
-            pipeline_kind=CliCmd.STRIP,
+            pipeline_kind="strip",
             view_results=[ctx],
         )
     )
@@ -436,7 +434,7 @@ def test_pipeline_renderers_reject_invalid_pipeline_kind(tmp_path: Path) -> None
     """Both renderers should reject invalid pipeline kinds defensively."""
     ctx: ProcessingContext = _make_context(tmp_path / "invalid.py")
     report: PipelineCommandHumanReport = _make_report(
-        pipeline_kind=cast("PipelineKindLiteral", "probe"),
+        pipeline_kind=cast("PipelineKindLiteral", "unknown"),
         view_results=[ctx],
     )
 

@@ -114,6 +114,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.engine import PipelineExecution
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.protocols import Step
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
@@ -231,6 +232,7 @@ def probe_command(
         PIPELINE_ERROR (70): An internal processing step failed.
         UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
+    PIPELINE_KIND: PipelineKindLiteral = "probe"
     ctx: click.Context = click.get_current_context()
     ctx.args = list(paths)
     state: TopmarkCliState = bootstrap_cli_state(ctx)
@@ -303,6 +305,7 @@ def probe_command(
     )
 
     run_options: RunOptions = build_run_options(
+        pipeline_kind=PIPELINE_KIND,
         apply_changes=False,  # Not relevant for `topmark probe`
         write_mode=None,  # Not relevant for `topmark probe`
         stdin_mode=plan.stdin_mode,
@@ -447,7 +450,7 @@ def probe_command(
         )
     else:
         report = ProbeCommandHumanReport(
-            cmd=CliCmd.PROBE,
+            pipeline_kind=PIPELINE_KIND,
             file_list_total=len(results),
             view_results=results,
             verbosity_level=verbosity_level,

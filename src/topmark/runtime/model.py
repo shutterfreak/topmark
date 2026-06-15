@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
     from topmark.config.types import FileWriteStrategy
     from topmark.config.types import OutputTarget
+    from topmark.pipeline.kinds import PipelineKindLiteral
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -42,6 +43,7 @@ class RunOptions:
     config discovery or per-path effective config resolution.
 
     Attributes:
+        pipeline_kind: the pipeline kind (`check`, `strip`, `probe`).
         apply_changes: Whether the run should write changes (`True`) or preview
             only (`False`).
         output_target: Where output should be emitted for this run.
@@ -56,6 +58,7 @@ class RunOptions:
         started_at: Timestamp captured once for the whole run.
     """
 
+    pipeline_kind: PipelineKindLiteral | None = None
     apply_changes: bool | None = None
     output_target: OutputTarget | None = None
     file_write_strategy: FileWriteStrategy | None = None

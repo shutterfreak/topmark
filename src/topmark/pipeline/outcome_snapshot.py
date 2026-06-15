@@ -17,8 +17,8 @@ immutable outcome-facing value object used when reducing that context into a
 
 `OutcomeSnapshot` deliberately stores computed flags rather than retaining the
 source context. That keeps result objects independent from volatile execution
-state and lets reporting code classify either a live context or a reduced result
-through the same outcome-classification protocol.
+state and provides the policy-aware fields needed by result-oriented classification
+without retaining the mutable context.
 """
 
 from __future__ import annotations

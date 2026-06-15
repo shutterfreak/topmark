@@ -163,16 +163,22 @@ def run_writer(ctx: ProcessingContext) -> ProcessingContext:
 # ---- Context/bootstrap helpers ----
 
 
-def make_pipeline_context(path: Path, cfg: FrozenConfig) -> ProcessingContext:
+def make_pipeline_context(
+    path: Path,
+    cfg: FrozenConfig,
+) -> ProcessingContext:
     """Return a ProcessingContext seeded with policy and runtime defaults.
 
     Test helpers that bootstrap contexts directly should provide both the
     effective layered config and invocation-wide runtime options. Most unit
     tests do not care about custom runtime behavior, so this helper supplies
-    a default dry-run `RunOptions` instance.
+    default dry-run check-mode `RunOptions`.
     """
     policy_registry: PolicyRegistry = make_policy_registry(cfg)
-    run_options: RunOptions = RunOptions(apply_changes=False)
+    run_options: RunOptions = RunOptions(
+        pipeline_kind="check",
+        apply_changes=False,
+    )
     return ProcessingContext.bootstrap(
         path=path,
         config=cfg,

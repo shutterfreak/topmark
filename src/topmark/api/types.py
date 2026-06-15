@@ -64,19 +64,12 @@ Values are typed as `object` intentionally so the public boundary does not leak
 layer.
 """
 
-DiagnosticLevelLiteral = Literal[
+DiagnosticLevelLiteral: TypeAlias = Literal[
     "info",
     "warning",
     "error",
 ]
 """Allowed public diagnostic severity tokens."""
-
-PipelineKindLiteral = Literal[
-    "probe",
-    "check",
-    "strip",
-]
-"""Allowed public pipeline-family tokens."""
 
 
 # ---- Public diagnostics and run-result shapes ----
@@ -467,7 +460,7 @@ class BindingInfo(TypedDict, total=True):
 # ---- Public policy / reporting tokens ----
 
 
-PublicEmptyInsertModeLiteral = Literal[
+PublicEmptyInsertModeLiteral: TypeAlias = Literal[
     "bytes_empty",
     "logical_empty",
     "whitespace_empty",
@@ -478,7 +471,7 @@ These values intentionally mirror the internal `EmptyInsertMode.value` strings
 without exposing the internal enum class as part of the public API.
 """
 
-PublicHeaderMutationModeLiteral = Literal[
+PublicHeaderMutationModeLiteral: TypeAlias = Literal[
     "all",
     "add_only",
     "update_only",
@@ -489,7 +482,7 @@ These values intentionally mirror the internal `HeaderMutationMode.value`
 strings without exposing the internal enum class as part of the public API.
 """
 
-PublicReportScopeLiteral = Literal[
+PublicReportScopeLiteral: TypeAlias = Literal[
     "actionable",
     "noncompliant",
     "all",

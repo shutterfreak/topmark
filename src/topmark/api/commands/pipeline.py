@@ -52,6 +52,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.protocols import Step
 
 __all__ = (
@@ -126,9 +127,10 @@ def check(
         Reporting/view filtering is handled by the public view layer. It does not
         change which files are eligible to be written when `apply=True`.
     """
+    PIPELINE_KIND: PipelineKindLiteral = "check"
     # Choose the concrete content-processing pipeline variant.
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        "check",
+        PIPELINE_KIND,
         apply=apply,
         diff=diff,
     )
@@ -137,6 +139,7 @@ def check(
     # file-list resolution, per-path config, and pipeline execution.
 
     run_options: RunOptions = RunOptions(
+        pipeline_kind=PIPELINE_KIND,
         apply_changes=apply,
         prune_views=prune_views,
         keep_diff_view=diff,
@@ -217,9 +220,10 @@ def strip(
         Reporting/view filtering is handled by the public view layer and does not
         modify pipeline write decisions.
     """
+    PIPELINE_KIND: PipelineKindLiteral = "strip"
     # Choose the concrete content-processing pipeline variant.
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        "strip",
+        PIPELINE_KIND,
         apply=apply,
         diff=diff,
     )
@@ -228,6 +232,7 @@ def strip(
     # file-list resolution, per-path config, and pipeline execution.
 
     run_options: RunOptions = RunOptions(
+        pipeline_kind=PIPELINE_KIND,
         apply_changes=apply,
         prune_views=prune_views,
         keep_diff_view=diff,
@@ -304,9 +309,10 @@ def probe(
         `probe()` is always read-only. It has no `apply` or `diff` mode because it
         explains resolution rather than planning or applying header mutations.
     """
+    PIPELINE_KIND: PipelineKindLiteral = "probe"
     # Probe has a single read-only diagnostic pipeline.
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        "probe",
+        PIPELINE_KIND,
         apply=False,
         diff=False,
     )
@@ -314,6 +320,7 @@ def probe(
     # missing literals and explicit inputs filtered before probing.
 
     run_options: RunOptions = RunOptions(
+        pipeline_kind=PIPELINE_KIND,
         apply_changes=False,
         prune_views=prune_views,
     )

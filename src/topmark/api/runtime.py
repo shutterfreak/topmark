@@ -67,13 +67,13 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
 
-    from topmark.api.types import PipelineKindLiteral
     from topmark.api.types import PublicPolicy
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.protocols import Step
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution

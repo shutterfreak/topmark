@@ -591,6 +591,48 @@ def classify_outcome(
     return map_bucket(ctx, apply=apply).outcome
 
 
+# Helper functions for bucketing and sorting outcome reasons/counts.
+def _count_buckets(
+    buckets: Iterable[ResultBucket],
+) -> dict[tuple[Outcome, str], int]:
+    """Count result buckets by `(outcome, reason)`.
+
+    Args:
+        buckets: Buckets to count.
+
+    Returns:
+        Mapping from `(outcome, reason)` to occurrence count.
+    """
+    counts: dict[tuple[Outcome, str], int] = {}
+    for bucket in buckets:
+        outcome: Outcome = bucket.outcome
+        reason: str = bucket.reason or NO_REASON_PROVIDED
+        key: tuple[Outcome, str] = (outcome, reason)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _sorted_outcome_reason_rows(
+    counts: dict[tuple[Outcome, str], int],
+) -> list[OutcomeReasonCount]:
+    """Return sorted outcome summary rows for counted buckets.
+
+    Args:
+        counts: Mapping from `(outcome, reason)` to occurrence count.
+
+    Returns:
+        Sorted list of `OutcomeReasonCount` rows.
+    """
+    order_index: dict[Outcome, int] = {outcome: idx for idx, outcome in enumerate(OUTCOME_ORDER)}
+
+    rows: list[OutcomeReasonCount] = [
+        OutcomeReasonCount(outcome=outcome, reason=reason, count=count)
+        for (outcome, reason), count in counts.items()
+    ]
+    rows.sort(key=lambda row: (order_index.get(row.outcome, 10_000), row.reason))
+    return rows
+
+
 def collect_outcome_reason_counts_for_apply(
     results: Iterable[SupportsOutcomeClassification],
     *,
@@ -613,22 +655,8 @@ def collect_outcome_reason_counts_for_apply(
     Returns:
         Sorted list of `OutcomeReasonCount` rows.
     """
-    counts: dict[tuple[Outcome, str], int] = {}
-    for r in results:
-        bucket: ResultBucket = map_bucket(r, apply=apply)
-        outcome: Outcome = bucket.outcome
-        reason: str = bucket.reason or NO_REASON_PROVIDED
-        key: tuple[Outcome, str] = (outcome, reason)
-        counts[key] = counts.get(key, 0) + 1
-
-    order_index: dict[Outcome, int] = {outcome: idx for idx, outcome in enumerate(OUTCOME_ORDER)}
-
-    rows: list[OutcomeReasonCount] = [
-        OutcomeReasonCount(outcome=outcome, reason=reason, count=count)
-        for (outcome, reason), count in counts.items()
-    ]
-    rows.sort(key=lambda row: (order_index.get(row.outcome, 10_000), row.reason))
-    return rows
+    buckets: Iterable[ResultBucket] = (map_bucket(r, apply=apply) for r in results)
+    return _sorted_outcome_reason_rows(_count_buckets(buckets))
 
 
 def collect_outcome_reason_counts(
@@ -647,20 +675,7 @@ def collect_outcome_reason_counts(
     Returns:
         Sorted list of `OutcomeReasonCount` rows.
     """
-    counts: dict[tuple[Outcome, str], int] = {}
-    for r in results:
-        apply: bool = r.run_options.apply_changes is True
-        bucket: ResultBucket = map_bucket(r, apply=apply)
-        outcome: Outcome = bucket.outcome
-        reason: str = bucket.reason or NO_REASON_PROVIDED
-        key: tuple[Outcome, str] = (outcome, reason)
-        counts[key] = counts.get(key, 0) + 1
-
-    order_index: dict[Outcome, int] = {outcome: idx for idx, outcome in enumerate(OUTCOME_ORDER)}
-
-    rows: list[OutcomeReasonCount] = [
-        OutcomeReasonCount(outcome=outcome, reason=reason, count=count)
-        for (outcome, reason), count in counts.items()
-    ]
-    rows.sort(key=lambda row: (order_index.get(row.outcome, 10_000), row.reason))
-    return rows
+    buckets: Iterable[ResultBucket] = (
+        map_bucket(r, apply=r.run_options.apply_changes is True) for r in results
+    )
+    return _sorted_outcome_reason_rows(_count_buckets(buckets))

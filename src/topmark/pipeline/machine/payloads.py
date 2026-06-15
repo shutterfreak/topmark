@@ -43,13 +43,16 @@ from typing import TYPE_CHECKING
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
+from topmark.pipeline.outcomes import collect_outcome_reason_counts_for_apply
 from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from collections.abc import Iterator
 
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
+    from topmark.pipeline.outcomes import SupportsOutcomeClassification
     from topmark.resolution.probe import ResolutionProbeCandidate
     from topmark.resolution.probe import ResolutionProbeMatchSignals
     from topmark.resolution.probe import ResolutionProbeResult
@@ -201,6 +204,48 @@ def iter_processing_results_payload_items(
         yield r.to_dict()
 
 
+def _summary_rows_from_counts(
+    counts: list[OutcomeReasonCount],
+) -> list[OutcomeSummaryRow]:
+    """Build JSON-friendly summary rows from grouped outcome counts.
+
+    Args:
+        counts: Ordered outcome/reason/count rows.
+
+    Returns:
+        List of [`OutcomeSummaryRow`][topmark.pipeline.machine.schemas.OutcomeSummaryRow] objects.
+    """
+    return [
+        {"outcome": row.outcome.value, "reason": row.reason, "count": row.count} for row in counts
+    ]
+
+
+def build_processing_results_summary_rows_payload_for_apply(
+    results: Iterable[SupportsOutcomeClassification],
+    *,
+    apply: bool,
+) -> list[OutcomeSummaryRow]:
+    """Build a JSON-friendly summary payload for an explicit execution mode.
+
+    This result-compatible helper accepts either mutable processing contexts or
+    durable processing results. The execution mode is supplied explicitly so
+    callers do not need to retain runtime options only for outcome summary
+    classification.
+
+    Args:
+        results: Ordered list of processing contexts or durable results.
+        apply: Whether to classify the supplied results as apply-mode output.
+
+    Returns:
+        List of [`OutcomeSummaryRow`][topmark.pipeline.machine.schemas.OutcomeSummaryRow] objects.
+    """
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
+        results,
+        apply=apply,
+    )
+    return _summary_rows_from_counts(counts)
+
+
 def build_processing_results_summary_rows_payload(
     results: list[ProcessingContext],
 ) -> list[OutcomeSummaryRow]:
@@ -230,10 +275,32 @@ def build_processing_results_summary_rows_payload(
         List of [`OutcomeSummaryRow`][topmark.pipeline.machine.schemas.OutcomeSummaryRow] objects.
     """
     counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(results)
-    summary_rows: list[OutcomeSummaryRow] = [
-        {"outcome": row.outcome.value, "reason": row.reason, "count": row.count} for row in counts
-    ]
-    return summary_rows
+    return _summary_rows_from_counts(counts)
+
+
+def iter_processing_results_summary_entries_for_apply(
+    results: Iterable[SupportsOutcomeClassification],
+    *,
+    apply: bool,
+) -> Iterator[OutcomeSummaryRow]:
+    """Yield NDJSON-friendly summary rows for an explicit execution mode.
+
+    This result-compatible helper accepts either mutable processing contexts or
+    durable processing results. Each yielded object preserves the full
+    `(outcome, reason, count)` tuple so NDJSON summary mode does not collapse
+    sub-buckets inside the same outcome.
+
+    Args:
+        results: Ordered list of processing contexts or durable results.
+        apply: Whether to classify the supplied results as apply-mode output.
+
+    Yields:
+        One summary row object per `(outcome, reason)` bucket.
+    """
+    yield from build_processing_results_summary_rows_payload_for_apply(
+        results,
+        apply=apply,
+    )
 
 
 def iter_processing_results_summary_entries(
@@ -255,10 +322,4 @@ def iter_processing_results_summary_entries(
     """
     counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(results)
 
-    for row in counts:
-        summary_row: OutcomeSummaryRow = {
-            "outcome": row.outcome.value,
-            "reason": row.reason,
-            "count": row.count,
-        }
-        yield summary_row
+    yield from _summary_rows_from_counts(counts)

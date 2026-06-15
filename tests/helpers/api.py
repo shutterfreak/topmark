@@ -45,13 +45,13 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.api.types import PipelineKindLiteral
     from topmark.api.types import PublicPolicy
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.protocols import Step
     from topmark.toml.types import TomlValue
 

@@ -25,10 +25,14 @@ from topmark.core.outcomes import Outcome
 from topmark.core.presentation import StyleRole
 from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
+from topmark.pipeline.outcomes import collect_outcome_reason_counts_for_apply
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from topmark.cli.presentation import TextStyler
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.outcomes import SupportsOutcomeClassification
 
 
 _OUTCOME_STYLE_ROLE: dict[Outcome, StyleRole] = {
@@ -73,10 +77,41 @@ def get_outcome_styler(outcome: Outcome) -> TextStyler:
     return style_for_role(role)
 
 
+def collect_outcome_counts_styled_for_apply(
+    results: Iterable[SupportsOutcomeClassification],
+    *,
+    apply: bool,
+) -> list[tuple[OutcomeReasonCount, TextStyler]]:
+    """Return styled summary rows for an explicit execution mode.
+
+    This result-compatible helper accepts either mutable processing contexts or
+    durable processing results. The execution mode is supplied explicitly so
+    callers do not need to retain runtime options only for outcome summary
+    classification.
+
+    Args:
+        results: Processing contexts or durable results to classify and count.
+        apply: Whether to classify the supplied results as apply-mode output.
+
+    Returns:
+        Stable summary rows paired with the CLI text styler for their semantic outcome role.
+    """
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
+        results,
+        apply=apply,
+    )
+    return [(row, get_outcome_styler(row.outcome)) for row in counts]
+
+
 def collect_outcome_counts_styled(
     results: list[ProcessingContext],
 ) -> list[tuple[OutcomeReasonCount, TextStyler]]:
     """Return styled summary rows grouped by `(outcome, reason)`.
+
+    This compatibility wrapper preserves existing context-based behavior by
+    deriving apply mode from each context's runtime options. New result-oriented
+    callers that no longer retain runtime options should use
+    `collect_outcome_counts_styled_for_apply()`.
 
     Args:
         results: Processing contexts to classify and count.

@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.views import DiffView
 
@@ -167,14 +168,14 @@ def _render_hint_text(
 
 def _render_pipeline_banner_text(
     *,
-    cmd: str,
+    pipeline_kind: PipelineKindLiteral,
     n_files: int,
     styled: bool,
 ) -> str:
     """Render the TEXT banner for a pipeline command.
 
     Args:
-        cmd: Command name.
+        pipeline_kind: The pipeline kind (`check`, `strip`, `probe`).
         n_files: Number of pipeline result entries before view filtering.
         styled: Whether ANSI-capable styling is enabled.
 
@@ -187,7 +188,7 @@ def _render_pipeline_banner_text(
 
     return "\n".join(
         [
-            heading_styler(f"📋 TopMark {cmd} Results"),
+            heading_styler(f"📋 TopMark {pipeline_kind} Results"),
             "",
             info_styler(f"\n🔍 Processing {n_files} file(s):"),
         ]
@@ -223,13 +224,11 @@ def _render_apply_command_text(
 
 def _render_check_guidance_message_text(
     ctx: ProcessingContext,
-    apply_changes: bool,
 ) -> str | None:
     """Render per-file guidance for `topmark check` results.
 
     Args:
         ctx: Processing context for the file.
-        apply_changes: Whether the command runs in apply mode.
 
     Returns:
         Guidance message for this file, or `None` when no check action is relevant.
@@ -240,6 +239,8 @@ def _render_check_guidance_message_text(
     """
     if not effective_would_add_or_update(ctx):
         return None
+
+    apply_changes: bool | None = ctx.run_options.apply_changes
 
     path_label: str = render_path_display_text(ctx)
     intent: Intent = determine_intent(ctx)
@@ -273,13 +274,11 @@ def _render_check_guidance_message_text(
 
 def _render_strip_guidance_message_text(
     ctx: ProcessingContext,
-    apply_changes: bool,
 ) -> str | None:
     """Render per-file guidance for `topmark strip` results.
 
     Args:
         ctx: Processing context for the file.
-        apply_changes: Whether the command runs in apply mode.
 
     Returns:
         Guidance message for this file, or `None` when no strip action is relevant.
@@ -290,6 +289,8 @@ def _render_strip_guidance_message_text(
     """
     if not effective_would_strip(ctx):
         return None
+
+    apply_changes: bool | None = ctx.run_options.apply_changes
 
     path_label: str = render_path_display_text(ctx)
     intent: Intent = determine_intent(ctx)
@@ -413,8 +414,7 @@ def _render_file_summary_line_text(
 def _render_per_file_guidance_text(
     *,
     view_results: list[ProcessingContext],
-    make_message: Callable[[ProcessingContext, bool], str | None],
-    apply_changes: bool,
+    make_message: Callable[[ProcessingContext], str | None],
     show_diffs: bool,
     verbosity_level: int,
     styled: bool,
@@ -431,7 +431,6 @@ def _render_per_file_guidance_text(
     Args:
         view_results: Processing contexts to render.
         make_message: Per-file guidance message builder.
-        apply_changes: Whether the command runs in apply mode.
         show_diffs: Whether to include unified diffs.
         verbosity_level: Effective TEXT verbosity level.
         styled: Whether ANSI-capable styling is enabled.
@@ -462,7 +461,7 @@ def _render_per_file_guidance_text(
         )
 
         # 2. guidance message for actionable check/strip outcomes.
-        msg: str | None = make_message(ctx, apply_changes)
+        msg: str | None = make_message(ctx)
         if msg:
             parts.append(
                 emphasis_styler(
@@ -714,10 +713,10 @@ def render_pipeline_output_text(
     Raises:
         RuntimeError: If an invalid pipeline kind was selected.
     """
-    make_message: Callable[[ProcessingContext, bool], str | None] | None = None
-    if report.pipeline_kind == CliCmd.CHECK:
+    make_message: Callable[[ProcessingContext], str | None] | None = None
+    if report.pipeline_kind == "check":
         make_message = _render_check_guidance_message_text
-    elif report.pipeline_kind == CliCmd.STRIP:
+    elif report.pipeline_kind == "strip":
         make_message = _render_strip_guidance_message_text
     else:
         # Defensive guard.
@@ -732,7 +731,7 @@ def render_pipeline_output_text(
     if report.verbosity_level > 0:
         parts.append(
             _render_pipeline_banner_text(
-                cmd=report.cmd,
+                pipeline_kind=report.pipeline_kind,
                 n_files=report.file_list_total,
                 styled=report.styled,
             )
@@ -760,7 +759,6 @@ def render_pipeline_output_text(
             _render_per_file_guidance_text(
                 view_results=report.view_results,
                 make_message=make_message,
-                apply_changes=report.apply_changes,
                 show_diffs=report.show_diffs,
                 verbosity_level=report.verbosity_level,
                 styled=report.styled,
