@@ -110,8 +110,8 @@ ______________________________________________________________________
   third-party-action jobs, bounded link-check jobs with explicit timeouts, and summarized
   path-filter decisions in the GitHub Actions step summary.
 - Made pipeline outcome bucketing compatible with durable `ProcessingResult` snapshots by
-  introducing typed outcome and pre-insert advisory snapshots, while preserving existing
-  `ProcessingContext` consumers and machine-output shapes.
+  introducing typed outcome, pre-insert advisory, and execution-mode snapshots, while preserving
+  existing `ProcessingContext` consumers, CLI/API behavior, and machine-output shapes.
 
 ### Breaking Changes - Unreleased
 
@@ -275,6 +275,8 @@ ______________________________________________________________________
 - Documented GitHub issue 147, including output ownership findings, streaming-output architecture
   alternatives, benchmark relevance, and the rationale for closing Track B without further
   implementation.
+- Clarified the architecture boundary between mutable `ProcessingContext` execution state and
+  durable `ProcessingResult` snapshots for outcome classification.
 
 ### Internal - Unreleased
 
@@ -341,8 +343,9 @@ ______________________________________________________________________
 - Added immutable `StatusSnapshot` and `ProcessingResult` result-reduction primitives as the first
   stage of separating volatile pipeline execution state from durable processing outcomes (GitHub
   issue #148).
-- Added typed outcome-classification and pre-insert advisory snapshots so policy-derived bucketing
-  state can be reduced from mutable pipeline contexts without retaining volatile execution objects.
+- Added typed outcome-classification, pre-insert advisory, and execution-mode snapshots so
+  policy-derived bucketing state and invocation intent can be reduced from mutable pipeline contexts
+  without retaining volatile execution objects.
 
 ### Notes - Unreleased
 

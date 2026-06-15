@@ -21,6 +21,7 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import HeaderMutationMode
 from topmark.core.outcomes import NO_REASON_PROVIDED
 from topmark.core.outcomes import Outcome
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import ResultBucket
@@ -46,12 +47,14 @@ if TYPE_CHECKING:
 
     from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
 
 
 def _make_context(
     tmp_path: Path,
     *,
     apply_changes: bool = False,
+    pipeline_kind: PipelineKindLiteral = "check",
     mutation_mode: HeaderMutationMode | None = None,
 ) -> ProcessingContext:
     """Create a baseline context past resolve/fs/content feasibility checks."""
@@ -60,7 +63,10 @@ def _make_context(
         mutable.policy.header_mutation_mode = mutation_mode
 
     ctx: ProcessingContext = make_pipeline_context(tmp_path / "case.py", mutable.freeze())
-    ctx.run_options = RunOptions(apply_changes=apply_changes)
+    ctx.run_options = RunOptions(
+        pipeline_kind=pipeline_kind,
+        apply_changes=apply_changes,
+    )
     ctx.status.resolve = ResolveStatus.RESOLVED
     ctx.status.fs = FsStatus.OK
     ctx.status.content = ContentStatus.OK
@@ -88,7 +94,7 @@ def test_determine_intent_from_status_axes(
     expected: Intent,
 ) -> None:
     """Intent inference should depend on status axes, not pipeline names."""
-    ctx = _make_context(tmp_path)
+    ctx: ProcessingContext = _make_context(tmp_path)
     ctx.status.header = header
     ctx.status.strip = strip
 
@@ -220,7 +226,10 @@ def test_map_bucket_maps_strip_axis_in_dry_run(
     expected: Outcome,
 ) -> None:
     """Strip-axis states should not depend on comparison status."""
-    ctx: ProcessingContext = _make_context(tmp_path)
+    ctx: ProcessingContext = _make_context(
+        tmp_path,
+        pipeline_kind="strip",
+    )
     ctx.status.strip = strip_status
 
     bucket: ResultBucket = map_bucket(ctx, apply=False)
@@ -231,7 +240,11 @@ def test_map_bucket_maps_strip_axis_in_dry_run(
 
 def test_map_bucket_maps_strip_ready_to_stripped_in_apply_mode(tmp_path: Path) -> None:
     """Apply-mode strip-ready state should classify as stripped."""
-    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    ctx: ProcessingContext = _make_context(
+        tmp_path,
+        apply_changes=True,
+        pipeline_kind="strip",
+    )
     ctx.status.strip = StripStatus.READY
 
     bucket: ResultBucket = map_bucket(ctx, apply=True)
@@ -436,8 +449,17 @@ def test_map_bucket_supports_processing_result_write_failure_snapshot(
     assert result_bucket.reason == WriteStatus.FAILED.value
 
 
+@pytest.mark.parametrize(
+    ("apply", "expected_outcome"),
+    [
+        (False, Outcome.WOULD_INSERT),
+        (True, Outcome.INSERTED),
+    ],
+)
 def test_collect_outcome_reason_counts_for_apply_supports_processing_results(
     tmp_path: Path,
+    apply: bool,
+    expected_outcome: Outcome,
 ) -> None:
     """Apply-explicit summaries should work without runtime options."""
     ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
@@ -448,12 +470,12 @@ def test_collect_outcome_reason_counts_for_apply_supports_processing_results(
 
     rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
         [result],
-        apply=True,
+        apply=apply,
     )
 
     assert [(row.outcome, row.reason, row.count) for row in rows] == [
         (
-            Outcome.INSERTED,
+            expected_outcome,
             f"{HeaderStatus.MISSING.value}, {ComparisonStatus.CHANGED.value}",
             1,
         )
@@ -507,6 +529,63 @@ def test_classify_outcome_returns_bucket_outcome(tmp_path: Path) -> None:
     ctx.status.comparison = ComparisonStatus.CHANGED
 
     assert classify_outcome(ctx, apply=False) is Outcome.WOULD_INSERT
+
+
+def test_collect_outcome_reason_counts_matches_processing_result_summary(
+    tmp_path: Path,
+) -> None:
+    """Context and reduced-result summaries should classify equivalent rows."""
+    first_insert: ProcessingContext = _make_context(tmp_path)
+    first_insert.status.header = HeaderStatus.MISSING
+    first_insert.status.comparison = ComparisonStatus.CHANGED
+
+    second_insert: ProcessingContext = _make_context(tmp_path)
+    second_insert.status.header = HeaderStatus.MISSING
+    second_insert.status.comparison = ComparisonStatus.CHANGED
+
+    unchanged: ProcessingContext = _make_context(tmp_path)
+    unchanged.status.header = HeaderStatus.DETECTED
+    unchanged.status.comparison = ComparisonStatus.UNCHANGED
+
+    contexts: list[ProcessingContext] = [first_insert, second_insert, unchanged]
+
+    context_rows: list[OutcomeReasonCount] = collect_outcome_reason_counts(contexts)
+    result_rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
+        [ProcessingResult.from_context(ctx) for ctx in contexts],
+        apply=False,
+    )
+
+    assert result_rows == context_rows
+
+
+@pytest.mark.parametrize(
+    ("generation", "plan", "apply", "expected_outcome"),
+    [
+        (GenerationStatus.NO_FIELDS, PlanStatus.PENDING, False, Outcome.UNCHANGED),
+        (GenerationStatus.PENDING, PlanStatus.PREVIEWED, False, Outcome.WOULD_CHANGE),
+        (GenerationStatus.PENDING, PlanStatus.SKIPPED, False, Outcome.SKIPPED),
+        (GenerationStatus.PENDING, PlanStatus.FAILED, False, Outcome.SKIPPED),
+    ],
+)
+def test_map_bucket_matches_processing_result_for_fallback_branches(
+    tmp_path: Path,
+    generation: GenerationStatus,
+    plan: PlanStatus,
+    apply: bool,
+    expected_outcome: Outcome,
+) -> None:
+    """Ensure map_bucket matches processing result for fall-back branches."""
+    ctx: ProcessingContext = _make_context(tmp_path)
+    ctx.status.header = HeaderStatus.PENDING
+    ctx.status.comparison = ComparisonStatus.PENDING
+    ctx.status.generation = generation
+    ctx.status.plan = plan
+
+    context_bucket: ResultBucket = map_bucket(ctx, apply=apply)
+    result_bucket: ResultBucket = map_bucket(ProcessingResult.from_context(ctx), apply=apply)
+
+    assert result_bucket == context_bucket
+    assert result_bucket.outcome is expected_outcome
 
 
 def test_collect_outcome_reason_counts_groups_and_sorts(tmp_path: Path) -> None:

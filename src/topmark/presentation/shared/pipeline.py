@@ -33,8 +33,8 @@ from typing import TYPE_CHECKING
 from topmark.pipeline.status import FsStatus
 
 if TYPE_CHECKING:
-    from topmark.api.types import PipelineKindLiteral
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.reporting import ReportScope
 
 
@@ -49,14 +49,14 @@ class ProbeCommandHumanReport:
     Attributes:
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
-        cmd: Command name, usually `probe`.
+        pipeline_kind: Pipeline kind used to select command-specific guidance.
         file_list_total: Total number of candidate files before view filtering.
         view_results: Processing contexts selected for the current human-output view.
     """
 
     verbosity_level: int
     styled: bool
-    cmd: str
+    pipeline_kind: PipelineKindLiteral
     file_list_total: int
     view_results: list[ProcessingContext]
 
@@ -72,7 +72,6 @@ class PipelineCommandHumanReport:
     Attributes:
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
-        cmd: Command name, such as `check` or `strip`.
         pipeline_kind: Pipeline kind used to select command-specific guidance.
         file_list_total: Total number of user-requested results before view filtering,
             including selected pipeline files and synthetic resolver-level outcomes.
@@ -86,7 +85,6 @@ class PipelineCommandHumanReport:
 
     verbosity_level: int
     styled: bool
-    cmd: str
     pipeline_kind: PipelineKindLiteral
     file_list_total: int
     view_results: list[ProcessingContext]

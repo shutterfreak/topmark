@@ -267,8 +267,9 @@ def config_dump_command(
     )
 
     run_options: RunOptions = build_run_options(
-        apply_changes=False,  # Not relevant for `config dump``
-        write_mode=None,  # Not relevant for `config dump``
+        pipeline_kind=None,  # Not relevant for `config dump`
+        apply_changes=False,  # Not relevant for `config dump`
+        write_mode=None,  # Not relevant for `config dump`
         stdin_mode=plan.stdin_mode,
         stdin_filename=plan.stdin_filename,
     )

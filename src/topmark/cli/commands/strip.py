@@ -116,7 +116,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from topmark.api.types import PipelineKindLiteral
     from topmark.cli.cmd_common import PreparedCliConfig
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
@@ -126,6 +125,7 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.protocols import Step
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
@@ -264,6 +264,7 @@ def strip_command(
         PIPELINE_ERROR (70): An internal processing step failed.
         UNEXPECTED_ERROR (255): An unhandled error occurred.
     """
+    PIPELINE_KIND: PipelineKindLiteral = "strip"
     ctx: click.Context = click.get_current_context()
     ctx.args = list(paths)
     state: TopmarkCliState = bootstrap_cli_state(ctx)
@@ -345,6 +346,7 @@ def strip_command(
     )
 
     run_options: RunOptions = build_run_options(
+        pipeline_kind=PIPELINE_KIND,
         apply_changes=apply_changes,
         write_mode=write_mode,
         stdin_mode=plan.stdin_mode,
@@ -432,9 +434,8 @@ def strip_command(
         return
 
     # Choose and run the concrete pipeline variant.
-    pipeline_kind: PipelineKindLiteral = "strip"
     pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        pipeline_kind,
+        PIPELINE_KIND,
         apply=apply_changes,
         diff=diff,
     )
@@ -487,8 +488,7 @@ def strip_command(
         )
     else:
         report = PipelineCommandHumanReport(
-            cmd=CliCmd.STRIP,
-            pipeline_kind=pipeline_kind,
+            pipeline_kind=PIPELINE_KIND,
             file_list_total=len(results),
             view_results=human_results,
             report_scope=report_scope,

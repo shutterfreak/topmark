@@ -17,14 +17,13 @@ from typing import TYPE_CHECKING
 from tests.helpers.pipeline import make_context_from_text
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.typing_guards import is_mapping
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.result import ProcessingResult
-from topmark.pipeline.result import reduce_processing_context
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.runtime.model import RunOptions
 from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
@@ -32,16 +31,27 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
 
 
-def _make_result_context(tmp_path: Path) -> ProcessingContext:
+def _make_result_context(
+    tmp_path: Path,
+    *,
+    pipeline_kind: PipelineKindLiteral = "check",
+    apply_changes: bool = False,
+) -> ProcessingContext:
     """Create a small post-reader context suitable for result-reduction tests."""
     cfg: FrozenConfig = mutable_config_from_defaults().freeze()
-    return make_context_from_text(
+    ctx: ProcessingContext = make_context_from_text(
         "print('hello')\n",
         cfg=cfg,
         path=tmp_path / "sample.py",
     )
+    ctx.run_options = RunOptions(
+        pipeline_kind=pipeline_kind,
+        apply_changes=apply_changes,
+    )
+    return ctx
 
 
 def test_processing_result_reduces_context_identity(
@@ -77,7 +87,7 @@ def test_processing_result_snapshots_status(
     ctx.status.header = HeaderStatus.MISSING
     ctx.status.write = WriteStatus.WRITTEN
 
-    result: ProcessingResult = reduce_processing_context(ctx)
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
 
     ctx.status.header = HeaderStatus.PENDING
     ctx.status.write = WriteStatus.PENDING
@@ -128,4 +138,30 @@ def test_processing_result_to_dict_preserves_outcome_shape(
     assert set(outcome["strip"]) == {
         "would_strip",
         "effective_would_strip",
+    }
+
+
+def test_processing_result_to_dict_preserves_execution_mode(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult serialization should preserve durable execution mode."""
+    ctx: ProcessingContext = _make_result_context(
+        tmp_path,
+        apply_changes=True,
+    )
+
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+    payload: dict[str, object] = result.to_dict()
+    execution_mode: object = payload["execution_mode"]
+
+    assert result.execution_mode.pipeline_kind == "check"
+    assert result.execution_mode.apply_changes is True
+    assert result.execution_mode.to_dict() == {
+        "pipeline_kind": "check",
+        "apply_changes": True,
+    }
+    assert is_mapping(execution_mode)
+    assert execution_mode == {
+        "pipeline_kind": "check",
+        "apply_changes": True,
     }

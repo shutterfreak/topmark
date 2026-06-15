@@ -58,6 +58,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.views import DiffView
 
@@ -106,13 +107,13 @@ def _render_hint_markdown(
 
 def _render_pipeline_banner_markdown(
     *,
-    cmd: str,
+    pipeline_kind: PipelineKindLiteral,
     n_files: int,
 ) -> str:
     """Render the Markdown banner for a pipeline command.
 
     Args:
-        cmd: Command name.
+        pipeline_kind: Pipeline kind (`check`, `strip`, `probe`).
         n_files: Number of pipeline result entries before view filtering.
 
     Returns:
@@ -120,7 +121,7 @@ def _render_pipeline_banner_markdown(
     """
     return "\n".join(
         [
-            f"# TopMark {cmd} Results",
+            f"# TopMark {pipeline_kind} Results",
             "",
             f"Processing **{n_files}** file(s).",
         ]
@@ -157,13 +158,11 @@ def _render_apply_command_markdown(
 
 def _render_check_guidance_message_markdown(
     ctx: ProcessingContext,
-    apply_changes: bool,
 ) -> str | None:
     """Render per-file guidance for `topmark check` results.
 
     Args:
         ctx: Processing context for the file.
-        apply_changes: Whether the command runs in apply mode.
 
     Returns:
         Guidance message for this file, or `None` when no check action is relevant.
@@ -174,6 +173,8 @@ def _render_check_guidance_message_markdown(
     """
     if not effective_would_add_or_update(ctx):
         return None
+
+    apply_changes: bool | None = ctx.run_options.apply_changes
 
     path_label: str = render_path_display_markdown(ctx)
     intent: Intent = determine_intent(ctx)
@@ -208,13 +209,11 @@ def _render_check_guidance_message_markdown(
 
 def _render_strip_guidance_message_markdown(
     ctx: ProcessingContext,
-    apply_changes: bool,
 ) -> str | None:
     """Render per-file guidance for `topmark strip` results.
 
     Args:
         ctx: Processing context for the file.
-        apply_changes: Whether the command runs in apply mode.
 
     Returns:
         Guidance message for this file, or `None` when no strip action is relevant.
@@ -225,6 +224,8 @@ def _render_strip_guidance_message_markdown(
     """
     if not effective_would_strip(ctx):
         return None
+
+    apply_changes: bool | None = ctx.run_options.apply_changes
 
     path_label: str = render_path_display_markdown(ctx)
     intent: Intent = determine_intent(ctx)
@@ -303,8 +304,7 @@ def _render_file_summary_line_markdown(
 def _render_per_file_guidance_markdown(
     *,
     view_results: list[ProcessingContext],
-    make_message: Callable[[ProcessingContext, bool], str | None],
-    apply_changes: bool,
+    make_message: Callable[[ProcessingContext], str | None],
     show_diffs: bool,
 ) -> str:
     """Render per-file Markdown sections.
@@ -321,7 +321,6 @@ def _render_per_file_guidance_markdown(
     Args:
         view_results: Processing contexts to render.
         make_message: Per-file guidance message builder.
-        apply_changes: Whether the command runs in apply mode.
         show_diffs: Whether to include unified diffs.
 
     Returns:
@@ -341,7 +340,7 @@ def _render_per_file_guidance_markdown(
         )
 
         # 2. guidance message for actionable check/strip outcomes.
-        msg: str | None = make_message(ctx, apply_changes)
+        msg: str | None = make_message(ctx)
         if msg:
             blocks.append(f"  - {msg}")
 
@@ -520,10 +519,10 @@ def render_pipeline_output_markdown(
     Raises:
         RuntimeError: If an invalid pipeline kind was selected.
     """
-    make_message: Callable[[ProcessingContext, bool], str | None] | None = None
-    if report.pipeline_kind == CliCmd.CHECK:
+    make_message: Callable[[ProcessingContext], str | None] | None = None
+    if report.pipeline_kind == "check":
         make_message = _render_check_guidance_message_markdown
-    elif report.pipeline_kind == CliCmd.STRIP:
+    elif report.pipeline_kind == "strip":
         make_message = _render_strip_guidance_message_markdown
     else:
         # Defensive guard.
@@ -534,7 +533,7 @@ def render_pipeline_output_markdown(
     # Markdown always starts with a document banner.
     parts.append(
         _render_pipeline_banner_markdown(
-            cmd=report.cmd,
+            pipeline_kind=report.pipeline_kind,
             n_files=report.file_list_total,
         )
     )
@@ -560,7 +559,6 @@ def render_pipeline_output_markdown(
             _render_per_file_guidance_markdown(
                 view_results=report.view_results,
                 make_message=make_message,
-                apply_changes=report.apply_changes,
                 show_diffs=report.show_diffs,
             ),
         )

@@ -71,6 +71,7 @@ if TYPE_CHECKING:
     from topmark.core.errors import ConfigValidationError
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -182,6 +183,7 @@ def build_file_resolution(
 
 def build_run_options(
     *,
+    pipeline_kind: PipelineKindLiteral | None,
     apply_changes: bool,
     write_mode: str | None,
     stdin_mode: bool,
@@ -192,6 +194,7 @@ def build_run_options(
     """Build invocation-wide runtime options for a CLI command.
 
     Args:
+        pipeline_kind: The pipeline kind (`check`, `strip`, `probe`).
         apply_changes: Whether the command should write changes.
         write_mode: Effective CLI write mode (`stdout`, `atomic`, or `inplace`).
         stdin_mode: Whether the command is operating in content-on-STDIN mode.
@@ -221,6 +224,7 @@ def build_run_options(
         file_write_strategy = FileWriteStrategy.INPLACE
 
     run_options = RunOptions(
+        pipeline_kind=pipeline_kind,
         apply_changes=apply_changes,
         output_target=output_target,
         file_write_strategy=file_write_strategy,

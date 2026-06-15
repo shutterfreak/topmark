@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from typing_extensions import Self
+
 from topmark.pipeline.context.status import StatusSnapshot
 from topmark.pipeline.outcome_snapshot import OutcomeSnapshot
 from topmark.pipeline.pre_insert_advisory import PreInsertAdvisorySnapshot
@@ -42,6 +44,8 @@ if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
+    from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.runtime.model import RunOptions
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -57,7 +61,10 @@ class FileTypeSnapshot:
     description: str
 
     @classmethod
-    def from_file_type(cls, file_type: FileType) -> FileTypeSnapshot:
+    def from_file_type(
+        cls,
+        file_type: FileType,
+    ) -> Self:
         """Create a file-type snapshot from a resolved file type.
 
         Args:
@@ -97,6 +104,57 @@ class StepAxesSnapshot:
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
+class ExecutionModeSnapshot:
+    """Durable invocation-mode facts captured from runtime options.
+
+    `ExecutionModeSnapshot` intentionally stores only the execution facts that
+    remain meaningful after reducing a mutable processing context. It does not
+    retain the full `RunOptions` object because that object also carries
+    runtime-only presentation, STDIN, and output-target configuration.
+
+    Attributes:
+        pipeline_kind: Pipeline family selected for the run (`check`, `strip`,
+            or `probe`). `None` is reserved for non-pipeline helper contexts.
+        apply_changes: Whether this run applied file mutations instead of
+            previewing them.
+    """
+
+    pipeline_kind: PipelineKindLiteral | None
+    apply_changes: bool
+
+    @classmethod
+    def from_run_options(
+        cls,
+        run_options: RunOptions,
+    ) -> Self:
+        """Create an execution-mode snapshot from runtime options.
+
+        Args:
+            run_options: Runtime options for one TopMark invocation.
+
+        Returns:
+            Reduced execution-mode metadata suitable for storing in a durable
+            processing result.
+        """
+        return cls(
+            pipeline_kind=run_options.pipeline_kind,
+            apply_changes=bool(run_options.apply_changes),
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a machine-readable execution-mode payload.
+
+        Returns:
+            JSON-serializable mapping containing the reduced pipeline kind and
+            apply-mode flag.
+        """
+        return {
+            "apply_changes": self.apply_changes,
+            "pipeline_kind": self.pipeline_kind,
+        }
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessingResult:
     """Durable reduced outcome for one processed file.
 
@@ -109,6 +167,7 @@ class ProcessingResult:
     Attributes:
         path: Processing path for the file.
         file_type: Durable resolved file-type identity, if any.
+        execution_mode: The execution-mode snapshot for this context.
         steps: Names of executed steps in execution order.
         step_axes: Axes declared by each executed step.
         status: Immutable per-axis status snapshot.
@@ -121,6 +180,7 @@ class ProcessingResult:
 
     path: Path
     file_type: FileTypeSnapshot | None
+    execution_mode: ExecutionModeSnapshot
     steps: tuple[str, ...]
     step_axes: tuple[StepAxesSnapshot, ...]
     status: StatusSnapshot
@@ -131,7 +191,10 @@ class ProcessingResult:
     outcome: OutcomeSnapshot
 
     @classmethod
-    def from_context(cls, ctx: ProcessingContext) -> ProcessingResult:
+    def from_context(
+        cls,
+        ctx: ProcessingContext,
+    ) -> Self:
         """Reduce a mutable processing context to a durable result snapshot.
 
         Args:
@@ -148,6 +211,7 @@ class ProcessingResult:
                 if ctx.file_type is not None
                 else None
             ),
+            execution_mode=ExecutionModeSnapshot.from_run_options(ctx.run_options),
             steps=tuple(step.name for step in ctx.steps),
             step_axes=tuple(
                 StepAxesSnapshot(
@@ -185,6 +249,7 @@ class ProcessingResult:
         return {
             "path": format_machine_path(self.path),
             "file_type": self.file_type.to_dict() if self.file_type is not None else None,
+            "execution_mode": self.execution_mode.to_dict(),
             "steps": list(self.steps),
             "step_axes": self.step_axes_dict,
             "status": self.status.to_dict(),
@@ -209,15 +274,3 @@ class ProcessingResult:
             "pre_insert_check": self.pre_insert_check.to_dict(),
             "outcome": self.outcome.to_dict(),
         }
-
-
-def reduce_processing_context(ctx: ProcessingContext) -> ProcessingResult:
-    """Reduce a mutable processing context to a durable result snapshot.
-
-    Args:
-        ctx: Source mutable context.
-
-    Returns:
-        Detached durable result snapshot.
-    """
-    return ProcessingResult.from_context(ctx)
