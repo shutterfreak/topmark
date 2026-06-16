@@ -29,11 +29,11 @@ from topmark.presentation.text.diagnostic import render_diagnostics_text
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.result import ProbeCandidateSnapshot
+    from topmark.pipeline.result import ProbeMatchSnapshot
+    from topmark.pipeline.result import ProbeSnapshot
+    from topmark.pipeline.result import ProcessingResult
     from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
-    from topmark.resolution.probe import ResolutionProbeCandidate
-    from topmark.resolution.probe import ResolutionProbeMatchSignals
-    from topmark.resolution.probe import ResolutionProbeResult
 
 # ---- Banner rendering ----
 
@@ -71,7 +71,7 @@ def _render_probe_banner_text(
 
 def _render_probe_missing_text(
     *,
-    ctx: ProcessingContext,
+    ctx: ProcessingResult,
     styled: bool,
 ) -> str:
     """Render a probe line when no resolution probe result is available.
@@ -97,8 +97,8 @@ def _render_probe_missing_text(
 
 def _render_probe_summary_line_text(
     *,
-    ctx: ProcessingContext,
-    probe: ResolutionProbeResult,
+    ctx: ProcessingResult,
+    probe: ProbeSnapshot,
     styled: bool,
 ) -> str:
     """Render a compact one-line TEXT summary for one probe result.
@@ -112,7 +112,7 @@ def _render_probe_summary_line_text(
         One-line probe summary.
     """
     status_role: StyleRole = (
-        StyleRole.UNCHANGED if probe.status.value == "resolved" else StyleRole.UNSUPPORTED
+        StyleRole.UNCHANGED if probe.status == "resolved" else StyleRole.UNSUPPORTED
     )
     status_styler: TextStyler = style_for_role(status_role, styled=styled)
     muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
@@ -120,10 +120,10 @@ def _render_probe_summary_line_text(
     parts: list[str] = [f"{get_display_path(ctx)}:"]
 
     if probe.selected_file_type is None:
-        label: str = "<filtered>" if probe.status.value == "filtered" else "<unknown>"
+        label: str = "<filtered>" if probe.status == "filtered" else "<unknown>"
         parts.append(muted_styler(label))
         parts.append("-")
-        parts.append(status_styler(f"{probe.status.value}: {probe.reason.value}"))
+        parts.append(status_styler(f"{probe.status}: {probe.reason}"))
         return " ".join(parts)
 
     selected_file_type: str = probe.selected_file_type.local_key
@@ -138,16 +138,14 @@ def _render_probe_summary_line_text(
 
     parts.append(muted_styler(selected_file_type))
     parts.append("-")
-    parts.append(
-        status_styler(f"{probe.status.value}: processor={selected_processor}{score_suffix}")
-    )
+    parts.append(status_styler(f"{probe.status}: processor={selected_processor}{score_suffix}"))
 
     return " ".join(parts)
 
 
 def _render_probe_selected_details_text(
     *,
-    probe: ResolutionProbeResult,
+    probe: ProbeSnapshot,
     styled: bool,
 ) -> list[str]:
     """Render selected probe details for verbose TEXT output.
@@ -163,8 +161,8 @@ def _render_probe_selected_details_text(
     muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
 
     lines: list[str] = [
-        f"  status: {emphasis_styler(probe.status.value)}",
-        f"  reason: {muted_styler(probe.reason.value)}",
+        f"  status: {emphasis_styler(probe.status)}",
+        f"  reason: {muted_styler(probe.reason)}",
         f"  candidates: {len(probe.candidates)}",
     ]
 
@@ -188,7 +186,9 @@ def _render_probe_selected_details_text(
     return lines
 
 
-def _format_probe_match_signals_text(candidate: ResolutionProbeCandidate) -> str:
+def _format_probe_match_signals_text(
+    candidate: ProbeCandidateSnapshot,
+) -> str:
     """Format candidate match signals as compact TEXT.
 
     Args:
@@ -197,7 +197,7 @@ def _format_probe_match_signals_text(candidate: ResolutionProbeCandidate) -> str
     Returns:
         Compact match-signal summary.
     """
-    match: ResolutionProbeMatchSignals = candidate.match
+    match: ProbeMatchSnapshot = candidate.match
     parts: list[str] = [
         f"extension={str(match.extension).lower()}",
         f"filename={str(match.filename).lower()}",
@@ -212,7 +212,7 @@ def _format_probe_match_signals_text(candidate: ResolutionProbeCandidate) -> str
 
 def _render_probe_candidates_text(
     *,
-    probe: ResolutionProbeResult,
+    probe: ProbeSnapshot,
     styled: bool,
 ) -> list[str]:
     """Render candidate details for high-verbosity probe TEXT output.
@@ -249,7 +249,7 @@ def _render_probe_candidates_text(
 
 def _render_probe_results_text(
     *,
-    view_results: Sequence[ProcessingContext],
+    view_results: Sequence[ProcessingResult],
     verbosity_level: int,
     styled: bool,
 ) -> str:
@@ -271,7 +271,7 @@ def _render_probe_results_text(
     parts: list[str] = []
 
     for ctx in view_results:
-        probe: ResolutionProbeResult | None = ctx.resolution_probe
+        probe: ProbeSnapshot | None = ctx.probe
         if probe is None:
             parts.append(
                 _render_probe_missing_text(

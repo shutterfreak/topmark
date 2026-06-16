@@ -88,6 +88,7 @@ from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
@@ -97,7 +98,6 @@ from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.presentation.text.probe import render_probe_output_text
 from topmark.resolution.files import probe_explicit_file_selection
-from topmark.resolution.probe import ResolutionProbeStatus
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
@@ -116,6 +116,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.engine import PipelineExecution
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.protocols import Step
+    from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
@@ -439,20 +440,24 @@ def probe_command(
         )
     )
 
+    durable_results: tuple[ProcessingResult, ...] = reduce_processing_contexts(
+        context_results
+    ).results
+
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_probe_results_machine(
             console=console,
             meta=meta,
             config=config,
             resolved_toml=prepared_cli_config.resolved_toml,
-            results=context_results,
+            results=durable_results,
             fmt=fmt,
         )
     else:
         report = ProbeCommandHumanReport(
             pipeline_kind=PIPELINE_KIND,
-            file_list_total=len(context_results),
-            view_results=context_results,
+            file_list_total=len(durable_results),
+            view_results=durable_results,
             verbosity_level=verbosity_level,
             styled=enable_color,
         )
@@ -473,13 +478,11 @@ def probe_command(
 
     # Probe-specific semantic exit status. Filtered explicit inputs are reported
     # as probe results and therefore map to UNSUPPORTED_FILE_TYPE.
-    if any(result.resolution_probe is None for result in context_results):
+    if any(result.probe is None for result in durable_results):
         ctx.exit(ExitCode.PIPELINE_ERROR)
 
     if any(
-        result.resolution_probe is not None
-        and result.resolution_probe.status != ResolutionProbeStatus.RESOLVED
-        for result in context_results
+        result.probe is not None and result.probe.status != "resolved" for result in durable_results
     ):
         ctx.exit(ExitCode.UNSUPPORTED_FILE_TYPE)
 

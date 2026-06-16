@@ -62,6 +62,9 @@ ______________________________________________________________________
 - Migrated `check`/`strip` TEXT and Markdown human report rendering to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced display-path and diff-detail
   state while keeping probe rendering and patcher-generated diff headers context-based.
+- Migrated `probe` public API DTO assembly, machine-readable output, and TEXT/Markdown rendering to
+  consume durable `ProcessingResult` snapshots carrying reduced `ProbeSnapshot` state, completing
+  the current mutable-context to durable-result handover for output-facing consumers.
 - Made human report-scope filtering result-compatible by introducing protocol-based filtering
   support for durable `ProcessingResult` snapshots while preserving context-based filtering support
   for pre-reduction probe consumers.
@@ -304,6 +307,8 @@ ______________________________________________________________________
 - Added an internal batch reduction boundary from mutable processing contexts to durable processing
   results, including durable detail-state capture that prepares reporting logic for future streaming
   consolidation without changing current runner behavior.
+- Updated architecture documentation to reflect durable probe snapshots, reduced probe state, and
+  the completion of the current output-facing mutable-context to durable-result migration.
 
 ### Internal - Unreleased
 

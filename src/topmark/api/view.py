@@ -16,9 +16,8 @@ assemble public run-result DTOs.
 
 Current reduction boundary:
 - `check()` and `strip()` consume durable `ProcessingResult` snapshots.
-- `probe()` still consumes `ProcessingContext` instances because probe details
-  depend on `resolution_probe` state that has not yet been reduced into a
-  durable snapshot.
+- `probe()` consumes durable probe snapshots carried by `ProcessingResult`,
+  matching the check/strip mutable-context to durable-result handover.
 
 Why this exists:
 - `check()` and `strip()` share post-run behavior: filtering, summaries,
@@ -63,11 +62,9 @@ if TYPE_CHECKING:
 
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import MutableDiagnosticLog
-    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.result import ProbeMatchSnapshot
+    from topmark.pipeline.result import ProbeSnapshot
     from topmark.pipeline.result import ProcessingResult
-    from topmark.resolution.probe import ResolutionProbeMatchSignals
-    from topmark.resolution.probe import ResolutionProbeResult
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -100,7 +97,9 @@ def to_file_result(result: ProcessingResult, *, apply: bool) -> FileResult:
     )
 
 
-def _probe_match_tokens(match: ResolutionProbeMatchSignals) -> tuple[str, ...]:
+def _probe_match_tokens(
+    match: ProbeMatchSnapshot,
+) -> tuple[str, ...]:
     """Return stable public match-signal tokens for a probe candidate.
 
     Args:
@@ -126,7 +125,9 @@ def _probe_match_tokens(match: ResolutionProbeMatchSignals) -> tuple[str, ...]:
     return tuple(tokens)
 
 
-def _probe_candidate_infos(probe: ResolutionProbeResult) -> tuple[ProbeCandidateInfo, ...]:
+def _probe_candidate_infos(
+    probe: ProbeSnapshot,
+) -> tuple[ProbeCandidateInfo, ...]:
     """Return normalized public candidate DTOs for an internal probe result.
 
     Args:
@@ -150,23 +151,24 @@ def _probe_candidate_infos(probe: ResolutionProbeResult) -> tuple[ProbeCandidate
     )
 
 
-def to_probe_file_result(ctx: ProcessingContext) -> ProbeFileResult:
-    """Convert a `ProcessingContext` into a public `ProbeFileResult`.
+def to_probe_file_result(
+    result: ProcessingResult,
+) -> ProbeFileResult:
+    """Convert a durable `ProcessingResult` into a public `ProbeFileResult`.
 
     Args:
-        ctx: The source processing context from the probe pipeline, including
-            real and synthetic contexts.
+        result: The source durable probe result, including real and synthetic results.
 
     Returns:
         Public, JSON-friendly probe result for one path.
     """
-    probe: ResolutionProbeResult | None = ctx.resolution_probe
+    probe: ProbeSnapshot | None = result.probe
     if probe is None:
         # This should not happen for the probe pipeline. Keep the public API
         # robust if a future internal step halts before attaching a probe result.
-        bucket: ResultBucket = map_bucket(ctx, apply=False)
+        bucket: ResultBucket = map_bucket(result, apply=False)
         return ProbeFileResult(
-            path=Path(str(ctx.path)),
+            path=Path(str(result.path)),
             status=bucket.outcome.value,
             reason=bucket.reason or NO_REASON_PROVIDED,
             selected_file_type=None,
@@ -176,8 +178,8 @@ def to_probe_file_result(ctx: ProcessingContext) -> ProbeFileResult:
 
     return ProbeFileResult(
         path=Path(str(probe.path)),
-        status=probe.status.value,
-        reason=probe.reason.value,
+        status=probe.status,
+        reason=probe.reason,
         selected_file_type=(
             probe.selected_file_type.local_key if probe.selected_file_type is not None else None
         ),
@@ -188,7 +190,9 @@ def to_probe_file_result(ctx: ProcessingContext) -> ProbeFileResult:
     )
 
 
-def summarize_file_results(files: Sequence[FileResult]) -> Mapping[str, int]:
+def summarize_file_results(
+    files: Sequence[FileResult],
+) -> Mapping[str, int]:
     """Count occurrences of each `Outcome` value.
 
     Args:
@@ -203,7 +207,9 @@ def summarize_file_results(files: Sequence[FileResult]) -> Mapping[str, int]:
     return counts
 
 
-def summarize_probe_file_results(files: Sequence[ProbeFileResult]) -> Mapping[str, int]:
+def summarize_probe_file_results(
+    files: Sequence[ProbeFileResult],
+) -> Mapping[str, int]:
     """Count occurrences of each public probe status.
 
     Args:
@@ -258,19 +264,21 @@ def collect_diagnostics(
         Mapping from file path to diagnostic entries.
     """
     diags: dict[str, list[DiagnosticEntry]] = {}
-    for r in results:
-        if r.diagnostics:
-            diags[str(r.path)] = [
+    for result in results:
+        if result.diagnostics:
+            diags[str(result.path)] = [
                 DiagnosticEntry(
                     level=d.level.value,
                     message=d.message,
                 )
-                for d in r.diagnostics
+                for d in result.diagnostics
             ]
     return diags
 
 
-def collect_diagnostic_totals(results: Sequence[ProcessingResult]) -> DiagnosticTotals:
+def collect_diagnostic_totals(
+    results: Sequence[ProcessingResult],
+) -> DiagnosticTotals:
     """Return aggregate counts of diagnostics across the given results.
 
     Args:
@@ -282,75 +290,10 @@ def collect_diagnostic_totals(results: Sequence[ProcessingResult]) -> Diagnostic
     total_info: int = 0
     total_warn: int = 0
     total_error: int = 0
-    for r in results:
-        if not r.diagnostics:
+    for result in results:
+        if not result.diagnostics:
             continue
-        for d in r.diagnostics:
-            match d.level.value:
-                case "info":
-                    total_info += 1
-                case "warning":
-                    total_warn += 1
-                case "error":
-                    total_error += 1
-    total: int = total_info + total_warn + total_error
-    return DiagnosticTotals(
-        info=total_info,
-        warning=total_warn,
-        error=total_error,
-        total=total,
-    )
-
-
-# ---- Context-based diagnostic helpers for probe pipeline ----
-
-
-def collect_context_diagnostics(
-    results: Sequence[ProcessingContext],
-) -> dict[str, list[DiagnosticEntry]]:
-    """Collect per-file diagnostics from context-based probe results.
-
-    Probe result assembly intentionally still consumes `ProcessingContext`
-    instances because probe details depend on `resolution_probe` state that is
-    not yet part of the durable result boundary.
-
-    Args:
-        results: Probe pipeline contexts.
-
-    Returns:
-        Mapping from file path to diagnostic entries.
-    """
-    diags: dict[str, list[DiagnosticEntry]] = {}
-    for ctx in results:
-        diagnostics: MutableDiagnosticLog = ctx.diagnostics
-        if diagnostics:
-            diags[str(ctx.path)] = [
-                DiagnosticEntry(
-                    level=d.level.value,
-                    message=d.message,
-                )
-                for d in diagnostics
-            ]
-    return diags
-
-
-def collect_context_diagnostic_totals(results: Sequence[ProcessingContext]) -> DiagnosticTotals:
-    """Return aggregate diagnostic counts from context-based probe results.
-
-    Args:
-        results: Probe pipeline contexts.
-
-    Returns:
-        Aggregate counts (info/warning/error/total).
-    """
-    total_info: int = 0
-    total_warn: int = 0
-    total_error: int = 0
-    for ctx in results:
-        diagnostics: MutableDiagnosticLog = ctx.diagnostics
-        if not diagnostics:
-            continue
-        for d in diagnostics:
+        for d in result.diagnostics:
             match d.level.value:
                 case "info":
                     total_info += 1
@@ -454,7 +397,7 @@ def finalize_run_result(
 
 def finalize_probe_result(
     *,
-    results: list[ProcessingContext],
+    results: Sequence[ProcessingResult],
     file_list: list[Path],
     encountered_exit_code: ExitCode | None,
 ) -> ProbeRunResult:
@@ -462,7 +405,7 @@ def finalize_probe_result(
 
     Probe results are intentionally not routed through `finalize_run_result()`:
     probing explains file-type resolution rather than header compliance or file
-    mutation. This helper maps each internal `ResolutionProbeResult` into stable
+    mutation. This helper maps each internal `ProbeSnapshot` into stable
     public DTOs and summarizes by public probe status.
 
     Args:
@@ -485,8 +428,8 @@ def finalize_probe_result(
     files: tuple[ProbeFileResult, ...] = tuple(to_probe_file_result(r) for r in results)
     summary: Mapping[str, int] = summarize_probe_file_results(files)
 
-    diagnostics: dict[str, list[DiagnosticEntry]] = collect_context_diagnostics(results)
-    diagnostic_totals: DiagnosticTotals = collect_context_diagnostic_totals(results)
+    diagnostics: dict[str, list[DiagnosticEntry]] = collect_diagnostics(results)
+    diagnostic_totals: DiagnosticTotals = collect_diagnostic_totals(results)
     had_errors: bool = (diagnostic_totals["error"] > 0) or (encountered_exit_code is not None)
 
     return ProbeRunResult(
