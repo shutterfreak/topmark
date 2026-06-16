@@ -17,10 +17,10 @@ reducer: it consumes already-produced
 instances and returns matching
 [`ProcessingResult`][topmark.pipeline.result.ProcessingResult] snapshots.
 
-It does not introduce per-file streaming consolidation, incremental summary
-updates, or early release of context-owned views. Its purpose is to make the
-handover seam typed and testable so later work can decide whether this boundary
-can move earlier in the processing loop.
+It does not introduce per-file streaming consolidation or incremental summary
+updates. It does provide explicit knobs for whether the handover retains source
+contexts and whether volatile context-owned view payloads are released after
+durable snapshots have been created.
 """
 
 from __future__ import annotations
@@ -41,11 +41,11 @@ class ProcessingReduction:
     """Batch reduction result for processed pipeline contexts.
 
     Attributes:
-        contexts: Immutable tuple of the source mutable processing contexts.
-            These are retained intentionally for current CLI, API, human-output,
-            probe-output, and machine-detail consumers.
+        contexts: Immutable tuple of retained source mutable processing
+            contexts. This is empty when the caller requested a reduced-only
+            handover.
         results: Immutable tuple of durable processing-result snapshots reduced
-            from `contexts` in the same order.
+            from source contexts in the same order.
     """
 
     contexts: tuple[ProcessingContext, ...]
@@ -54,23 +54,41 @@ class ProcessingReduction:
 
 def reduce_processing_contexts(
     contexts: Iterable[ProcessingContext],
+    *,
+    retain_contexts: bool = True,
+    release_views: bool = False,
 ) -> ProcessingReduction:
     """Reduce completed processing contexts to durable results as a batch.
 
-    This helper marks the current post-run handover boundary. It preserves the
-    source contexts while creating detached durable result snapshots, which lets
-    existing context-based consumers keep working while summary and exit-code
-    logic gains a result-compatible seam.
+    This helper marks the current post-run handover boundary. By default it
+    preserves source contexts for compatibility with remaining context-based
+    consumers. Callers that have migrated to durable results can request a
+    reduced-only handover and release volatile view payloads after snapshotting.
 
     Args:
         contexts: Completed or partially completed processing contexts to reduce.
+        retain_contexts: Whether to keep source contexts in the returned
+            reduction object. Use ``False`` once all downstream consumers for
+            the current command operate on durable results.
+        release_views: Whether to release context-owned view payloads after
+            durable snapshots have been created. This never runs before
+            `ProcessingResult.from_context()` has copied result-owned detail
+            fields such as `diff_text`.
 
     Returns:
-        Batch reduction containing the source contexts and corresponding
-        durable results in matching order.
+        Batch reduction containing durable results and, when requested, the
+        retained source contexts in matching order.
     """
     source_contexts: tuple[ProcessingContext, ...] = tuple(contexts)
+    results: tuple[ProcessingResult, ...] = tuple(
+        ProcessingResult.from_context(ctx) for ctx in source_contexts
+    )
+
+    if release_views is True:
+        for ctx in source_contexts:
+            ctx.views.release_all()
+
     return ProcessingReduction(
-        contexts=source_contexts,
-        results=tuple(ProcessingResult.from_context(ctx) for ctx in source_contexts),
+        contexts=source_contexts if retain_contexts is True else (),
+        results=results,
     )

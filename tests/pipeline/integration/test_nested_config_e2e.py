@@ -84,9 +84,9 @@ def test_nested_config_applies_only_within_its_subtree(tmp_path: Path) -> None:
     # Limit discovery to Python files so the config files themselves are not part
     # of the processed candidate set for this end-to-end behavior check.
     assert set(api_run.file_list) == {pkg_file.resolve(), docs_file.resolve()}
-    assert len(api_run.results) == 2
+    assert len(api_run.contexts) == 2
 
-    by_path: dict[Path, ProcessingContext] = {ctx.path.resolve(): ctx for ctx in api_run.results}
+    by_path: dict[Path, ProcessingContext] = {ctx.path.resolve(): ctx for ctx in api_run.contexts}
 
     pkg_ctx: ProcessingContext = by_path[pkg_file.resolve()]
     docs_ctx: ProcessingContext = by_path[docs_file.resolve()]

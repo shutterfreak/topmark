@@ -101,7 +101,6 @@ from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
@@ -492,7 +491,7 @@ def check_command(
         pipeline=pipeline,
         file_list=file_list,
     )
-    results: list[ProcessingContext] = pipeline_run.results
+    context_results: list[ProcessingContext] = pipeline_run.contexts
     encountered_exit_code: ExitCode | None = pipeline_run.exit_code
 
     # Add resolver-level hard failures before deriving the process exit code so
@@ -502,9 +501,9 @@ def check_command(
         config=config,
         run_options=run_options,
     )
-    results.extend(missing_results)
+    context_results.extend(missing_results)
 
-    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
+    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(context_results)
     encountered_exit_code = encountered_exit_code or pipeline_error_code
 
     # Report scope is a human per-file listing policy only.
@@ -513,17 +512,20 @@ def check_command(
     # - Human summary mode must also use the full raw result set so aggregated
     #   counts are not distorted by per-file report filtering.
     # - Human non-summary output uses the filtered per-file view.
-    reduction: ProcessingReduction = reduce_processing_contexts(results)
+    reduction: ProcessingReduction = reduce_processing_contexts(
+        context_results,
+        retain_contexts=False,
+        release_views=True,
+    )
+    results: Sequence[ProcessingResult] = reduction.results
 
     filtered: ReportFilterResult[ProcessingResult] = filter_results_for_report(
-        reduction.results,
+        results,
         report_scope=report_scope,
         would_change=would_change_result,
     )
 
-    human_results: Sequence[ProcessingResult] = (
-        reduction.results if summary_mode else filtered.view_results
-    )
+    human_results: Sequence[ProcessingResult] = results if summary_mode else filtered.view_results
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
@@ -531,7 +533,7 @@ def check_command(
             meta=meta,
             config=config,
             resolved_toml=prepared_cli_config.resolved_toml,
-            results=reduction.results,
+            results=results,
             fmt=fmt,
             summary_mode=summary_mode,
         )
@@ -564,9 +566,11 @@ def check_command(
             safe_unlink(temp_path)
             return
         else:
-            # Count outcomes after writer statuses have been finalized.
-            written: int = sum(1 for r in results if r.status.write == WriteStatus.WRITTEN)
-            failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
+            # Count outcomes from durable results after writer statuses have been finalized.
+            written: int = sum(
+                1 for result in results if result.status.write == WriteStatus.WRITTEN
+            )
+            failed: int = sum(1 for result in results if result.status.write == WriteStatus.FAILED)
 
             # Emit apply summary. TEXT honors --quiet; Markdown remains document-oriented.
             if fmt == OutputFormat.TEXT and not state.quiet:
@@ -610,7 +614,9 @@ def check_command(
         temp_path=temp_path,
     )
 
-    if not apply_changes and any(effective_would_add_or_update(r) for r in results):
+    if not apply_changes and any(
+        result.outcome.effective_would_add_or_update for result in results
+    ):
         ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Cleanup temp file if any (shouldn't be needed except on errors)

@@ -191,6 +191,13 @@ The benchmark tool records lightweight ownership indicators including:
 - retained views before pruning;
 - retained views after pruning.
 
+The `views_before_prune` measurement captures the final retained volatile views after pipeline
+execution. The `views_after_prune` measurement then explicitly releases all remaining volatile views
+from the benchmark context. This mirrors the durable-result lifecycle introduced during GitHub issue
+148: `ProcessingResult` owns durable snapshots such as rendered diff text after reduction, while
+`ProcessingContext` views remain volatile execution state and may be released once snapshotting has
+completed.
+
 ______________________________________________________________________
 
 ## Baseline scenarios
@@ -288,9 +295,11 @@ continues to use the historical unpruned mode names in its predefined suites. Ex
 mode variants were added for measuring lifecycle improvements without changing the original baseline
 reference points.
 
-The benchmark harness mirrors the production pruning lifecycle during step sampling whenever a
-pruned mode is used, so retained-view measurements reflect the views that remain available to
-downstream pipeline steps rather than only final cleanup behavior.
+The benchmark harness mirrors the production between-step pruning lifecycle during step sampling
+whenever a pruned mode is used, so retained-view measurements reflect the views that remain
+available to downstream pipeline steps. Final volatile-view release is measured separately after the
+run so it remains distinct from runner-owned between-step pruning and reduction-owned durable
+snapshotting.
 
 Representative issue 140 measurements collected using the explicit pruned benchmark modes were:
 

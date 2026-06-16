@@ -24,6 +24,7 @@ from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.pipeline.views import DiffView
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -109,3 +110,22 @@ def test_exit_code_selection_preserves_result_priority(
     )
 
     assert exit_code_from_pipeline_results(reduction.results) is ExitCode.PERMISSION_DENIED
+
+
+def test_reduce_processing_contexts_can_release_views_without_retaining_contexts(
+    tmp_path: Path,
+) -> None:
+    """Reduced-only handover should snapshot detail before releasing view payloads."""
+    ctx: ProcessingContext = _make_reduction_context(tmp_path, "sample.py")
+    ctx.views.diff = DiffView(text="--- current\n+++ updated\n")
+
+    reduction: ProcessingReduction = reduce_processing_contexts(
+        [ctx],
+        retain_contexts=False,
+        release_views=True,
+    )
+
+    assert reduction.contexts == ()
+    assert reduction.results[0].detail.diff_text == "--- current\n+++ updated\n"
+    assert ctx.views.diff is not None
+    assert ctx.views.diff.text is None

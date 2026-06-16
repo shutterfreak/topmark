@@ -170,3 +170,13 @@ def test_pipeline_steps_declare_expected_view_consumers() -> None:
     assert set(steps_by_name) == set(expected_by_step_name)
     for step_name, expected_consumers in expected_by_step_name.items():
         assert steps_by_name[step_name].consumes_views == expected_consumers
+
+
+def test_release_all_releases_diff_payload() -> None:
+    """Views.release_all() releases all payloads, including diff payload."""
+    views = Views(diff=DiffView(text="--- current\n+++ updated\n"))
+
+    views.release_all()
+
+    assert views.diff is not None
+    assert views.diff.text is None

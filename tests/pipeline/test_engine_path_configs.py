@@ -107,7 +107,7 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     )
 
     assert pipeline_run.exit_code is None
-    assert [result.path for result in pipeline_run.results] == [file_a, file_b]
+    assert [result.path for result in pipeline_run.contexts] == [file_a, file_b]
 
     assert len(bootstrap_calls) == 2
     assert bootstrap_calls[0][0] == file_a
@@ -176,7 +176,7 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     )
 
     assert pipeline_run.exit_code is None
-    assert [result.path for result in pipeline_run.results] == [file_a, file_b]
+    assert [result.path for result in pipeline_run.contexts] == [file_a, file_b]
 
     assert len(bootstrap_calls) == 2
     assert bootstrap_calls[0][1] is shared_cfg

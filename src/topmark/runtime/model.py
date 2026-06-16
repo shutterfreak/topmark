@@ -52,8 +52,7 @@ class RunOptions:
         stdin_mode: Whether content is being provided on stdin for this run.
         stdin_filename: Synthetic filename associated with stdin content, used
             when header generation requires a file identity.
-        prune_views: Whether heavy views should be trimmed after the run while
-            preserving summary-level results.
+        prune_views: If True, release consumed volatile views between pipeline steps.
         keep_diff_view: Whether to preserve the diff view.
         started_at: Timestamp captured once for the whole run.
     """

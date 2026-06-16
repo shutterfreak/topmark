@@ -199,8 +199,10 @@ def build_run_options(
         write_mode: Effective CLI write mode (`stdout`, `atomic`, or `inplace`).
         stdin_mode: Whether the command is operating in content-on-STDIN mode.
         stdin_filename: Synthetic file name associated with STDIN content, if any.
-        prune_views: If `True`, trim heavy views after the run (keeps summaries). Default: `True`.
-        keep_diff_view: Whether to preserve the diff view.
+        prune_views: If True, release consumed volatile views between pipeline steps.
+        keep_diff_view: Whether to preserve the diff view during between-step pruning;
+            must be true for pipelines containing `PatcherStep` until reduction
+            snapshots `ProcessingDetailSnapshot.diff_text`.
 
     Returns:
         The execution-only runtime options for the current CLI invocation.

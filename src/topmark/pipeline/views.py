@@ -353,23 +353,14 @@ class Views:
 
     def release_all(
         self,
-        *,
-        keep_diff_view: bool = False,
     ) -> None:
-        """Release all non-None views safely (idempotent).
-
-        Args:
-            keep_diff_view: Whether to preserve the diff view.
-        """
-        logger.debug("keep_diff_view: %r", keep_diff_view)
+        """Release all non-None views safely (idempotent)."""
         self.release_image()
         self.release_header()
         self.release_build()
         self.release_render()
         self.release_updated()
-
-        if not keep_diff_view:
-            self.release_diff()
+        self.release_diff()
 
     def release_image(self) -> None:
         """Release the original file image view when it is no longer needed."""

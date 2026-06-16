@@ -53,7 +53,7 @@ def _run_check(paths: list[Path], config: FrozenConfig) -> list[ProcessingContex
         file_list=paths,
     )
     assert pipeline_run.exit_code is None
-    return pipeline_run.results
+    return pipeline_run.contexts
 
 
 def test_hard_link_pair_blocks_all_selected_paths(tmp_path: Path) -> None:

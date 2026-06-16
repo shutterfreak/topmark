@@ -70,6 +70,9 @@ ______________________________________________________________________
   preserving retained diff output.
 - Pruned consumed pipeline views incrementally between steps when view pruning is enabled, reducing
   transient retention before later patch/write phases while preserving requested diff output.
+- Clarified pipeline execution and reduction ownership by renaming execution collections to
+  `contexts`, keeping runner pruning limited to between-step consumed-view release, and moving final
+  volatile-view release to the durable `ProcessingResult` reduction boundary for check/strip paths.
 - Replaced string-based pipeline view-pruning decisions with typed `ViewSlot` consumer metadata
   declared by concrete pipeline steps.
 - Replaced eager replacement-image composition with a repeatable updated-content abstraction and
@@ -295,8 +298,9 @@ ______________________________________________________________________
   alternatives, benchmark relevance, and the rationale for closing Track B without further
   implementation.
 - Clarified the architecture boundary between mutable `ProcessingContext` execution state and
-  durable `ProcessingResult` snapshots, including outcome classification, report filtering, reduced
-  detail snapshots, check/strip machine output, and check/strip human rendering.
+  durable `ProcessingResult` snapshots, including execution-context ownership, reduction-driven
+  volatile-view release, outcome classification, report filtering, reduced detail snapshots,
+  check/strip machine output, and check/strip human rendering.
 - Added an internal batch reduction boundary from mutable processing contexts to durable processing
   results, including durable detail-state capture that prepares reporting logic for future streaming
   consolidation without changing current runner behavior.
@@ -363,6 +367,9 @@ ______________________________________________________________________
   handling.
 - Added regression coverage for repeatable updated-content iteration and updated-view lifecycle
   behavior.
+- Renamed internal pipeline execution collections from `results` to `contexts` where they still
+  carry mutable `ProcessingContext` instances, preserving a clearer distinction from durable
+  `ProcessingResult` snapshots.
 - Added immutable `StatusSnapshot` and `ProcessingResult` result-reduction primitives as the first
   stage of separating volatile pipeline execution state from durable processing outcomes (GitHub
   issue #148).
