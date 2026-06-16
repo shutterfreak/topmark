@@ -44,7 +44,6 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
@@ -54,7 +53,7 @@ def serialize_probe_results(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingContext],
+    results: Iterable[ProcessingResult],
     fmt: OutputFormat,
 ) -> str | Iterator[str]:
     """Serialize resolution probe results in a machine-readable format.

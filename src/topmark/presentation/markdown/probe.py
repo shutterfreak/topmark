@@ -28,11 +28,11 @@ from topmark.presentation.markdown.utils import render_markdown_table
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.result import ProbeCandidateSnapshot
+    from topmark.pipeline.result import ProbeMatchSnapshot
+    from topmark.pipeline.result import ProbeSnapshot
+    from topmark.pipeline.result import ProcessingResult
     from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
-    from topmark.resolution.probe import ResolutionProbeCandidate
-    from topmark.resolution.probe import ResolutionProbeMatchSignals
-    from topmark.resolution.probe import ResolutionProbeResult
 
 
 # ---- Banner rendering ----
@@ -62,7 +62,9 @@ def _render_probe_banner_markdown(
 # ---- Probe rendering ----
 
 
-def _render_probe_missing_markdown(ctx: ProcessingContext) -> str:
+def _render_probe_missing_markdown(
+    ctx: ProcessingResult,
+) -> str:
     """Render a probe section when no resolution probe result is available.
 
     Args:
@@ -82,7 +84,9 @@ def _render_probe_missing_markdown(ctx: ProcessingContext) -> str:
     )
 
 
-def _render_probe_selected_details_markdown(probe: ResolutionProbeResult) -> list[str]:
+def _render_probe_selected_details_markdown(
+    probe: ProbeSnapshot,
+) -> list[str]:
     """Render selected probe details for Markdown output.
 
     Args:
@@ -108,15 +112,17 @@ def _render_probe_selected_details_markdown(probe: ResolutionProbeResult) -> lis
     )
 
     return [
-        f"- **Status:** `{probe.status.value}`",
-        f"- **Reason:** `{probe.reason.value}`",
+        f"- **Status:** `{probe.status}`",
+        f"- **Reason:** `{probe.reason}`",
         f"- **Selected file type:** {selected_file_type}{selected_file_type_score}",
         f"- **Selected processor:** {selected_processor}",
         f"- **Candidates:** {len(probe.candidates)}",
     ]
 
 
-def _render_probe_match_signals_markdown(candidate: ResolutionProbeCandidate) -> str:
+def _render_probe_match_signals_markdown(
+    candidate: ProbeCandidateSnapshot,
+) -> str:
     """Render candidate match signals as compact Markdown text.
 
     Args:
@@ -125,7 +131,7 @@ def _render_probe_match_signals_markdown(candidate: ResolutionProbeCandidate) ->
     Returns:
         Compact Markdown-safe match signal summary.
     """
-    match: ResolutionProbeMatchSignals = candidate.match
+    match: ProbeMatchSnapshot = candidate.match
     parts: list[str] = [
         f"extension={str(match.extension).lower()}",
         f"filename={str(match.filename).lower()}",
@@ -138,7 +144,9 @@ def _render_probe_match_signals_markdown(candidate: ResolutionProbeCandidate) ->
     return markdown_code_span(" ".join(parts))
 
 
-def _render_probe_candidates_markdown(probe: ResolutionProbeResult) -> str:
+def _render_probe_candidates_markdown(
+    probe: ProbeSnapshot,
+) -> str:
     """Render candidate details for probe Markdown output.
 
     Args:
@@ -169,7 +177,10 @@ def _render_probe_candidates_markdown(probe: ResolutionProbeResult) -> str:
     ).rstrip()
 
 
-def _render_probe_result_markdown(ctx: ProcessingContext, probe: ResolutionProbeResult) -> str:
+def _render_probe_result_markdown(
+    ctx: ProcessingResult,
+    probe: ProbeSnapshot,
+) -> str:
     """Render one resolution probe result as Markdown.
 
     Args:
@@ -208,7 +219,7 @@ def _render_probe_result_markdown(ctx: ProcessingContext, probe: ResolutionProbe
 
 def _render_probe_results_markdown(
     *,
-    view_results: Sequence[ProcessingContext],
+    view_results: Sequence[ProcessingResult],
 ) -> str:
     """Render probe-specific per-file Markdown sections.
 
@@ -221,7 +232,7 @@ def _render_probe_results_markdown(
     blocks: list[str] = ["## Files", ""]
 
     for ctx in view_results:
-        probe: ResolutionProbeResult | None = ctx.resolution_probe
+        probe: ProbeSnapshot | None = ctx.probe
         if probe is None:
             blocks.append(_render_probe_missing_markdown(ctx))
         else:

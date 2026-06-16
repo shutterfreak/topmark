@@ -54,14 +54,14 @@ class ProbeCommandHumanReport:
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
         pipeline_kind: Pipeline kind used to select command-specific guidance.
         file_list_total: Total number of candidate files before view filtering.
-        view_results: Processing contexts selected for the current human-output view.
+        view_results: Durable probe results selected for the current human-output view.
     """
 
     verbosity_level: int
     styled: bool
     pipeline_kind: PipelineKindLiteral
     file_list_total: int
-    view_results: Sequence[ProcessingContext]
+    view_results: Sequence[ProcessingResult]
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

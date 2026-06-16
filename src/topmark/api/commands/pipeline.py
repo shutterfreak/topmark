@@ -61,7 +61,9 @@ __all__ = (
 )
 
 
-def _resolve_public_report_scope(value: PublicReportScopeLiteral) -> ReportScope:
+def _resolve_public_report_scope(
+    value: PublicReportScopeLiteral,
+) -> ReportScope:
     """Return the internal report-scope enum for a public API token.
 
     Args:
@@ -344,7 +346,7 @@ def probe(
     # Probe has a dedicated public result shape; do not route it through the
     # check/strip finalizer.
     return finalize_probe_result(
-        results=api_run.contexts,
+        results=reduce_processing_contexts(api_run.contexts).results,
         file_list=api_run.file_list,
         encountered_exit_code=api_run.exit_code,
     )

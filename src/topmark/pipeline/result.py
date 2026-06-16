@@ -46,6 +46,10 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.resolution.probe import ResolutionProbeCandidate
+    from topmark.resolution.probe import ResolutionProbeMatchSignals
+    from topmark.resolution.probe import ResolutionProbeResult
+    from topmark.resolution.probe import ResolutionProbeSelection
     from topmark.runtime.model import RunOptions
 
 
@@ -204,6 +208,261 @@ class ProcessingDetailSnapshot:
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
+class ProbeMatchSnapshot:
+    """Durable probe match-signal facts captured from resolution probing.
+
+    Attributes:
+        extension: Whether an extension rule matched.
+        filename: Whether a filename or path-tail rule matched.
+        pattern: Whether a regular-expression pattern matched.
+        content_probe_allowed: Whether content probing was allowed.
+        content_match: Whether content probing matched.
+        content_error: Optional content-probe error type name.
+    """
+
+    extension: bool
+    filename: bool
+    pattern: bool
+    content_probe_allowed: bool
+    content_match: bool
+    content_error: str | None = None
+
+    @classmethod
+    def from_match(
+        cls,
+        match: ResolutionProbeMatchSignals,
+    ) -> Self:
+        """Create a durable match snapshot from resolver probe signals.
+
+        Args:
+            match: Resolver-owned match signal object.
+
+        Returns:
+            Durable probe match snapshot.
+        """
+        return cls(
+            extension=match.extension,
+            filename=match.filename,
+            pattern=match.pattern,
+            content_probe_allowed=match.content_probe_allowed,
+            content_match=match.content_match,
+            content_error=match.content_error,
+        )
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ProbeCandidateSnapshot:
+    """Durable scored file-type candidate captured from resolution probing.
+
+    Attributes:
+        qualified_key: Canonical namespace-qualified file type key.
+        namespace: Candidate file type namespace.
+        local_key: Candidate file type local key.
+        score: Candidate precedence score.
+        selected: Whether this candidate won resolution.
+        tie_break_rank: One-based deterministic rank.
+        match: Durable match-signal snapshot.
+    """
+
+    qualified_key: str
+    namespace: str
+    local_key: str
+    score: int
+    selected: bool
+    tie_break_rank: int
+    match: ProbeMatchSnapshot
+
+    @classmethod
+    def from_candidate(
+        cls,
+        candidate: ResolutionProbeCandidate,
+    ) -> Self:
+        """Create a durable candidate snapshot from a resolver probe candidate.
+
+        Args:
+            candidate: Resolver-owned probe candidate.
+
+        Returns:
+            Durable probe candidate snapshot.
+        """
+        return cls(
+            qualified_key=candidate.qualified_key,
+            namespace=candidate.namespace,
+            local_key=candidate.local_key,
+            score=candidate.score,
+            selected=candidate.selected,
+            tie_break_rank=candidate.tie_break_rank,
+            match=ProbeMatchSnapshot.from_match(candidate.match),
+        )
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ProbeSelectionSnapshot:
+    """Durable selected file-type or processor identity.
+
+    Attributes:
+        qualified_key: Canonical namespace-qualified key.
+        namespace: Selected object namespace.
+        local_key: Selected object local key.
+        score: Selected file type score, or `None` for processor selections.
+    """
+
+    qualified_key: str
+    namespace: str
+    local_key: str
+    score: int | None = None
+
+    @classmethod
+    def from_selection(
+        cls,
+        selection: ResolutionProbeSelection,
+    ) -> Self:
+        """Create a durable selection snapshot from a resolver selection.
+
+        Args:
+            selection: Resolver-owned selected file type or processor identity.
+
+        Returns:
+            Durable probe selection snapshot.
+        """
+        return cls(
+            qualified_key=selection.qualified_key,
+            namespace=selection.namespace,
+            local_key=selection.local_key,
+            score=selection.score,
+        )
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ProbeSnapshot:
+    """Durable resolution-probe result captured from a processing context.
+
+    Attributes:
+        path: Filesystem path that was probed.
+        status: Machine-friendly probe status value.
+        reason: Machine-friendly probe reason value.
+        candidates: Durable scored candidate snapshots.
+        selected_file_type: Selected file type identity, if any.
+        selected_processor: Selected processor identity, if any.
+    """
+
+    path: Path
+    status: str
+    reason: str
+    candidates: tuple[ProbeCandidateSnapshot, ...]
+    selected_file_type: ProbeSelectionSnapshot | None
+    selected_processor: ProbeSelectionSnapshot | None
+
+    @classmethod
+    def from_probe_result(
+        cls,
+        probe: ResolutionProbeResult,
+    ) -> Self:
+        """Create a durable probe snapshot from a resolver probe result.
+
+        Args:
+            probe: Resolver-owned resolution probe result.
+
+        Returns:
+            Detached durable probe snapshot.
+        """
+        return cls(
+            path=Path(probe.path),
+            status=probe.status.value,
+            reason=probe.reason.value,
+            candidates=tuple(
+                ProbeCandidateSnapshot.from_candidate(candidate) for candidate in probe.candidates
+            ),
+            selected_file_type=(
+                ProbeSelectionSnapshot.from_selection(probe.selected_file_type)
+                if probe.selected_file_type is not None
+                else None
+            ),
+            selected_processor=(
+                ProbeSelectionSnapshot.from_selection(probe.selected_processor)
+                if probe.selected_processor is not None
+                else None
+            ),
+        )
+
+    @classmethod
+    def from_context(
+        cls,
+        ctx: ProcessingContext,
+    ) -> Self | None:
+        """Create a durable probe snapshot when the context belongs to probe.
+
+        Args:
+            ctx: Source mutable processing context.
+
+        Returns:
+            Durable probe snapshot for probe contexts, or `None` for non-probe
+            processing results.
+        """
+        if ctx.run_options.pipeline_kind != "probe":
+            return None
+        if ctx.resolution_probe is None:
+            return None
+        return cls.from_probe_result(ctx.resolution_probe)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-friendly representation of this probe snapshot.
+
+        Returns:
+            JSON-serializable probe payload preserving the existing probe shape.
+        """
+        return {
+            "path": format_machine_path(self.path),
+            "status": self.status,
+            "reason": self.reason,
+            "selected_file_type": _probe_selection_to_dict(self.selected_file_type),
+            "selected_processor": _probe_selection_to_dict(self.selected_processor),
+            "candidates": [
+                {
+                    "qualified_key": candidate.qualified_key,
+                    "namespace": candidate.namespace,
+                    "local_key": candidate.local_key,
+                    "score": candidate.score,
+                    "selected": candidate.selected,
+                    "tie_break_rank": candidate.tie_break_rank,
+                    "match": {
+                        "extension": candidate.match.extension,
+                        "filename": candidate.match.filename,
+                        "pattern": candidate.match.pattern,
+                        "content_probe_allowed": candidate.match.content_probe_allowed,
+                        "content_match": candidate.match.content_match,
+                        "content_error": candidate.match.content_error,
+                    },
+                }
+                for candidate in self.candidates
+            ],
+        }
+
+
+def _probe_selection_to_dict(
+    selection: ProbeSelectionSnapshot | None,
+) -> dict[str, object] | None:
+    """Return the existing machine payload for a probe selection snapshot.
+
+    Args:
+        selection: Durable probe selection snapshot, or `None`.
+
+    Returns:
+        JSON-compatible selection payload, or `None`.
+    """
+    if selection is None:
+        return None
+    payload: dict[str, object] = {
+        "qualified_key": selection.qualified_key,
+        "namespace": selection.namespace,
+        "local_key": selection.local_key,
+    }
+    if selection.score is not None:
+        payload["score"] = selection.score
+    return payload
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProcessingResult:
     """Durable reduced outcome for one processed file.
 
@@ -229,6 +488,7 @@ class ProcessingResult:
         outcome: Durable high-level outcome flag snapshot.
         detail: Durable report-detail facts captured without retaining volatile
             context-owned views.
+        probe: Durable resolution-probe snapshot for probe runs.
     """
 
     path: Path
@@ -245,6 +505,7 @@ class ProcessingResult:
     pre_insert_check: PreInsertAdvisorySnapshot
     outcome: OutcomeSnapshot
     detail: ProcessingDetailSnapshot
+    probe: ProbeSnapshot | None
 
     @classmethod
     def from_context(
@@ -292,6 +553,7 @@ class ProcessingResult:
             pre_insert_check=PreInsertAdvisorySnapshot.from_context(ctx),
             outcome=OutcomeSnapshot.from_context(ctx),
             detail=ProcessingDetailSnapshot.from_context(ctx),
+            probe=ProbeSnapshot.from_context(ctx),
         )
 
     @property
@@ -340,4 +602,5 @@ class ProcessingResult:
             "pre_insert_check": self.pre_insert_check.to_dict(),
             "outcome": self.outcome.to_dict(),
             "detail": self.detail.to_dict(),
+            "probe": self.probe.to_dict() if self.probe is not None else None,
         }

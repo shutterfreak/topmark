@@ -65,7 +65,6 @@ if TYPE_CHECKING:
     from topmark.config.machine.schemas import ConfigPayload
     from topmark.config.model import FrozenConfig
     from topmark.diagnostic.model import FrozenDiagnosticLog
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
     from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -76,7 +75,7 @@ def build_probe_results_json_envelope(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingContext],
+    results: Iterable[ProcessingResult],
 ) -> dict[str, object]:
     """Build the JSON envelope for resolution probe results.
 
@@ -118,7 +117,7 @@ def iter_probe_results_ndjson_records(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingContext],
+    results: Iterable[ProcessingResult],
 ) -> Iterator[dict[str, object]]:
     """Yield NDJSON records for resolution probe results.
 

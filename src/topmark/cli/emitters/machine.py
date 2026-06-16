@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
@@ -73,7 +72,7 @@ def emit_probe_results_machine(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingContext],
+    results: Iterable[ProcessingResult],
     fmt: OutputFormat,
 ) -> None:
     """Emit topmark probe machine-readable output.

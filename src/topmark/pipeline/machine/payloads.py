@@ -31,7 +31,7 @@ Naming conventions:
 
 Probe payloads:
 
-    Probe payloads are built from `ProcessingContext.resolution_probe` and include
+    Probe payloads are built from durable `ProcessingResult.probe` snapshots and include
     both ordinary file-type probe results and synthetic filtered results for
     explicit inputs excluded during discovery before file-type probing.
 """
@@ -48,106 +48,22 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Iterator
 
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
     from topmark.pipeline.result import ProcessingResult
-    from topmark.resolution.probe import ResolutionProbeCandidate
-    from topmark.resolution.probe import ResolutionProbeMatchSignals
-    from topmark.resolution.probe import ResolutionProbeResult
-    from topmark.resolution.probe import ResolutionProbeSelection
-
-
-def build_probe_selection_payload(
-    selection: ResolutionProbeSelection | None,
-) -> dict[str, object] | None:
-    """Build a machine payload for a selected file type or processor.
-
-    Args:
-        selection: Probe selection to serialize, or `None` for unresolved, unbound,
-            or filtered probe results.
-
-    Returns:
-        JSON-compatible selection payload, or `None`.
-    """
-    if selection is None:
-        return None
-
-    payload: dict[str, object] = {
-        "qualified_key": selection.qualified_key,
-        "namespace": selection.namespace,
-        "local_key": selection.local_key,
-    }
-    if selection.score is not None:
-        payload["score"] = selection.score
-    return payload
-
-
-def build_probe_match_payload(
-    match: ResolutionProbeMatchSignals,
-) -> dict[str, object]:
-    """Build a machine payload for candidate match signals.
-
-    Args:
-        match: Probe-visible match signals.
-
-    Returns:
-        JSON-compatible match payload.
-    """
-    return {
-        "extension": match.extension,
-        "filename": match.filename,
-        "pattern": match.pattern,
-        "content_probe_allowed": match.content_probe_allowed,
-        "content_match": match.content_match,
-        "content_error": match.content_error,
-    }
-
-
-def build_probe_candidate_payload(
-    candidate: ResolutionProbeCandidate,
-) -> dict[str, object]:
-    """Build a machine payload for one scored probe candidate.
-
-    Args:
-        candidate: Probe candidate to serialize.
-
-    Returns:
-        JSON-compatible candidate payload including score, selection state, rank,
-        and match signals.
-    """
-    return {
-        "qualified_key": candidate.qualified_key,
-        "namespace": candidate.namespace,
-        "local_key": candidate.local_key,
-        "score": candidate.score,
-        "selected": candidate.selected,
-        "tie_break_rank": candidate.tie_break_rank,
-        "match": build_probe_match_payload(candidate.match),
-    }
 
 
 def build_probe_result_payload(
-    result: ProcessingContext,
+    result: ProcessingResult,
 ) -> dict[str, object]:
-    """Build a machine payload for one resolution probe context.
-
-    Filtered explicit inputs are represented as probe results with:
-
-    - `status="filtered"`
-    - `selected_file_type=None`
-    - `selected_processor=None`
-    - `candidates=[]`
+    """Build a machine payload for one durable resolution probe result.
 
     Args:
-        result: Processing context containing a resolution probe result. Contexts
-            without a probe result are serialized as `probe_missing` fallback
-            payloads.
+        result: Durable processing result containing a probe snapshot.
 
     Returns:
-        JSON-compatible probe result payload.
+        JSON-compatible probe result payload preserving the existing probe shape.
     """
-    probe: ResolutionProbeResult | None = result.resolution_probe
-    if probe is None:
+    if result.probe is None:
         return {
             "path": format_machine_path(result.path),
             "status": "probe_missing",
@@ -156,29 +72,21 @@ def build_probe_result_payload(
             "selected_processor": None,
             "candidates": [],
         }
-
-    return {
-        "path": format_machine_path(probe.path),
-        "status": probe.status.value,
-        "reason": probe.reason.value,
-        "selected_file_type": build_probe_selection_payload(probe.selected_file_type),
-        "selected_processor": build_probe_selection_payload(probe.selected_processor),
-        "candidates": [build_probe_candidate_payload(candidate) for candidate in probe.candidates],
-    }
+    return result.probe.to_dict()
 
 
 def iter_probe_results_payload_items(
-    results: Iterable[ProcessingContext],
+    results: Iterable[ProcessingResult],
 ) -> Iterator[dict[str, object]]:
     """Yield per-path resolution probe payloads for machine-readable output.
 
     Args:
-        results: Ordered list of processing contexts. The list may contain normal
-            file-backed probe contexts and synthetic contexts for explicit inputs
+        results: Ordered durable probe results. The list may contain normal
+            file-backed probe results and synthetic results for explicit inputs
             filtered before file-type probing.
 
     Yields:
-        One probe result payload per context, in the same order as `results`.
+        One probe result payload per durable result, in the same order.
     """
     for result in results:
         yield build_probe_result_payload(result)

@@ -209,3 +209,74 @@ def test_processing_result_to_dict_includes_empty_detail_snapshot(
 
     assert is_mapping(detail)
     assert detail == {"diff_text": None}
+
+
+def test_processing_result_snapshots_probe_state(
+    tmp_path: Path,
+) -> None:
+    """Probe pipeline results should carry durable resolver probe snapshots."""
+    from topmark.resolution.probe import ResolutionProbeCandidate
+    from topmark.resolution.probe import ResolutionProbeMatchSignals
+    from topmark.resolution.probe import ResolutionProbeReason
+    from topmark.resolution.probe import ResolutionProbeResult
+    from topmark.resolution.probe import ResolutionProbeSelection
+    from topmark.resolution.probe import ResolutionProbeStatus
+
+    ctx: ProcessingContext = _make_result_context(tmp_path, pipeline_kind="probe")
+    ctx.resolution_probe = ResolutionProbeResult(
+        path=ctx.path,
+        status=ResolutionProbeStatus.RESOLVED,
+        reason=ResolutionProbeReason.SELECTED_HIGHEST_SCORE,
+        candidates=(
+            ResolutionProbeCandidate(
+                qualified_key="builtin.python",
+                namespace="builtin",
+                local_key="python",
+                score=100,
+                selected=True,
+                tie_break_rank=1,
+                match=ResolutionProbeMatchSignals(
+                    extension=True,
+                    filename=False,
+                    pattern=False,
+                    content_probe_allowed=True,
+                    content_match=False,
+                ),
+            ),
+        ),
+        selected_file_type=ResolutionProbeSelection(
+            qualified_key="builtin.python",
+            namespace="builtin",
+            local_key="python",
+            score=100,
+        ),
+        selected_processor=ResolutionProbeSelection(
+            qualified_key="builtin.pound",
+            namespace="builtin",
+            local_key="pound",
+        ),
+    )
+
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    assert result.probe is not None
+    assert result.probe.status == "resolved"
+    assert result.probe.reason == "selected_highest_score"
+    assert result.probe.selected_file_type is not None
+    assert result.probe.selected_file_type.local_key == "python"
+    assert result.probe.selected_processor is not None
+    assert result.probe.selected_processor.local_key == "pound"
+    assert len(result.probe.candidates) == 1
+    assert result.probe.candidates[0].match.extension is True
+
+
+def test_processing_result_omits_probe_snapshot_for_missing_probe_state(
+    tmp_path: Path,
+) -> None:
+    """Probe contexts without resolver probe state preserve fallback semantics."""
+    ctx: ProcessingContext = _make_result_context(tmp_path, pipeline_kind="probe")
+
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    assert result.probe is None
+    assert result.to_dict()["probe"] is None
