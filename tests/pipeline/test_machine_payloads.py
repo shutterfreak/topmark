@@ -62,8 +62,8 @@ def test_processing_summary_rows_payload_uses_result_execution_mode(
 
     assert rows == [
         {
-            "outcome": "changed",
-            "reason": "written",
+            "outcome": "inserted",
+            "reason": "header missing, changes found",
             "count": 1,
         }
     ]
@@ -84,8 +84,8 @@ def test_processing_summary_entries_use_result_execution_mode(
 
     assert rows == [
         {
-            "outcome": "changed",
-            "reason": "written",
+            "outcome": "inserted",
+            "reason": "header missing, changes found",
             "count": 1,
         }
     ]
