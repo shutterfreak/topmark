@@ -41,8 +41,6 @@ from topmark.cli.presentation import style_for_role
 from topmark.cli.rendering.unified_diff import format_patch_styled
 from topmark.core.logging import get_logger
 from topmark.core.presentation import StyleRole
-from topmark.pipeline.context.policy import effective_would_add_or_update
-from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import ResultBucket
@@ -61,14 +59,14 @@ from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from collections.abc import Sequence
 
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticStats
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.outcomes import OutcomeReasonCount
-    from topmark.pipeline.views import DiffView
+    from topmark.pipeline.result import ProcessingResult
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -201,9 +199,9 @@ def _render_pipeline_banner_text(
 def _render_apply_command_text(
     *,
     command: str,
-    ctx: ProcessingContext,
+    result: ProcessingResult,
 ) -> str:
-    """Render the suggested apply command for a processing context.
+    """Render the suggested apply command for a processing result.
 
     The command uses the shared human-facing display-path policy so STDIN-backed
     content is represented by its logical `--stdin-filename` value while regular
@@ -211,24 +209,24 @@ def _render_apply_command_text(
 
     Args:
         command: TopMark subcommand name.
-        ctx: Processing context for the file.
+        result: Durable processing result for the file.
 
     Returns:
         Suggested apply command for TEXT guidance output.
     """
-    path_name: str = get_display_path(ctx)
-    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+    path_name: str = get_display_path(result)
+    if result.from_stdin:
         return f"topmark {command} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
     return f"topmark {command} {CliOpt.APPLY_CHANGES} '{path_name}'"
 
 
 def _render_check_guidance_message_text(
-    ctx: ProcessingContext,
+    result: ProcessingResult,
 ) -> str | None:
     """Render per-file guidance for `topmark check` results.
 
     Args:
-        ctx: Processing context for the file.
+        result: Durable processing result for the file.
 
     Returns:
         Guidance message for this file, or `None` when no check action is relevant.
@@ -237,29 +235,29 @@ def _render_check_guidance_message_text(
         TopmarkCliPipelineError: If the resolved intent is invalid for the `check`
             pipeline.
     """
-    if not effective_would_add_or_update(ctx):
+    if not result.outcome.effective_would_add_or_update:
         return None
 
-    apply_changes: bool | None = ctx.run_options.apply_changes
+    apply_changes: bool | None = result.execution_mode.apply_changes
 
-    path_label: str = render_path_display_text(ctx)
-    intent: Intent = determine_intent(ctx)
+    path_label: str = render_path_display_text(result)
+    intent: Intent = determine_intent(result)
 
     if apply_changes:
-        if ctx.status.write == WriteStatus.FAILED:
-            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
-        if ctx.status.write == WriteStatus.SKIPPED:
+        if result.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {result.status.write.value}"
+        if result.status.write == WriteStatus.SKIPPED:
             # Defensive: should not happen when effective_would_add_or_update is True,
             # but keeps CLI honest if a later step halts.
             return f"⚠️  Could not {intent.value} header (write skipped)."
 
         return (
             f"➕ Adding header in {path_label}"
-            if ctx.status.header == HeaderStatus.MISSING
+            if result.status.header == HeaderStatus.MISSING
             else f"✏️  Updating header in {path_label}"
         )
 
-    apply_cmd: str = _render_apply_command_text(command=CliCmd.CHECK, ctx=ctx)
+    apply_cmd: str = _render_apply_command_text(command=CliCmd.CHECK, result=result)
 
     if intent == Intent.INSERT:
         action: str = "add a TopMark header to this file"
@@ -273,12 +271,12 @@ def _render_check_guidance_message_text(
 
 
 def _render_strip_guidance_message_text(
-    ctx: ProcessingContext,
+    result: ProcessingResult,
 ) -> str | None:
     """Render per-file guidance for `topmark strip` results.
 
     Args:
-        ctx: Processing context for the file.
+        result: Durable processing result for the file.
 
     Returns:
         Guidance message for this file, or `None` when no strip action is relevant.
@@ -287,25 +285,25 @@ def _render_strip_guidance_message_text(
         TopmarkCliPipelineError: If the resolved intent is invalid for the `strip`
             pipeline.
     """
-    if not effective_would_strip(ctx):
+    if not result.outcome.effective_would_strip:
         return None
 
-    apply_changes: bool | None = ctx.run_options.apply_changes
+    apply_changes: bool | None = result.execution_mode.apply_changes
 
-    path_label: str = render_path_display_text(ctx)
-    intent: Intent = determine_intent(ctx)
+    path_label: str = render_path_display_text(result)
+    intent: Intent = determine_intent(result)
 
     if apply_changes:
-        if ctx.status.write == WriteStatus.FAILED:
-            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
-        if ctx.status.write == WriteStatus.SKIPPED:
+        if result.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {result.status.write.value}"
+        if result.status.write == WriteStatus.SKIPPED:
             # Defensive: should not happen when effective_would_strip is True,
             # but keeps CLI honest if a later step halts.
             return f"⚠️  Could not {intent.value} header (write skipped)."
 
         return f"🧹 Stripping header in {path_label}"
 
-    apply_cmd: str = _render_apply_command_text(command=CliCmd.STRIP, ctx=ctx)
+    apply_cmd: str = _render_apply_command_text(command=CliCmd.STRIP, result=result)
 
     if intent == Intent.STRIP:
         action: str = "strip the TopMark header from this file"
@@ -321,7 +319,7 @@ def _render_strip_guidance_message_text(
 
 def _render_file_summary_line_text(
     *,
-    ctx: ProcessingContext,
+    result: ProcessingResult,
     verbosity_level: int,
     styled: bool = True,
 ) -> str:
@@ -331,29 +329,29 @@ def _render_file_summary_line_text(
     and may append compact write, diff, or diagnostic hints.
 
     Args:
-        ctx: Processing context containing status and view data.
+        result: Durable processing result containing status and display data.
         verbosity_level: Effective TEXT verbosity for inline diagnostic nudges.
         styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         One-line TEXT summary for the file.
     """
-    parts: list[str] = [f"{get_display_path(ctx)}:"]
+    parts: list[str] = [f"{get_display_path(result)}:"]
 
     # Style helpers already respect the selected color policy.
     muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
 
     # Shared helper keeps missing-file and unresolved-type labels consistent
     # across TEXT and Markdown renderers.
-    ft_label: str | None = get_file_type_label(ctx)
+    ft_label: str | None = get_file_type_label(result)
     if ft_label is not None:
         parts.append(muted_styler(ft_label))
         parts.append("-")
 
-    # Resolve the public bucket for this context and style the summary from its
-    # semantic outcome role.
-    apply_changes: bool = ctx.run_options.apply_changes is True
-    bucket: ResultBucket = map_bucket(ctx, apply=apply_changes)
+    # Resolve the public bucket for this result using its own execution mode and
+    # style the summary from its semantic outcome role.
+    apply_changes: bool = result.execution_mode.apply_changes is True
+    bucket: ResultBucket = map_bucket(result, apply=apply_changes)
     key: str = bucket.outcome.value
     label: str = bucket.reason or "(no reason provided)"
 
@@ -370,18 +368,18 @@ def _render_file_summary_line_text(
     )
 
     # Secondary hints: write status > diff marker > diagnostics
-    if ctx.status.has_write_outcome():
+    if result.status.has_write_outcome():
         parts.append("-")
         write_styler: TextStyler = style_for_role(
-            ctx.status.write.role,
+            result.status.write.role,
             styled=styled,
         )
         parts.append(
             write_styler(
-                ctx.status.write.value,
+                result.status.write.value,
             )
         )
-    elif ctx.views.diff and ctx.views.diff.text:
+    elif result.detail.diff_text:
         parts.append("-")
         diff_styler: TextStyler = style_for_role(
             StyleRole.WOULD_CHANGE,
@@ -394,9 +392,9 @@ def _render_file_summary_line_text(
         )
 
     diag_show_hint: str = ""
-    if ctx.diagnostics:
+    if result.diagnostics:
         # Compose a compact triage summary such as "1 error, 2 warnings".
-        stats: DiagnosticStats = ctx.diagnostics.stats()
+        stats: DiagnosticStats = result.diagnostics.stats()
         triage_summary: str = stats.triage_summary()
         if triage_summary:
             parts.append("-")
@@ -407,14 +405,13 @@ def _render_file_summary_line_text(
                 f" (use '{CliShortOpt.VERBOSE}' to view)",
             )
 
-    result: str = " ".join(parts) + diag_show_hint
-    return result
+    return " ".join(parts) + diag_show_hint
 
 
 def _render_per_file_guidance_text(
     *,
-    view_results: list[ProcessingContext],
-    make_message: Callable[[ProcessingContext], str | None],
+    results: Sequence[ProcessingResult],
+    make_message: Callable[[ProcessingResult], str | None],
     show_diffs: bool,
     verbosity_level: int,
     styled: bool,
@@ -429,7 +426,7 @@ def _render_per_file_guidance_text(
         5. An optional diff block.
 
     Args:
-        view_results: Processing contexts to render.
+        results: Durable processing results to render.
         make_message: Per-file guidance message builder.
         show_diffs: Whether to include unified diffs.
         verbosity_level: Effective TEXT verbosity level.
@@ -450,18 +447,18 @@ def _render_per_file_guidance_text(
     diff_start_fence: Final[str] = " diff - start ".center(line_width, "─")
     diff_end_fence: Final[str] = " diff - end ".center(line_width, "─")
 
-    for ctx in view_results:
+    for result in results:
         # 1. summary line; at verbosity 0, keep output compact.
         parts.append(
             _render_file_summary_line_text(
-                ctx=ctx,
+                result=result,
                 verbosity_level=verbosity_level,
                 styled=styled,
             )
         )
 
         # 2. guidance message for actionable check/strip outcomes.
-        msg: str | None = make_message(ctx)
+        msg: str | None = make_message(result)
         if msg:
             parts.append(
                 emphasis_styler(
@@ -470,19 +467,19 @@ def _render_per_file_guidance_text(
             )
 
         # 3. diagnostics log (shown at -v and above)
-        if verbosity_level > 0 and len(ctx.diagnostics) > 0:
+        if verbosity_level > 0 and len(result.diagnostics) > 0:
             parts.append(
                 render_diagnostics_text(
-                    diagnostics=ctx.diagnostics,
+                    diagnostics=result.diagnostics,
                     verbosity_level=verbosity_level,
                     color=styled,
                 )
             )
 
         # 4. hints (one hint at -v, full list at -vv and above)
-        hints_count: int = len(ctx.diagnostic_hints)
+        hints: list[Hint] = list(result.hints)
+        hints_count: int = len(hints)
         if verbosity_level > 0 and hints_count > 0:
-            hints: list[Hint] = ctx.diagnostic_hints.items
             extended_hint_info: str = (
                 ""
                 if verbosity_level > 1
@@ -510,8 +507,7 @@ def _render_per_file_guidance_text(
         # 5. optional diff block
         if show_diffs:
             patch: str | None = _render_diff_text(
-                ctx.views.diff,
-                keep_diff_view=False,
+                result.detail.diff_text,
                 styled=styled,
             )
 
@@ -539,38 +535,31 @@ def _render_per_file_guidance_text(
 
 
 def _render_diff_text(
-    diff_view: DiffView | None,
+    diff_text: str | None,
     *,
-    keep_diff_view: bool = True,
     show_line_numbers: bool = False,
     styled: bool,
 ) -> str | None:
     """Render a unified diff as TEXT output.
 
     Args:
-        diff_view: Diff view to render.
-        keep_diff_view: Whether to preserve the diff view.
+        diff_text: Durable unified diff text to render.
         show_line_numbers: Whether to prepend line numbers.
         styled: Whether ANSI-capable styling is enabled.
 
     Returns:
         Rendered diff text, or `None` when no diff is available.
     """
-    logger.debug("diff_view: %r; keep_diff_view: %r", diff_view, keep_diff_view)
-    if diff_view is None:
+    logger.debug("diff_text: %r", diff_text)
+    if diff_text is None:
         return None
 
-    diff_text: str | None = diff_view.text
     if diff_text:
         patch: str = format_patch_styled(
             patch=diff_text,
             styled=styled,
             show_line_numbers=show_line_numbers,
         )
-
-        if not keep_diff_view:
-            # Prune the diff view once the patch has been consumed (rendered)
-            diff_view.release()
 
         return patch
 
@@ -579,14 +568,14 @@ def _render_diff_text(
 
 def _render_pipeline_diffs_text(
     *,
-    results: list[ProcessingContext],
+    results: Sequence[ProcessingResult],
     show_line_numbers: bool = False,
     styled: bool,
 ) -> str:
     """Render a TEXT diff section for all files with diffs.
 
     Args:
-        results: Processing contexts to inspect.
+        results: Durable processing results to inspect.
         show_line_numbers: Whether to prepend line numbers.
         styled: Whether ANSI-capable styling is enabled.
 
@@ -610,10 +599,9 @@ def _render_pipeline_diffs_text(
         )
     )
 
-    for ctx in results:
+    for result in results:
         patch: str | None = _render_diff_text(
-            ctx.views.diff,
-            keep_diff_view=False,
+            result.detail.diff_text,
             styled=styled,
             show_line_numbers=show_line_numbers,
         )
@@ -635,14 +623,14 @@ def _render_pipeline_diffs_text(
 
 def _render_summary_counts_text(
     *,
-    view_results: list[ProcessingContext],
+    view_results: Sequence[ProcessingResult],
     total: int,
     styled: bool,
 ) -> str:
     """Render summary counts grouped by `(outcome, reason)` as TEXT output.
 
     Args:
-        view_results: Processing contexts included in the rendered view.
+        view_results: Durable processing results included in the rendered view.
         total: Total number of candidate files before view filtering.
         styled: Whether ANSI-capable styling is enabled.
 
@@ -713,7 +701,7 @@ def render_pipeline_output_text(
     Raises:
         RuntimeError: If an invalid pipeline kind was selected.
     """
-    make_message: Callable[[ProcessingContext], str | None] | None = None
+    make_message: Callable[[ProcessingResult], str | None] | None = None
     if report.pipeline_kind == "check":
         make_message = _render_check_guidance_message_text
     elif report.pipeline_kind == "strip":
@@ -757,7 +745,7 @@ def render_pipeline_output_text(
         # Per-file check/strip guidance.
         parts.append(
             _render_per_file_guidance_text(
-                view_results=report.view_results,
+                results=report.view_results,
                 make_message=make_message,
                 show_diffs=report.show_diffs,
                 verbosity_level=report.verbosity_level,

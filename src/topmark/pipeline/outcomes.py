@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.core.logging import TopmarkLogger
-    from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.result import ProcessingResult
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -633,10 +633,8 @@ def _sorted_outcome_reason_rows(
     return rows
 
 
-def collect_outcome_reason_counts_for_apply(
-    results: Iterable[SupportsOutcomeClassification],
-    *,
-    apply: bool,
+def collect_outcome_reason_counts(
+    results: Iterable[ProcessingResult],
 ) -> list[OutcomeReasonCount]:
     """Collect summary counts grouped by `(outcome, reason)`.
 
@@ -649,33 +647,12 @@ def collect_outcome_reason_counts_for_apply(
     2. Alphabetical `reason` within each outcome
 
     Args:
-        results: Processing contexts or durable results to bucket and count.
-        apply: Whether to classify the supplied results as apply-mode output.
-
-    Returns:
-        Sorted list of `OutcomeReasonCount` rows.
-    """
-    buckets: Iterable[ResultBucket] = (map_bucket(r, apply=apply) for r in results)
-    return _sorted_outcome_reason_rows(_count_buckets(buckets))
-
-
-def collect_outcome_reason_counts(
-    results: list[ProcessingContext],
-) -> list[OutcomeReasonCount]:
-    """Collect summary counts grouped by `(outcome, reason)`.
-
-    This compatibility wrapper preserves existing context-based behavior by
-    deriving apply mode from each context's runtime options. New result-oriented
-    callers that no longer retain runtime options should use
-    `collect_outcome_reason_counts_for_apply()`.
-
-    Args:
-        results: Processing contexts to bucket and count.
+        results: Durable results to bucket and count.
 
     Returns:
         Sorted list of `OutcomeReasonCount` rows.
     """
     buckets: Iterable[ResultBucket] = (
-        map_bucket(r, apply=r.run_options.apply_changes is True) for r in results
+        map_bucket(r, apply=r.execution_mode.apply_changes) for r in results
     )
     return _sorted_outcome_reason_rows(_count_buckets(buckets))

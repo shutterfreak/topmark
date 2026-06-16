@@ -27,6 +27,8 @@ from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
     from topmark.resolution.probe import ResolutionProbeCandidate
@@ -247,7 +249,7 @@ def _render_probe_candidates_text(
 
 def _render_probe_results_text(
     *,
-    view_results: list[ProcessingContext],
+    view_results: Sequence[ProcessingContext],
     verbosity_level: int,
     styled: bool,
 ) -> str:

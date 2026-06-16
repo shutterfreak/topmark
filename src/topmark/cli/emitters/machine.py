@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -72,7 +73,7 @@ def emit_probe_results_machine(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingContext],
     fmt: OutputFormat,
 ) -> None:
     """Emit topmark probe machine-readable output.
@@ -109,7 +110,7 @@ def emit_processing_results_machine(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
     fmt: OutputFormat,
     summary_mode: bool,
 ) -> None:
@@ -120,7 +121,7 @@ def emit_processing_results_machine(
         meta: The machine metadata payload.
         config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
         resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of per-file processing results.
+        results: Ordered list of durable per-file processing results.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
         summary_mode: If True, emit aggregated counts instead of per-file entries.
 

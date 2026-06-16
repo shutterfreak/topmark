@@ -27,7 +27,6 @@ from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import classify_outcome
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
-from topmark.pipeline.outcomes import collect_outcome_reason_counts_for_apply
 from topmark.pipeline.outcomes import determine_intent
 from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.result import ProcessingResult
@@ -456,21 +455,20 @@ def test_map_bucket_supports_processing_result_write_failure_snapshot(
         (True, Outcome.INSERTED),
     ],
 )
-def test_collect_outcome_reason_counts_for_apply_supports_processing_results(
+def test_collect_outcome_reason_counts_uses_result_execution_mode(
     tmp_path: Path,
     apply: bool,
     expected_outcome: Outcome,
 ) -> None:
     """Apply-explicit summaries should work without runtime options."""
-    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=apply)
     ctx.status.header = HeaderStatus.MISSING
     ctx.status.comparison = ComparisonStatus.CHANGED
     ctx.status.write = WriteStatus.WRITTEN
     result: ProcessingResult = ProcessingResult.from_context(ctx)
 
-    rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
+    rows: list[OutcomeReasonCount] = collect_outcome_reason_counts(
         [result],
-        apply=apply,
     )
 
     assert [(row.outcome, row.reason, row.count) for row in rows] == [
@@ -482,7 +480,7 @@ def test_collect_outcome_reason_counts_for_apply_supports_processing_results(
     ]
 
 
-def test_collect_outcome_reason_counts_for_apply_groups_processing_results(
+def test_collect_outcome_reason_counts_groups_processing_results(
     tmp_path: Path,
 ) -> None:
     """Apply-explicit summaries should group multiple reduced results by bucket."""
@@ -503,13 +501,12 @@ def test_collect_outcome_reason_counts_for_apply_groups_processing_results(
     policy_veto.status.header = HeaderStatus.DETECTED
     policy_veto.status.comparison = ComparisonStatus.CHANGED
 
-    rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
+    rows: list[OutcomeReasonCount] = collect_outcome_reason_counts(
         [
             ProcessingResult.from_context(first_insert),
             ProcessingResult.from_context(second_insert),
             ProcessingResult.from_context(policy_veto),
         ],
-        apply=True,
     )
 
     assert [(row.outcome, row.reason, row.count) for row in rows] == [
@@ -529,33 +526,6 @@ def test_classify_outcome_returns_bucket_outcome(tmp_path: Path) -> None:
     ctx.status.comparison = ComparisonStatus.CHANGED
 
     assert classify_outcome(ctx, apply=False) is Outcome.WOULD_INSERT
-
-
-def test_collect_outcome_reason_counts_matches_processing_result_summary(
-    tmp_path: Path,
-) -> None:
-    """Context and reduced-result summaries should classify equivalent rows."""
-    first_insert: ProcessingContext = _make_context(tmp_path)
-    first_insert.status.header = HeaderStatus.MISSING
-    first_insert.status.comparison = ComparisonStatus.CHANGED
-
-    second_insert: ProcessingContext = _make_context(tmp_path)
-    second_insert.status.header = HeaderStatus.MISSING
-    second_insert.status.comparison = ComparisonStatus.CHANGED
-
-    unchanged: ProcessingContext = _make_context(tmp_path)
-    unchanged.status.header = HeaderStatus.DETECTED
-    unchanged.status.comparison = ComparisonStatus.UNCHANGED
-
-    contexts: list[ProcessingContext] = [first_insert, second_insert, unchanged]
-
-    context_rows: list[OutcomeReasonCount] = collect_outcome_reason_counts(contexts)
-    result_rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
-        [ProcessingResult.from_context(ctx) for ctx in contexts],
-        apply=False,
-    )
-
-    assert result_rows == context_rows
 
 
 @pytest.mark.parametrize(
@@ -589,7 +559,7 @@ def test_map_bucket_matches_processing_result_for_fallback_branches(
 
 
 def test_collect_outcome_reason_counts_groups_and_sorts(tmp_path: Path) -> None:
-    """Summary counts should group by outcome/reason and use outcome ordering."""
+    """Summary counts should group result snapshots by outcome/reason."""
     skipped_resolve: ProcessingContext = _make_context(tmp_path)
     skipped_resolve.status.resolve = ResolveStatus.UNSUPPORTED
 
@@ -601,7 +571,11 @@ def test_collect_outcome_reason_counts_groups_and_sorts(tmp_path: Path) -> None:
     unchanged.status.comparison = ComparisonStatus.UNCHANGED
 
     rows: list[OutcomeReasonCount] = collect_outcome_reason_counts(
-        [skipped_resolve, unchanged, skipped_content]
+        [
+            ProcessingResult.from_context(skipped_resolve),
+            ProcessingResult.from_context(unchanged),
+            ProcessingResult.from_context(skipped_content),
+        ]
     )
 
     assert [(row.outcome, row.reason, row.count) for row in rows] == [

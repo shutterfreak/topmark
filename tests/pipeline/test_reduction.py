@@ -18,12 +18,8 @@ from tests.helpers.pipeline import make_context_from_text
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.exit_codes import ExitCode
 from topmark.pipeline.engine import exit_code_from_pipeline_results
-from topmark.pipeline.outcomes import OutcomeReasonCount
-from topmark.pipeline.outcomes import collect_outcome_reason_counts
-from topmark.pipeline.outcomes import collect_outcome_reason_counts_for_apply
 from topmark.pipeline.reduction import ProcessingReduction
 from topmark.pipeline.reduction import reduce_processing_contexts
-from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus
@@ -79,34 +75,6 @@ def test_reduce_processing_contexts_snapshots_status_without_releasing_contexts(
     assert reduction.contexts[0] is ctx
     assert reduction.contexts[0].status.header is HeaderStatus.DETECTED
     assert reduction.results[0].status.header is HeaderStatus.MISSING
-
-
-def test_reduced_results_match_context_summary_counts(
-    tmp_path: Path,
-) -> None:
-    """Reduced results should preserve context-based outcome summary rows."""
-    first_insert: ProcessingContext = _make_reduction_context(tmp_path, "first.py")
-    first_insert.status.header = HeaderStatus.MISSING
-    first_insert.status.comparison = ComparisonStatus.CHANGED
-
-    second_insert: ProcessingContext = _make_reduction_context(tmp_path, "second.py")
-    second_insert.status.header = HeaderStatus.MISSING
-    second_insert.status.comparison = ComparisonStatus.CHANGED
-
-    unchanged: ProcessingContext = _make_reduction_context(tmp_path, "unchanged.py")
-    unchanged.status.header = HeaderStatus.DETECTED
-    unchanged.status.comparison = ComparisonStatus.UNCHANGED
-
-    contexts: list[ProcessingContext] = [first_insert, second_insert, unchanged]
-    reduction: ProcessingReduction = reduce_processing_contexts(contexts)
-
-    context_rows: list[OutcomeReasonCount] = collect_outcome_reason_counts(contexts)
-    result_rows: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
-        reduction.results,
-        apply=False,
-    )
-
-    assert result_rows == context_rows
 
 
 def test_exit_code_selection_accepts_reduced_results(

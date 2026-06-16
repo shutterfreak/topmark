@@ -181,5 +181,24 @@ def test_processing_ndjson_contains_hard_link_hint_code(tmp_path: Path) -> None:
     )
     assert_SUCCESS(result)
 
-    assert KnownCode.FS_HARD_LINK_DUPLICATE.value not in result.output
-    assert result.output.count(FsStatus.HARD_LINK_DUPLICATE.value) == 2
+    records: list[dict[str, object]] = [
+        as_object_dict(as_object_dict(parse_json_object(line))["result"])
+        for line in result.output.splitlines()
+        if as_object_dict(parse_json_object(line)).get("kind") == "result"
+    ]
+
+    assert len(records) == 2
+    assert [_status_fs(record) for record in records] == [
+        FsStatus.HARD_LINK_DUPLICATE.value,
+        FsStatus.HARD_LINK_DUPLICATE.value,
+    ]
+
+    for record in records:
+        hints_obj: object = record["hints"]
+        assert is_any_list(hints_obj)
+        hints: list[dict[str, object]] = [
+            as_object_dict(item) for item in hints_obj if is_mapping(item)
+        ]
+        assert len(hints) == 1
+        assert hints[0]["code"] == KnownCode.FS_HARD_LINK_DUPLICATE.value
+        assert hints[0]["reason"] == FsStatus.HARD_LINK_DUPLICATE.value

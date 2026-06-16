@@ -39,11 +39,13 @@ from topmark.pipeline.machine.envelopes import iter_probe_results_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from collections.abc import Iterator
 
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -52,7 +54,7 @@ def serialize_probe_results(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingContext],
     fmt: OutputFormat,
 ) -> str | Iterator[str]:
     """Serialize resolution probe results in a machine-readable format.
@@ -100,7 +102,7 @@ def serialize_processing_results(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
     fmt: OutputFormat,
     summary_mode: bool,
 ) -> str | Iterator[str]:
@@ -110,7 +112,7 @@ def serialize_processing_results(
         meta: Shared machine-readable output metadata payload.
         config: Effective configuration for the run.
         resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of per-file check/strip processing contexts.
+        results: Ordered list of durable per-file check/strip processing results.
         fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.
 
@@ -150,7 +152,7 @@ def serialize_processing_results_json(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
     summary_mode: bool,
 ) -> str:
     """Serialize processing results for `check` / `strip` in a machine-readable format.
@@ -159,7 +161,7 @@ def serialize_processing_results_json(
         meta: Shared machine-readable output metadata payload.
         config: Effective configuration for the run.
         resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of per-file check/strip processing contexts.
+        results: Ordered list of durable per-file check/strip processing results.
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.
 
     Returns:
@@ -180,7 +182,7 @@ def serialize_processing_results_ndjson(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
     summary_mode: bool,
 ) -> Iterator[str]:
     """Serialize processing results for `check` / `strip` in a machine-readable format.
@@ -189,7 +191,7 @@ def serialize_processing_results_ndjson(
         meta: Shared machine-readable output metadata payload.
         config: Effective configuration for the run.
         resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of per-file check/strip processing contexts.
+        results: Ordered list of durable per-file check/strip processing results.
         summary_mode: If True, emit aggregated outcome summaries instead of per-file entries.
 
     Returns:
