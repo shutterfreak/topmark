@@ -749,7 +749,7 @@ def _measure_one(
     final_bytes, peak_bytes = tracemalloc.get_traced_memory()
     end_rss: int | None = _rss_bytes()
     views_before_prune: dict[str, int | bool] = _view_sizes(ctx)
-    ctx.views.release_all(keep_diff_view=mode.keep_diff_view)
+    ctx.views.release_all()
     views_after_prune: dict[str, int | bool] = _view_sizes(ctx)
     max_sample_rss: int = max((sample.rss_bytes or 0 for sample in samples), default=0)
     max_observed_rss: int = max(

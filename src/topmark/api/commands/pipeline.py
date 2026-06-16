@@ -117,7 +117,7 @@ def check(
         exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
         report: Reporting scope for the returned API view (`actionable`,
             `noncompliant`, or `all`).
-        prune_views: If `True`, trim heavy views after the run (keeps summaries).
+        prune_views: If True, release consumed volatile views between pipeline steps.
 
     Returns:
         Filtered per-file outcomes, counts, diagnostics, and write stats.
@@ -165,7 +165,11 @@ def check(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=reduce_processing_contexts(api_run.results).results,
+        results=reduce_processing_contexts(
+            api_run.contexts,
+            retain_contexts=False,
+            release_views=True,
+        ).results,
         file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
@@ -208,7 +212,7 @@ def strip(
         exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
         report: Reporting scope for the returned API view (`actionable`,
             `noncompliant`, or `all`).
-        prune_views: If `True`, trim heavy internal views after the run (keeps summaries).
+        prune_views: If True, release consumed volatile views between pipeline steps.
 
     Returns:
         Resolved runtime config, selected file list, filtered results, and any
@@ -255,7 +259,11 @@ def strip(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=reduce_processing_contexts(api_run.results).results,
+        results=reduce_processing_contexts(
+            api_run.contexts,
+            retain_contexts=False,
+            release_views=True,
+        ).results,
         file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
@@ -295,7 +303,7 @@ def probe(
         policy_by_type: Optional per-type policy overrides merged after discovery.
         include_file_types: Optional whitelist of file type identifiers to restrict discovery.
         exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
-        prune_views: If `True`, trim heavy internal views after the run where applicable.
+        prune_views: If True, release consumed volatile views between pipeline steps.
             Probe results are built from resolution data, not presentation views.
 
     Returns:
@@ -336,7 +344,7 @@ def probe(
     # Probe has a dedicated public result shape; do not route it through the
     # check/strip finalizer.
     return finalize_probe_result(
-        results=api_run.results,
+        results=api_run.contexts,
         file_list=api_run.file_list,
         encountered_exit_code=api_run.exit_code,
     )

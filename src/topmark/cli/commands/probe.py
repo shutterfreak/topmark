@@ -411,7 +411,7 @@ def probe_command(
         pipeline=pipeline,
         file_list=file_list,
     )
-    results: list[ProcessingContext] = pipeline_run.results
+    context_results: list[ProcessingContext] = pipeline_run.contexts
     encountered_exit_code: ExitCode | None = pipeline_run.exit_code
 
     # Add resolver-level hard failures before deriving the process exit code.
@@ -422,16 +422,16 @@ def probe_command(
         config=config,
         run_options=run_options,
     )
-    results.extend(missing_results)
+    context_results.extend(missing_results)
 
     # Compute hard-error precedence before adding synthetic filtered contexts;
     # filtered explicit inputs remain probe-semantic outcomes and map to 69.
-    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
+    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(context_results)
     encountered_exit_code = encountered_exit_code or pipeline_error_code
 
     # Add synthetic probe results for explicit inputs that were filtered before
     # the probe pipeline could run.
-    results.extend(
+    context_results.extend(
         build_filtered_probe_contexts(
             selection_results=filtered_selection_results,
             config=config,
@@ -445,14 +445,14 @@ def probe_command(
             meta=meta,
             config=config,
             resolved_toml=prepared_cli_config.resolved_toml,
-            results=results,
+            results=context_results,
             fmt=fmt,
         )
     else:
         report = ProbeCommandHumanReport(
             pipeline_kind=PIPELINE_KIND,
-            file_list_total=len(results),
-            view_results=results,
+            file_list_total=len(context_results),
+            view_results=context_results,
             verbosity_level=verbosity_level,
             styled=enable_color,
         )
@@ -473,13 +473,13 @@ def probe_command(
 
     # Probe-specific semantic exit status. Filtered explicit inputs are reported
     # as probe results and therefore map to UNSUPPORTED_FILE_TYPE.
-    if any(result.resolution_probe is None for result in results):
+    if any(result.resolution_probe is None for result in context_results):
         ctx.exit(ExitCode.PIPELINE_ERROR)
 
     if any(
         result.resolution_probe is not None
         and result.resolution_probe.status != ResolutionProbeStatus.RESOLVED
-        for result in results
+        for result in context_results
     ):
         ctx.exit(ExitCode.UNSUPPORTED_FILE_TYPE)
 

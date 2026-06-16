@@ -689,7 +689,7 @@ def _execute_pipeline_for_file_list(
     """
     if not prepared.file_list:
         return PipelineExecution(
-            results=[],
+            contexts=[],
             exit_code=None,
         )
 
@@ -760,7 +760,7 @@ def run_pipeline(
         prepared=prepared,
         pipeline=pipeline,
     )
-    results: list[ProcessingContext] = execution.results
+    results: list[ProcessingContext] = execution.contexts
     encountered_exit_code: ExitCode | None = execution.exit_code
 
     logger.info("Processing %d file(s) with TopMark %s", len(prepared.file_list), TOPMARK_VERSION)
@@ -768,7 +768,7 @@ def run_pipeline(
     return ApiPipelineRun(
         effective_cfg=prepared.effective_cfg,
         file_list=prepared.file_list,
-        results=results,
+        contexts=results,
         exit_code=encountered_exit_code,
     )
 
@@ -841,7 +841,7 @@ def run_probe_pipeline(
         prepared=prepared,
         pipeline=pipeline,
     )
-    results: list[ProcessingContext] = execution.results
+    results: list[ProcessingContext] = execution.contexts
     encountered_exit_code: ExitCode | None = execution.exit_code
 
     # Missing explicit literals are hard resolver-level failures. Add them
@@ -872,6 +872,6 @@ def run_probe_pipeline(
     return ApiPipelineRun(
         effective_cfg=prepared.effective_cfg,
         file_list=prepared.file_list,
-        results=results,
+        contexts=results,
         exit_code=encountered_exit_code,
     )

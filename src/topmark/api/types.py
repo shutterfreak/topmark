@@ -292,7 +292,7 @@ class ApiPipelineRun:
             overlays, and execution-scoped adjustments.
         file_list: Files selected for pipeline execution after discovery and
             filtering.
-        results: Processing contexts produced by pipeline execution. For probe
+        contexts: Processing contexts produced by pipeline execution. For probe
             runs, this may also include synthetic contexts representing missing
             or filtered explicit inputs.
         exit_code: Fatal pipeline-level exit code, if one was encountered.
@@ -307,7 +307,7 @@ class ApiPipelineRun:
 
     effective_cfg: FrozenConfig
     file_list: list[Path]
-    results: list[ProcessingContext]
+    contexts: list[ProcessingContext]
     exit_code: ExitCode | None
 
 

@@ -241,8 +241,7 @@ def run_cli_like(
         apply: Whether the pipeline may mutate files.
         diff: Whether to select the diff-producing pipeline variant when
             supported by `kind` and `apply`.
-        prune_views: Whether to prune heavy context views during pipeline
-            execution.
+        prune_views: If True, release consumed volatile views between pipeline steps.
         include_file_types: Optional file type identifiers to include.
         exclude_file_types: Optional file type identifiers to exclude.
 
@@ -279,5 +278,5 @@ def run_cli_like(
     return CliLikeRun(
         draft_config=draft,
         file_list=files,
-        results=pipeline_run.results,
+        results=pipeline_run.contexts,
     )

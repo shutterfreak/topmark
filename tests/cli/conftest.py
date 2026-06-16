@@ -59,7 +59,7 @@ def run_cli_in(
         argv: CLI argument vector, e.g. `["--apply", "*.py"]`.
         input_text: Optional standard input to pass to the command.
             This can be a string, bytes, or a file-like object for `--stdin` modes.
-        prune_views: If `True`, trim heavy views after the run (keeps summaries).
+        prune_views: If True, release consumed volatile views between pipeline steps.
 
     Returns:
         The `click.testing.Result` produced by `click.testing.CliRunner.invoke`.
@@ -106,7 +106,7 @@ def run_cli(
         input_text: Optional standard input to pass
             to the command. This can be a string, bytes, or a file-like object for
             ``--stdin`` modes.
-        prune_views: If `True`, trim heavy views after the run (keeps summaries).
+        prune_views: If True, release consumed volatile views between pipeline steps.
 
     Returns:
         The `click.testing.Result` produced by `click.testing.CliRunner.invoke`.

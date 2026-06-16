@@ -45,9 +45,11 @@ def run(
     Args:
         ctx: Mutable processing context.
         steps: Ordered sequence of pipeline steps. Each step takes and returns a context.
-        prune_views: Release consumed view payloads between steps and trim remaining views at the
-            end of a run to reduce memory usage (default: `True`).
-        keep_diff_view: Whether to preserve the diff view.
+        prune_views: Release consumed view payloads between steps once no remaining
+            step declares them as consumed (default: `True`).
+        keep_diff_view: Whether to preserve the diff view during between-step pruning
+            (required when the pipeline generates a unified diff in
+            [`PatcherStep`][topmark.pipeline.steps.patcher.PatcherStep]).
 
     Returns:
         The final processing context after all steps have run.
@@ -63,11 +65,5 @@ def run(
                 remaining_view_consumers=remaining_view_consumers,
                 keep_diff_view=keep_diff_view,
             )
-
-    if prune_views is True:
-        # Drops large in-memory buffers from heavy in-memory views;
-        # retains only summary-friendly data.
-        logger.debug("Trimming views; keep_diff_view: %r", keep_diff_view)
-        ctx.views.release_all(keep_diff_view=keep_diff_view)
 
     return ctx

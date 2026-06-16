@@ -48,15 +48,25 @@ ______________________________________________________________________
 
 TopMark currently uses a batch handover boundary after the existing runner has produced its per-file
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances.
-\[`reduce_processing_contexts()`\][topmark.pipeline.reduction.reduce_processing_contexts] preserves
-the source contexts and creates matching durable
-\[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] snapshots in the same order.
+\[`PipelineExecution`\][topmark.pipeline.engine.PipelineExecution] therefore names those mutable
+execution objects `contexts`, while
+\[`run_steps_for_files()`\][topmark.pipeline.engine.run_steps_for_files] remains the
+context-producing execution layer.
+\[`reduce_processing_contexts()`\][topmark.pipeline.reduction.reduce_processing_contexts] creates
+matching durable \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] snapshots in the
+same order. Source-context retention is explicit: compatibility callers may keep contexts in the
+\[`ProcessingReduction`\][topmark.pipeline.reduction.ProcessingReduction] handover object, while
+check/strip callers that now consume durable results use a reduced-only handover and release
+context-owned view payloads after snapshotting.
 
 This boundary is intentionally conservative:
 
 - it does **not** introduce per-file streaming consolidation;
 - it does **not** update summaries incrementally while files are processed;
-- it does **not** release \[`ProcessingContext.views`\][topmark.pipeline.views.Views] early;
+- it keeps runner-owned pruning limited to between-step release of consumed volatile views, while
+  final view release happens only after
+  \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] has
+  copied durable detail fields such as `detail.diff_text`;
 - it does make summary, exit-code, report-scope filtering, public API DTO assembly, and check/strip
   machine-readable result serialization testable against durable results without changing runner
   ownership, human-output rendering, or probe-output contracts.

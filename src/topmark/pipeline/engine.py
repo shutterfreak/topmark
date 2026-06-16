@@ -191,14 +191,14 @@ class PipelineExecution:
     """Result of running pipeline steps over a selected file list.
 
     Attributes:
-        results: Ordered per-file processing contexts produced by the pipeline,
+        contexts: Ordered per-file processing contexts produced by pipeline execution,
             one for each path in the input file list that did not raise a fatal
             engine-level error.
         exit_code: First non-success engine-level exit code encountered while
             iterating files, or `None` when no such error occurred.
     """
 
-    results: list[ProcessingContext]
+    contexts: list[ProcessingContext]
     exit_code: ExitCode | None
 
 
@@ -366,4 +366,4 @@ def run_steps_for_files(
             encountered_exit_code = encountered_exit_code or ExitCode.PIPELINE_ERROR
             continue
 
-    return PipelineExecution(results=results, exit_code=encountered_exit_code)
+    return PipelineExecution(contexts=results, exit_code=encountered_exit_code)
