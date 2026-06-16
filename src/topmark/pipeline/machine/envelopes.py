@@ -58,6 +58,7 @@ from topmark.pipeline.machine.schemas import PipelineKey
 from topmark.pipeline.machine.schemas import PipelineKind
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from collections.abc import Iterator
 
     from topmark.config.machine.schemas import ConfigDiagnosticsPayload
@@ -66,6 +67,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
+    from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -74,7 +76,7 @@ def build_probe_results_json_envelope(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingContext],
 ) -> dict[str, object]:
     """Build the JSON envelope for resolution probe results.
 
@@ -116,7 +118,7 @@ def iter_probe_results_ndjson_records(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingContext],
 ) -> Iterator[dict[str, object]]:
     """Yield NDJSON records for resolution probe results.
 
@@ -168,7 +170,7 @@ def build_processing_results_json_envelope(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
     summary_mode: bool,
 ) -> dict[str, object]:
     """Build the JSON envelope for processing results (`check`/`strip`).
@@ -203,7 +205,7 @@ def build_processing_results_json_envelope(
         config: The effective [`FrozenConfig`][topmark.config.model.FrozenConfig]
             instance used for the run.
         resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of durable per-file processing results.
         summary_mode: If True, emit flat summary rows instead of per-file results.
 
     Returns:
@@ -251,7 +253,7 @@ def iter_processing_results_ndjson_records(
     meta: MetaPayload,
     config: FrozenConfig,
     resolved_toml: ResolvedTopmarkTomlSources,
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
     summary_mode: bool,
 ) -> Iterator[dict[str, object]]:
     """Yield NDJSON records for processing results (`check`/`strip`).
@@ -269,7 +271,7 @@ def iter_processing_results_ndjson_records(
         meta: Shared metadata payload (`tool`/`version`).
         config: Effective configuration instance.
         resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of per-file processing contexts.
+        results: Ordered list of durable per-file processing results.
         summary_mode: Whether to emit summary records instead of per-file result records.
 
     Yields:
@@ -300,7 +302,9 @@ def iter_processing_results_ndjson_records(
     )
 
     if summary_mode:
-        for record in iter_processing_results_summary_entries(results):
+        for record in iter_processing_results_summary_entries(
+            results,
+        ):
             yield build_ndjson_record(
                 kind=PipelineKind.SUMMARY,
                 meta=meta,

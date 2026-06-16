@@ -38,6 +38,9 @@ ______________________________________________________________________
 - Added a durable `ProcessingDetailSnapshot` on `ProcessingResult` that captures generated
   unified-diff text without retaining volatile pipeline views and exposes reduced detail state
   through `ProcessingResult` serialization.
+- Added durable human display-path state to `ProcessingResult`, allowing check/strip presentation to
+  render logical STDIN filenames and per-file labels after context reduction without retaining
+  runtime options.
 - Added `tools/perf/pipeline_memory_baseline.py`, a measurement-only benchmarking tool for
   establishing memory and allocation baselines for pipeline processing.
 - Added `docs/dev/performance-baselines.md` documenting benchmark methodology, workload definitions,
@@ -52,9 +55,16 @@ ______________________________________________________________________
 - Migrated public API `check()` and `strip()` result packaging to consume durable `ProcessingResult`
   snapshots after context reduction, using reduced detail snapshots for public diff exposure while
   preserving existing API DTO behavior.
+- Migrated `check`/`strip` machine-readable result serialization to consume durable
+  `ProcessingResult` snapshots after context reduction, using reduced detail snapshots for JSON and
+  NDJSON detail output while deriving summary classification from each result's execution-mode
+  snapshot.
+- Migrated `check`/`strip` TEXT and Markdown human report rendering to consume durable
+  `ProcessingResult` snapshots after context reduction, using reduced display-path and diff-detail
+  state while keeping probe rendering and patcher-generated diff headers context-based.
 - Made human report-scope filtering result-compatible by introducing protocol-based filtering
-  support for durable `ProcessingResult` snapshots while preserving existing context-based detail
-  rendering contracts.
+  support for durable `ProcessingResult` snapshots while preserving context-based filtering support
+  for pre-reduction probe consumers.
 - Avoided formatting a duplicate unified-diff preview during patch generation when INFO-level
   pipeline logging is disabled, reducing transient allocations for diff-heavy workloads while
   preserving retained diff output.
@@ -285,8 +295,8 @@ ______________________________________________________________________
   alternatives, benchmark relevance, and the rationale for closing Track B without further
   implementation.
 - Clarified the architecture boundary between mutable `ProcessingContext` execution state and
-  durable `ProcessingResult` snapshots, including outcome classification, report filtering, and
-  reduced detail snapshots.
+  durable `ProcessingResult` snapshots, including outcome classification, report filtering, reduced
+  detail snapshots, check/strip machine output, and check/strip human rendering.
 - Added an internal batch reduction boundary from mutable processing contexts to durable processing
   results, including durable detail-state capture that prepares reporting logic for future streaming
   consolidation without changing current runner behavior.

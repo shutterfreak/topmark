@@ -31,8 +31,6 @@ from topmark.cli.errors import TopmarkCliPipelineError
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.logging import get_logger
-from topmark.pipeline.context.policy import effective_would_add_or_update
-from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
@@ -53,14 +51,14 @@ from topmark.presentation.shared.pipeline import get_file_type_label
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from collections.abc import Sequence
 
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import DiagnosticStats
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.outcomes import OutcomeReasonCount
-    from topmark.pipeline.views import DiffView
+    from topmark.pipeline.result import ProcessingResult
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -134,7 +132,7 @@ def _render_pipeline_banner_markdown(
 def _render_apply_command_markdown(
     *,
     command: str,
-    ctx: ProcessingContext,
+    result: ProcessingResult,
 ) -> str:
     """Render the suggested apply command for Markdown guidance.
 
@@ -145,24 +143,24 @@ def _render_apply_command_markdown(
 
     Args:
         command: TopMark subcommand name.
-        ctx: Processing context for the file.
+        result: Durable processing result for the file.
 
     Returns:
         Suggested apply command for Markdown guidance output.
     """
-    path_name: str = get_display_path(ctx)
-    if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+    path_name: str = get_display_path(result)
+    if result.from_stdin:
         return f"topmark {command} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} {path_name} -"
     return f"topmark {command} {CliOpt.APPLY_CHANGES} {path_name}"
 
 
 def _render_check_guidance_message_markdown(
-    ctx: ProcessingContext,
+    result: ProcessingResult,
 ) -> str | None:
     """Render per-file guidance for `topmark check` results.
 
     Args:
-        ctx: Processing context for the file.
+        result: Durable processing result for the file.
 
     Returns:
         Guidance message for this file, or `None` when no check action is relevant.
@@ -171,29 +169,29 @@ def _render_check_guidance_message_markdown(
         TopmarkCliPipelineError: If the resolved intent is invalid for the `check`
             pipeline.
     """
-    if not effective_would_add_or_update(ctx):
+    if not result.outcome.effective_would_add_or_update:
         return None
 
-    apply_changes: bool | None = ctx.run_options.apply_changes
+    apply_changes: bool | None = result.execution_mode.apply_changes
 
-    path_label: str = render_path_display_markdown(ctx)
-    intent: Intent = determine_intent(ctx)
+    path_label: str = render_path_display_markdown(result)
+    intent: Intent = determine_intent(result)
 
     if apply_changes:
-        if ctx.status.write == WriteStatus.FAILED:
-            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
-        if ctx.status.write == WriteStatus.SKIPPED:
+        if result.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {result.status.write.value}"
+        if result.status.write == WriteStatus.SKIPPED:
             # Defensive: should not happen when effective_would_add_or_update is True,
             # but keeps CLI honest if a later step halts.
             return f"⚠️  Could not {intent.value} header (write skipped)."
 
         return (
             f"➕ Adding header in {path_label}"
-            if ctx.status.header == HeaderStatus.MISSING
+            if result.status.header == HeaderStatus.MISSING
             else f"✏️  Updating header in {path_label}"
         )
 
-    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.CHECK, ctx=ctx)
+    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.CHECK, result=result)
 
     if intent == Intent.INSERT:
         action: str = "add a TopMark header to this file"
@@ -208,12 +206,12 @@ def _render_check_guidance_message_markdown(
 
 
 def _render_strip_guidance_message_markdown(
-    ctx: ProcessingContext,
+    result: ProcessingResult,
 ) -> str | None:
     """Render per-file guidance for `topmark strip` results.
 
     Args:
-        ctx: Processing context for the file.
+        result: Durable processing result for the file.
 
     Returns:
         Guidance message for this file, or `None` when no strip action is relevant.
@@ -222,25 +220,25 @@ def _render_strip_guidance_message_markdown(
         TopmarkCliPipelineError: If the resolved intent is invalid for the `strip`
             pipeline.
     """
-    if not effective_would_strip(ctx):
+    if not result.outcome.effective_would_strip:
         return None
 
-    apply_changes: bool | None = ctx.run_options.apply_changes
+    apply_changes: bool | None = result.execution_mode.apply_changes
 
-    path_label: str = render_path_display_markdown(ctx)
-    intent: Intent = determine_intent(ctx)
+    path_label: str = render_path_display_markdown(result)
+    intent: Intent = determine_intent(result)
 
     if apply_changes:
-        if ctx.status.write == WriteStatus.FAILED:
-            return f"❌ Could not {intent.value} header: {ctx.status.write.value}"
-        if ctx.status.write == WriteStatus.SKIPPED:
+        if result.status.write == WriteStatus.FAILED:
+            return f"❌ Could not {intent.value} header: {result.status.write.value}"
+        if result.status.write == WriteStatus.SKIPPED:
             # Defensive: should not happen when effective_would_strip is True,
             # but keeps CLI honest if a later step halts.
             return f"⚠️  Could not {intent.value} header (write skipped)."
 
         return f"🧹 Stripping header in {path_label}"
 
-    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.STRIP, ctx=ctx)
+    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.STRIP, result=result)
 
     if intent == Intent.STRIP:
         action: str = "strip the TopMark header from this file"
@@ -257,7 +255,7 @@ def _render_strip_guidance_message_markdown(
 
 def _render_file_summary_line_markdown(
     *,
-    ctx: ProcessingContext,
+    result: ProcessingResult,
 ) -> str:
     """Render a concise one-line Markdown summary for one file.
 
@@ -265,31 +263,31 @@ def _render_file_summary_line_markdown(
     and may append compact write, diff, or diagnostic hints.
 
     Args:
-        ctx: Processing context containing status and view data.
+        result: Durable processing result containing status and display data.
 
     Returns:
         One-line Markdown summary for the file.
     """
     # Shared helper keeps missing-file and unresolved-type labels consistent
     # across TEXT and Markdown renderers.
-    ft_label: str | None = get_file_type_label(ctx)
+    ft_label: str | None = get_file_type_label(result)
 
-    # Resolve the public bucket for this context.
-    apply_changes: bool = ctx.run_options.apply_changes is True
-    bucket: ResultBucket = map_bucket(ctx, apply=apply_changes)
+    # Resolve the public bucket for this result using its own execution mode.
+    apply_changes: bool = result.execution_mode.apply_changes is True
+    bucket: ResultBucket = map_bucket(result, apply=apply_changes)
     key: str = bucket.outcome.value
     label: str = bucket.reason or "(no reason provided)"
 
     # Secondary hints: write status > diff marker > diagnostics
     parts: list[str] = []
-    if ctx.status.has_write_outcome():
-        parts.append(ctx.status.write.value)
-    elif ctx.views.diff and ctx.views.diff.text:
+    if result.status.has_write_outcome():
+        parts.append(result.status.write.value)
+    elif result.detail.diff_text:
         parts.append("diff")
 
-    if ctx.diagnostics:
+    if result.diagnostics:
         # Compose a compact triage summary such as "1 error, 2 warnings".
-        stats: DiagnosticStats = ctx.diagnostics.stats()
+        stats: DiagnosticStats = result.diagnostics.stats()
         triage_summary: str = stats.triage_summary()
         if triage_summary:
             parts.append(triage_summary)
@@ -297,14 +295,14 @@ def _render_file_summary_line_markdown(
     suffix: str = (" - " + " - ".join(parts)) if parts else ""
 
     if ft_label is not None:
-        return f"`{get_display_path(ctx)}` ({ft_label}) - `{key}`: {label}{suffix}"
-    return f"`{get_display_path(ctx)}` - `{key}`: {label}{suffix}"
+        return f"`{get_display_path(result)}` ({ft_label}) - `{key}`: {label}{suffix}"
+    return f"`{get_display_path(result)}` - `{key}`: {label}{suffix}"
 
 
 def _render_per_file_guidance_markdown(
     *,
-    view_results: list[ProcessingContext],
-    make_message: Callable[[ProcessingContext], str | None],
+    results: Sequence[ProcessingResult],
+    make_message: Callable[[ProcessingResult], str | None],
     show_diffs: bool,
 ) -> str:
     """Render per-file Markdown sections.
@@ -319,7 +317,7 @@ def _render_per_file_guidance_markdown(
     Unlike TEXT output, Markdown always renders available diagnostics and hints.
 
     Args:
-        view_results: Processing contexts to render.
+        results: Durable processing results to render.
         make_message: Per-file guidance message builder.
         show_diffs: Whether to include unified diffs.
 
@@ -330,31 +328,31 @@ def _render_per_file_guidance_markdown(
     blocks.append("## Files")
     blocks.append("")
 
-    for idx, ctx in enumerate(view_results, start=1):
+    for idx, result in enumerate(results, start=1):
         # 1. summary line.
         blocks.append(
             f"{idx}. "
             + _render_file_summary_line_markdown(
-                ctx=ctx,
+                result=result,
             )
         )
 
         # 2. guidance message for actionable check/strip outcomes.
-        msg: str | None = make_message(ctx)
+        msg: str | None = make_message(result)
         if msg:
             blocks.append(f"  - {msg}")
 
         # 3. diagnostics block; Markdown shows diagnostics whenever present.
-        if len(ctx.diagnostics) > 0:
+        if len(result.diagnostics) > 0:
             diag_md: str = render_diagnostics_markdown(
-                diagnostics=ctx.diagnostics,
+                diagnostics=result.diagnostics,
             ).rstrip()
             if diag_md:
                 for line in diag_md.splitlines():
                     blocks.append(f"  {line}" if line else "")
 
         # 4. hints; Markdown shows all hints whenever present.
-        hints: list[Hint] = ctx.diagnostic_hints.items
+        hints: list[Hint] = list(result.hints)
         hints_count: int = len(hints)
         if hints_count > 0:
             blocks.append(f"  - Hints: {hints_count}")
@@ -370,8 +368,7 @@ def _render_per_file_guidance_markdown(
         # 5. optional diff block
         if show_diffs:
             patch: str | None = _render_diff_markdown(
-                ctx.views.diff,
-                keep_diff_view=False,
+                result.detail.diff_text,
             )
 
             if patch:
@@ -392,35 +389,28 @@ def _render_per_file_guidance_markdown(
 
 
 def _render_diff_markdown(
-    diff_view: DiffView | None,
+    diff_text: str | None,
     *,
-    keep_diff_view: bool = True,
     show_line_numbers: bool = False,
 ) -> str | None:
     """Render a unified diff as plain Markdown-friendly text.
 
     Args:
-        diff_view: Diff view to render.
-        keep_diff_view: Whether to preserve the diff view.
+        diff_text: Durable unified diff text to render.
         show_line_numbers: Whether to prepend line numbers.
 
     Returns:
         Rendered diff text, or `None` when no diff is available.
     """
-    logger.debug("diff_view: %r; keep_diff_view: %r", diff_view, keep_diff_view)
-    if diff_view is None:
+    logger.debug("diff_text: %r", diff_text)
+    if diff_text is None:
         return None
 
-    diff_text: str | None = diff_view.text
     if diff_text:
         patch: str = format_patch_plain(
             patch=diff_text,
             show_line_numbers=show_line_numbers,
         )
-
-        if not keep_diff_view:
-            # Prune the diff view once the patch has been consumed (rendered)
-            diff_view.release()
 
         return patch
 
@@ -429,13 +419,13 @@ def _render_diff_markdown(
 
 def _render_pipeline_diffs_markdown(
     *,
-    results: list[ProcessingContext],
+    results: Sequence[ProcessingResult],
     show_line_numbers: bool = False,
 ) -> str:
     """Render a Markdown diff section for all files with diffs.
 
     Args:
-        results: Processing contexts to inspect.
+        results: Durable processing results to inspect.
         show_line_numbers: Whether to prepend line numbers.
 
     Returns:
@@ -443,15 +433,14 @@ def _render_pipeline_diffs_markdown(
     """
     # Keep Markdown diffs readable and copyable.
     blocks: list[str] = ["## Diffs", ""]
-    for ctx in results:
+    for result in results:
         patch: str | None = _render_diff_markdown(
-            ctx.views.diff,
-            keep_diff_view=False,
+            result.detail.diff_text,
             show_line_numbers=show_line_numbers,
         )
 
         if patch:
-            blocks.append(f"### {render_path_display_markdown(ctx)}")
+            blocks.append(f"### {render_path_display_markdown(result)}")
             blocks.append("")
             blocks.append(
                 render_fenced_code_block_markdown(
@@ -470,13 +459,13 @@ def _render_pipeline_diffs_markdown(
 
 def _render_summary_counts_markdown(
     *,
-    view_results: list[ProcessingContext],
+    view_results: Sequence[ProcessingResult],
     total: int,
 ) -> str:
     """Render summary counts grouped by `(outcome, reason)` as a Markdown table.
 
     Args:
-        view_results: Processing contexts included in the rendered view.
+        view_results: Durable processing results included in the rendered view.
         total: Total number of candidate files before view filtering.
 
     Returns:
@@ -519,7 +508,7 @@ def render_pipeline_output_markdown(
     Raises:
         RuntimeError: If an invalid pipeline kind was selected.
     """
-    make_message: Callable[[ProcessingContext], str | None] | None = None
+    make_message: Callable[[ProcessingResult], str | None] | None = None
     if report.pipeline_kind == "check":
         make_message = _render_check_guidance_message_markdown
     elif report.pipeline_kind == "strip":
@@ -557,7 +546,7 @@ def render_pipeline_output_markdown(
         # Per-file guidance
         parts.append(
             _render_per_file_guidance_markdown(
-                view_results=report.view_results,
+                results=report.view_results,
                 make_message=make_message,
                 show_diffs=report.show_diffs,
             ),

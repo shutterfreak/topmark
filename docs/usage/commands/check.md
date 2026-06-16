@@ -300,7 +300,9 @@ Notes:
 - In TEXT rendering, per-line diagnostics are shown with `-v` and above.
 - Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
   contract; rely on exit codes and machine-readable output for automation.
-- Diffs (`--diff`) are always human-readable only and never included in JSON or NDJSON output.
+- The `--diff` option is human-readable only and rejected for JSON or NDJSON output.
+  Machine-readable result payloads may expose reduced detail fields, but normal CLI JSON and NDJSON
+  output does not render unified diff blocks.
 
 ______________________________________________________________________
 
@@ -331,6 +333,9 @@ processing target. Configuration payloads also emit normalized file type filters
 
 Notes:
 
+- The `--diff` option is human-readable only and rejected for JSON or NDJSON output.
+  Machine-readable result payloads may expose reduced detail fields, but normal CLI JSON and NDJSON
+  output does not render unified diff blocks.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 - The `config` payload in JSON and NDJSON is the resolved runtime configuration snapshot after
   per-source TOML validation, layered configuration merge, staged configuration-loading validation,

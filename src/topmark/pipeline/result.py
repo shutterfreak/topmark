@@ -54,10 +54,12 @@ class FileTypeSnapshot:
     """Durable file-type identity captured from a processing context.
 
     Attributes:
-        qualified_key: Canonical qualified file-type key.
+        local_key: Namespace-local file type identifier.
+        qualified_key: Canonical qualified file type identifier.
         description: Human-facing file-type description.
     """
 
+    local_key: str
     qualified_key: str
     description: str
 
@@ -75,6 +77,7 @@ class FileTypeSnapshot:
             Durable file-type identity snapshot.
         """
         return cls(
+            local_key=file_type.local_key,
             qualified_key=file_type.qualified_key,
             description=file_type.description,
         )
@@ -212,6 +215,8 @@ class ProcessingResult:
 
     Attributes:
         path: Processing path for the file.
+        display_path: Human-facing path captured at the reduction boundary.
+        from_stdin: Whether `display_path` represents STDIN-backed content.
         file_type: Durable resolved file-type identity, if any.
         execution_mode: The execution-mode snapshot for this context.
         steps: Names of executed steps in execution order.
@@ -227,6 +232,8 @@ class ProcessingResult:
     """
 
     path: Path
+    display_path: str
+    from_stdin: bool
     file_type: FileTypeSnapshot | None
     execution_mode: ExecutionModeSnapshot
     steps: tuple[str, ...]
@@ -253,8 +260,17 @@ class ProcessingResult:
             Detached durable result snapshot.
         """
         diagnostics: FrozenDiagnosticLog = ctx.diagnostics.freeze()
+        if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename:
+            from_stdin: bool = True
+            display_path: str = ctx.run_options.stdin_filename
+        else:
+            from_stdin: bool = False
+            display_path: str = str(ctx.path)
+
         return cls(
             path=Path(ctx.path),
+            display_path=display_path,
+            from_stdin=from_stdin,
             file_type=(
                 FileTypeSnapshot.from_file_type(ctx.file_type)
                 if ctx.file_type is not None

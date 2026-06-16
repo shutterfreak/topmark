@@ -26,6 +26,8 @@ from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_markdown_table
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
     from topmark.resolution.probe import ResolutionProbeCandidate
@@ -206,7 +208,7 @@ def _render_probe_result_markdown(ctx: ProcessingContext, probe: ResolutionProbe
 
 def _render_probe_results_markdown(
     *,
-    view_results: list[ProcessingContext],
+    view_results: Sequence[ProcessingContext],
 ) -> str:
     """Render probe-specific per-file Markdown sections.
 

@@ -27,6 +27,8 @@ from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.hints import make_hint
+from topmark.pipeline.reduction import ProcessingReduction
+from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
@@ -49,11 +51,13 @@ from topmark.presentation.text.pipeline import render_pipeline_output_text
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.result import ProcessingResult
 
 
 def _make_context(
@@ -90,7 +94,7 @@ def _make_context(
 def _make_report(
     *,
     pipeline_kind: PipelineKindLiteral = "check",
-    view_results: list[ProcessingContext],
+    view_results: Sequence[ProcessingResult],
     file_list_total: int | None = None,
     verbosity_level: int = 0,
     report_scope: ReportScope = ReportScope.ACTIONABLE,
@@ -196,9 +200,11 @@ def test_render_pipeline_output_text_compact_check_guidance(tmp_path: Path) -> N
         Diagnostic(level=DiagnosticLevel.WARNING, message="Check this file"),
     )
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_text(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             show_diffs=False,
             apply_changes=False,
         )
@@ -231,9 +237,11 @@ def test_render_pipeline_output_text_verbose_includes_banner_diagnostics_and_hin
         )
     )
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_text(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             verbosity_level=1,
         )
     )
@@ -252,9 +260,11 @@ def test_render_pipeline_output_text_summary_with_diff_section(tmp_path: Path) -
     ctx: ProcessingContext = _make_context(tmp_path / "summary.py")
     _add_diff(ctx)
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_text(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             verbosity_level=1,
             summary_mode=True,
             show_diffs=True,
@@ -276,9 +286,11 @@ def test_render_pipeline_output_text_actionable_footer_for_hidden_unsupported(
     """TEXT actionable output should summarize unsupported files hidden from the list."""
     ctx: ProcessingContext = _make_context(tmp_path / "actionable.py")
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_text(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             report_scope=ReportScope.ACTIONABLE,
             unsupported_count=2,
         )
@@ -297,10 +309,12 @@ def test_render_pipeline_output_text_strip_guidance_uses_strip_command(
     ctx.status.strip = StripStatus.READY
     ctx.status.plan = PlanStatus.PREVIEWED
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_text(
         _make_report(
             pipeline_kind="strip",
-            view_results=[ctx],
+            view_results=reduction.results,
         )
     )
 
@@ -328,9 +342,11 @@ def test_render_pipeline_output_markdown_per_file_includes_diagnostics_hints_and
         )
     )
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_markdown(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             show_diffs=True,
         )
     )
@@ -353,9 +369,11 @@ def test_render_pipeline_output_markdown_summary_table_and_total(tmp_path: Path)
     """Markdown summary mode should render grouped outcome table and total."""
     ctx: ProcessingContext = _make_context(tmp_path / "summary.md.py")
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_markdown(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             summary_mode=True,
             file_list_total=5,
         )
@@ -372,9 +390,11 @@ def test_render_pipeline_output_markdown_summary_diff_section(tmp_path: Path) ->
     ctx: ProcessingContext = _make_context(path)
     _add_diff(ctx)
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_markdown(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             summary_mode=True,
             show_diffs=True,
         )
@@ -393,9 +413,11 @@ def test_render_pipeline_output_markdown_actionable_footer_for_hidden_unsupporte
     """Markdown actionable output should summarize unsupported files hidden from the list."""
     ctx: ProcessingContext = _make_context(tmp_path / "actionable.py")
 
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     output: str = render_pipeline_output_markdown(
         _make_report(
-            view_results=[ctx],
+            view_results=reduction.results,
             report_scope=ReportScope.ACTIONABLE,
             unsupported_count=4,
         )
@@ -433,9 +455,12 @@ def test_render_pipeline_apply_summary_markdown_reports_noop_and_failed() -> Non
 def test_pipeline_renderers_reject_invalid_pipeline_kind(tmp_path: Path) -> None:
     """Both renderers should reject invalid pipeline kinds defensively."""
     ctx: ProcessingContext = _make_context(tmp_path / "invalid.py")
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
     report: PipelineCommandHumanReport = _make_report(
         pipeline_kind=cast("PipelineKindLiteral", "unknown"),
-        view_results=[ctx],
+        view_results=reduction.results,
     )
 
     with pytest.raises(RuntimeError, match="Invalid pipeline kind selected"):

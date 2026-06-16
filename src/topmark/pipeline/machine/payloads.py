@@ -40,10 +40,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.outcomes import OutcomeReasonCount
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
-from topmark.pipeline.outcomes import collect_outcome_reason_counts_for_apply
 from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
@@ -52,7 +50,7 @@ if TYPE_CHECKING:
 
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
-    from topmark.pipeline.outcomes import SupportsOutcomeClassification
+    from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.probe import ResolutionProbeCandidate
     from topmark.resolution.probe import ResolutionProbeMatchSignals
     from topmark.resolution.probe import ResolutionProbeResult
@@ -170,7 +168,7 @@ def build_probe_result_payload(
 
 
 def iter_probe_results_payload_items(
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingContext],
 ) -> Iterator[dict[str, object]]:
     """Yield per-path resolution probe payloads for machine-readable output.
 
@@ -187,15 +185,15 @@ def iter_probe_results_payload_items(
 
 
 def iter_processing_results_payload_items(
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
 ) -> Iterator[dict[str, object]]:
     """Yield per-file processing result objects for machine-readable output (detail mode).
 
     Each yielded mapping corresponds to one processed file and is produced by
-    [`ProcessingContext.to_dict()`][topmark.pipeline.context.model.ProcessingContext.to_dict].
+    [`ProcessingResult.to_dict()`][topmark.pipeline.result.ProcessingResult.to_dict].
 
     Args:
-        results: Ordered list of per-file processing contexts.
+        results: Ordered iterable of durable per-file processing results.
 
     Yields:
         One per-file result mapping per processed context, in the same order as `results`.
@@ -220,34 +218,8 @@ def _summary_rows_from_counts(
     ]
 
 
-def build_processing_results_summary_rows_payload_for_apply(
-    results: Iterable[SupportsOutcomeClassification],
-    *,
-    apply: bool,
-) -> list[OutcomeSummaryRow]:
-    """Build a JSON-friendly summary payload for an explicit execution mode.
-
-    This result-compatible helper accepts either mutable processing contexts or
-    durable processing results. The execution mode is supplied explicitly so
-    callers do not need to retain runtime options only for outcome summary
-    classification.
-
-    Args:
-        results: Ordered list of processing contexts or durable results.
-        apply: Whether to classify the supplied results as apply-mode output.
-
-    Returns:
-        List of [`OutcomeSummaryRow`][topmark.pipeline.machine.schemas.OutcomeSummaryRow] objects.
-    """
-    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts_for_apply(
-        results,
-        apply=apply,
-    )
-    return _summary_rows_from_counts(counts)
-
-
 def build_processing_results_summary_rows_payload(
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
 ) -> list[OutcomeSummaryRow]:
     """Build a JSON-friendly summary payload for processing results (summary mode).
 
@@ -269,42 +241,19 @@ def build_processing_results_summary_rows_payload(
         ]
 
     Args:
-        results: Ordered list of per-file processing contexts.
+        results: Ordered iterable of per-file processing results.
 
     Returns:
         List of [`OutcomeSummaryRow`][topmark.pipeline.machine.schemas.OutcomeSummaryRow] objects.
     """
-    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(results)
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(
+        results,
+    )
     return _summary_rows_from_counts(counts)
 
 
-def iter_processing_results_summary_entries_for_apply(
-    results: Iterable[SupportsOutcomeClassification],
-    *,
-    apply: bool,
-) -> Iterator[OutcomeSummaryRow]:
-    """Yield NDJSON-friendly summary rows for an explicit execution mode.
-
-    This result-compatible helper accepts either mutable processing contexts or
-    durable processing results. Each yielded object preserves the full
-    `(outcome, reason, count)` tuple so NDJSON summary mode does not collapse
-    sub-buckets inside the same outcome.
-
-    Args:
-        results: Ordered list of processing contexts or durable results.
-        apply: Whether to classify the supplied results as apply-mode output.
-
-    Yields:
-        One summary row object per `(outcome, reason)` bucket.
-    """
-    yield from build_processing_results_summary_rows_payload_for_apply(
-        results,
-        apply=apply,
-    )
-
-
 def iter_processing_results_summary_entries(
-    results: list[ProcessingContext],
+    results: Iterable[ProcessingResult],
 ) -> Iterator[OutcomeSummaryRow]:
     """Yield NDJSON-friendly summary rows for processing results.
 
@@ -315,11 +264,13 @@ def iter_processing_results_summary_entries(
          "summary": {"outcome": "unchanged", "reason": "no changes needed", "count": 3}}
 
     Args:
-        results: Ordered list of per-file processing contexts.
+        results: Ordered iterable of per-file processing results.
 
     Yields:
         One summary row object per `(outcome, reason)` bucket.
     """
-    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(results)
+    counts: list[OutcomeReasonCount] = collect_outcome_reason_counts(
+        results,
+    )
 
     yield from _summary_rows_from_counts(counts)

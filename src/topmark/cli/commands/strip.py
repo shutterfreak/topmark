@@ -97,9 +97,12 @@ from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.reduction import ProcessingReduction
+from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportFilterResult
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import filter_results_for_report
+from topmark.pipeline.reporting import would_change_result
 from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
@@ -127,6 +130,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.protocols import Step
+    from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
 
@@ -468,13 +472,17 @@ def strip_command(
     # - Human summary mode must also use the full raw result set so aggregated
     #   counts are not distorted by per-file report filtering.
     # - Human non-summary output uses the filtered per-file view.
-    filtered: ReportFilterResult[ProcessingContext] = filter_results_for_report(
-        results,
+    reduction: ProcessingReduction = reduce_processing_contexts(results)
+
+    filtered: ReportFilterResult[ProcessingResult] = filter_results_for_report(
+        reduction.results,
         report_scope=report_scope,
-        would_change=effective_would_strip,
+        would_change=would_change_result,
     )
 
-    human_results: list[ProcessingContext] = results if summary_mode else filtered.view_results
+    human_results: Sequence[ProcessingResult] = (
+        reduction.results if summary_mode else filtered.view_results
+    )
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
@@ -482,7 +490,7 @@ def strip_command(
             meta=meta,
             config=config,
             resolved_toml=prepared_cli_config.resolved_toml,
-            results=results,
+            results=reduction.results,
             fmt=fmt,
             summary_mode=summary_mode,
         )

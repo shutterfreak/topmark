@@ -33,9 +33,12 @@ from typing import TYPE_CHECKING
 from topmark.pipeline.status import FsStatus
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.reporting import ReportScope
+    from topmark.pipeline.result import ProcessingResult
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -58,7 +61,7 @@ class ProbeCommandHumanReport:
     styled: bool
     pipeline_kind: PipelineKindLiteral
     file_list_total: int
-    view_results: list[ProcessingContext]
+    view_results: Sequence[ProcessingContext]
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -75,7 +78,7 @@ class PipelineCommandHumanReport:
         pipeline_kind: Pipeline kind used to select command-specific guidance.
         file_list_total: Total number of user-requested results before view filtering,
             including selected pipeline files and synthetic resolver-level outcomes.
-        view_results: Processing contexts selected for the current human-output view.
+        view_results: Durable processing results selected for the current human-output view.
         report_scope: Active report scope for the current view.
         unsupported_count: Number of unsupported files omitted from actionable listings.
         summary_mode: Whether to render grouped outcome counts instead of per-file sections.
@@ -87,7 +90,7 @@ class PipelineCommandHumanReport:
     styled: bool
     pipeline_kind: PipelineKindLiteral
     file_list_total: int
-    view_results: list[ProcessingContext]
+    view_results: Sequence[ProcessingResult]
     report_scope: ReportScope
     unsupported_count: int
     summary_mode: bool
@@ -95,7 +98,9 @@ class PipelineCommandHumanReport:
     apply_changes: bool
 
 
-def get_file_type_label(ctx: ProcessingContext) -> str | None:
+def get_file_type_label(
+    ctx: ProcessingContext | ProcessingResult,
+) -> str | None:
     """Return the human-facing file-type label for a pipeline result.
 
     Resolved files use their local file-type key. Unresolved files usually render
@@ -114,7 +119,7 @@ def get_file_type_label(ctx: ProcessingContext) -> str | None:
     filesystem failure.
 
     Args:
-        ctx: Processing context to inspect.
+        ctx: Processing context or durable result to inspect.
 
     Returns:
         File-type label for human output, or `None` when the file-type segment

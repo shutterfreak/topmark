@@ -454,6 +454,11 @@ is reported as a policy-blocked unsupported processing target, using the same st
 surface as the runtime pipeline. Processing commands do not choose a source, target, winner, or
 loser path for the hard-link group.
 
+Processing result payloads may include reduced detail fields such as `detail.diff_text`. These
+fields represent durable result state, not human diff rendering. The `--diff` option remains
+human-only and is rejected for machine-readable output formats; normal CLI JSON and NDJSON
+processing output does not render unified diff blocks.
+
 In **summary mode**, TopMark aggregates results by the pair `(outcome, reason)` rather than
 collapsing all reasons under a single outcome bucket.
 

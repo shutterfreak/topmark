@@ -36,6 +36,7 @@ All CLI invocations are executed via Click's `CliRunner`, using the helpers in
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from typing import cast
 
@@ -62,6 +63,7 @@ from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
 from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
 from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
+from topmark.pipeline.result import ProcessingResult
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 if TYPE_CHECKING:
@@ -78,6 +80,7 @@ class _WindowsStylePath:
 
     def __str__(self) -> str:
         """Return the Windows-native spelling produced by `Path.__str__()` on Windows."""
+        # Return a string that, when JSON-escaped, will yield "C:/Repo/src/example.py"
         return r"C:\Repo\src\example.py"
 
     def as_posix(self) -> str:
@@ -205,10 +208,16 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
         "steps",
         "step_axes",
         "status",
-        "views",
         "outcome",
+        "detail",
     ):
         assert key in first
+    assert "views" not in first
+
+    detail_raw: object = first["detail"]
+    assert is_mapping(detail_raw)
+    detail: dict[str, object] = as_object_dict(detail_raw)
+    assert "diff_text" in detail
 
     # steps: list of strings
     steps_raw: object = first["steps"]
@@ -245,10 +254,6 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     assert isinstance(resolve_status.get("name"), str)
     assert isinstance(resolve_status.get("label"), str)
 
-    # views: should be a mapping
-    views_obj = first["views"]
-    assert is_mapping(views_obj)
-
     # outcome: should be a mapping
     outcome_obj = first["outcome"]
     assert is_mapping(outcome_obj)
@@ -274,13 +279,16 @@ def test_processing_json_detail_path_serializes_windows_style_path_as_posix(
 
     # The production attribute is a concrete Path, but this contract test needs
     # to exercise Windows-native `str(path)` behavior on every host platform.
-    ctx.path = cast("Path", _WindowsStylePath())
+    processing_result: ProcessingResult = replace(
+        ProcessingResult.from_context(ctx),
+        path=cast("Path", _WindowsStylePath()),
+    )
 
     payload: dict[str, object] = build_processing_results_json_envelope(
         meta=_machine_meta(),
         config=cfg,
         resolved_toml=_empty_resolved_toml_sources(),
-        results=[ctx],
+        results=[processing_result],
         summary_mode=False,
     )
 
@@ -557,14 +565,17 @@ def test_processing_ndjson_detail_path_serializes_windows_style_path_as_posix(
 
     # The production attribute is a concrete Path, but this contract test needs
     # to exercise Windows-native `str(path)` behavior on every host platform.
-    ctx.path = cast("Path", _WindowsStylePath())
+    processing_result: ProcessingResult = replace(
+        ProcessingResult.from_context(ctx),
+        path=cast("Path", _WindowsStylePath()),
+    )
 
     records: list[dict[str, object]] = list(
         iter_processing_results_ndjson_records(
             meta=_machine_meta(),
             config=cfg,
             resolved_toml=_empty_resolved_toml_sources(),
-            results=[ctx],
+            results=[processing_result],
             summary_mode=False,
         )
     )
