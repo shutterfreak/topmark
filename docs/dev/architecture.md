@@ -24,6 +24,10 @@ The following architectural contracts are part of the stable 1.x design:
 
 - CLI, API, presentation, runtime, configuration, registry, and pipeline concerns remain separated.
 - Runtime execution intent is kept separate from layered configuration state.
+- Pipeline command intent is selected before execution through an explicit pipeline catalogue and
+  selection model. Pipeline selection is kept separate from durable runtime options: selection
+  identifies the executable pipeline definition, while runtime options carry invocation state onto
+  contexts and reduced results.
 - Workspace-root discovery and configuration-discovery anchoring are evaluated before layered
   configuration state is constructed.
 - File type identity is normalized to canonical qualified keys once resolved.
@@ -122,7 +126,8 @@ TopMark separates configuration concerns into three layers:
   - merging into a mutable config draft
   - field-level merge semantics and precedence rules
 - **Runtime layer** (\[`topmark.runtime`\][topmark.runtime]):
-  - execution-time options (e.g. writer behavior)
+  - execution-time options (e.g. writer behavior, STDIN mode, view pruning)
+  - selected pipeline invocation state copied into durable run options
   - final adjustments before pipeline execution
 
 ```mermaid
@@ -133,7 +138,7 @@ flowchart TD
     D["Deserialize layered fragment into MutableConfig<br/>defensive value parsing and normalization"]
     E["Merge layered config into mutable draft<br/>apply precedence and overrides"]
     F["Freeze final FrozenConfig and validate staged config-loading diagnostics<br/>TOML-source, merged-config, runtime-applicability"]
-    G["Runtime layer<br/>apply execution-only options before pipeline"]
+     G["Runtime layer<br/>select pipeline and apply execution-only options before pipeline"]
 
     A --> B --> C --> D --> E --> F --> G
 ```
@@ -141,6 +146,13 @@ flowchart TD
 Not all TOML-defined values become layered configuration fields. Source-local options such as
 `[config].root` and `[config].strict` are resolved on the TOML side first, then applied to config
 discovery and staged config-loading validation without participating in layered config merging.
+
+Pipeline selection is also outside layered configuration. CLI and API entry points select a concrete
+pipeline definition from the pipeline catalogue using the requested pipeline family (`check`,
+`strip`, or `probe`) and invocation flags such as apply and diff mode.
+\[`RunOptions`\][topmark.runtime.model.RunOptions] then copies the overlapping execution state from
+that selection, so mutation mode and diff-view preservation are not repeated independently by each
+caller.
 
 Project-chain discovery starts from the resolved discovery anchor before configuration-source
 identity is evaluated. This keeps workspace-root discovery separate from configuration-source
@@ -226,7 +238,7 @@ filesystem-identity evaluation.
 Filesystem-identity normalization collapses multiple path spellings that resolve to the same
 filesystem target (for example a symlink and its target) before normal pipeline execution begins.
 This keeps downstream pipeline steps idempotent and avoids processing the same target file more than
-once through different spellings.
+once through different spellings, regardless of which selected pipeline definition is executed.
 
 Filesystem-identity eligibility checks are distinct from normalization. The pipeline engine performs
 the invocation-wide hard-link guard after processing-path selection. If multiple selected processing
@@ -457,6 +469,13 @@ keeps the same command-intent separation through
 \[`topmark.api.strip()`\][topmark.api.commands.pipeline.strip], and
 \[`topmark.api.probe()`\][topmark.api.commands.pipeline.probe].
 
+For path-processing commands, command applicability and pipeline selection are resolved before
+runtime execution. The selected
+\[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] records the executable
+pipeline definition for that invocation, while \[`RunOptions`\][topmark.runtime.model.RunOptions]
+carries durable execution metadata such as pipeline kind, mutation mode, diff-view preservation,
+STDIN mode, writer behavior, and view-pruning policy onto processing contexts and reduced results.
+
 Important invariants:
 
 - [`check`](../usage/commands/check.md) may compare, render, plan, preview, and mutate headers when
@@ -555,8 +574,8 @@ This page focuses on cross-cutting architectural decisions such as registry desi
 layering, policy resolution, presentation boundaries, and the relationship between human-facing and
 machine-facing interfaces.
 
-- [`Pipelines (Concepts)`](./pipelines.md) - conceptual overview of pipeline structure, phases, and
-  step responsibilities
+- [`Pipelines (Concepts)`](./pipelines.md) - conceptual overview of the pipeline catalogue, pipeline
+  selection, phases, and step responsibilities
 - [`Pipelines (Reference)`](./pipelines-reference.md) - curated entry point into the generated
   internal API reference for pipelines and steps
 - [`Terminology and Canonical Vocabulary`](../terminology.md) - canonical definitions for stable
@@ -580,5 +599,5 @@ isolation, plugin extensibility, file type identifier semantics, and API stabili
 ______________________________________________________________________
 
 **Summary:** TopMark keeps stable user-facing behavior deterministic by separating configuration
-loading, registry composition, resolver decisions, policy resolution, pipeline execution,
-presentation, and machine-readable output into explicit layers.
+loading, registry composition, resolver decisions, policy resolution, pipeline selection, pipeline
+execution, presentation, and machine-readable output into explicit layers.

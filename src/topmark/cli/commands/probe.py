@@ -87,7 +87,7 @@ from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
-from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
@@ -101,7 +101,6 @@ from topmark.resolution.files import probe_explicit_file_selection
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.cli.console.color import ColorMode
@@ -115,7 +114,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.engine import PipelineExecution
     from topmark.pipeline.kinds import PipelineKindLiteral
-    from topmark.pipeline.protocols import Step
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
@@ -305,9 +304,15 @@ def probe_command(
         relative_to=None,  # Not relevant for `topmark probe`
     )
 
+    # Select the concrete pipeline variant.
+    pipeline: PipelineSelection = select_pipeline(
+        PIPELINE_KIND,
+        apply=False,
+        diff=False,
+    )
+
     run_options: RunOptions = build_run_options(
-        pipeline_kind=PIPELINE_KIND,
-        apply_changes=False,  # Not relevant for `topmark probe`
+        pipeline=pipeline,
         write_mode=None,  # Not relevant for `topmark probe`
         stdin_mode=plan.stdin_mode,
         stdin_filename=plan.stdin_filename,
@@ -402,9 +407,7 @@ def probe_command(
         # Nothing to do
         return
 
-    # Choose and run the concrete pipeline variant.
-    pipeline: Sequence[Step[ProcessingContext]] = Pipeline.PROBE
-
+    # Run the concrete pipeline variant.
     pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=run_options,
         config=config,

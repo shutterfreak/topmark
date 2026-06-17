@@ -45,7 +45,6 @@ from typing import TYPE_CHECKING
 from typing import Final
 from typing import Literal
 
-from topmark.api.runtime import select_pipeline
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import make_policy_registry
 from topmark.config.types import FileWriteStrategy
@@ -54,6 +53,7 @@ from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.pipelines import select_pipeline
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.config.policy import PolicyRegistry
     from topmark.core.exit_codes import ExitCode
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.protocols import Step
     from topmark.pipeline.views import ViewSlot
 
@@ -263,7 +264,7 @@ def _line_count(value: object) -> int:
     if value is None:
         return 0
     if hasattr(value, "__len__"):
-        return len(value)  # type: ignore[arg-type]
+        return len(value)  # pyright: ignore[reportArgumentType]
     return -1
 
 
@@ -663,12 +664,16 @@ def _run_steps_with_samples(
     policy_registry: PolicyRegistry,
 ) -> tuple[ProcessingContext, list[StepSample], str]:
     """Run one scenario/mode pair and collect step-level samples."""
-    run_options = RunOptions(
-        apply_changes=mode.apply,
+    pipeline: PipelineSelection = select_pipeline(
+        mode.kind,
+        apply=mode.apply,
+        diff=mode.diff,
+    )
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        selection=pipeline,
         output_target=mode.output_target,
         file_write_strategy=FileWriteStrategy.ATOMIC,
         prune_views=mode.prune_views,
-        keep_diff_view=mode.keep_diff_view,
     )
     ctx: ProcessingContext = ProcessingContext.bootstrap(
         path=scenario.path,
@@ -676,24 +681,20 @@ def _run_steps_with_samples(
         run_options=run_options,
         policy_registry_override=policy_registry,
     )
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        mode.kind,
-        apply=mode.apply,
-        diff=mode.diff,
-    )
+    steps: tuple[Step[ProcessingContext], ...] = pipeline.steps
     samples: list[StepSample] = []
     stdout_capture = io.StringIO()
 
-    step_count: int = len(pipeline)
+    step_count: int = len(steps)
     with contextlib.redirect_stdout(stdout_capture):
-        for index, step in enumerate(pipeline):
+        for index, step in enumerate(steps):
             step_start: int = time.perf_counter_ns()
             ctx = step(ctx)
             # Mirror the production runner lifecycle so per-step samples reflect
             # the retained views available to later steps, not only final cleanup.
             if mode.prune_views:
                 remaining_view_consumers: set[ViewSlot] = set()
-                for remaining_step in pipeline[index + 1 : step_count]:
+                for remaining_step in steps[index + 1 : step_count]:
                     remaining_view_consumers.update(remaining_step.consumes_views)
                 ctx.views.release_consumed(
                     remaining_view_consumers=remaining_view_consumers,

@@ -29,6 +29,7 @@ from typing import Any
 import pytest
 
 from tests.helpers.config import make_frozen_config
+from tests.helpers.pipeline import TEST_NOOP_PIPELINE_SELECTION
 from topmark.pipeline import engine
 from topmark.runtime.model import RunOptions
 
@@ -102,7 +103,7 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
         run_options=run_options,
         config=shared_cfg,
         path_configs=path_configs,
-        pipeline=(),
+        pipeline=TEST_NOOP_PIPELINE_SELECTION,
         file_list=[file_a, file_b],
     )
 
@@ -171,7 +172,7 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
         run_options=run_options,
         config=shared_cfg,
         path_configs=None,
-        pipeline=(),
+        pipeline=TEST_NOOP_PIPELINE_SELECTION,
         file_list=[file_a, file_b],
     )
 

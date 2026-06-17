@@ -91,6 +91,14 @@ are preserved per layer (for example under `[[layers]].toml.*` in human output o
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig] represents only the flattened effective
 runtime configuration used during execution.
 
+Pipeline selection is resolved separately from layered configuration. Public API helpers such as
+\[`check()`\][topmark.api.commands.pipeline.check],
+\[`strip()`\][topmark.api.commands.pipeline.strip], and
+\[`probe()`\][topmark.api.commands.pipeline.probe] first select an executable pipeline definition
+from the pipeline catalogue based on command intent and runtime flags. The selected pipeline then
+contributes execution intent (pipeline kind, mutation mode, and diff-view preservation) to durable
+runtime options before processing begins.
+
 ```python
 from topmark import api
 
@@ -137,6 +145,11 @@ identical file-type identity semantics. Local identifiers such as `"python"` are
 unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
 `"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
 
+Public API execution follows the same architecture as the CLI: immutable configuration, pipeline
+selection, runtime-option construction, processing-context execution, reduction into durable
+results, and final report rendering. Internal pipeline-selection objects and execution contexts are
+intentionally not part of the public API surface.
+
 Public API execution also uses the same documented filesystem-identity semantics as the CLI.
 Existing filesystem inputs undergo filesystem-identity evaluation before pipeline execution.
 Multiple path spellings that resolve to the same target, such as a symlink and its target, may
@@ -178,6 +191,10 @@ for fr in result.files:
     for c in fr.candidates:
         print(" -", c.file_type, c.rank, c.selected, c.matched_by)
 ```
+
+Unlike content-processing APIs, probe execution always selects the dedicated read-only probe
+pipeline. It does not perform header generation, mutation planning, comparison, patch generation, or
+writing.
 
 The probe API is read-only and returns stable JSON-friendly DTOs:
 
@@ -262,6 +279,10 @@ This process follows:
 1. Staged config-loading validation
 1. Freeze into immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig]
 1. Runtime overlays (API call arguments such as `diff`, `report`, etc.)
+
+For processing APIs, pipeline selection occurs after configuration resolution and before runtime
+execution. The selected pipeline definition is not part of the public compatibility contract; public
+results expose stable outcome and reporting data rather than internal execution-planning objects.
 
 File-backed TOML sources use configuration-source identity based on the resolved configuration-file
 target. If a configuration file is reached through a symlink, provenance and applicability are based
@@ -351,6 +372,10 @@ for binding in Registry.bindings():
 
 Most public integrations should treat the registry facade as introspection-only and prefer the
 high-level \[`topmark.api`\][topmark.api] execution helpers.
+
+Public integrations should likewise treat pipeline selection and execution planning as internal
+implementation details. The supported compatibility boundary is the documented API DTOs,
+machine-readable output contracts, immutable configuration model, and registry-inspection surfaces.
 
 Advanced registry concepts, including registry layers, runtime overlays, bindings, qualified/local
 identity semantics, and runtime extension examples, are documented in

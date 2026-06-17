@@ -38,6 +38,8 @@ from topmark.core.constants import STANDARD_NEWLINES
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE
+from topmark.pipeline.pipelines import PipelineDefinition
+from topmark.pipeline.pipelines import PipelineSelection
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import ResolveStatus
@@ -64,6 +66,20 @@ if TYPE_CHECKING:
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
 
+TEST_NOOP_PIPELINE_DEFINITION: PipelineDefinition = PipelineDefinition(
+    name="test-noop",
+    family=None,
+    steps=(),
+)
+"""No-op pipeline definition for engine tests that exercise setup behavior only."""
+
+TEST_NOOP_PIPELINE_SELECTION: PipelineSelection = PipelineSelection(
+    kind="check",
+    apply=False,
+    diff=False,
+    definition=TEST_NOOP_PIPELINE_DEFINITION,
+)
+"""No-op pipeline selection for engine tests that exercise setup behavior only."""
 
 # Common step chains used by tests
 SCAN_STEPS: list[Step[ProcessingContext]] = [

@@ -172,12 +172,12 @@ class SupportsOutcomeClassification(Protocol):
         ...
 
 
-class Intent(Enum):
-    """High-level action intent inferred from pipeline status.
+class ResultActionIntent(str, Enum):
+    """Per-result action intent inferred from pipeline status.
 
-    Intent is a small internal classification used by `map_bucket()` to decide
-    whether a detected change should be reported as an insert, update, strip,
-    or a more generic change.
+    `ResultActionIntent` is a small internal classification used by
+    `map_bucket()` to decide whether a detected change should be reported as an
+    insert, update, strip, or a more generic change.
 
     This is intentionally derived from status axes rather than from the chosen
     pipeline name so that bucketing remains robust across pipeline variants.
@@ -189,8 +189,10 @@ class Intent(Enum):
     NONE = "none"  # insufficient information to infer a concrete action
 
 
-def determine_intent(ctx: SupportsOutcomeClassification) -> Intent:
-    """Infer the high-level action intent from the current context.
+def determine_result_action_intent(
+    ctx: SupportsOutcomeClassification,
+) -> ResultActionIntent:
+    """Infer the per-result action intent from the current context.
 
     The inferred intent is used only for public bucketing. It is intentionally
     derived from status axes so that it still works when different pipeline
@@ -207,15 +209,15 @@ def determine_intent(ctx: SupportsOutcomeClassification) -> Intent:
         ctx: The processing context.
 
     Returns:
-        The inferred bucketing intent.
+        The inferred bucketing action intent.
     """
     if ctx.status.strip != StripStatus.PENDING:
-        return Intent.STRIP
+        return ResultActionIntent.STRIP
     if ctx.status.header == HeaderStatus.MISSING:
-        return Intent.INSERT
+        return ResultActionIntent.INSERT
     if ctx.status.header != HeaderStatus.PENDING:
-        return Intent.UPDATE
-    return Intent.NONE
+        return ResultActionIntent.UPDATE
+    return ResultActionIntent.NONE
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -289,7 +291,7 @@ def map_bucket(
     Returns:
         Bucket containing public Outcome and a human label.
     """
-    intent: Intent = determine_intent(ctx)
+    intent: ResultActionIntent = determine_result_action_intent(ctx)
     logger.trace("intent: %s; apply: %s; status: %s", intent.value, apply, ctx.status)
 
     def ret(
@@ -393,7 +395,7 @@ def map_bucket(
         )
 
     # 4) Strip mapping (strip pipelines may omit comparer; do not depend on comparison)
-    if intent == Intent.STRIP:
+    if intent == ResultActionIntent.STRIP:
         if ctx.status.strip == StripStatus.READY:
             return ret(
                 debug_tag="strip:ready",
@@ -438,9 +440,9 @@ def map_bucket(
     strip_lbl: str = ctx.status.strip.value
 
     # Helper for constructing the most specific reason for a detected change.
-    def changed_reason_for(current_intent: Intent) -> str:
+    def changed_reason_for(current_intent: ResultActionIntent) -> str:
         """Return the most specific human-facing reason for a detected change."""
-        if current_intent == Intent.STRIP:
+        if current_intent == ResultActionIntent.STRIP:
             return f"{header_lbl}, {strip_lbl}"
         return f"{header_lbl}, {comparison_lbl}"
 
@@ -455,20 +457,20 @@ def map_bucket(
     # Compute the Outcome value for a change (only meaningful when change is intended/detected).
     outcome_if_changed: Outcome
     if apply:
-        if intent == Intent.STRIP:
+        if intent == ResultActionIntent.STRIP:
             outcome_if_changed = Outcome.STRIPPED
-        elif intent == Intent.INSERT:
+        elif intent == ResultActionIntent.INSERT:
             outcome_if_changed = Outcome.INSERTED
-        elif intent == Intent.UPDATE:
+        elif intent == ResultActionIntent.UPDATE:
             outcome_if_changed = Outcome.UPDATED
         else:
             outcome_if_changed = Outcome.CHANGED
     else:
-        if intent == Intent.STRIP:
+        if intent == ResultActionIntent.STRIP:
             outcome_if_changed = Outcome.WOULD_STRIP
-        elif intent == Intent.INSERT:
+        elif intent == ResultActionIntent.INSERT:
             outcome_if_changed = Outcome.WOULD_INSERT
-        elif intent == Intent.UPDATE:
+        elif intent == ResultActionIntent.UPDATE:
             outcome_if_changed = Outcome.WOULD_UPDATE
         else:
             outcome_if_changed = Outcome.WOULD_CHANGE
@@ -498,9 +500,11 @@ def map_bucket(
     if ctx.status.comparison == ComparisonStatus.CHANGED:
         return ret(
             debug_tag="changed:strip"
-            if intent == Intent.STRIP
+            if intent == ResultActionIntent.STRIP
             else (
-                "changed:header" if intent in (Intent.INSERT, Intent.UPDATE) else "changed:generic"
+                "changed:header"
+                if intent in (ResultActionIntent.INSERT, ResultActionIntent.UPDATE)
+                else "changed:generic"
             ),
             outcome=outcome_if_changed,
             reason=reason_if_changed,
@@ -510,7 +514,7 @@ def map_bucket(
     # These branches matter most for summary/dry-run pipelines where later mutation
     # steps (planner/writer) may not have run.
     if not apply:
-        if intent in (Intent.INSERT, Intent.UPDATE):
+        if intent in (ResultActionIntent.INSERT, ResultActionIntent.UPDATE):
             if ctx.outcome.effective_would_add_or_update:
                 return ret(
                     debug_tag="would-change:header",
@@ -522,7 +526,7 @@ def map_bucket(
                 outcome=outcome_if_changed,
                 reason=header_lbl,
             )
-        if intent == Intent.STRIP:
+        if intent == ResultActionIntent.STRIP:
             if ctx.outcome.effective_would_strip:
                 # Prefer the strip axis label for summaries.
                 return ret(

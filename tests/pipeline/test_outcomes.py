@@ -22,12 +22,12 @@ from topmark.config.policy import HeaderMutationMode
 from topmark.core.outcomes import NO_REASON_PROVIDED
 from topmark.core.outcomes import Outcome
 from topmark.pipeline.context.model import ProcessingContext
-from topmark.pipeline.outcomes import Intent
 from topmark.pipeline.outcomes import OutcomeReasonCount
+from topmark.pipeline.outcomes import ResultActionIntent
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import classify_outcome
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
-from topmark.pipeline.outcomes import determine_intent
+from topmark.pipeline.outcomes import determine_result_action_intent
 from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.result import ProcessingResult
 from topmark.pipeline.status import ComparisonStatus
@@ -80,24 +80,24 @@ def test_result_bucket_repr_uses_fallback_reason() -> None:
 @pytest.mark.parametrize(
     ("header", "strip", "expected"),
     [
-        (HeaderStatus.PENDING, StripStatus.READY, Intent.STRIP),
-        (HeaderStatus.MISSING, StripStatus.PENDING, Intent.INSERT),
-        (HeaderStatus.DETECTED, StripStatus.PENDING, Intent.UPDATE),
-        (HeaderStatus.PENDING, StripStatus.PENDING, Intent.NONE),
+        (HeaderStatus.PENDING, StripStatus.READY, ResultActionIntent.STRIP),
+        (HeaderStatus.MISSING, StripStatus.PENDING, ResultActionIntent.INSERT),
+        (HeaderStatus.DETECTED, StripStatus.PENDING, ResultActionIntent.UPDATE),
+        (HeaderStatus.PENDING, StripStatus.PENDING, ResultActionIntent.NONE),
     ],
 )
-def test_determine_intent_from_status_axes(
+def test_determine_result_action_intent_from_status_axes(
     tmp_path: Path,
     header: HeaderStatus,
     strip: StripStatus,
-    expected: Intent,
+    expected: ResultActionIntent,
 ) -> None:
     """Intent inference should depend on status axes, not pipeline names."""
     ctx: ProcessingContext = _make_context(tmp_path)
     ctx.status.header = header
     ctx.status.strip = strip
 
-    assert determine_intent(ctx) is expected
+    assert determine_result_action_intent(ctx) is expected
 
 
 @pytest.mark.parametrize(

@@ -71,7 +71,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.core.logging import TopmarkLogger
-    from topmark.pipeline.protocols import Step
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -265,7 +265,7 @@ def run_steps_for_files(
     run_options: RunOptions,
     config: FrozenConfig,
     path_configs: Mapping[Path, FrozenConfig] | None = None,
-    pipeline: Sequence[Step[ProcessingContext]],
+    pipeline: PipelineSelection,
     file_list: list[Path],
 ) -> PipelineExecution:
     """Run a pipeline for each file and return structured engine results.
@@ -343,7 +343,7 @@ def run_steps_for_files(
             )
             ctx_obj = runner.run(
                 ctx_obj,
-                pipeline,
+                pipeline.steps,
                 prune_views=run_options.prune_views,
                 keep_diff_view=run_options.keep_diff_view,
             )

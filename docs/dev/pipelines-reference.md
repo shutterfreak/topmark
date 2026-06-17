@@ -23,8 +23,8 @@ system.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
-Pipelines operate on an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] plus runtime
-options assembled via the TOML → FrozenConfig → runtime flow.
+Pipeline execution operates on an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig], a
+selected pipeline, and runtime options assembled via the TOML → FrozenConfig → runtime flow.
 
 Pipelines also operate on selected processing paths. Filesystem-identity evaluation occurs before
 ordinary pipeline execution begins and includes both processing-path normalization and
@@ -76,10 +76,14 @@ without relying on step-name string matching. The authoritative slot names are e
 
 The updated-file view may contain either a materialized line sequence or an implementation of the
 repeatable \[`UpdatedContent`\][topmark.pipeline.views.UpdatedContent] protocol. This allows
-pipeline steps to represent updated content without necessarily materializing a full replacement
-file image while still supporting repeated consumption by comparison, patch generation, and writing.
-`WriterStep` streams both file writes and STDOUT emission through the updated-line iterator;
-comparer and patcher materialization remain explicit algorithm-level ownership points.
+pipeline definitions and steps to represent updated content without necessarily materializing a full
+replacement file image while still supporting repeated consumption by comparison, patch generation,
+and writing.
+
+`WriterStep` streams both file writes and STDOUT emission through the updated-line iterator.
+`ComparerStep` and `PatcherStep` remain explicit algorithm-level materialization ownership points,
+while the pipeline catalogue and selection model remain agnostic to the concrete updated-content
+representation.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -105,12 +109,23 @@ ______________________________________________________________________
 
 ## Canonical reference (generated)
 
+> [!NOTE]
+>
+> Pipeline execution distinguishes three related concepts:
+>
+> - `Pipeline`: stable catalogue key for a production pipeline variant
+> - `PipelineDefinition`: executable metadata and immutable step sequence
+> - `PipelineSelection`: invocation-specific selection of a concrete pipeline definition
+
 Use the links below (or the documentation search box) to navigate directly to the relevant internal
 API module.
 
 ### Pipeline definitions
 
-- Pipelines module (pipeline definitions and the `Pipeline` enum):
+- Pipelines module (\[`Pipeline`\][topmark.pipeline.pipelines.Pipeline],
+  \[`PipelineDefinition`\][topmark.pipeline.pipelines.PipelineDefinition],
+  \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection], and the
+  \[`select_pipeline()`\][topmark.pipeline.pipelines.select_pipeline] pipeline selection helper):
   - [`topmark.pipeline.pipelines`](../api/internals/topmark/pipeline/pipelines.md)
 - Step protocol and base lifecycle contract:
   - [`topmark.pipeline.protocols`](../api/internals/topmark/pipeline/protocols.md)

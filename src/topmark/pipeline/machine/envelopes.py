@@ -55,7 +55,7 @@ from topmark.pipeline.machine.payloads import iter_probe_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries
 from topmark.pipeline.machine.schemas import PipelineKey
-from topmark.pipeline.machine.schemas import PipelineKind
+from topmark.pipeline.machine.schemas import PipelineRecordKind
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -158,7 +158,7 @@ def iter_probe_results_ndjson_records(
     # One probe record per context, including synthetic filtered contexts.
     for payload in iter_probe_results_payload_items(results):
         yield build_ndjson_record(
-            kind=PipelineKind.PROBE,
+            kind=PipelineRecordKind.PROBE,
             meta=meta,
             payload=payload,
         )
@@ -305,14 +305,14 @@ def iter_processing_results_ndjson_records(
             results,
         ):
             yield build_ndjson_record(
-                kind=PipelineKind.SUMMARY,
+                kind=PipelineRecordKind.SUMMARY,
                 meta=meta,
                 payload=record,
             )
     else:
         for r in results:
             yield build_ndjson_record(
-                kind=PipelineKind.RESULT,
+                kind=PipelineRecordKind.RESULT,
                 meta=meta,
                 payload=r.to_dict(),
             )

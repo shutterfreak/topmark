@@ -32,7 +32,6 @@ import click
 import rich_click
 
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
-from topmark.cli.cmd_common import build_run_options
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_route_console_to_stderr
 from topmark.cli.emitters.machine import emit_config_machine
@@ -65,6 +64,7 @@ from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.shared.config import build_config_dump_human_report
 from topmark.presentation.text.config import render_config_dump_text
 from topmark.presentation.text.diagnostic import render_diagnostics_text
+from topmark.runtime.model import RunOptions
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
@@ -80,7 +80,6 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.presentation.shared.config import ConfigDumpHumanReport
-    from topmark.runtime.model import RunOptions
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -224,6 +223,9 @@ def config_dump_command(
     # Retrieve effective human facing program-output verbosity for gating extra details
     verbosity_level: int = state.verbosity
 
+    # Select the console
+    console: ConsoleProtocol = state.console
+
     # Machine metadata
     meta: MetaPayload = build_meta_payload()
 
@@ -266,12 +268,10 @@ def config_dump_command(
         relative_to=relative_to,
     )
 
-    run_options: RunOptions = build_run_options(
-        pipeline_kind=None,  # Not relevant for `config dump`
-        apply_changes=False,  # Not relevant for `config dump`
-        write_mode=None,  # Not relevant for `config dump`
+    # Config dump is not a pipeline command. Use minimal run options only to
+    # reuse stdout/stderr routing logic for STDIN-backed pattern-source input.
+    run_options: RunOptions = RunOptions(
         stdin_mode=plan.stdin_mode,
-        stdin_filename=plan.stdin_filename,
     )
 
     logger.debug("run options: %s", run_options)
