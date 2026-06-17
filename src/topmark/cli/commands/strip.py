@@ -50,7 +50,6 @@ import click
 import rich_click
 
 from topmark.api.runtime import ensure_config_valid
-from topmark.api.runtime import select_pipeline
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
@@ -96,6 +95,7 @@ from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reduction import ProcessingReduction
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportFilterResult
@@ -128,10 +128,11 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
-    from topmark.pipeline.protocols import Step
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
+
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -348,14 +349,19 @@ def strip_command(
         relative_to=None,  # Not relevant for `strip``
     )
 
+    # Select the concrete pipeline variant.
+    pipeline: PipelineSelection = select_pipeline(
+        PIPELINE_KIND,
+        apply=apply_changes,
+        diff=diff,
+    )
+
     run_options: RunOptions = build_run_options(
-        pipeline_kind=PIPELINE_KIND,
-        apply_changes=apply_changes,
+        pipeline=pipeline,
         write_mode=write_mode,
         stdin_mode=plan.stdin_mode,
         stdin_filename=plan.stdin_filename,
         prune_views=prune_views,
-        keep_diff_view=diff,
     )
 
     logger.debug("run options: %s", run_options)
@@ -436,13 +442,7 @@ def strip_command(
         # Nothing to do
         return
 
-    # Choose and run the concrete pipeline variant.
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
-        PIPELINE_KIND,
-        apply=apply_changes,
-        diff=diff,
-    )
-
+    # Run the concrete pipeline variant.
     pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=run_options,
         config=config,

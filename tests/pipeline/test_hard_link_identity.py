@@ -21,7 +21,7 @@ from tests.helpers.config import make_frozen_config
 from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
-from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.status import FsStatus
 from topmark.runtime.model import RunOptions
 
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.engine import PipelineExecution
     from topmark.pipeline.hints import Hint
+    from topmark.pipeline.pipelines import PipelineSelection
 
 
 def _link_or_skip(source: Path, target: Path) -> None:
@@ -44,12 +45,19 @@ def _link_or_skip(source: Path, target: Path) -> None:
 
 def _run_check(paths: list[Path], config: FrozenConfig) -> list[ProcessingContext]:
     """Run the check pipeline for `paths` and return per-file contexts."""
-    run_options = RunOptions()
+    pipeline: PipelineSelection = select_pipeline(
+        "check",
+        apply=False,
+        diff=False,
+    )
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        selection=pipeline,
+    )
     pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=run_options,
         config=config,
         path_configs=None,
-        pipeline=Pipeline.CHECK.steps,
+        pipeline=pipeline,
         file_list=paths,
     )
     assert pipeline_run.exit_code is None

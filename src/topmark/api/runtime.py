@@ -54,7 +54,6 @@ from topmark.core.logging import get_logger
 from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
-from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.resolution.files import probe_explicit_file_selection
@@ -73,8 +72,7 @@ if TYPE_CHECKING:
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.kinds import PipelineKindLiteral
-    from topmark.pipeline.protocols import Step
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
@@ -453,54 +451,6 @@ def _apply_runtime_policy_overlays(
     return draft.freeze()
 
 
-def select_pipeline(
-    kind: PipelineKindLiteral,
-    *,
-    apply: bool,
-    diff: bool,
-) -> Sequence[Step[ProcessingContext]]:
-    """Return the concrete pipeline steps for the requested operation and mode.
-
-    Args:
-        kind: The pipeline family to use (`"probe"`, `"check"` or `"strip"`).
-        apply: If `True`, choose a mutating variant for commands that support mutation.
-            Ignored for `"probe"`, which is always read-only.
-        diff: If `True`, choose a patch-producing variant for commands that support diffs.
-            Ignored for `"probe"`, which does not produce content diffs.
-
-    Returns:
-        The ordered immutable sequence of steps to execute.
-
-    Raises:
-        RuntimeError: if an invalid pipeline kind was specified.
-    """
-    pipeline: Pipeline
-    match kind:
-        case "check":
-            if apply:  # Mutate files
-                pipeline = Pipeline.CHECK_APPLY_PATCH if diff else Pipeline.CHECK_APPLY
-            else:  # Dry-run
-                pipeline = Pipeline.CHECK_PATCH if diff else Pipeline.CHECK
-
-        case "strip":
-            if apply:  # Mutate files
-                pipeline = Pipeline.STRIP_APPLY_PATCH if diff else Pipeline.STRIP_APPLY
-            else:  # Dry-run
-                pipeline = Pipeline.STRIP_PATCH if diff else Pipeline.STRIP
-
-        case "probe":
-            # Probe has a single diagnostic pipeline. It never writes files and
-            # does not have patch/apply variants.
-            pipeline = Pipeline.PROBE
-
-        case _:
-            # Defensive guard:
-            raise RuntimeError(f"Invalid pipeline kind specified: {kind}")
-
-    logger.info("Selected pipeline: %r", pipeline)
-    return pipeline.steps
-
-
 def _resolve_public_header_mutation_mode(
     value: str,
 ) -> HeaderMutationMode:
@@ -674,7 +624,7 @@ def _prepare_api_pipeline_run(
 def _execute_pipeline_for_file_list(
     *,
     prepared: PreparedApiRun,
-    pipeline: Sequence[Step[ProcessingContext]],
+    pipeline: PipelineSelection,
 ) -> PipelineExecution:
     """Execute pipeline steps for the selected files in a prepared API run.
 
@@ -713,7 +663,7 @@ def _execute_pipeline_for_file_list(
 
 def run_pipeline(
     *,
-    pipeline: Sequence[Step[ProcessingContext]],
+    pipeline: PipelineSelection,
     paths: Iterable[Path | str],
     run_options: RunOptions,
     base_config: Mapping[str, object] | FrozenConfig | None,
@@ -775,7 +725,7 @@ def run_pipeline(
 
 def run_probe_pipeline(
     *,
-    pipeline: Sequence[Step[ProcessingContext]],
+    pipeline: PipelineSelection,
     paths: Iterable[Path | str],
     run_options: RunOptions,
     base_config: Mapping[str, object] | FrozenConfig | None,

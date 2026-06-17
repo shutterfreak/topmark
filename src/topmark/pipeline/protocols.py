@@ -38,12 +38,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from typing import Protocol
-from typing import TypeAlias
 from typing import TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from topmark.pipeline.hints import Axis
     from topmark.pipeline.views import ViewSlot
 
@@ -114,25 +111,4 @@ class Step(Protocol[Ctx]):
         Returns:
             The same context object, for chaining.
         """
-        ...
-
-
-AnyStep: TypeAlias = Step[object]
-
-
-class StepContext(Protocol):
-    """Minimum context surface required by the step lifecycle (BaseStep/runner)."""
-
-    @property
-    def steps(self) -> Sequence[AnyStep]:
-        """Executed steps (context type not relevant here)."""
-        ...
-
-    def request_halt(self, reason: str, at_step: AnyStep) -> None:
-        """Record an early halt requested by a step."""
-        ...
-
-    @property
-    def is_halted(self) -> bool:
-        """Return True if a step has requested an early halt for this file."""
         ...

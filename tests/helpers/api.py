@@ -31,18 +31,17 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark import api
-from topmark.api.runtime import select_pipeline
 from topmark.config.model import MutableConfig
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.pipelines import select_pipeline
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 from topmark.runtime.model import RunOptions
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.api.types import PublicPolicy
@@ -52,7 +51,7 @@ if TYPE_CHECKING:
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
-    from topmark.pipeline.protocols import Step
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.toml.types import TomlValue
 
 
@@ -262,12 +261,15 @@ def run_cli_like(
 
     cfg: FrozenConfig = draft.freeze()
     files: list[Path] = list(resolve_file_list_with_diagnostics(cfg).selected)
-    run_options: RunOptions = RunOptions(
-        apply_changes=apply,
+    pipeline: PipelineSelection = select_pipeline(
+        kind,
+        apply=apply,
+        diff=diff,
+    )
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        pipeline,
         prune_views=prune_views,
     )
-
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(kind, apply=apply, diff=diff)
     pipeline_run: PipelineExecution = run_steps_for_files(
         run_options=run_options,
         config=cfg,

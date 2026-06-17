@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from topmark.core.errors import ConfigValidationError
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
-    from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -183,26 +183,28 @@ def build_file_resolution(
 
 def build_run_options(
     *,
-    pipeline_kind: PipelineKindLiteral | None,
-    apply_changes: bool,
+    pipeline: PipelineSelection,
     write_mode: str | None,
     stdin_mode: bool,
     stdin_filename: str | None,
     prune_views: bool = True,
-    keep_diff_view: bool = False,
 ) -> RunOptions:
-    """Build invocation-wide runtime options for a CLI command.
+    """Build invocation-wide runtime options for a pipeline CLI command.
+
+    This helper combines the selected pipeline with CLI-specific output routing
+    options. Pipeline-derived fields such as pipeline kind, mutation mode, and
+    diff-view preservation are copied from `pipeline` via
+    [`RunOptions.from_pipeline_selection`][topmark.runtime.model.RunOptions.from_pipeline_selection].
+    CLI-only choices such as STDIN mode, synthetic STDIN filename, write mode,
+    and view pruning remain explicit parameters here.
 
     Args:
-        pipeline_kind: The pipeline kind (`check`, `strip`, `probe`).
-        apply_changes: Whether the command should write changes.
+        pipeline: The selected pipeline, including the command family and
+            concrete execution flags chosen by pipeline selection.
         write_mode: Effective CLI write mode (`stdout`, `atomic`, or `inplace`).
         stdin_mode: Whether the command is operating in content-on-STDIN mode.
         stdin_filename: Synthetic file name associated with STDIN content, if any.
         prune_views: If True, release consumed volatile views between pipeline steps.
-        keep_diff_view: Whether to preserve the diff view during between-step pruning;
-            must be true for pipelines containing `PatcherStep` until reduction
-            snapshots `ProcessingDetailSnapshot.diff_text`.
 
     Returns:
         The execution-only runtime options for the current CLI invocation.
@@ -215,7 +217,7 @@ def build_run_options(
     output_target: OutputTarget | None = None
     file_write_strategy: FileWriteStrategy | None = None
 
-    if stdin_mode and apply_changes or write_mode == OutputTarget.STDOUT.value:
+    if (stdin_mode and pipeline.definition.mutates) or write_mode == OutputTarget.STDOUT.value:
         output_target = OutputTarget.STDOUT
         file_write_strategy = None
     elif write_mode == FileWriteStrategy.ATOMIC.value:
@@ -225,15 +227,13 @@ def build_run_options(
         output_target = OutputTarget.FILE
         file_write_strategy = FileWriteStrategy.INPLACE
 
-    run_options = RunOptions(
-        pipeline_kind=pipeline_kind,
-        apply_changes=apply_changes,
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        selection=pipeline,
         output_target=output_target,
         file_write_strategy=file_write_strategy,
         stdin_mode=stdin_mode,
         stdin_filename=stdin_filename,
         prune_views=prune_views,
-        keep_diff_view=keep_diff_view,
     )
 
     ctx: click.Context | None = click.get_current_context(silent=True)

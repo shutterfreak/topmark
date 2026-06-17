@@ -137,6 +137,9 @@ ______________________________________________________________________
 - Made pipeline outcome bucketing compatible with durable `ProcessingResult` snapshots by
   introducing typed outcome, pre-insert advisory, and execution-mode snapshots, while preserving
   existing `ProcessingContext` consumers, CLI/API behavior, and machine-output shapes.
+- Clarified pipeline intent modelling by renaming derived per-result action intent helpers,
+  introducing explicit pipeline catalogue definitions and selection DTOs, and deriving runtime
+  execution options from selected pipelines while preserving CLI, API, and machine-output behavior.
 
 ### Breaking Changes - Unreleased
 
@@ -309,6 +312,9 @@ ______________________________________________________________________
   consolidation without changing current runner behavior.
 - Updated architecture documentation to reflect durable probe snapshots, reduced probe state, and
   the completion of the current output-facing mutable-context to durable-result migration.
+- Documented the pipeline catalogue and selection architecture, including the separation between
+  command intent, selected executable pipeline definitions, durable runtime options, and public API
+  or machine-output compatibility boundaries.
 
 ### Internal - Unreleased
 
@@ -381,6 +387,9 @@ ______________________________________________________________________
 - Added typed outcome-classification, pre-insert advisory, and execution-mode snapshots so
   policy-derived bucketing state and invocation intent can be reduced from mutable pipeline contexts
   without retaining volatile execution objects.
+- Reworked internal pipeline selection around `Pipeline`, `PipelineDefinition`, and
+  `PipelineSelection`, moved selection ownership into the pipeline catalogue, and added targeted
+  coverage for catalogue metadata, selection variants, and runtime-option synchronization.
 
 ### Notes - Unreleased
 

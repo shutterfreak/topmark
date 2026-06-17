@@ -30,10 +30,11 @@ from typing import TYPE_CHECKING
 
 from topmark.api.runtime import run_pipeline
 from topmark.api.runtime import run_probe_pipeline
-from topmark.api.runtime import select_pipeline
 from topmark.api.view import finalize_probe_result
 from topmark.api.view import finalize_run_result
 from topmark.core.errors import InvalidReportScopeError
+from topmark.pipeline.pipelines import PipelineSelection
+from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import PlanStatus
@@ -50,9 +51,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicPolicy
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
-    from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
-    from topmark.pipeline.protocols import Step
 
 __all__ = (
     "check",
@@ -130,7 +129,7 @@ def check(
     """
     PIPELINE_KIND: PipelineKindLiteral = "check"
     # Choose the concrete content-processing pipeline variant.
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
+    pipeline: PipelineSelection = select_pipeline(
         PIPELINE_KIND,
         apply=apply,
         diff=diff,
@@ -139,11 +138,9 @@ def check(
     # Run the pipeline; runtime helpers handle config discovery, policy overlays,
     # file-list resolution, per-path config, and pipeline execution.
 
-    run_options: RunOptions = RunOptions(
-        pipeline_kind=PIPELINE_KIND,
-        apply_changes=apply,
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        pipeline,
         prune_views=prune_views,
-        keep_diff_view=diff,
     )
 
     api_run: ApiPipelineRun = run_pipeline(
@@ -226,7 +223,7 @@ def strip(
     """
     PIPELINE_KIND: PipelineKindLiteral = "strip"
     # Choose the concrete content-processing pipeline variant.
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
+    pipeline: PipelineSelection = select_pipeline(
         PIPELINE_KIND,
         apply=apply,
         diff=diff,
@@ -235,11 +232,9 @@ def strip(
     # Run the pipeline; runtime helpers handle config discovery, policy overlays,
     # file-list resolution, per-path config, and pipeline execution.
 
-    run_options: RunOptions = RunOptions(
-        pipeline_kind=PIPELINE_KIND,
-        apply_changes=apply,
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        pipeline,
         prune_views=prune_views,
-        keep_diff_view=diff,
     )
 
     api_run: ApiPipelineRun = run_pipeline(
@@ -318,7 +313,7 @@ def probe(
     """
     PIPELINE_KIND: PipelineKindLiteral = "probe"
     # Probe has a single read-only diagnostic pipeline.
-    pipeline: Sequence[Step[ProcessingContext]] = select_pipeline(
+    pipeline: PipelineSelection = select_pipeline(
         PIPELINE_KIND,
         apply=False,
         diff=False,
@@ -326,9 +321,8 @@ def probe(
     # Run the probe pipeline; runtime helpers also attach synthetic contexts for
     # missing literals and explicit inputs filtered before probing.
 
-    run_options: RunOptions = RunOptions(
-        pipeline_kind=PIPELINE_KIND,
-        apply_changes=False,
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        selection=pipeline,
         prune_views=prune_views,
     )
 

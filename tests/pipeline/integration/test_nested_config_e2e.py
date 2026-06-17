@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from topmark.api.runtime import run_pipeline
-from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.pipelines import select_pipeline
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from topmark.api.types import ApiPipelineRun
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.pipelines import PipelineSelection
 
 
 def _write(path: Path, content: str) -> None:
@@ -70,9 +71,16 @@ def test_nested_config_applies_only_within_its_subtree(tmp_path: Path) -> None:
     pkg_file.write_text("print('pkg')\n", encoding="utf-8")
     docs_file.write_text("print('docs')\n", encoding="utf-8")
 
-    run_options = RunOptions(apply_changes=False)
+    pipeline: PipelineSelection = select_pipeline(
+        "check",
+        apply=False,
+        diff=False,
+    )
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        selection=pipeline,
+    )
     api_run: ApiPipelineRun = run_pipeline(
-        pipeline=Pipeline.CHECK.steps,
+        pipeline=pipeline,
         paths=[pkg_file, docs_file],
         run_options=run_options,
         base_config=None,

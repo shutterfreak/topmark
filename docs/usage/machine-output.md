@@ -177,7 +177,7 @@ package rather than a single monolithic core namespace. Shared envelope keys rem
 package-local schema modules such as:
 
 - \[`topmark.config.machine.schemas.ConfigKind`\][topmark.config.machine.schemas.ConfigKind]
-- \[`topmark.pipeline.machine.schemas.PipelineKind`\][topmark.pipeline.machine.schemas.PipelineKind]
+- \[`topmark.pipeline.machine.schemas.PipelineRecordKind`\][topmark.pipeline.machine.schemas.PipelineRecordKind]
 - \[`topmark.diagnostic.machine.schemas.DiagnosticKind`\][topmark.diagnostic.machine.schemas.DiagnosticKind]
 - \[`topmark.registry.machine.schemas.RegistryKind`\][topmark.registry.machine.schemas.RegistryKind]
 - \[`topmark.version.machine.schemas.VersionKind`\][topmark.version.machine.schemas.VersionKind]
@@ -267,6 +267,10 @@ The [`topmark probe`](../usage/commands/probe.md) command exposes stable file-ty
 resolution diagnostics. It is a diagnostic command, not a compliance or mutation command: it does
 not compute header changes, diffs, strip plans, or write plans.
 
+Internally, `probe` executes a dedicated read-only pipeline family that is separate from processing
+pipelines. This distinction is informational only: the machine-readable output contract remains the
+probe payloads documented below.
+
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
 
@@ -336,7 +340,7 @@ the `config_diagnostics` and `diagnostic` records, before any `probe` records ar
 
 The JSON `probes` key and NDJSON `probe` kind are defined in
 \[`topmark.pipeline.machine.schemas.PipelineKey`\][topmark.pipeline.machine.schemas.PipelineKey] and
-\[`topmark.pipeline.machine.schemas.PipelineKind`\][topmark.pipeline.machine.schemas.PipelineKind].
+\[`topmark.pipeline.machine.schemas.PipelineRecordKind`\][topmark.pipeline.machine.schemas.PipelineRecordKind].
 The NDJSON stream is produced by:
 
 - \[`topmark.pipeline.machine.envelopes.iter_probe_results_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_probe_results_ndjson_records]
@@ -502,6 +506,11 @@ ______________________________________________________________________
 Processing commands produce either **detail** output (per-file results) or **summary** output
 (bucket counts), depending on whether the CLI is in `--summary` mode.
 
+Before execution begins, TopMark selects a concrete processing pipeline from the requested command
+family (`check` or `strip`) and invocation flags such as apply and diff mode. This selection is an
+internal execution-planning detail; machine-readable output exposes stable processing results rather
+than pipeline-selection metadata.
+
 Processing machine-readable output is unaffected by TEXT verbosity or quiet mode; those flags affect
 only human TEXT output.
 
@@ -658,6 +667,7 @@ At a high level, per-file results include:
   - `path` (selected processing path, serialized with POSIX `/` separators)
   - `file_type` (resolved canonical TopMark file type key, for example `topmark:python`)
 - pipeline execution:
+  - selected processing pipeline family (`check` or `strip`) when exposed through execution metadata
   - executed step names
   - per-axis status objects (`axis`, `name`, `label`)
 - derived intent/outcome helpers:

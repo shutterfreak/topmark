@@ -12,13 +12,21 @@ topmark:header:end
 
 # Pipelines (Concepts)
 
-TopMark processes files through **explicit, immutable pipelines** composed of small,
-single-responsibility steps. Each pipeline represents a supported execution intent (scan, check,
-strip, apply, patch) and defines **exactly which steps run and in which order**.
+TopMark processes files through a **pipeline catalogue** of explicit, immutable pipeline variants
+composed of small, single-responsibility steps. Each pipeline definition records the selected
+variant's stable name, high-level family, step sequence, and basic capabilities such as whether it
+can mutate files or emit patch output.
 
 A dedicated **probe pipeline** exists for resolution diagnostics
 ([`topmark probe`](../usage/commands/probe.md)). Probe orchestration also reports explicit inputs
 filtered before file-type probing via synthetic probe contexts.
+
+At runtime, command intent is represented separately from the executable step sequence. CLI and API
+entry points first select a \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection]
+from a high-level pipeline family (`check`, `strip`, or `probe`) plus invocation flags such as
+`--apply` and `--diff`. The selected pipeline then feeds
+\[`RunOptions`\][topmark.runtime.model.RunOptions], so mutation mode and diff-view preservation are
+derived from the selected pipeline instead of being repeated independently by each caller.
 
 Pipelines do not make high-level decisions themselves. Instead:
 
@@ -31,9 +39,12 @@ This design guarantees predictability, debuggability, and idempotence.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
-Pipeline execution consumes an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig] plus
-runtime options assembled from the TOML → FrozenConfig → runtime flow documented in
-[`Architecture`](architecture.md) and [`Configuration discovery`](../configuration/discovery.md).
+Pipeline execution consumes an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig], a
+selected pipeline, and runtime options assembled from the TOML → FrozenConfig → runtime flow
+documented in [`Architecture`](architecture.md) and
+[`Configuration discovery`](../configuration/discovery.md). Pipeline selection determines which
+steps are executable for the invocation; runtime options capture execution-wide state that must be
+copied onto processing contexts and durable results.
 
 Pipeline execution also consumes a selected **processing path**. File-list resolution performs
 filesystem-identity evaluation before ordinary pipeline execution begins.
@@ -59,7 +70,10 @@ do not become layered configuration fields.
 This page explains **how the pipelines work** and how the CLI composes them. For the canonical,
 API-backed definitions of pipelines, steps, and enums, see:
 
-- **Pipelines reference hub:** [`Pipelines (Reference)`](./pipelines-reference.md)
+- **Pipelines reference hub:** [`Pipelines (Reference)`](./pipelines-reference.md), including the
+  generated \[`Pipeline`\][topmark.pipeline.pipelines.Pipeline],
+  \[`PipelineDefinition`\][topmark.pipeline.pipelines.PipelineDefinition], and
+  \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] API reference
 - **Internals (generated):**
   [`api/internals/topmark/pipeline/pipelines.md`](../api/internals/topmark/pipeline/pipelines.md)
 - **Architecture overview:** [`Architecture`](./architecture.md)
@@ -184,11 +198,16 @@ ______________________________________________________________________
 
 ## Available Pipelines
 
-Pipelines are defined in `src/topmark/pipeline/pipelines.py` and exposed via
-\[`topmark.pipeline.pipelines.Pipeline`\][topmark.pipeline.pipelines.Pipeline].
+Pipelines are defined in `src/topmark/pipeline/pipelines.py`. The
+\[`Pipeline`\][topmark.pipeline.pipelines.Pipeline] enum is the production catalogue key;
+\[`PipelineDefinition`\][topmark.pipeline.pipelines.PipelineDefinition] stores the executable
+metadata and immutable step sequence; and
+\[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] records the concrete selection
+made for one invocation.
 
-The CLI selects among these immutable pipeline variants based on command intent and flags such as
-`--patch` and `--apply`.
+CLI and API entry points select among these immutable pipeline variants based on command intent and
+flags such as `--patch` and `--apply`. The selected pipeline is then passed through runtime and
+engine layers instead of passing a raw tuple of steps.
 
 ### PROBE
 
@@ -576,13 +595,17 @@ ______________________________________________________________________
 
 ## Key Design Guarantees
 
-- **Immutability:** Pipelines are `Final[tuple[Step, ...]]`
+- **Immutability:** Pipeline definitions expose immutable `tuple[Step, ...]` step sequences
 - **Determinism:** Same input → same outcome
 - **Processing-path identity:** pipeline steps operate on selected processing paths, not raw
   invocation spellings
 - **Filesystem-identity safety:** hard-linked selected processing paths are blocked before ordinary
   per-file step execution without choosing a preferred path
 - **Dry-run safety:** No writes without `--apply`
+- **Selection/runtime separation:**
+  \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] identifies the executable
+  pipeline variant, while \[`RunOptions`\][topmark.runtime.model.RunOptions] carries durable
+  invocation state onto processing contexts and results
 - **Separation of concerns:** Steps mutate context, views classify outcomes
 - **Runtime/configuration separation:** pipeline execution consumes resolved runtime configuration
   and runtime options rather than re-running TOML discovery during step execution
@@ -605,7 +628,8 @@ ______________________________________________________________________
   precedence
 
 This pipeline model is the backbone of TopMark's reliability and extensibility. New behavior is
-introduced by adding steps or composing new pipelines, not by special-casing control flow.
+introduced by adding steps, composing new pipeline definitions, or extending selection rules, not by
+special-casing control flow in CLI, API, or presentation layers.
 
 ______________________________________________________________________
 

@@ -36,7 +36,7 @@ fragments** (not full JSON/NDJSON envelopes):
       ```
 
 - **Probe output** uses `PipelineKey.PROBES` for the JSON `"probes"` collection and
-  `PipelineKind.PROBE` / `PipelineKey.PROBE` for one NDJSON `kind="probe"` record per
+  `PipelineRecordKind.PROBE` / `PipelineKey.PROBE` for one NDJSON `kind="probe"` record per
   probe result. Individual probe payloads are built from
   [`ResolutionProbeResult`][topmark.resolution.probe.ResolutionProbeResult], including
   filtered explicit inputs that never reached file-type probing.
@@ -74,8 +74,8 @@ class PipelineKey(str, Enum):
     SUMMARY = "summary"
 
 
-class PipelineKind(str, Enum):
-    """Stable NDJSON kinds emitted by the pipeline machine-readable output domain.
+class PipelineRecordKind(str, Enum):
+    """Stable NDJSON record kinds emitted by the pipeline machine-readable output domain.
 
     Attributes:
         PROBE: One per-path resolution probe record, including filtered explicit inputs.

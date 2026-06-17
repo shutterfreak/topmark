@@ -31,10 +31,10 @@ from topmark.cli.errors import TopmarkCliPipelineError
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.logging import get_logger
-from topmark.pipeline.outcomes import Intent
+from topmark.pipeline.outcomes import ResultActionIntent
 from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
-from topmark.pipeline.outcomes import determine_intent
+from topmark.pipeline.outcomes import determine_result_action_intent
 from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import HeaderStatus
@@ -175,7 +175,7 @@ def _render_check_guidance_message_markdown(
     apply_changes: bool | None = result.execution_mode.apply_changes
 
     path_label: str = render_path_display_markdown(result)
-    intent: Intent = determine_intent(result)
+    intent: ResultActionIntent = determine_result_action_intent(result)
 
     if apply_changes:
         if result.status.write == WriteStatus.FAILED:
@@ -193,9 +193,9 @@ def _render_check_guidance_message_markdown(
 
     apply_cmd: str = _render_apply_command_markdown(command=CliCmd.CHECK, result=result)
 
-    if intent == Intent.INSERT:
+    if intent == ResultActionIntent.INSERT:
         action: str = "add a TopMark header to this file"
-    elif intent == Intent.UPDATE:
+    elif intent == ResultActionIntent.UPDATE:
         action = "update the TopMark header in this file"
     else:
         raise TopmarkCliPipelineError(
@@ -226,7 +226,7 @@ def _render_strip_guidance_message_markdown(
     apply_changes: bool | None = result.execution_mode.apply_changes
 
     path_label: str = render_path_display_markdown(result)
-    intent: Intent = determine_intent(result)
+    intent: ResultActionIntent = determine_result_action_intent(result)
 
     if apply_changes:
         if result.status.write == WriteStatus.FAILED:
@@ -240,7 +240,7 @@ def _render_strip_guidance_message_markdown(
 
     apply_cmd: str = _render_apply_command_markdown(command=CliCmd.STRIP, result=result)
 
-    if intent == Intent.STRIP:
+    if intent == ResultActionIntent.STRIP:
         action: str = "strip the TopMark header from this file"
     else:
         raise TopmarkCliPipelineError(
