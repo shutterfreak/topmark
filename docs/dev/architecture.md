@@ -50,30 +50,42 @@ ______________________________________________________________________
 
 ## Mutable-context to durable-result handover
 
-TopMark currently uses a batch handover boundary after the existing runner has produced its per-file
-\[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances.
-\[`PipelineExecution`\][topmark.pipeline.engine.PipelineExecution] therefore names those mutable
-execution objects `contexts`, while
-\[`run_steps_for_files()`\][topmark.pipeline.engine.run_steps_for_files] remains the
-context-producing execution layer.
-\[`reduce_processing_contexts()`\][topmark.pipeline.reduction.reduce_processing_contexts] creates
-matching durable \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] snapshots in the
-same order. Source-context retention is explicit: compatibility callers may keep contexts in the
-\[`ProcessingReduction`\][topmark.pipeline.reduction.ProcessingReduction] handover object, while
-check, strip, and probe callers that now consume durable results use a reduced-only handover and
-release context-owned view payloads after snapshotting.
+TopMark uses a streaming-capable execution and reduction handover internally while preserving
+batch-oriented CLI, API, presentation, and machine-output behavior. The execution layer can yield
+per-file \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
+\[`iter_steps_for_files()`\][topmark.pipeline.engine.iter_steps_for_files]. The reduction layer can
+then snapshot those mutable contexts into durable
+\[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
+\[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results], releasing
+context-owned volatile view payloads immediately after snapshotting when callers do not retain
+source contexts.
+
+The batch-facing adapters remain explicit.
+\[`run_steps_for_files()`\][topmark.pipeline.engine.run_steps_for_files] materializes a
+\[`PipelineExecution`\][topmark.pipeline.engine.PipelineExecution] containing mutable execution
+contexts for compatibility callers.
+\[`reduce_processing_contexts()`\][topmark.pipeline.reduction.reduce_processing_contexts]
+materializes a \[`ProcessingReduction`\][topmark.pipeline.reduction.ProcessingReduction] from an
+iterable of contexts. At the runtime/API layer,
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] is the result-oriented batch
+adapter for normal check/strip processing, while the context-oriented `run_pipeline()` path remains
+available for compatibility and probe-specific composition.
 
 This boundary is intentionally conservative:
 
-- it does **not** introduce per-file streaming consolidation;
-- it does **not** update summaries incrementally while files are processed;
+- it introduces per-file execution and reduction iterators inside the runtime architecture;
+- it does **not** make public API calls, CLI commands, JSON output, Markdown output, or summary
+  generation incremental;
+- it keeps output ordering, exit-code selection, report-scope filtering, public API DTO assembly,
+  human rendering, and machine-readable result serialization on batch-compatible durable result
+  collections;
 - it keeps runner-owned pruning limited to between-step release of consumed volatile views, while
   final view release happens only after
   \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] has
   copied durable detail fields such as `detail.diff_text`;
-- it does make summary, exit-code, report-scope filtering, public API DTO assembly, human rendering,
-  and machine-readable result serialization testable against durable results without changing runner
-  ownership or output contracts.
+- it makes summary, exit-code, report-scope filtering, public API DTO assembly, human rendering, and
+  machine-readable result serialization testable against durable results without requiring
+  output-facing consumers to retain mutable contexts.
 
 Report filtering is intentionally protocol-based at this boundary: both mutable contexts and durable
 results expose the status, diagnostics, and outcome flags needed to decide whether an entry belongs
@@ -84,10 +96,10 @@ field is `diff_text`, copied from the diff view by
 \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] without
 retaining the view object, original file image, or updated file image.
 
-The public Python API `check()` and `strip()` result packaging now consumes durable
-`ProcessingResult` snapshots after the reduction boundary. This keeps API DTO assembly, report
-filtering, write counting, diagnostics aggregation, outcome bucketing, and public diff exposure on
-reduced result state rather than on live context views.
+The public Python API `check()` and `strip()` result packaging now consume durable
+`ProcessingResult` snapshots through the result-oriented runtime path. This keeps API DTO assembly,
+report filtering, write counting, diagnostics aggregation, outcome bucketing, and public diff
+exposure on reduced result state rather than on live context views.
 
 Check/strip human rendering and machine-readable result serialization now consume durable
 `ProcessingResult` snapshots, including reduced display-path state and the reduced
@@ -101,11 +113,12 @@ reduction boundary and are no longer required by output, reporting, or API packa
 Unified diff headers generated by the patcher remain pre-reduction context consumers because they
 are created while mutable views still own the planned patch content.
 
-Future streaming-oriented work can use this seam to evaluate whether reduction can move from an
-end-of-run batch step into the per-file processing loop, followed by incremental reporting updates
-and earlier release of memory-heavy context state. Diff generation should remain isolated behind
-that durable boundary so a later performance issue can evaluate whether `difflib` is still an
-appropriate backend or whether TopMark should adopt a lower-memory diff strategy.
+This design deliberately stops short of a streaming public API. Public and CLI consumers still see
+complete result collections, and final summaries remain batch-derived. Future work can build on the
+same iterator seam for probe-specific result composition or for truly incremental output formats,
+but those would be separate contract decisions. Diff generation should remain isolated behind the
+durable boundary so a later performance issue can evaluate whether `difflib` is still an appropriate
+backend or whether TopMark should adopt a lower-memory diff strategy.
 
 ______________________________________________________________________
 

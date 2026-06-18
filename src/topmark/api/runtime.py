@@ -52,8 +52,11 @@ from topmark.core.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
 from topmark.pipeline.engine import PipelineExecution
+from topmark.pipeline.engine import PipelineExecutionState
 from topmark.pipeline.engine import exit_code_from_pipeline_results
+from topmark.pipeline.engine import iter_steps_for_files
 from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.reduction import iter_processing_results
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.resolution.files import probe_explicit_file_selection
@@ -63,6 +66,7 @@ from topmark.runtime.writer_options import apply_resolved_writer_options
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from collections.abc import Iterator
     from collections.abc import Mapping
     from collections.abc import Sequence
 
@@ -73,6 +77,7 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.pipelines import PipelineSelection
+    from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
@@ -106,6 +111,32 @@ class PreparedApiRun:
     file_resolution: FileListResolution
     file_list: list[Path]
     discovered_layers: Sequence[ConfigLayer] | None
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ApiPipelineResultRun:
+    """Resolved runtime state and durable pipeline results for one API execution.
+
+    This internal value object mirrors `ApiPipelineRun`, but carries durable
+    [`ProcessingResult`][topmark.pipeline.result.ProcessingResult] snapshots
+    instead of mutable [`ProcessingContext`][topmark.pipeline.context.model.ProcessingContext]
+    instances. It is the API/runtime batch adapter over the streaming-capable
+    execution and reduction helpers.
+
+    Attributes:
+        effective_cfg: Final runtime config after layered discovery, runtime
+            overlays, and execution-scoped adjustments.
+        file_list: Files selected for pipeline execution after discovery and
+            filtering.
+        results: Durable processing-result snapshots produced by pipeline
+            execution and per-file reduction.
+        exit_code: Fatal pipeline-level exit code, if one was encountered.
+    """
+
+    effective_cfg: FrozenConfig
+    file_list: list[Path]
+    results: tuple[ProcessingResult, ...]
+    exit_code: ExitCode | None
 
 
 # ---- API run prepared value objects ----
@@ -659,6 +690,116 @@ def _execute_pipeline_for_file_list(
         file_list=prepared.file_list,
     )
     return pipeline_run
+
+
+def _iter_pipeline_results_for_file_list(
+    *,
+    prepared: PreparedApiRun,
+    pipeline: PipelineSelection,
+    state: PipelineExecutionState,
+) -> Iterator[ProcessingResult]:
+    """Yield durable pipeline results for the selected files in a prepared API run.
+
+    This helper is the API/runtime streaming-capable seam for normal content
+    processing runs. It executes each selected file, reduces the yielded
+    [`ProcessingContext`][topmark.pipeline.context.model.ProcessingContext]
+    into a durable [`ProcessingResult`][topmark.pipeline.result.ProcessingResult],
+    and releases context-owned volatile views immediately after snapshotting.
+
+    Args:
+        prepared: Shared resolved state for the API run.
+        pipeline: Pipeline steps to execute.
+        state: Mutable execution state updated with the first fatal
+            engine-level exit code encountered while iterating.
+
+    Yields:
+        Durable processing results in selected-file order.
+    """
+    if not prepared.file_list:
+        return
+
+    path_configs: dict[Path, FrozenConfig] = _build_path_configs(
+        layers=prepared.discovered_layers,
+        file_list=prepared.file_list,
+        effective_cfg=prepared.effective_cfg,
+    )
+
+    contexts: Iterator[ProcessingContext] = iter_steps_for_files(
+        run_options=prepared.run_options,
+        config=prepared.effective_cfg,
+        path_configs=path_configs,
+        pipeline=pipeline,
+        file_list=prepared.file_list,
+        state=state,
+    )
+    yield from iter_processing_results(contexts, release_views=True)
+
+
+def run_pipeline_results(
+    *,
+    pipeline: PipelineSelection,
+    paths: Iterable[Path | str],
+    run_options: RunOptions,
+    base_config: Mapping[str, object] | FrozenConfig | None,
+    include_file_types: Sequence[str] | None = None,
+    exclude_file_types: Sequence[str] | None = None,
+    # public-policy overlays (None = no override)
+    policy: PublicPolicy | None = None,
+    policy_by_type: Mapping[str, PublicPolicy] | None = None,
+) -> ApiPipelineResultRun:
+    """Resolve shared API runtime state and run a pipeline to durable results.
+
+    This is the result-oriented batch adapter over the streaming-capable
+    engine and reduction helpers. It preserves existing API/CLI batch behavior
+    while avoiding mutable-context handoff for normal check/strip consumers.
+
+    Args:
+        pipeline: The pipeline steps to apply.
+        paths: Files and/or directories to process.
+        run_options: Invocation-wide execution-only runtime options for the run.
+        base_config: `None` for normal layered discovery; otherwise an explicit
+            config seed supplied directly by the caller.
+        include_file_types: Optional allowlist of file type identifiers used for
+            file-list resolution.
+        exclude_file_types: Optional denylist of file type identifiers used for
+            file-list resolution.
+        policy: Optional global public policy overlay applied after config
+            resolution and before file discovery.
+        policy_by_type: Optional per-type public policy overlays applied after
+            config resolution and before file discovery.
+
+    Returns:
+        Resolved runtime state and durable processing-result snapshots.
+    """
+    logger.info("Building config and file list for paths: %s", paths)
+
+    prepared: PreparedApiRun = _prepare_api_pipeline_run(
+        paths=paths,
+        run_options=run_options,
+        base_config=base_config,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+        policy=policy,
+        policy_by_type=policy_by_type,
+    )
+
+    state: PipelineExecutionState = PipelineExecutionState()
+    results: tuple[ProcessingResult, ...] = tuple(
+        _iter_pipeline_results_for_file_list(
+            prepared=prepared,
+            pipeline=pipeline,
+            state=state,
+        )
+    )
+
+    logger.info("Processing %d file(s) with TopMark %s", len(prepared.file_list), TOPMARK_VERSION)
+
+    return ApiPipelineResultRun(
+        effective_cfg=prepared.effective_cfg,
+        file_list=prepared.file_list,
+        results=results,
+        exit_code=state.exit_code,
+    )
 
 
 def run_pipeline(

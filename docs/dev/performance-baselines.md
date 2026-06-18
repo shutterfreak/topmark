@@ -536,6 +536,42 @@ authoritative file-image representation would not provide a realistic measurable
 the current benchmark evidence. Track B should therefore treat end-to-end output streaming as
 evaluated but not currently warranted.
 
+### Streaming-oriented reduction architecture follow-up (GitHub issue 165)
+
+GitHub issue 165 introduced streaming-capable execution and reduction seams while preserving the
+existing batch-oriented public API, CLI, presentation, and machine-output contracts. The new
+internal ownership path is:
+
+```text
+iter_steps_for_files()
+    -> ProcessingContext
+    -> iter_processing_results()
+    -> ProcessingResult
+    -> run_pipeline_results()
+```
+
+The implementation makes the engine able to yield per-file mutable processing contexts and makes the
+reduction layer able to snapshot each context into a durable `ProcessingResult` before releasing
+context-owned volatile views. Normal check and strip API orchestration now uses the result-oriented
+runtime adapter, while compatibility and probe-specific paths may still materialize mutable contexts
+before reduction.
+
+This change primarily improves ownership clarity and context lifetime boundaries. It is not expected
+to materially change the existing single-file benchmark results because the current benchmark corpus
+still measures one generated file per isolated subprocess, and public API/CLI outputs continue to
+materialize ordered result collections for summaries, exit-code selection, and stable output
+contracts.
+
+The most relevant performance implication is therefore lifecycle-local rather than benchmark-wide:
+per-file reduction can now release volatile views immediately after durable snapshotting when
+callers do not retain source contexts. Measuring whether this reduces peak memory for
+repository-scale runs would require a future many-file benchmark suite, because the current
+scenarios do not measure cumulative `ProcessingContext` retention across large file sets.
+
+For the current baseline corpus, the expected result is effectively flat peak traced allocations and
+RSS. Any future streaming-output, probe-result, or public iterator API work should be benchmarked
+separately so memory changes remain attributable to a specific architectural layer.
+
 ______________________________________________________________________
 
 ## Known caveats
@@ -565,3 +601,4 @@ ______________________________________________________________________
 - GitHub issue 140: Review view-pruning lifecycle and memory-release opportunities
 - GitHub issue 141: Evaluate alternative FileImageView implementations
 - GitHub issue 147: Design end-to-end streaming output architecture for CLI and machine formats
+- GitHub issue 165: Evaluate streaming-oriented reduction and incremental reporting architecture

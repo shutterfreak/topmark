@@ -8,19 +8,19 @@
 #
 # topmark:header:end
 
-"""Batch handover helpers for durable pipeline result reduction.
+"""Reduction helpers for durable pipeline result snapshots.
 
 This module defines the explicit boundary between mutable pipeline execution
-state and durable result state. The current helper is intentionally a *batch*
-reducer: it consumes already-produced
+state and durable result state. The iterator helper reduces completed
 [`ProcessingContext`][topmark.pipeline.context.model.ProcessingContext]
-instances and returns matching
-[`ProcessingResult`][topmark.pipeline.result.ProcessingResult] snapshots.
+instances one at a time, allowing callers to release volatile context-owned
+view payloads immediately after each durable
+[`ProcessingResult`][topmark.pipeline.result.ProcessingResult] snapshot is
+created.
 
-It does not introduce per-file streaming consolidation or incremental summary
-updates. It does provide explicit knobs for whether the handover retains source
-contexts and whether volatile context-owned view payloads are released after
-durable snapshots have been created.
+The batch helper remains available for callers that need stable, ordered
+materialization for summaries, machine-output envelopes, public API DTOs, or
+other full-run reporting contracts.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from topmark.pipeline.result import ProcessingResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from collections.abc import Iterator
 
     from topmark.pipeline.context.model import ProcessingContext
 
@@ -50,6 +51,36 @@ class ProcessingReduction:
 
     contexts: tuple[ProcessingContext, ...]
     results: tuple[ProcessingResult, ...]
+
+
+def iter_processing_results(
+    contexts: Iterable[ProcessingContext],
+    *,
+    release_views: bool = False,
+) -> Iterator[ProcessingResult]:
+    """Yield durable processing results from completed contexts.
+
+    This helper is the streaming-capable reduction boundary. It snapshots each
+    mutable context into a durable result before advancing to the next context.
+    When requested, volatile view payloads owned by that context are released
+    immediately after the snapshot is created.
+
+    Args:
+        contexts: Completed or partially completed processing contexts to reduce.
+        release_views: Whether to release context-owned view payloads after each
+            durable snapshot has been created. This never runs before
+            `ProcessingResult.from_context()` has copied result-owned detail
+            fields such as `diff_text`.
+
+    Yields:
+        Durable processing-result snapshots in the same order as the input
+        contexts.
+    """
+    for ctx in contexts:
+        result: ProcessingResult = ProcessingResult.from_context(ctx)
+        if release_views is True:
+            ctx.views.release_all()
+        yield result
 
 
 def reduce_processing_contexts(
@@ -79,16 +110,14 @@ def reduce_processing_contexts(
         Batch reduction containing durable results and, when requested, the
         retained source contexts in matching order.
     """
-    source_contexts: tuple[ProcessingContext, ...] = tuple(contexts)
-    results: tuple[ProcessingResult, ...] = tuple(
-        ProcessingResult.from_context(ctx) for ctx in source_contexts
-    )
-
-    if release_views is True:
-        for ctx in source_contexts:
-            ctx.views.release_all()
+    if retain_contexts is True:
+        source_contexts: tuple[ProcessingContext, ...] = tuple(contexts)
+        results: tuple[ProcessingResult, ...] = tuple(
+            iter_processing_results(source_contexts, release_views=release_views),
+        )
+        return ProcessingReduction(contexts=source_contexts, results=results)
 
     return ProcessingReduction(
-        contexts=source_contexts if retain_contexts is True else (),
-        results=results,
+        contexts=(),
+        results=tuple(iter_processing_results(contexts, release_views=release_views)),
     )

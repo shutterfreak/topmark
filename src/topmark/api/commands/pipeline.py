@@ -28,14 +28,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from topmark.api.runtime import run_pipeline
+from topmark.api.runtime import run_pipeline_results
 from topmark.api.runtime import run_probe_pipeline
 from topmark.api.view import finalize_probe_result
 from topmark.api.view import finalize_run_result
 from topmark.core.errors import InvalidReportScopeError
 from topmark.pipeline.pipelines import PipelineSelection
 from topmark.pipeline.pipelines import select_pipeline
-from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import PlanStatus
 from topmark.runtime.model import RunOptions
@@ -46,6 +45,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.api.runtime import ApiPipelineResultRun
     from topmark.api.types import ApiPipelineRun
     from topmark.api.types import ProbeRunResult
     from topmark.api.types import PublicPolicy
@@ -143,7 +143,7 @@ def check(
         prune_views=prune_views,
     )
 
-    api_run: ApiPipelineRun = run_pipeline(
+    api_run: ApiPipelineResultRun = run_pipeline_results(
         pipeline=pipeline,
         paths=paths,
         run_options=run_options,
@@ -164,11 +164,7 @@ def check(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=reduce_processing_contexts(
-            api_run.contexts,
-            retain_contexts=False,
-            release_views=True,
-        ).results,
+        results=api_run.results,
         file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
@@ -237,7 +233,7 @@ def strip(
         prune_views=prune_views,
     )
 
-    api_run: ApiPipelineRun = run_pipeline(
+    api_run: ApiPipelineResultRun = run_pipeline_results(
         pipeline=pipeline,
         paths=paths,
         run_options=run_options,
@@ -256,11 +252,7 @@ def strip(
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
     return finalize_run_result(
-        results=reduce_processing_contexts(
-            api_run.contexts,
-            retain_contexts=False,
-            release_views=True,
-        ).results,
+        results=api_run.results,
         file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
@@ -339,6 +331,8 @@ def probe(
 
     # Probe has a dedicated public result shape; do not route it through the
     # check/strip finalizer.
+    from topmark.pipeline.reduction import reduce_processing_contexts
+
     return finalize_probe_result(
         results=reduce_processing_contexts(api_run.contexts).results,
         file_list=api_run.file_list,

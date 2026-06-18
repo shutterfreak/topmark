@@ -64,6 +64,7 @@ from topmark.resolution.probe import ResolutionProbeResult
 from topmark.resolution.probe import ResolutionProbeStatus
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from collections.abc import Mapping
     from collections.abc import Sequence
     from os import stat_result
@@ -188,7 +189,7 @@ def _build_hard_link_duplicate_context(
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class PipelineExecution:
-    """Result of running pipeline steps over a selected file list.
+    """Materialized result of running pipeline steps over a selected file list.
 
     Attributes:
         contexts: Ordered per-file processing contexts produced by pipeline execution,
@@ -200,6 +201,18 @@ class PipelineExecution:
 
     contexts: list[ProcessingContext]
     exit_code: ExitCode | None
+
+
+@dataclass(kw_only=True, slots=True)
+class PipelineExecutionState:
+    """Mutable state updated while iterating pipeline execution.
+
+    Attributes:
+        exit_code: First non-success engine-level exit code encountered while
+            iterating files, or `None` when no such error occurred.
+    """
+
+    exit_code: ExitCode | None = None
 
 
 def exit_code_from_pipeline_results(
@@ -260,17 +273,20 @@ def exit_code_from_pipeline_results(
     return None
 
 
-def run_steps_for_files(
+def iter_steps_for_files(
     *,
     run_options: RunOptions,
     config: FrozenConfig,
     path_configs: Mapping[Path, FrozenConfig] | None = None,
     pipeline: PipelineSelection,
     file_list: list[Path],
-) -> PipelineExecution:
-    """Run a pipeline for each file and return structured engine results.
+    state: PipelineExecutionState | None = None,
+) -> Iterator[ProcessingContext]:
+    """Yield pipeline contexts for files in input order.
 
-    Catches common filesystem/encoding errors so command bodies don't duplicate try/except.
+    This helper is the streaming-capable engine boundary. It preserves the
+    existing per-file error handling semantics while allowing callers to reduce
+    and release each yielded context before the next file is processed.
 
     Args:
         run_options: Invocation-wide runtime options shared by all files in the run.
@@ -280,12 +296,14 @@ def run_steps_for_files(
             is used.
         pipeline: The pipeline steps to execute for the run.
         file_list: List of file Path instances to be processed in the run.
+        state: Optional mutable execution state updated with the first
+            non-success engine-level exit code encountered while iterating.
 
-    Returns:
-        Structured engine result containing ordered per-file
-        `ProcessingContext` objects and the first encountered non-success exit
-        code, if any. The exit code is suitable for reporting or process exit
-        in the CLI layer.
+    Yields:
+        Processing contexts in input-file order for files that were processed
+        successfully by the engine layer. Files that raise handled engine-level
+        filesystem, permission, encoding, or unexpected errors are logged and
+        skipped while preserving the first corresponding exit code in `state`.
 
     Exit code mapping:
         FILE_NOT_FOUND
@@ -304,8 +322,9 @@ def run_steps_for_files(
         - When multiple files are processed, only the *first* error code is preserved
           (a conventional behavior for batch tools). Subsequent files continue to run.
     """
-    results: list[ProcessingContext] = []
-    encountered_exit_code: ExitCode | None = None
+    execution_state: PipelineExecutionState = (
+        state if state is not None else PipelineExecutionState()
+    )
     default_policy_registry: PolicyRegistry | None = (
         None if path_configs is not None else make_policy_registry(config)
     )
@@ -324,13 +343,11 @@ def run_steps_for_files(
                 else default_policy_registry
             )
             if path in hard_link_duplicate_paths:
-                results.append(
-                    _build_hard_link_duplicate_context(
-                        path=path,
-                        config=effective_config,
-                        run_options=run_options,
-                        policy_registry=policy_registry,
-                    )
+                yield _build_hard_link_duplicate_context(
+                    path=path,
+                    config=effective_config,
+                    run_options=run_options,
+                    policy_registry=policy_registry,
                 )
                 continue
 
@@ -341,29 +358,75 @@ def run_steps_for_files(
                 run_options=run_options,
                 policy_registry_override=policy_registry,
             )
-            ctx_obj = runner.run(
+            yield runner.run(
                 ctx_obj,
                 pipeline.steps,
                 prune_views=run_options.prune_views,
                 keep_diff_view=run_options.keep_diff_view,
             )
-            results.append(ctx_obj)
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)
             if isinstance(e, FileNotFoundError | IsADirectoryError):
                 logger.error("%s: %s", e, path)
-                encountered_exit_code = encountered_exit_code or ExitCode.FILE_NOT_FOUND
+                execution_state.exit_code = execution_state.exit_code or ExitCode.FILE_NOT_FOUND
             else:
                 logger.error("%s: %s", e, path)
-                encountered_exit_code = encountered_exit_code or ExitCode.PERMISSION_DENIED
+                execution_state.exit_code = execution_state.exit_code or ExitCode.PERMISSION_DENIED
             continue
         except UnicodeDecodeError as e:
             logger.error("Encoding error while reading %s: %s", path, e)
-            encountered_exit_code = encountered_exit_code or ExitCode.ENCODING_ERROR
+            execution_state.exit_code = execution_state.exit_code or ExitCode.ENCODING_ERROR
             continue
         except Exception as e:  # pragma: no cover
             logger.exception("Unexpected error processing %s: %s", path, e)
-            encountered_exit_code = encountered_exit_code or ExitCode.PIPELINE_ERROR
+            execution_state.exit_code = execution_state.exit_code or ExitCode.PIPELINE_ERROR
             continue
 
-    return PipelineExecution(contexts=results, exit_code=encountered_exit_code)
+
+def run_steps_for_files(
+    *,
+    run_options: RunOptions,
+    config: FrozenConfig,
+    path_configs: Mapping[Path, FrozenConfig] | None = None,
+    pipeline: PipelineSelection,
+    file_list: list[Path],
+) -> PipelineExecution:
+    """Run a pipeline for each file and return structured engine results.
+
+    Catches common filesystem/encoding errors so command bodies don't duplicate try/except.
+    This batch helper materializes the streaming-capable `iter_steps_for_files()`
+    boundary for existing callers that need all contexts at once.
+
+    Args:
+        run_options: Invocation-wide runtime options shared by all files in the run.
+        config: Default layered TopMark configuration for the run.
+        path_configs: Optional per-path effective layered configs. When provided, a
+            path-specific config is used for bootstrap; otherwise the shared `config`
+            is used.
+        pipeline: The pipeline steps to execute for the run.
+        file_list: List of file Path instances to be processed in the run.
+
+    Returns:
+        Structured engine result containing ordered per-file
+        `ProcessingContext` objects and the first encountered non-success exit
+        code, if any. The exit code is suitable for reporting or process exit
+        in the CLI layer.
+
+    Notes:
+        - This helper **never prints**; it only logs. Callers are responsible for
+          user-visible messaging and exiting the process if desired.
+        - When multiple files are processed, only the *first* error code is preserved
+          (a conventional behavior for batch tools). Subsequent files continue to run.
+    """
+    state: PipelineExecutionState = PipelineExecutionState()
+    contexts: list[ProcessingContext] = list(
+        iter_steps_for_files(
+            run_options=run_options,
+            config=config,
+            path_configs=path_configs,
+            pipeline=pipeline,
+            file_list=file_list,
+            state=state,
+        ),
+    )
+    return PipelineExecution(contexts=contexts, exit_code=state.exit_code)

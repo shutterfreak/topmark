@@ -46,6 +46,17 @@ documented in [`Architecture`](architecture.md) and
 steps are executable for the invocation; runtime options capture execution-wide state that must be
 copied onto processing contexts and durable results.
 
+Pipeline execution is streaming-capable internally, even though public CLI, API, presentation, and
+machine-output surfaces remain batch-oriented. The engine can yield per-file
+\[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
+\[`iter_steps_for_files()`\][topmark.pipeline.engine.iter_steps_for_files]. The reduction layer then
+snapshots those mutable contexts into durable
+\[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
+\[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Normal check
+and strip orchestration use the result-oriented runtime adapter
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results], while compatibility and
+probe-specific paths may still materialize mutable contexts before reduction.
+
 Pipeline execution also consumes a selected **processing path**. File-list resolution performs
 filesystem-identity evaluation before ordinary pipeline execution begins.
 
@@ -168,6 +179,7 @@ TopMark pipelines are:
 - side-effect constrained
 - idempotent
 - processing-path based
+- streaming-capable internally
 - presentation-independent
 
 Pipeline steps mutate processing context state. CLI views, API DTOs, and machine-readable output
@@ -606,6 +618,9 @@ ______________________________________________________________________
   \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] identifies the executable
   pipeline variant, while \[`RunOptions`\][topmark.runtime.model.RunOptions] carries durable
   invocation state onto processing contexts and results
+- **Streaming-capable reduction seam:** the engine can yield per-file mutable processing contexts,
+  the reduction layer can snapshot them into durable processing results, and public CLI/API surfaces
+  can continue to collect those results for stable ordering, summaries, and machine-output schemas
 - **Separation of concerns:** Steps mutate context, views classify outcomes
 - **Runtime/configuration separation:** pipeline execution consumes resolved runtime configuration
   and runtime options rather than re-running TOML discovery during step execution
