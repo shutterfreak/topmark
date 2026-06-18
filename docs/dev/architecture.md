@@ -207,6 +207,8 @@ See also:
 - [`Discovery & Precedence`](../configuration/discovery.md)
 - [`Configuration overview`](../configuration/index.md)
 - [`Configuration schema`](configuration-schema.md)
+- [`Pipelines (Concepts)`](pipelines.md#selection-and-runtime-ownership) - selection/runtime
+  ownership boundary between `PipelineSelection` and `RunOptions`
 
 ______________________________________________________________________
 

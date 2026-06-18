@@ -328,6 +328,11 @@ ______________________________________________________________________
   165, including iterator-based engine/reduction seams, check/strip and probe durable-result runtime
   adapters, synthetic probe-result ownership, and the rationale for preserving batch-oriented public
   contracts.
+- Documented the ownership boundary between `PipelineSelection` and `RunOptions`, clarifying
+  executable pipeline selection versus invocation-specific runtime state, the
+  `RunOptions.from_pipeline_selection(...)` derivation boundary, and the durable ownership chain
+  from pipeline selection through runtime options, processing contexts, and processing results
+  (GitHub issue 169).
 
 ### Internal - Unreleased
 

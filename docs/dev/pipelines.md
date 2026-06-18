@@ -46,6 +46,44 @@ documented in [`Architecture`](architecture.md) and
 steps are executable for the invocation; runtime options capture execution-wide state that must be
 copied onto processing contexts and durable results.
 
+______________________________________________________________________
+
+## Selection and runtime ownership
+
+Pipeline selection and runtime options deliberately model different ownership boundaries:
+
+- \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] owns the executable
+  catalogue choice for one invocation. It records the selected pipeline family, invocation flags
+  that affect variant selection, the concrete
+  \[`PipelineDefinition`\][topmark.pipeline.pipelines.PipelineDefinition], and the immutable step
+  sequence exposed by that definition.
+- \[`RunOptions`\][topmark.runtime.model.RunOptions] owns invocation-specific runtime state. It
+  carries execution metadata and policy such as mutation mode, diff-view preservation, STDIN
+  handling, writer behavior, view-pruning policy, and run-scoped timestamp state onto processing
+  contexts and reduced results.
+
+The intentional ownership chain is:
+
+```text
+PipelineSelection
+        ↓
+RunOptions
+        ↓
+ProcessingContext
+        ↓
+ProcessingResult
+```
+
+`RunOptions.from_pipeline_selection(...)` is therefore an explicit derivation boundary, not a sign
+that callers should configure pipeline intent twice. Overlapping values such as pipeline family,
+apply mode, and diff-view preservation are selected once through the pipeline catalogue, then copied
+into durable runtime options so downstream context, result, reporting, and future streaming/event
+layers do not depend on executable catalogue objects.
+
+This split keeps catalogue evolution separate from runtime execution evolution: new pipeline
+variants and selection metadata belong with `PipelineDefinition` and `PipelineSelection`, while
+invocation behavior that must be visible during execution or reduction belongs with `RunOptions`.
+
 Pipeline execution is streaming-capable internally, even though public CLI, API, presentation, and
 machine-output surfaces remain batch-oriented. The engine can yield per-file
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
@@ -78,6 +116,8 @@ execution. They influence configuration discovery and staged config-loading vali
 do not become layered configuration fields.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
+
+______________________________________________________________________
 
 ## Concepts vs Reference
 
