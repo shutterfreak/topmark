@@ -552,9 +552,13 @@ iter_steps_for_files()
 
 The implementation makes the engine able to yield per-file mutable processing contexts and makes the
 reduction layer able to snapshot each context into a durable `ProcessingResult` before releasing
-context-owned volatile views. Normal check and strip API orchestration now uses the result-oriented
-runtime adapter, while compatibility and probe-specific paths may still materialize mutable contexts
-before reduction.
+context-owned volatile views. Normal check and strip API orchestration uses the result-oriented
+runtime adapter. Probe API orchestration now uses the same durable-result runtime shape for real
+file-backed probe results and synthetic missing or filtered probe results, while preserving the
+existing public probe DTO contract. CLI probe output still materializes an ordered durable result
+tuple before rendering so exit-code precedence, machine-output schemas, and human output ordering
+remain unchanged, but it no longer retains source contexts or context-owned volatile views after
+reduction.
 
 This change primarily improves ownership clarity and context lifetime boundaries. It is not expected
 to materially change the existing single-file benchmark results because the current benchmark corpus
@@ -569,7 +573,12 @@ repository-scale runs would require a future many-file benchmark suite, because 
 scenarios do not measure cumulative `ProcessingContext` retention across large file sets.
 
 For the current baseline corpus, the expected result is effectively flat peak traced allocations and
-RSS. Any future streaming-output, probe-result, or public iterator API work should be benchmarked
+RSS. The issue 165 smoke baseline was regenerated after the probe-result adapter work. The run
+remained consistent with the expected flat profile for the current single-file benchmark corpus:
+`small_1kb_missing_header` in `check` mode measured about 412.3 KiB peak traced allocation and 43.9
+MiB max RSS. The result is informational rather than a new canonical baseline because the changed
+code path is probe orchestration, while the current benchmark corpus exercises check/strip
+processing paths. Any future streaming-output or public iterator API work should be benchmarked
 separately so memory changes remain attributable to a specific architectural layer.
 
 ______________________________________________________________________

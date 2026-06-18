@@ -65,6 +65,9 @@ ______________________________________________________________________
 - Migrated `probe` public API DTO assembly, machine-readable output, and TEXT/Markdown rendering to
   consume durable `ProcessingResult` snapshots carrying reduced `ProbeSnapshot` state, completing
   the current mutable-context to durable-result handover for output-facing consumers.
+- Migrated probe API orchestration onto the result-oriented `run_probe_pipeline_results()` runtime
+  adapter so real probe contexts and synthetic probe outcomes are reduced to durable
+  `ProcessingResult` snapshots before public API finalization.
 - Made human report-scope filtering result-compatible by introducing protocol-based filtering
   support for durable `ProcessingResult` snapshots while preserving context-based filtering support
   for pre-reduction probe consumers.
@@ -141,9 +144,11 @@ ______________________________________________________________________
   introducing explicit pipeline catalogue definitions and selection DTOs, and deriving runtime
   execution options from selected pipelines while preserving CLI, API, and machine-output behavior.
 - Introduced streaming-capable execution and reduction seams through `iter_steps_for_files()`,
-  `iter_processing_results()`, and the result-oriented `run_pipeline_results()` runtime adapter,
-  while preserving existing CLI, API, presentation, machine-output, ordering, summary, and exit-code
+  `iter_processing_results()`, `run_pipeline_results()`, and `run_probe_pipeline_results()`, while
+  preserving existing CLI, API, presentation, machine-output, ordering, summary, and exit-code
   behavior.
+- Strengthened public API `FileResult` DTO invariants so `bucket_key` and `bucket_label` are always
+  populated strings, matching the aggregation data produced by durable result finalization.
 
 ### Breaking Changes - Unreleased
 
@@ -319,9 +324,10 @@ ______________________________________________________________________
 - Documented the pipeline catalogue and selection architecture, including the separation between
   command intent, selected executable pipeline definitions, durable runtime options, and public API
   or machine-output compatibility boundaries.
-- Documented the streaming-capable execution and reduction architecture introduced for GitHub issue
-  165, including iterator-based engine/reduction seams, durable-result runtime orchestration,
-  ownership boundaries, and the rationale for preserving batch-oriented public contracts.
+- Documented the streaming-capable execution and reduction architecture completed for GitHub issue
+  165, including iterator-based engine/reduction seams, check/strip and probe durable-result runtime
+  adapters, synthetic probe-result ownership, and the rationale for preserving batch-oriented public
+  contracts.
 
 ### Internal - Unreleased
 
@@ -397,9 +403,13 @@ ______________________________________________________________________
 - Reworked internal pipeline selection around `Pipeline`, `PipelineDefinition`, and
   `PipelineSelection`, moved selection ownership into the pipeline catalogue, and added targeted
   coverage for catalogue metadata, selection variants, and runtime-option synchronization.
-- Added result-oriented runtime orchestration through `run_pipeline_results()`, migrated normal
-  check/strip API execution to consume durable `ProcessingResult` snapshots through the new runtime
-  path, and added regression coverage for empty durable-result batches.
+- Added result-oriented runtime orchestration through `run_pipeline_results()` and
+  `run_probe_pipeline_results()`, migrated check, strip, and probe API execution to consume durable
+  `ProcessingResult` snapshots through result-oriented runtime paths, and added regression coverage
+  for empty durable-result batches and filtered explicit probe inputs.
+- Removed the remaining context-oriented API runtime helpers `run_pipeline()` and
+  `run_probe_pipeline()` after their check/strip, probe, and nested-configuration test consumers
+  were migrated to durable result-oriented paths.
 
 ### Notes - Unreleased
 
@@ -427,6 +437,10 @@ ______________________________________________________________________
   path from the hard-link group.
 - Performance baseline outputs are written to Git-ignored `artifacts/perf/` run directories and are
   intended for local analysis rather than source control.
+- GitHub issue 165 performance validation regenerated an informational smoke benchmark after the
+  probe runtime migration. The current benchmark corpus remains effectively flat because it measures
+  single-file check/strip processing rather than cumulative probe orchestration or public streaming
+  output.
 
 ______________________________________________________________________
 

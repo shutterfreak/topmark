@@ -15,6 +15,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 import topmark.core.outcomes
 from tests.api.conftest import has_header
 from tests.helpers.api import api_check_dir
@@ -25,7 +27,9 @@ from topmark import api
 from topmark.api.runtime import ApiPipelineResultRun
 from topmark.api.runtime import run_pipeline_results
 from topmark.api.types import PublicPolicy
+from topmark.api.types import PublicReportScopeLiteral
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.core.errors import InvalidReportScopeError
 from topmark.pipeline.pipelines import PipelineSelection
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.runtime.model import RunOptions
@@ -33,6 +37,7 @@ from topmark.runtime.model import RunOptions
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.processors.base import HeaderProcessor
 
 
@@ -221,3 +226,63 @@ def test_run_pipeline_results_handles_empty_file_list(tmp_path: Path) -> None:
     assert result.file_list == []
     assert result.results == ()
     assert result.exit_code is None
+
+
+@pytest.mark.parametrize("cmd", ["check", "strip"])
+@pytest.mark.parametrize("scope", ["actionable", "noncompliant", "all"])
+def test_check_and_strip_accept_public_report_scopes(
+    repo_py_with_and_without_header: Path,
+    cmd: PipelineKindLiteral,
+    scope: PublicReportScopeLiteral,
+) -> None:
+    """Public check/strip entry points accept every supported report scope."""
+    path: Path = repo_py_with_and_without_header / "src" / "without_header.py"
+
+    match cmd:
+        case "check":
+            api_cmd = api.check
+        case "strip":
+            api_cmd = api.strip
+        case _:
+            pytest.fail(f"Invalid API command: {cmd}")
+
+    result: api.RunResult = api_cmd(
+        [path],
+        apply=False,
+        diff=False,
+        config=None,
+        include_file_types=["python"],
+        report=scope,
+        prune_views=True,
+    )
+
+    assert result.had_errors is False
+    assert result.bucket_summary is not None
+
+
+@pytest.mark.parametrize("cmd", ["check", "strip"])
+def test_check_and_strip_reject_invalid_report_scope(
+    repo_py_with_and_without_header: Path,
+    cmd: PipelineKindLiteral,
+) -> None:
+    """Public check/strip entry points reject unsupported report scopes."""
+    path: Path = repo_py_with_and_without_header / "src" / "without_header.py"
+
+    match cmd:
+        case "check":
+            api_cmd = api.check
+        case "strip":
+            api_cmd = api.strip
+        case _:
+            pytest.fail(f"Invalid API command: {cmd}")
+
+    with pytest.raises(InvalidReportScopeError):
+        api_cmd(
+            [path],
+            apply=False,
+            diff=False,
+            config=None,
+            include_file_types=["python"],
+            report="non-existing",  # pyright: ignore[reportArgumentType]
+            prune_views=True,
+        )

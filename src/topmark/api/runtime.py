@@ -17,7 +17,7 @@ This module contains typed helpers that orchestrate:
 - execution-only `RunOptions` consumption
 - config/preflight validation using effective resolved strictness across
   staged validation logs
-- pipeline selection and execution
+- pipeline execution and durable result reduction
 
 These functions are **internal to the `topmark.api` package**:
 - They are not re-exported from `topmark.api`.
@@ -34,7 +34,6 @@ from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.api.types import ApiPipelineRun
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_mapping
 from topmark.config.model import FrozenConfig
@@ -51,11 +50,9 @@ from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
-from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import PipelineExecutionState
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import iter_steps_for_files
-from topmark.pipeline.engine import run_steps_for_files
 from topmark.pipeline.reduction import iter_processing_results
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
@@ -191,7 +188,7 @@ def ensure_mutable_config(
         logger.debug("Supplied config is MutableConfig - returning as is")
         return config
     if isinstance(config, FrozenConfig):
-        # Thaw a n immutable FrozenConfig into a mutable draft while preserving
+        # Thaw an immutable FrozenConfig into a mutable draft while preserving
         # staged validation logs and the flattened compatibility diagnostics.
         logger.debug("Supplied config is FrozenConfig - returning config.thaw()")
         return config.thaw()
@@ -406,7 +403,8 @@ def _build_path_configs(
 
     When provenance layers are available, each file path receives a config built from the subset of
     layers whose scope applies to that path. Config-like runtime policy overlays are copied onto the
-    per-path effective config.
+    per-path effective config so pipeline steps see the same invocation policy regardless of where
+    the file-specific fields came from.
 
     When no layers are available, this helper falls back to using the single run-level config for
     every path.
@@ -414,7 +412,7 @@ def _build_path_configs(
     Args:
         layers: Optional discovered config provenance layers for the run.
         file_list: Files that will be processed.
-        effective_cfg: Final runtime runtime config carrying any runtime policy overlays.
+        effective_cfg: Final runtime config carrying any runtime policy overlays.
 
     Returns:
         A mapping from file path to the effective runtime config that should be used when
@@ -652,46 +650,6 @@ def _prepare_api_pipeline_run(
     )
 
 
-def _execute_pipeline_for_file_list(
-    *,
-    prepared: PreparedApiRun,
-    pipeline: PipelineSelection,
-) -> PipelineExecution:
-    """Execute pipeline steps for the selected files in a prepared API run.
-
-    Args:
-        prepared: Shared resolved state for the API run.
-        pipeline: Pipeline steps to execute.
-
-    Returns:
-        Pipeline execution result containing processing contexts and any fatal
-        exit code reported by the pipeline engine. If no files were selected,
-        returns an empty context list with no exit code.
-    """
-    if not prepared.file_list:
-        return PipelineExecution(
-            contexts=[],
-            exit_code=None,
-        )
-
-    # (1) Build per-path effective configs for layered discovery.
-    path_configs: dict[Path, FrozenConfig] = _build_path_configs(
-        layers=prepared.discovered_layers,
-        file_list=prepared.file_list,
-        effective_cfg=prepared.effective_cfg,
-    )
-
-    # (2) Execute the selected pipeline for each resolved file.
-    pipeline_run: PipelineExecution = run_steps_for_files(
-        run_options=prepared.run_options,
-        config=prepared.effective_cfg,
-        path_configs=path_configs,
-        pipeline=pipeline,
-        file_list=prepared.file_list,
-    )
-    return pipeline_run
-
-
 def _iter_pipeline_results_for_file_list(
     *,
     prepared: PreparedApiRun,
@@ -750,7 +708,7 @@ def run_pipeline_results(
     """Resolve shared API runtime state and run a pipeline to durable results.
 
     This is the result-oriented batch adapter over the streaming-capable
-    engine and reduction helpers. It preserves existing API/CLI batch behavior
+    engine and reduction helpers. It preserves existing API batch behavior
     while avoiding mutable-context handoff for normal check/strip consumers.
 
     Args:
@@ -802,7 +760,7 @@ def run_pipeline_results(
     )
 
 
-def run_pipeline(
+def run_probe_pipeline_results(
     *,
     pipeline: PipelineSelection,
     paths: Iterable[Path | str],
@@ -813,75 +771,13 @@ def run_pipeline(
     # public-policy overlays (None = no override)
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
-) -> ApiPipelineRun:
-    """Resolve shared API runtime state and run a content-processing pipeline.
+) -> ApiPipelineResultRun:
+    """Resolve shared API runtime state and run probe to durable results.
 
-    Args:
-        pipeline: The pipeline steps to apply.
-        paths: Files and/or directories to process.
-        run_options: Invocation-wide execution-only runtime options for the run.
-        base_config: `None` for normal layered discovery; otherwise an explicit
-            config seed supplied directly by the caller.
-        include_file_types: Optional allowlist of file type identifiers used for
-            file-list resolution.
-        exclude_file_types: Optional denylist of file type identifiers used for
-            file-list resolution.
-        policy: Optional global public policy overlay applied after config
-            resolution and before file discovery.
-        policy_by_type: Optional per-type public policy overlays applied after
-            config resolution and before file discovery.
-
-    Returns:
-        A tuple containing the resolved runtime config, selected file list, pipeline
-        contexts, and any fatal exit code.
-    """
-    logger.info("Building config and file list for paths: %s", paths)
-
-    prepared: PreparedApiRun = _prepare_api_pipeline_run(
-        paths=paths,
-        run_options=run_options,
-        base_config=base_config,
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
-        policy=policy,
-        policy_by_type=policy_by_type,
-    )
-
-    execution: PipelineExecution = _execute_pipeline_for_file_list(
-        prepared=prepared,
-        pipeline=pipeline,
-    )
-    results: list[ProcessingContext] = execution.contexts
-    encountered_exit_code: ExitCode | None = execution.exit_code
-
-    logger.info("Processing %d file(s) with TopMark %s", len(prepared.file_list), TOPMARK_VERSION)
-
-    return ApiPipelineRun(
-        effective_cfg=prepared.effective_cfg,
-        file_list=prepared.file_list,
-        contexts=results,
-        exit_code=encountered_exit_code,
-    )
-
-
-def run_probe_pipeline(
-    *,
-    pipeline: PipelineSelection,
-    paths: Iterable[Path | str],
-    run_options: RunOptions,
-    base_config: Mapping[str, object] | FrozenConfig | None,
-    include_file_types: Sequence[str] | None = None,
-    exclude_file_types: Sequence[str] | None = None,
-    # public-policy overlays (None = no override)
-    policy: PublicPolicy | None = None,
-    policy_by_type: Mapping[str, PublicPolicy] | None = None,
-) -> ApiPipelineRun:
-    """Resolve shared API runtime state and run the probe pipeline.
-
-    Probe has one behavior beyond `run_pipeline()`: it preserves explicit inputs
-    that disappear before normal pipeline execution. Those inputs receive
-    synthetic contexts so `topmark.api.probe()` can explain missing literals and
-    discovery-filtered paths without exposing resolver internals.
+    This is the result-oriented probe adapter over the streaming-capable engine
+    and reduction helpers. It preserves the existing probe API batch contract
+    while reducing real per-file probe contexts immediately after each file is
+    executed and reducing synthetic probe contexts as soon as they are built.
 
     Args:
         pipeline: The probe pipeline steps to execute.
@@ -899,8 +795,8 @@ def run_probe_pipeline(
             config resolution and before file discovery.
 
     Returns:
-        A tuple containing the resolved runtime config, selected file list, real plus
-        synthetic probe contexts, and any fatal exit code.
+        Resolved runtime state, selected file list, durable real plus synthetic
+        probe results, and any fatal pipeline-level exit code.
     """
     logger.info("Building probe config and file list for paths: %s", paths)
 
@@ -928,41 +824,52 @@ def run_probe_pipeline(
         )
     )
 
-    execution: PipelineExecution = _execute_pipeline_for_file_list(
-        prepared=prepared,
-        pipeline=pipeline,
+    state: PipelineExecutionState = PipelineExecutionState()
+    real_results: tuple[ProcessingResult, ...] = tuple(
+        _iter_pipeline_results_for_file_list(
+            prepared=prepared,
+            pipeline=pipeline,
+            state=state,
+        )
     )
-    results: list[ProcessingContext] = execution.contexts
-    encountered_exit_code: ExitCode | None = execution.exit_code
 
     # Missing explicit literals are hard resolver-level failures. Add them
     # before fatal precedence is derived so they can influence `had_errors`.
-    results.extend(
-        build_missing_file_contexts(
-            paths=prepared.file_resolution.missing_literals,
-            config=prepared.effective_cfg,
-            run_options=prepared.run_options,
+    missing_results: tuple[ProcessingResult, ...] = tuple(
+        iter_processing_results(
+            build_missing_file_contexts(
+                paths=prepared.file_resolution.missing_literals,
+                config=prepared.effective_cfg,
+                run_options=prepared.run_options,
+            ),
+            release_views=True,
         )
     )
 
-    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(results)
-    encountered_exit_code = encountered_exit_code or pipeline_error_code
+    hard_error_results: tuple[ProcessingResult, ...] = real_results + missing_results
+    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(hard_error_results)
+    encountered_exit_code: ExitCode | None = state.exit_code or pipeline_error_code
 
     # Discovery-filtered explicit inputs are semantic probe outcomes rather than
     # hard execution errors, so append them after fatal precedence is computed.
-    results.extend(
-        build_filtered_probe_contexts(
-            selection_results=filtered_selection_results,
-            config=prepared.effective_cfg,
-            run_options=prepared.run_options,
+    filtered_results: tuple[ProcessingResult, ...] = tuple(
+        iter_processing_results(
+            build_filtered_probe_contexts(
+                selection_results=filtered_selection_results,
+                config=prepared.effective_cfg,
+                run_options=prepared.run_options,
+            ),
+            release_views=True,
         )
     )
 
+    results: tuple[ProcessingResult, ...] = hard_error_results + filtered_results
+
     logger.info("Probing %d result(s) with TopMark %s", len(results), TOPMARK_VERSION)
 
-    return ApiPipelineRun(
+    return ApiPipelineResultRun(
         effective_cfg=prepared.effective_cfg,
         file_list=prepared.file_list,
-        contexts=results,
+        results=results,
         exit_code=encountered_exit_code,
     )

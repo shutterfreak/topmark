@@ -444,7 +444,9 @@ def probe_command(
     )
 
     durable_results: tuple[ProcessingResult, ...] = reduce_processing_contexts(
-        context_results
+        context_results,
+        retain_contexts=False,
+        release_views=True,
     ).results
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):

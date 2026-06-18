@@ -68,8 +68,10 @@ contexts for compatibility callers.
 materializes a \[`ProcessingReduction`\][topmark.pipeline.reduction.ProcessingReduction] from an
 iterable of contexts. At the runtime/API layer,
 \[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] is the result-oriented batch
-adapter for normal check/strip processing, while the context-oriented `run_pipeline()` path remains
-available for compatibility and probe-specific composition.
+adapter for normal check/strip processing, while
+\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results] provides the
+probe-specific result-oriented adapter, including durable synthetic results for missing or filtered
+explicit probe inputs.
 
 This boundary is intentionally conservative:
 
@@ -115,10 +117,10 @@ are created while mutable views still own the planned patch content.
 
 This design deliberately stops short of a streaming public API. Public and CLI consumers still see
 complete result collections, and final summaries remain batch-derived. Future work can build on the
-same iterator seam for probe-specific result composition or for truly incremental output formats,
-but those would be separate contract decisions. Diff generation should remain isolated behind the
-durable boundary so a later performance issue can evaluate whether `difflib` is still an appropriate
-backend or whether TopMark should adopt a lower-memory diff strategy.
+same iterator seam for truly incremental output formats, but those would be separate contract
+decisions. Diff generation should remain isolated behind the durable boundary so a later performance
+issue can evaluate whether `difflib` is still an appropriate backend or whether TopMark should adopt
+a lower-memory diff strategy.
 
 ______________________________________________________________________
 
@@ -294,14 +296,15 @@ machine output rather than projecting from raw pipeline contexts or resolver obj
   discovery-filtered inputs as filtered semantic outcomes because its purpose is to explain
   resolution and filtering.
 
-Synthetic contexts are built for resolver-level hard failures that occur before normal pipeline
-execution can begin. This keeps human output, machine-readable output, summaries, and exit-code
+Synthetic execution contexts are built for resolver-level hard failures that occur before normal
+pipeline execution can begin, then reduced to durable results at the same runtime boundary as normal
+pipeline contexts. This keeps human output, machine-readable output, summaries, and exit-code
 selection based on the same result collection instead of requiring separate side channels.
 
-For probe specifically, TopMark also builds synthetic probe contexts for explicit inputs filtered
-before file-type resolution. Missing explicit paths remain hard filesystem/input errors; they are
-not also emitted as filtered probe results. This keeps the public API and CLI probe output from
-reporting the same path twice.
+For probe specifically, TopMark also creates durable synthetic probe results for explicit inputs
+filtered before file-type resolution. Missing explicit paths remain hard filesystem/input errors;
+they are not also emitted as filtered probe results. This keeps the public API and CLI probe output
+from reporting the same path twice.
 
 Exit-code selection is centralized after pipeline execution by summarizing result statuses. The CLI
 layer remains responsible for process-level exit behavior, while pipeline and presentation layers

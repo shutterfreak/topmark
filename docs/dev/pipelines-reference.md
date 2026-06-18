@@ -33,8 +33,11 @@ can snapshot those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
 \[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Runtime/API
 orchestration for normal check and strip execution uses the result-oriented
-\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter while preserving
-batch-compatible ordering, summaries, and output contracts.
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter. Probe orchestration
+uses \[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results] to reduce
+real probe contexts and synthetic probe results across the same durable result boundary. Public CLI,
+API, presentation, and machine-output contracts still preserve batch-compatible ordering, summaries,
+and output schemas.
 
 Pipelines also operate on selected processing paths. Filesystem-identity evaluation occurs before
 ordinary pipeline execution begins and includes both processing-path normalization and
