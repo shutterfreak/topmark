@@ -19,7 +19,7 @@ can mutate files or emit patch output.
 
 A dedicated **probe pipeline** exists for resolution diagnostics
 ([`topmark probe`](../usage/commands/probe.md)). Probe orchestration also reports explicit inputs
-filtered before file-type probing via synthetic probe contexts.
+filtered before file-type probing via durable synthetic probe results.
 
 At runtime, command intent is represented separately from the executable step sequence. CLI and API
 entry points first select a \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection]
@@ -54,8 +54,11 @@ snapshots those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
 \[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Normal check
 and strip orchestration use the result-oriented runtime adapter
-\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results], while compatibility and
-probe-specific paths may still materialize mutable contexts before reduction.
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results]. Probe orchestration uses
+\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results], including
+durable synthetic results for missing or filtered explicit probe inputs. Public surfaces still
+collect the ordered durable results where stable summaries, exit codes, and machine-output schemas
+require batch-compatible state.
 
 Pipeline execution also consumes a selected **processing path**. File-list resolution performs
 filesystem-identity evaluation before ordinary pipeline execution begins.
@@ -114,7 +117,7 @@ handles symlink behavior: file symlink spellings and their targets are collapsed
 processing target before pipeline steps run. Filesystem-identity eligibility checks handle safety
 policy such as hard-link detection: hard-linked selected processing paths are blocked before
 ordinary step execution, while unrelated selected paths continue through the requested pipeline.
-Synthetic probe contexts for filtered or missing explicit inputs preserve diagnostic input
+Durable synthetic probe results for filtered or missing explicit inputs preserve diagnostic input
 information only for those paths that never became normal processing paths.
 
 ### Unified Pipeline Flow
@@ -252,8 +255,8 @@ This pipeline powers [`topmark probe`](../usage/commands/probe.md) and
 **resolution-only**.
 
 It halts immediately after probing and does not perform inspection, comparison, or mutation.
-Discovery-level filtering is reported by orchestration via synthetic probe results for explicitly
-requested paths that did not reach probing.
+Discovery-level filtering is reported by orchestration via durable synthetic probe results for
+explicitly requested paths that did not reach probing.
 
 Probe results that do reach runtime probing report processing paths. They should not be interpreted
 as a lossless echo of the original invocation spelling.
@@ -861,6 +864,6 @@ flowchart TD
 ```
 
 Filtered or missing explicit inputs are not produced by
-\[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] itself. They are represented by synthetic
-contexts created by probe orchestration before final presentation, API, and machine-readable output
+\[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] itself. Probe orchestration represents
+them as durable synthetic probe results before final presentation, API, and machine-readable output
 packaging.

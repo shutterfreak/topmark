@@ -17,7 +17,7 @@ assemble public run-result DTOs.
 Current reduction boundary:
 - `check()` and `strip()` consume durable `ProcessingResult` snapshots.
 - `probe()` consumes durable probe snapshots carried by `ProcessingResult`,
-  matching the check/strip mutable-context to durable-result handover.
+  including synthetic results for missing or filtered explicit inputs.
 
 Why this exists:
 - `check()` and `strip()` share post-run behavior: filtering, summaries,
@@ -228,14 +228,14 @@ def count_writes(
     results: Sequence[ProcessingResult],
     *,
     apply: bool,
-    eligible: set[PlanStatus],
+    eligible: frozenset[PlanStatus],
 ) -> tuple[int, int]:
     """Return `(written, failed)` counts for the given results.
 
     Args:
         results: Durable pipeline results.
         apply: Whether the run was in apply mode (counts are zero when False).
-        eligible: Which `WriteStatus` values count as "written".
+        eligible: Which `PlanStatus` values are eligible to count as "written".
 
     Returns:
         The `(written, failed)` counts.
@@ -247,6 +247,20 @@ def count_writes(
     )
     failed: int = sum(1 for r in results if r.status.write == WriteStatus.FAILED)
     return written, failed
+
+
+def _diagnostic_entries_for_result(
+    result: ProcessingResult,
+) -> list[DiagnosticEntry]:
+    """Return public diagnostic entries for durable pipeline results.
+
+    Args:
+        result: Durable pipeline result to inspect.
+
+    Returns:
+        Public diagnostic entries in result order.
+    """
+    return [DiagnosticEntry(level=d.level.value, message=d.message) for d in result.diagnostics]
 
 
 def collect_diagnostics(
@@ -265,14 +279,9 @@ def collect_diagnostics(
     """
     diags: dict[str, list[DiagnosticEntry]] = {}
     for result in results:
-        if result.diagnostics:
-            diags[str(result.path)] = [
-                DiagnosticEntry(
-                    level=d.level.value,
-                    message=d.message,
-                )
-                for d in result.diagnostics
-            ]
+        entries: list[DiagnosticEntry] = _diagnostic_entries_for_result(result)
+        if entries:
+            diags[str(result.path)] = entries
     return diags
 
 
@@ -291,10 +300,8 @@ def collect_diagnostic_totals(
     total_warn: int = 0
     total_error: int = 0
     for result in results:
-        if not result.diagnostics:
-            continue
-        for d in result.diagnostics:
-            match d.level.value:
+        for diagnostic in _diagnostic_entries_for_result(result):
+            match diagnostic["level"]:
                 case "info":
                     total_info += 1
                 case "warning":
@@ -317,7 +324,7 @@ def finalize_run_result(
     apply: bool,
     report_scope: ReportScope,
     would_change: Callable[[ProcessingResult], bool] = would_change_result,
-    update_statuses: set[PlanStatus],
+    update_statuses: frozenset[PlanStatus],
     encountered_exit_code: ExitCode | None,
 ) -> RunResult:
     """Assemble a `RunResult` from pipeline results with consistent report filtering.
@@ -372,14 +379,7 @@ def finalize_run_result(
 
     bucket_summary: dict[str, int] = {}
     for fr in files:
-        # Each FileResult already carries bucket_key. If absent, recompute from ctx.
-        if fr.bucket_key:
-            b_key: str = fr.bucket_key
-        else:
-            # If you already track the surviving contexts in this scope as `view_ctxs`,
-            # you can recompute with map_result_bucket(ctx). Otherwise, keep it simple:
-            b_key = fr.outcome.value  # harmless fallback (shouldn't happen)
-        bucket_summary[b_key] = bucket_summary.get(b_key, 0) + 1
+        bucket_summary[fr.bucket_key] = bucket_summary.get(fr.bucket_key, 0) + 1
 
     return RunResult(
         files=files,
@@ -409,8 +409,9 @@ def finalize_probe_result(
     public DTOs and summarizes by public probe status.
 
     Args:
-        results: Raw probe pipeline results, including synthetic contexts for
-            discovery-filtered explicit inputs when supplied by the caller.
+        results: Raw probe pipeline results, including synthetic durable results
+            for missing or discovery-filtered explicit inputs when supplied by
+            the caller.
         file_list: Resolved input files for the run. Used only to preserve the
             empty-run behavior shared with other API entry points.
         encountered_exit_code: Fatal exit code if any was encountered.

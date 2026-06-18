@@ -223,8 +223,8 @@ class FileResult:
     path: Path
     outcome: Outcome
     diff: str | None
-    bucket_key: str | None = None
-    bucket_label: str | None = None
+    bucket_key: str
+    bucket_label: str
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

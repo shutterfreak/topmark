@@ -47,7 +47,13 @@ def test_finalize_run_result_consumes_durable_processing_results(
         file_list=[path],
         apply=False,
         report_scope=ReportScope.ALL,
-        update_statuses={PlanStatus.INSERTED, PlanStatus.REPLACED, PlanStatus.REMOVED},
+        update_statuses=frozenset(
+            {
+                PlanStatus.INSERTED,
+                PlanStatus.REPLACED,
+                PlanStatus.REMOVED,
+            }
+        ),
         encountered_exit_code=None,
     )
 

@@ -21,11 +21,27 @@ from typing import TYPE_CHECKING
 import pytest
 
 from topmark import api
+from topmark.api.view import finalize_probe_result
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.api.types import DiagnosticTotals
+
+
+def test_finalize_probe_result_empty_run_returns_empty_public_result() -> None:
+    """Probe finalization preserves empty-run public DTO shape."""
+    result: api.ProbeRunResult = finalize_probe_result(
+        results=(),
+        file_list=[],
+        encountered_exit_code=None,
+    )
+
+    assert result.files == ()
+    assert result.summary == {}
+    assert result.had_errors is False
+    assert result.diagnostics is None
+    assert result.diagnostic_totals is None
 
 
 def test_probe_empty_explicit_dir_is_reported_as_filtered(tmp_path: Path) -> None:
