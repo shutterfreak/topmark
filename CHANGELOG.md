@@ -333,6 +333,10 @@ ______________________________________________________________________
   `RunOptions.from_pipeline_selection(...)` derivation boundary, and the durable ownership chain
   from pipeline selection through runtime options, processing contexts, and processing results
   (GitHub issue 169).
+- Documented pipeline catalogue compatibility guarantees, catalogue-evolution boundaries, extension
+  guidelines, ownership responsibilities, and future streaming/event-API compatibility expectations
+  for pipeline families, selections, runtime options, and durable processing results (GitHub issue
+  170).
 
 ### Internal - Unreleased
 
