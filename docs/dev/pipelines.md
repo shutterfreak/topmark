@@ -84,6 +84,107 @@ This split keeps catalogue evolution separate from runtime execution evolution: 
 variants and selection metadata belong with `PipelineDefinition` and `PipelineSelection`, while
 invocation behavior that must be visible during execution or reduction belongs with `RunOptions`.
 
+______________________________________________________________________
+
+## Pipeline catalogue compatibility and extension guidelines
+
+The pipeline catalogue is TopMark's executable pipeline registry. It is intentionally narrower than
+runtime configuration and reporting: catalogue entries describe available execution variants, while
+runtime options, processing contexts, durable results, CLI views, API DTOs, and future
+event-oriented reporting layers decide how selected executions are invoked, reduced, and presented.
+
+The catalogue ownership model is:
+
+```text
+Pipeline
+        ↓
+PipelineDefinition
+        ↓
+PipelineSelection
+        ↓
+RunOptions
+```
+
+The selected pipeline then participates in the broader runtime and result boundary:
+
+```text
+PipelineSelection
+        ↓
+RunOptions
+        ↓
+ProcessingContext
+        ↓
+ProcessingResult
+```
+
+`Pipeline` values are durable catalogue keys. `PipelineDefinition` values are immutable executable
+metadata for those keys. `PipelineSelection` values describe the concrete catalogue choice made for
+one invocation. `RunOptions` values carry invocation-specific execution state derived from that
+selection and from non-catalogue runtime inputs.
+
+### Compatible catalogue evolution
+
+The following changes are generally compatible when existing command semantics, result ordering, and
+mutation safety guarantees are preserved:
+
+- adding a new internal pipeline variant for an existing family, such as another `check` or `strip`
+  variant selected by new invocation flags;
+- adding a new pipeline family, provided the new family has explicit selection rules, API and CLI
+  ownership, reporting behavior, documentation, and tests;
+- adding metadata to `PipelineDefinition` when existing definitions can provide safe defaults;
+- adding steps to an existing definition when the user-visible meaning of that pipeline family does
+  not change unexpectedly;
+- adding new status, hint, or result metadata that downstream consumers can ignore safely;
+- extending selection rules when existing flag combinations continue to select the same semantic
+  pipeline behavior.
+
+Compatible additions must continue to use `PipelineSelection` as the executable selection boundary
+and `RunOptions.from_pipeline_selection(...)` as the derivation boundary for runtime-visible state.
+
+### Potentially breaking catalogue evolution
+
+The following changes should be treated as potentially breaking and require compatibility review:
+
+- removing or renaming existing `Pipeline` values;
+- changing the semantic meaning of established families such as `check`, `strip`, or `probe`;
+- changing whether an existing pipeline mutates files, emits patches, or preserves diff views;
+- changing execution order in a way that changes hints, status transitions, durable result ordering,
+  or write behavior;
+- changing dry-run or `--apply` safety semantics;
+- bypassing `PipelineSelection` or deriving runtime behavior independently in CLI, API, or
+  presentation code;
+- exposing mutable `ProcessingContext` state across public, reporting, or machine-output boundaries;
+- changing reduction expectations so public surfaces can no longer consume durable
+  `ProcessingResult` instances in stable order.
+
+These changes can affect CLI compatibility, public API behavior, machine-readable output, or future
+streaming/event surfaces. They should therefore be evaluated against the API stability policy before
+being accepted.
+
+### Extension rules for new pipelines
+
+New pipeline behavior should follow these rules:
+
+1. Add executable catalogue entries through `Pipeline` and `PIPELINE_DEFINITIONS`.
+1. Keep step sequences immutable and composed from step objects that declare status-axis ownership
+   and view-consumer dependencies.
+1. Add or extend `select_pipeline(...)` rules for invocation flags that choose between catalogue
+   variants.
+1. Keep invocation-specific runtime behavior in `RunOptions`, not in `PipelineDefinition`.
+1. Preserve the `RunOptions.from_pipeline_selection(...)` derivation boundary when selected
+   catalogue state must be visible to processing contexts or durable results.
+1. Snapshot mutable execution state into `ProcessingResult` before presenting, serializing, or
+   exposing it through API DTOs.
+1. Keep outcome classification in views, result helpers, or reporting code rather than in pipeline
+   step orchestration.
+1. Document new families in this concepts page, the generated reference hub, relevant CLI/API usage
+   pages, and machine-output documentation when applicable.
+
+Future reporting or event APIs should consume durable results or purpose-built event DTOs derived
+from durable results. They should not depend directly on executable catalogue objects or mutable
+processing contexts. This keeps future streaming/event work compatible with the existing selection,
+runtime, and reduction seams.
+
 Pipeline execution is streaming-capable internally, even though public CLI, API, presentation, and
 machine-output surfaces remain batch-oriented. The engine can yield per-file
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
@@ -661,6 +762,9 @@ ______________________________________________________________________
   \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] identifies the executable
   pipeline variant, while \[`RunOptions`\][topmark.runtime.model.RunOptions] carries durable
   invocation state onto processing contexts and results
+- **Catalogue compatibility boundary:** `Pipeline` and `PipelineDefinition` identify executable
+  catalogue variants; public reporting, machine-readable output, and future event APIs consume
+  durable `ProcessingResult` data rather than mutable execution contexts or catalogue internals
 - **Streaming-capable reduction seam:** the engine can yield per-file mutable processing contexts,
   the reduction layer can snapshot them into durable processing results, and public CLI/API surfaces
   can continue to collect those results for stable ordering, summaries, and machine-output schemas
