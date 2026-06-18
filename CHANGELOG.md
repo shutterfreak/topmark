@@ -140,6 +140,10 @@ ______________________________________________________________________
 - Clarified pipeline intent modelling by renaming derived per-result action intent helpers,
   introducing explicit pipeline catalogue definitions and selection DTOs, and deriving runtime
   execution options from selected pipelines while preserving CLI, API, and machine-output behavior.
+- Introduced streaming-capable execution and reduction seams through `iter_steps_for_files()`,
+  `iter_processing_results()`, and the result-oriented `run_pipeline_results()` runtime adapter,
+  while preserving existing CLI, API, presentation, machine-output, ordering, summary, and exit-code
+  behavior.
 
 ### Breaking Changes - Unreleased
 
@@ -315,6 +319,9 @@ ______________________________________________________________________
 - Documented the pipeline catalogue and selection architecture, including the separation between
   command intent, selected executable pipeline definitions, durable runtime options, and public API
   or machine-output compatibility boundaries.
+- Documented the streaming-capable execution and reduction architecture introduced for GitHub issue
+  165, including iterator-based engine/reduction seams, durable-result runtime orchestration,
+  ownership boundaries, and the rationale for preserving batch-oriented public contracts.
 
 ### Internal - Unreleased
 
@@ -390,6 +397,9 @@ ______________________________________________________________________
 - Reworked internal pipeline selection around `Pipeline`, `PipelineDefinition`, and
   `PipelineSelection`, moved selection ownership into the pipeline catalogue, and added targeted
   coverage for catalogue metadata, selection variants, and runtime-option synchronization.
+- Added result-oriented runtime orchestration through `run_pipeline_results()`, migrated normal
+  check/strip API execution to consume durable `ProcessingResult` snapshots through the new runtime
+  path, and added regression coverage for empty durable-result batches.
 
 ### Notes - Unreleased
 

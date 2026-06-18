@@ -19,6 +19,7 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.exit_codes import ExitCode
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.reduction import ProcessingReduction
+from topmark.pipeline.reduction import iter_processing_results
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
@@ -27,10 +28,12 @@ from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.views import DiffView
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.result import ProcessingResult
 
 
 def _make_reduction_context(
@@ -129,3 +132,41 @@ def test_reduce_processing_contexts_can_release_views_without_retaining_contexts
     assert reduction.results[0].detail.diff_text == "--- current\n+++ updated\n"
     assert ctx.views.diff is not None
     assert ctx.views.diff.text is None
+
+
+def test_iter_processing_results_reduces_and_releases_one_context_at_a_time(
+    tmp_path: Path,
+) -> None:
+    """Iterator reduction should release each context before consuming the next one."""
+    first: ProcessingContext = _make_reduction_context(tmp_path, "first.py")
+    second: ProcessingContext = _make_reduction_context(tmp_path, "second.py")
+    first.views.diff = DiffView(text="--- first\n+++ first\n")
+    second.views.diff = DiffView(text="--- second\n+++ second\n")
+
+    consumed_second: bool = False
+
+    def contexts() -> Iterator[ProcessingContext]:
+        nonlocal consumed_second
+        yield first
+        consumed_second = True
+        yield second
+
+    result_iter: Iterator[ProcessingResult] = iter_processing_results(
+        contexts(),
+        release_views=True,
+    )
+
+    first_result: ProcessingResult = next(result_iter)
+
+    assert first_result.detail.diff_text == "--- first\n+++ first\n"
+    assert first.views.diff is not None
+    assert first.views.diff.text is None
+    assert consumed_second is False
+    assert second.views.diff is not None
+    assert second.views.diff.text == "--- second\n+++ second\n"
+
+    second_result: ProcessingResult = next(result_iter)
+
+    assert second_result.detail.diff_text == "--- second\n+++ second\n"
+    assert second.views.diff is not None
+    assert second.views.diff.text is None

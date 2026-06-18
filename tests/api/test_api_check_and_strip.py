@@ -22,8 +22,13 @@ from tests.helpers.api import api_strip_dir
 from tests.helpers.api import by_path_outcome
 from tests.helpers.io import read_text
 from topmark import api
+from topmark.api.runtime import ApiPipelineResultRun
+from topmark.api.runtime import run_pipeline_results
 from topmark.api.types import PublicPolicy
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.pipeline.pipelines import PipelineSelection
+from topmark.pipeline.pipelines import select_pipeline
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -188,3 +193,31 @@ def test_strip_diff_is_available_when_views_are_pruned(
     assert f"+++ {path}" in diff
     assert "@@" in diff
     assert f"-# {TOPMARK_START_MARKER}" in diff
+
+
+def test_run_pipeline_results_handles_empty_file_list(tmp_path: Path) -> None:
+    """Empty file discovery yields an empty durable ProcessingResult batch.
+
+    Verifies the result-oriented runtime path introduced for streaming-capable
+    reduction handles runs with no selected files without producing results or
+    pipeline-level errors.
+    """
+    pipeline: PipelineSelection = select_pipeline(
+        "check",
+        apply=False,
+        diff=False,
+    )
+    run_options: RunOptions = RunOptions.from_pipeline_selection(pipeline)
+
+    result: ApiPipelineResultRun = run_pipeline_results(
+        pipeline=pipeline,
+        paths=[tmp_path],
+        run_options=run_options,
+        base_config={
+            "files": {"include": ["*.does-not-exist"]},
+        },
+    )
+
+    assert result.file_list == []
+    assert result.results == ()
+    assert result.exit_code is None

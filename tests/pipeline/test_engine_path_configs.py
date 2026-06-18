@@ -34,6 +34,7 @@ from topmark.pipeline import engine
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
@@ -190,3 +191,104 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     assert policy_calls == [shared_cfg]
     assert bootstrap_calls[0][3] == {"header_fields": ("project", "file")}
     assert bootstrap_calls[1][3] == {"header_fields": ("project", "file")}
+
+
+@pytest.mark.pipeline
+def test_iter_steps_for_files_yields_contexts_before_later_files_are_bootstrapped(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Streaming engine iteration should not materialize all contexts up front."""
+    file_a: Path = tmp_path / "a.py"
+    file_b: Path = tmp_path / "b.py"
+    file_a.write_text("print('a')\n", encoding="utf-8")
+    file_b.write_text("print('b')\n", encoding="utf-8")
+
+    shared_cfg: FrozenConfig = make_frozen_config(header_fields=["project"])
+    bootstrapped_paths: list[Path] = []
+
+    class FakeProcessingContext:
+        """Minimal stand-in exposing the bootstrap contract used by the engine."""
+
+        @classmethod
+        def bootstrap(
+            cls,
+            *,
+            path: Path,
+            config: FrozenConfig,
+            run_options: RunOptions,
+            policy_registry_override: PolicyRegistry | None = None,
+        ) -> Any:
+            bootstrapped_paths.append(path)
+            return SimpleNamespace(path=path, config=config, run_options=run_options)
+
+    monkeypatch.setattr(engine, "ProcessingContext", FakeProcessingContext)
+    monkeypatch.setattr(engine.runner, "run", _fake_runner_run)
+
+    state: engine.PipelineExecutionState = engine.PipelineExecutionState()
+    contexts: Iterator[Any] = engine.iter_steps_for_files(
+        run_options=RunOptions(apply_changes=False),
+        config=shared_cfg,
+        path_configs=None,
+        pipeline=TEST_NOOP_PIPELINE_SELECTION,
+        file_list=[file_a, file_b],
+        state=state,
+    )
+
+    first: Any = next(contexts)
+
+    assert first.path == file_a
+    assert bootstrapped_paths == [file_a]
+    assert state.exit_code is None
+
+    second: Any = next(contexts)
+
+    assert second.path == file_b
+    assert bootstrapped_paths == [file_a, file_b]
+
+
+@pytest.mark.pipeline
+def test_iter_steps_for_files_records_engine_exit_code_in_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Streaming engine iteration should preserve batch error-code semantics."""
+    missing: Path = tmp_path / "missing.py"
+    present: Path = tmp_path / "present.py"
+    present.write_text("print('present')\n", encoding="utf-8")
+
+    shared_cfg: FrozenConfig = make_frozen_config(header_fields=["project"])
+
+    class FakeProcessingContext:
+        """Minimal stand-in exposing the bootstrap contract used by the engine."""
+
+        @classmethod
+        def bootstrap(
+            cls,
+            *,
+            path: Path,
+            config: FrozenConfig,
+            run_options: RunOptions,
+            policy_registry_override: PolicyRegistry | None = None,
+        ) -> Any:
+            if path == missing:
+                raise FileNotFoundError(path)
+            return SimpleNamespace(path=path, config=config, run_options=run_options)
+
+    monkeypatch.setattr(engine, "ProcessingContext", FakeProcessingContext)
+    monkeypatch.setattr(engine.runner, "run", _fake_runner_run)
+
+    state: engine.PipelineExecutionState = engine.PipelineExecutionState()
+    contexts: list[Any] = list(
+        engine.iter_steps_for_files(
+            run_options=RunOptions(apply_changes=False),
+            config=shared_cfg,
+            path_configs=None,
+            pipeline=TEST_NOOP_PIPELINE_SELECTION,
+            file_list=[missing, present],
+            state=state,
+        ),
+    )
+
+    assert [ctx.path for ctx in contexts] == [present]
+    assert state.exit_code is engine.ExitCode.FILE_NOT_FOUND

@@ -26,6 +26,16 @@ system.
 Pipeline execution operates on an immutable \[`FrozenConfig`\][topmark.config.model.FrozenConfig], a
 selected pipeline, and runtime options assembled via the TOML → FrozenConfig → runtime flow.
 
+Internally, pipeline execution is streaming-capable. The engine can yield per-file
+\[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
+\[`iter_steps_for_files()`\][topmark.pipeline.engine.iter_steps_for_files], and the reduction layer
+can snapshot those mutable contexts into durable
+\[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
+\[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Runtime/API
+orchestration for normal check and strip execution uses the result-oriented
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter while preserving
+batch-compatible ordering, summaries, and output contracts.
+
 Pipelines also operate on selected processing paths. Filesystem-identity evaluation occurs before
 ordinary pipeline execution begins and includes both processing-path normalization and
 processing-target eligibility checks.
@@ -127,11 +137,18 @@ API module.
   \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection], and the
   \[`select_pipeline()`\][topmark.pipeline.pipelines.select_pipeline] pipeline selection helper):
   - [`topmark.pipeline.pipelines`](../api/internals/topmark/pipeline/pipelines.md)
+- Engine execution helpers:
+  - [`topmark.pipeline.engine`](../api/internals/topmark/pipeline/engine.md)
+- Reduction helpers and durable-result handover:
+  - [`topmark.pipeline.reduction`](../api/internals/topmark/pipeline/reduction.md)
+  - [`topmark.pipeline.result`](../api/internals/topmark/pipeline/result.md)
 - Step protocol and base lifecycle contract:
   - [`topmark.pipeline.protocols`](../api/internals/topmark/pipeline/protocols.md)
   - [`topmark.pipeline.steps.base`](../api/internals/topmark/pipeline/steps/base.md)
 - Pipeline view slots, view models, and repeatable updated-content abstractions:
   - [`topmark.pipeline.views`](../api/internals/topmark/pipeline/views.md)
+- Runtime orchestration helpers:
+  - [`topmark.api.runtime`](../api/internals/topmark/api/runtime.md)
 - Conceptual overview:
   - [`Pipelines (Concepts)`](./pipelines.md)
 
