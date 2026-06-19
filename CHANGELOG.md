@@ -430,6 +430,9 @@ ______________________________________________________________________
 - Added focused regression coverage for structured diff rendering, planned-edit inference,
   planner/stripper edit metadata generation, patcher shadow-validation behavior, and unified-diff
   formatter line-number rendering.
+- Made structured unified-diff rendering the primary patch-generation backend for valid single-edit
+  pipeline mutations, with `difflib.unified_diff()` retained as a fallback for missing, invalid, or
+  future multi-edit metadata.
 
 ### Notes - Unreleased
 
