@@ -24,8 +24,10 @@ from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import StripStatus
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import ListFileImageView
+from topmark.pipeline.views import PlanEditKind
 from topmark.pipeline.views import RenderView
 from topmark.pipeline.views import UpdatedView
 from topmark.processors.base import NO_LINE_ANCHOR
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.filetypes.model import PreInsertContextView
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import PlannedEdit
 
 
 class _NoLineAnchorProcessor(HeaderProcessor):
@@ -46,7 +49,10 @@ class _NoLineAnchorProcessor(HeaderProcessor):
     namespace = "test"
     local_key = "no_line_anchor"
 
-    def compute_insertion_anchor(self, lines: list[str]) -> int:
+    def compute_insertion_anchor(
+        self,
+        lines: list[str],
+    ) -> int:
         """Return no insertion anchor."""
         return NO_LINE_ANCHOR
 
@@ -57,9 +63,60 @@ class _NegativeAnchorProcessor(HeaderProcessor):
     namespace = "test"
     local_key = "negative_anchor"
 
-    def compute_insertion_anchor(self, lines: list[str]) -> int:
+    def compute_insertion_anchor(
+        self,
+        lines: list[str],
+    ) -> int:
         """Return a negative anchor so PlannerStep clamps to BOF."""
         return -10
+
+
+class _TextInsertionProcessor(HeaderProcessor):
+    """Processor stub that supports text-based insertion."""
+
+    namespace = "test"
+    local_key = "text_insertion"
+
+    def get_header_insertion_char_offset(
+        self,
+        original_text: str,
+    ) -> int:
+        """Insert after the first line when present."""
+        first_newline: int = original_text.find("\n")
+        if first_newline == -1:
+            return len(original_text)
+        return first_newline + 1
+
+    def compute_insertion_anchor(
+        self,
+        lines: list[str],
+    ) -> int:
+        """Return a line anchor that should not be used by the text path."""
+        _: list[str] = lines
+        return NO_LINE_ANCHOR
+
+
+class _FailingTextInsertionProcessor(HeaderProcessor):
+    """Processor stub whose text insertion path fails."""
+
+    namespace = "test"
+    local_key = "failing_text_insertion"
+
+    def get_header_insertion_char_offset(
+        self,
+        original_text: str,
+    ) -> int:
+        """Raise a value error to exercise PlannerStep text-path failure."""
+        _: str = original_text
+        raise ValueError("cannot compute text insertion point")
+
+    def compute_insertion_anchor(
+        self,
+        lines: list[str],
+    ) -> int:
+        """Return a fallback anchor that must not hide text-path errors."""
+        _: list[str] = lines
+        return 0
 
 
 def _make_context(path: Path) -> ProcessingContext:
@@ -128,6 +185,12 @@ def test_planner_replaces_existing_header_as_preview_in_dry_run(tmp_path: Path) 
         "# new end\n",
         "print('body')\n",
     ]
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.REPLACE
+    assert edit.old_start == 0
+    assert edit.old_end == 2
+    assert edit.new_lines == tuple(rendered_lines)
 
 
 def test_planner_replaces_existing_header_as_changed_when_apply_enabled(
@@ -168,6 +231,64 @@ def test_planner_line_inserts_header_when_no_existing_header(tmp_path: Path) -> 
         "# end\n",
         "print('body')\n",
     ]
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.INSERT
+    assert edit.old_start == 0
+    assert edit.old_end == 0
+    assert edit.new_lines == tuple(rendered_lines)
+
+
+def test_planner_text_inserts_header_and_records_edit_view(tmp_path: Path) -> None:
+    """Text-based insertion should populate updated content and edit metadata."""
+    ctx: ProcessingContext = _make_context(tmp_path / "text_insert.xml")
+    ctx.header_processor = _TextInsertionProcessor()
+    original_lines: list[str] = ["<root>\n", "</root>\n"]
+    rendered_lines: list[str] = ["<!-- header -->\n"]
+    _set_image_and_render(ctx, original_lines=original_lines, rendered_lines=rendered_lines)
+
+    ctx = run_planner(ctx)
+
+    assert ctx.status.plan is PlanStatus.PREVIEWED
+    assert materialize_updated_lines(ctx) == [
+        "<root>\n",
+        "<!-- header -->\n",
+        "</root>\n",
+    ]
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.INSERT
+    assert edit.old_start == 1
+    assert edit.old_end == 1
+    assert edit.new_lines == tuple(rendered_lines)
+
+
+def test_planner_falls_back_to_line_insertion_when_text_path_fails(
+    tmp_path: Path,
+) -> None:
+    """Text insertion errors should fall back to line-based insertion."""
+    ctx: ProcessingContext = _make_context(tmp_path / "text_insert_error.xml")
+    ctx.header_processor = _FailingTextInsertionProcessor()
+    _set_image_and_render(
+        ctx,
+        original_lines=["<root>\n", "</root>\n"],
+        rendered_lines=["<!-- header -->\n"],
+    )
+
+    ctx = run_planner(ctx)
+
+    assert ctx.status.plan is PlanStatus.PREVIEWED
+    assert materialize_updated_lines(ctx) == [
+        "<!-- header -->\n",
+        "<root>\n",
+        "</root>\n",
+    ]
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.INSERT
+    assert edit.old_start == 0
+    assert edit.old_end == 0
+    assert edit.new_lines == ("<!-- header -->\n",)
 
 
 def test_planner_clamps_negative_line_anchor_to_start(tmp_path: Path) -> None:

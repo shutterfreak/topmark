@@ -55,6 +55,7 @@ class ViewSlot(str, Enum):
     RENDER = "render"
     UPDATED = "updated"
     DIFF = "diff"
+    EDIT = "edit"
 
 
 @runtime_checkable
@@ -292,6 +293,96 @@ def compose_updated_content(*segments: Sequence[str]) -> SegmentUpdatedContent:
     return SegmentUpdatedContent(segments=tuple(segments))
 
 
+class PlanEditKind(str, Enum):
+    """Kind of contiguous edit planned for an updated file image."""
+
+    INSERT = "insert"
+    REPLACE = "replace"
+    REMOVE = "remove"
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PlannedEdit:
+    """Single contiguous splice between the original and updated file images.
+
+    Attributes:
+        kind: Logical edit kind. This is descriptive; ``old_start``,
+            ``old_end``, and ``new_lines`` define the actual splice.
+        old_start: Inclusive zero-based start index in the original image.
+        old_end: Exclusive zero-based end index in the original image.
+        new_lines: Replacement lines inserted at ``old_start`` after removing
+            ``original_lines[old_start:old_end]``.
+    """
+
+    kind: PlanEditKind
+    old_start: int
+    old_end: int
+    new_lines: tuple[str, ...]
+
+
+@dataclass(kw_only=True, slots=True)
+class EditView(Releasable):
+    """Structured view of planned contiguous edits.
+
+    The first implementation uses this as metadata for shadow diff validation.
+    It deliberately allows multiple edits so the model can grow to multi-hunk
+    rendering later, while the initial structured renderer only consumes a
+    single edit and falls back to generic diffing otherwise.
+
+    Attributes:
+        edits: Planned edits in ascending original-file order.
+    """
+
+    edits: tuple[PlannedEdit, ...]
+
+    def release(self) -> None:
+        """Release planned-edit metadata."""
+        self.edits = ()
+
+
+def infer_single_planned_edit(
+    *,
+    kind: PlanEditKind,
+    original_lines: Sequence[str],
+    updated_lines: Sequence[str],
+) -> PlannedEdit | None:
+    """Infer the minimal contiguous splice that transforms original into updated.
+
+    Args:
+        kind: Logical edit kind to associate with the inferred splice.
+        original_lines: Original file image lines.
+        updated_lines: Updated file image lines.
+
+    Returns:
+        PlannedEdit | None: The inferred splice, or ``None`` when the images are
+        identical and therefore no edit exists.
+    """
+    prefix_len: int = 0
+    max_prefix_len: int = min(len(original_lines), len(updated_lines))
+    while prefix_len < max_prefix_len and original_lines[prefix_len] == updated_lines[prefix_len]:
+        prefix_len += 1
+
+    original_suffix: int = len(original_lines)
+    updated_suffix: int = len(updated_lines)
+    while (
+        original_suffix > prefix_len
+        and updated_suffix > prefix_len
+        and original_lines[original_suffix - 1] == updated_lines[updated_suffix - 1]
+    ):
+        original_suffix -= 1
+        updated_suffix -= 1
+
+    if prefix_len == len(original_lines) and prefix_len == len(updated_lines):
+        return None
+
+    return PlannedEdit(
+        kind=kind,
+        old_start=prefix_len,
+        old_end=original_suffix,
+        new_lines=tuple(updated_lines[prefix_len:updated_suffix]),
+    )
+
+
 @dataclass(kw_only=True, slots=True)
 class UpdatedView(Releasable):
     """View of the pipeline's updated file image.
@@ -349,6 +440,7 @@ class Views:
     build: BuilderView | None = None
     render: RenderView | None = None
     updated: UpdatedView | None = None
+    edit: EditView | None = None
     diff: DiffView | None = None
 
     def release_all(
@@ -360,6 +452,7 @@ class Views:
         self.release_build()
         self.release_render()
         self.release_updated()
+        self.release_edit()
         self.release_diff()
 
     def release_image(self) -> None:
@@ -386,6 +479,11 @@ class Views:
         """Release updated-file payloads when they are no longer needed."""
         if self.updated:
             self.updated.release()
+
+    def release_edit(self) -> None:
+        """Release planned-edit metadata when it is no longer needed."""
+        if self.edit:
+            self.edit.release()
 
     def release_diff(self) -> None:
         """Release diff payloads when they are no longer needed."""
@@ -420,6 +518,9 @@ class Views:
         if ViewSlot.UPDATED not in remaining_view_consumers:
             self.release_updated()
 
+        if ViewSlot.EDIT not in remaining_view_consumers:
+            self.release_edit()
+
         if not keep_diff_view and ViewSlot.DIFF not in remaining_view_consumers:
             self.release_diff()
 
@@ -434,5 +535,6 @@ class Views:
                 len(self.render.lines) if (self.render and self.render.lines is not None) else 0
             ),
             "updated_has_lines": self.updated is not None and self.updated.lines is not None,
+            "edit_count": len(self.edit.edits) if self.edit else 0,
             "diff_present": bool(self.diff and self.diff.text),
         }

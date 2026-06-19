@@ -35,6 +35,16 @@ def test_render_patch_accepts_str_and_list() -> None:
     assert isinstance(s1, str) and isinstance(s2, str) and s1 and s2
 
 
+def test_render_patch_can_show_line_numbers() -> None:
+    """Diff previews should optionally prefix rendered lines with line numbers."""
+    rendered: str = format_patch_plain(
+        patch=["--- a\n", "+++ b\n", "-foo\n", "+bar\n"],
+        show_line_numbers=True,
+    )
+
+    assert rendered == "0001|--- a\\n\n0002|+++ b\\n\n0003|-foo\\n\n0004|+bar\\n\n"
+
+
 def test_render_patch_empty_input_is_safe() -> None:
     """Empty diff input should not raise and should return a string."""
     s: str = format_patch_plain(
