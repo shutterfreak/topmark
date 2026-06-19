@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import materialize_updated_lines
 from tests.helpers.pipeline import run_planner
@@ -42,6 +40,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.filetypes.model import PreInsertContextView
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import PlannedEdit
 
 
 class _NoLineAnchorProcessor(HeaderProcessor):
@@ -187,7 +186,7 @@ def test_planner_replaces_existing_header_as_preview_in_dry_run(tmp_path: Path) 
         "print('body')\n",
     ]
     assert isinstance(ctx.views.edit, EditView)
-    edit = ctx.views.edit.edits[0]
+    edit: PlannedEdit = ctx.views.edit.edits[0]
     assert edit.kind is PlanEditKind.REPLACE
     assert edit.old_start == 0
     assert edit.old_end == 2
@@ -233,7 +232,7 @@ def test_planner_line_inserts_header_when_no_existing_header(tmp_path: Path) -> 
         "print('body')\n",
     ]
     assert isinstance(ctx.views.edit, EditView)
-    edit = ctx.views.edit.edits[0]
+    edit: PlannedEdit = ctx.views.edit.edits[0]
     assert edit.kind is PlanEditKind.INSERT
     assert edit.old_start == 0
     assert edit.old_end == 0
@@ -257,15 +256,17 @@ def test_planner_text_inserts_header_and_records_edit_view(tmp_path: Path) -> No
         "</root>\n",
     ]
     assert isinstance(ctx.views.edit, EditView)
-    edit = ctx.views.edit.edits[0]
+    edit: PlannedEdit = ctx.views.edit.edits[0]
     assert edit.kind is PlanEditKind.INSERT
     assert edit.old_start == 1
     assert edit.old_end == 1
     assert edit.new_lines == tuple(rendered_lines)
 
 
-def test_planner_raises_when_text_insertion_path_fails(tmp_path: Path) -> None:
-    """Text insertion errors should surface instead of silently falling back."""
+def test_planner_falls_back_to_line_insertion_when_text_path_fails(
+    tmp_path: Path,
+) -> None:
+    """Text insertion errors should fall back to line-based insertion."""
     ctx: ProcessingContext = _make_context(tmp_path / "text_insert_error.xml")
     ctx.header_processor = _FailingTextInsertionProcessor()
     _set_image_and_render(
@@ -274,8 +275,20 @@ def test_planner_raises_when_text_insertion_path_fails(tmp_path: Path) -> None:
         rendered_lines=["<!-- header -->\n"],
     )
 
-    with pytest.raises(RuntimeError, match="text-based insertion failed"):
-        run_planner(ctx)
+    ctx = run_planner(ctx)
+
+    assert ctx.status.plan is PlanStatus.PREVIEWED
+    assert materialize_updated_lines(ctx) == [
+        "<!-- header -->\n",
+        "<root>\n",
+        "</root>\n",
+    ]
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.INSERT
+    assert edit.old_start == 0
+    assert edit.old_end == 0
+    assert edit.new_lines == ("<!-- header -->\n",)
 
 
 def test_planner_clamps_negative_line_anchor_to_start(tmp_path: Path) -> None:
