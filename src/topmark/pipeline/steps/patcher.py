@@ -49,11 +49,138 @@ from topmark.presentation.shared.paths import get_display_path
 from topmark.utils.timestamp import format_gnu_diff_timestamp
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import PlannedEdit
 
 
 logger: TopmarkLogger = get_logger(__name__)
+
+
+def _apply_single_edit(
+    *,
+    original_lines: Sequence[str],
+    edit: PlannedEdit,
+) -> list[str] | None:
+    """Apply one planned edit to original lines for metadata validation.
+
+    Args:
+        original_lines: Original file image lines.
+        edit: Planned edit to apply.
+
+    Returns:
+        list[str] | None: Updated lines when the edit span is valid, otherwise
+        ``None``.
+    """
+    if edit.old_start < 0 or edit.old_end < edit.old_start:
+        return None
+    if edit.old_end > len(original_lines):
+        return None
+
+    return [
+        *original_lines[: edit.old_start],
+        *edit.new_lines,
+        *original_lines[edit.old_end :],
+    ]
+
+
+def _render_difflib_unified_diff(
+    *,
+    current_lines: Sequence[str],
+    updated_lines: Sequence[str],
+    fromfile: str,
+    tofile: str,
+    fromfiledate: str,
+    tofiledate: str,
+    lineterm: str,
+) -> list[str]:
+    """Render the generic difflib unified diff fallback.
+
+    Args:
+        current_lines: Original file image lines.
+        updated_lines: Updated file image lines.
+        fromfile: Diff label for the original file.
+        tofile: Diff label for the updated file.
+        fromfiledate: Timestamp label for the original file.
+        tofiledate: Timestamp label for the updated file.
+        lineterm: Diff control-line terminator.
+
+    Returns:
+        list[str]: Unified diff lines.
+    """
+    return list(
+        difflib.unified_diff(
+            current_lines,
+            updated_lines,
+            fromfile=fromfile,
+            tofile=tofile,
+            fromfiledate=fromfiledate,
+            n=3,
+            lineterm=lineterm,
+            tofiledate=tofiledate,
+        )
+    )
+
+
+def _render_patch_lines(
+    *,
+    current_lines: Sequence[str],
+    updated_lines: Sequence[str],
+    edit_view: EditView | None,
+    fromfile: str,
+    tofile: str,
+    fromfiledate: str,
+    tofiledate: str,
+    lineterm: str,
+) -> list[str]:
+    """Render patch lines, preferring structured single-edit metadata.
+
+    Args:
+        current_lines: Original file image lines.
+        updated_lines: Updated file image lines.
+        edit_view: Structured planned edits, when available.
+        fromfile: Diff label for the original file.
+        tofile: Diff label for the updated file.
+        fromfiledate: Timestamp label for the original file.
+        tofiledate: Timestamp label for the updated file.
+        lineterm: Diff control-line terminator.
+
+    Returns:
+        list[str]: Unified diff lines.
+    """
+    if edit_view is not None and len(edit_view.edits) == 1:
+        edit: PlannedEdit = edit_view.edits[0]
+        applied_lines: list[str] | None = _apply_single_edit(
+            original_lines=current_lines,
+            edit=edit,
+        )
+        if applied_lines == list(updated_lines):
+            structured_patch_lines: list[str] | None = render_structured_unified_diff(
+                original_lines=current_lines,
+                edit=edit,
+                fromfile=fromfile,
+                tofile=tofile,
+                fromfiledate=fromfiledate,
+                tofiledate=tofiledate,
+                lineterm=lineterm,
+                context=3,
+            )
+            if structured_patch_lines is not None:
+                return structured_patch_lines
+
+        logger.debug("structured diff unavailable for single edit; falling back to difflib")
+
+    return _render_difflib_unified_diff(
+        current_lines=current_lines,
+        updated_lines=updated_lines,
+        fromfile=fromfile,
+        tofile=tofile,
+        fromfiledate=fromfiledate,
+        tofiledate=tofiledate,
+        lineterm=lineterm,
+    )
 
 
 class PatcherStep(BaseStep):
@@ -131,13 +258,6 @@ class PatcherStep(BaseStep):
             ProcessingContext: The same context with ``ctx.views.diff`` set when a change is
                 detected, and with comparison status normalized when applicable.
 
-        Raises:
-            RuntimeError: During the GitHub issue #167 shadow-validation phase,
-                when the structured single-edit diff renderer produces output
-                that differs from the current `difflib.unified_diff()` result.
-                This temporary assertion protects the existing diff-output
-                contract while validating parity before any future backend
-                switch.
         """
         logger.debug(
             "File '%s' : header status %s, header comparison status: %s",
@@ -179,58 +299,17 @@ class PatcherStep(BaseStep):
         fromfiledate: str = format_gnu_diff_timestamp(dt=ctx.timestamp)
         tofiledate: str = format_gnu_diff_timestamp(dt=ctx.run_options.started_at)
 
-        patch_lines: list[str] = list(
-            difflib.unified_diff(
-                current_lines,
-                updated_lines,
-                fromfile=fromfile,
-                tofile=tofile,
-                fromfiledate=fromfiledate,
-                n=3,
-                lineterm=ctx.newline_style,
-                tofiledate=tofiledate,
-            )
+        patch_lines: list[str] = _render_patch_lines(
+            current_lines=current_lines,
+            updated_lines=updated_lines,
+            edit_view=ctx.views.edit,
+            fromfile=fromfile,
+            tofile=tofile,
+            fromfiledate=fromfiledate,
+            tofiledate=tofiledate,
+            lineterm=ctx.newline_style,
         )
 
-        # Transitional shadow-diff validation for GitHub issue #167.
-        #
-        # `difflib.unified_diff()` remains the production source of truth in this
-        # PR so the public diff contract stays unchanged. When the planner or
-        # stripper records exactly one structured edit, we also render the new
-        # structured diff and compare it with the difflib result. This intentionally
-        # duplicates diff work for now: the goal is to prove parity across the full
-        # test suite before a later PR can make the structured renderer the primary
-        # backend for single-splice edits.
-        #
-        # A mismatch is treated as a hard failure during this transitional phase.
-        # Silent fallback would hide cases where EditView metadata or structured
-        # rendering diverges from the existing output contract.
-        edit_view: EditView | None = ctx.views.edit
-        if edit_view is not None and len(edit_view.edits) == 1:
-            structured_patch_lines: list[str] | None = render_structured_unified_diff(
-                original_lines=current_lines,
-                edit=edit_view.edits[0],
-                fromfile=fromfile,
-                tofile=tofile,
-                fromfiledate=fromfiledate,
-                tofiledate=tofiledate,
-                lineterm=ctx.newline_style,
-                context=3,
-            )
-            if structured_patch_lines is not None and structured_patch_lines != patch_lines:
-                logger.debug(
-                    "structured diff shadow mismatch for %s: structured=%r difflib=%r",
-                    ctx.path,
-                    structured_patch_lines,
-                    patch_lines,
-                )
-                # Keep this as a temporary assertion until the structured renderer
-                # becomes the primary single-edit backend or this validation phase is
-                # explicitly retired.
-                raise RuntimeError(
-                    f"structured diff shadow mismatch for {ctx.path}: "
-                    f"structured={structured_patch_lines!r} difflib={patch_lines!r}"
-                )
         if len(patch_lines) == 0:
             ctx.status.comparison = ComparisonStatus.UNCHANGED
             ctx.status.patch = PatchStatus.SKIPPED
@@ -246,7 +325,7 @@ class PatcherStep(BaseStep):
                 ),
             )
 
-        # Join exactly as produced by difflib. Do not introduce CRLF conversions.
+        # Join exactly as produced by the selected backend. Do not introduce CRLF conversions.
         ctx.views.diff = DiffView(text="".join(patch_lines))
         if not ctx.views.diff or not ctx.views.diff.text:
             logger.error("ComparisonStatus == CHANGED but no diff generated: PatchStatus == FAILED")
@@ -291,4 +370,7 @@ class PatcherStep(BaseStep):
             )
         elif st == PatchStatus.PENDING:
             # patcher did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            ctx.request_halt(
+                reason=f"{self.__class__.__name__} did not set state.",
+                at_step=self,
+            )

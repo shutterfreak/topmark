@@ -482,6 +482,43 @@ Follow-up:
 - stdout presentation outside writer-owned updated-content emission, which remains the focus of
   GitHub issue 139;
 
+### Structured diff backend follow-up (GitHub issue 167)
+
+GitHub issue 167 evaluated whether structured edit metadata can become the primary diff-generation
+backend for current TopMark pipeline mutations. The current planner and stripper mutation paths emit
+exactly one contiguous `PlannedEdit` for the implemented update operations: header replacement,
+header insertion, and header removal. `EditView` keeps a tuple of edits as deliberate
+future-proofing, but current processors do not produce multiple independent file mutations from one
+pipeline action.
+
+Patch generation now prefers the structured unified-diff renderer when `EditView` contains exactly
+one edit and applying that edit to the original image reproduces the already-computed updated image.
+`difflib.unified_diff()` remains available as a fallback for missing, invalid, or future multi-edit
+metadata. This preserves the existing unified-diff output contract while avoiding generic sequence
+diffing on the common single-splice paths.
+
+Representative pathological measurements after the change were:
+
+| Scenario             | Mode                | Peak traced |  Max RSS |
+| -------------------- | ------------------- | ----------: | -------: |
+| `huge_diff`          | `strip_diff_pruned` |     4.35 MB | 46.90 MB |
+| `strip_large_header` | `strip_diff_pruned` |     6.37 MB | 52.80 MB |
+| `huge_header`        | `check_diff_pruned` |     3.21 MB | 47.12 MB |
+| `strip_large_header` | `check_diff_pruned` |     7.26 MB | 54.00 MB |
+
+The structured backend reduces the algorithmic work needed to produce patch lines for common
+single-splice mutations, but it does not remove the larger ownership boundaries that still dominate
+these workloads: comparison materializes current and updated lines before patching, and patch views
+still retain unified diff text for downstream reporting. The benchmark impact should therefore be
+interpreted as modest and workload-sensitive rather than as a broad memory step-change.
+
+The benchmark tool remains adequate for this class of change because the pathological
+`*_diff_pruned` modes exercise context retention, view pruning, diff retention, and repository-scale
+execution through the same durable-result pipeline used by the CLI and API. Its main limitation is
+that it measures retained process allocations and RSS around complete per-file processing; it does
+not isolate the diff algorithm's short-lived internal allocations from earlier comparison and
+updated image materialization.
+
 ### Stdout rendering and end-to-end output architecture audits (GitHub issues 139 and 147)
 
 GitHub issue 139 audited stdout rendering after the writer-owned streaming work. The audit found

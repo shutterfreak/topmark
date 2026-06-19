@@ -338,9 +338,12 @@ remaining consumer has run, while preserving requested output such as retained d
 Updated-file views may be represented either as materialized line sequences or as repeatable
 updated-content abstractions. This allows replacement planning to compose updated content lazily.
 Pipeline-generated lazy updated content must remain repeatable because comparison, patch generation,
-and writing may consume the same updated view. Writer file sinks and STDOUT emission stream through
-the context's updated-line iterator; comparison and patch generation still materialize updated lines
-where required by their current algorithms.
+and writing may consume the same updated view. Planner and stripper steps may also attach structured
+edit metadata describing the contiguous splice that produced the updated image. Patch generation
+uses that metadata as the preferred structured diff source for supported single-edit changes, while
+retaining generic diff generation as a fallback. Writer file sinks and STDOUT emission stream
+through the context's updated-line iterator; comparison and patch generation still materialize
+updated lines where required by their current algorithms.
 
 For filesystem inputs, the processing context path is the selected processing path. It may differ
 from the path spelling supplied on the command line or in configuration when symlinks or equivalent
@@ -710,9 +713,9 @@ Current consumer declarations are:
 | \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | none                                            |
 | \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | `image`, `header`, `build`                      |
 | \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | `image`, `header`, `build`, `render`, `updated` |
-| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | `image`, `header`                               |
-| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | `image`, `header`, `render`, `updated`          |
-| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | `image`, `updated`                              |
+| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | `image`, `header`, `edit`                       |
+| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | `image`, `header`, `render`, `updated`, `edit`  |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | `image`, `updated`, `edit`                      |
 | \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | `updated`                                       |
 
 `ReaderStep` and `BuilderStep` produce views but do not consume existing view slots. `RendererStep`

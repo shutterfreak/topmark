@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+import topmark.pipeline.steps.patcher as patcher_module
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import materialize_updated_lines
 from tests.helpers.pipeline import run_builder
@@ -56,6 +57,7 @@ from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
@@ -313,8 +315,11 @@ def test_patcher_uses_stdin_filename_in_unified_diff_labels(tmp_path: Path) -> N
     assert "materialized-stdin.py" not in diff_text
 
 
-def test_patcher_accepts_matching_structured_shadow_diff(tmp_path: Path) -> None:
-    """Matching structured edit metadata should preserve normal diff generation."""
+def test_patcher_uses_structured_diff_for_valid_single_edit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Valid single-edit metadata should avoid the generic difflib fallback."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "structured_match.py",
         image_lines=["old\n", "body\n"],
@@ -332,6 +337,15 @@ def test_patcher_accepts_matching_structured_shadow_diff(tmp_path: Path) -> None
         )
     )
 
+    def fail_difflib_fallback(**kwargs: object) -> list[str]:
+        raise AssertionError("difflib fallback should not be used")
+
+    monkeypatch.setattr(
+        patcher_module,
+        "_render_difflib_unified_diff",
+        fail_difflib_fallback,
+    )
+
     ctx = run_patcher(ctx)
 
     diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
@@ -340,8 +354,8 @@ def test_patcher_accepts_matching_structured_shadow_diff(tmp_path: Path) -> None
     assert "+new\n" in diff_text
 
 
-def test_patcher_rejects_mismatching_structured_shadow_diff(tmp_path: Path) -> None:
-    """Mismatching structured edit metadata should fail the shadow comparison."""
+def test_patcher_falls_back_for_mismatching_structured_edit(tmp_path: Path) -> None:
+    """Mismatching structured edit metadata should use the difflib fallback."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "structured_mismatch.py",
         image_lines=["old\n", "body\n"],
@@ -359,8 +373,13 @@ def test_patcher_rejects_mismatching_structured_shadow_diff(tmp_path: Path) -> N
         )
     )
 
-    with pytest.raises(RuntimeError, match="structured diff"):
-        run_patcher(ctx)
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+    assert "different" not in diff_text
 
 
 def test_patcher_falls_back_when_structured_shadow_diff_is_unavailable(
@@ -390,6 +409,169 @@ def test_patcher_falls_back_when_structured_shadow_diff_is_unavailable(
     assert ctx.status.patch is PatchStatus.GENERATED
     assert "-old\n" in diff_text
     assert "+new\n" in diff_text
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        pytest.param(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=-1,
+                old_end=1,
+                new_lines=("new\n",),
+            ),
+            id="negative-start",
+        ),
+        pytest.param(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=1,
+                old_end=0,
+                new_lines=("new\n",),
+            ),
+            id="reversed-span",
+        ),
+        pytest.param(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=3,
+                new_lines=("new\n",),
+            ),
+            id="span-past-end",
+        ),
+    ],
+)
+def test_patcher_falls_back_for_invalid_single_edit_spans(
+    tmp_path: Path,
+    edit: PlannedEdit,
+) -> None:
+    """Invalid single-edit spans should be rejected before structured rendering."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "invalid_span.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=["new\n", "body\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    ctx.views.edit = EditView(edits=(edit,))
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+
+
+def test_patcher_falls_back_when_structured_renderer_returns_no_patch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Valid edit metadata should still fall back if structured rendering declines it."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "structured_none.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=["new\n", "body\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=1,
+                new_lines=("new\n",),
+            ),
+        )
+    )
+
+    def _render_no_patch(
+        *,
+        original_lines: Sequence[str],
+        edit: PlannedEdit,
+        fromfile: str,
+        tofile: str,
+        fromfiledate: str,
+        tofiledate: str,
+        lineterm: str,
+        context: int = 3,
+    ) -> list[str] | None:
+        """Test double that forces structured rendering fallback.
+
+        Returns:
+            None: Always returns ``None`` to simulate a structured renderer that
+            declines to render the supplied edit.
+        """
+        del original_lines, edit, fromfile, tofile, fromfiledate, tofiledate, lineterm, context
+        return None
+
+    monkeypatch.setattr(
+        patcher_module,
+        "render_structured_unified_diff",
+        _render_no_patch,
+    )
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+
+
+def test_patcher_marks_failed_when_backend_returns_empty_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-empty patch lines that join to empty text should mark patch generation failed."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "empty_text.py",
+        image_lines=["old\n"],
+        updated_lines=["new\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+
+    def _render_empty_text_patch(
+        *,
+        current_lines: Sequence[str],
+        updated_lines: Sequence[str],
+        edit_view: EditView | None,
+        fromfile: str,
+        tofile: str,
+        fromfiledate: str,
+        tofiledate: str,
+        lineterm: str,
+    ) -> list[str]:
+        """Test double that produces an empty rendered diff payload.
+
+        Returns:
+            list[str]: A single empty string element, causing the joined diff text
+            to be empty while the rendered patch line collection remains non-empty.
+        """
+        del (
+            current_lines,
+            updated_lines,
+            edit_view,
+            fromfile,
+            tofile,
+            fromfiledate,
+            tofiledate,
+            lineterm,
+        )
+        return [""]
+
+    monkeypatch.setattr(
+        patcher_module,
+        "_render_patch_lines",
+        _render_empty_text_patch,
+    )
+
+    ctx = run_patcher(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+    assert ctx.status.patch is PatchStatus.FAILED
+    assert ctx.views.diff == DiffView(text="")
 
 
 # Additional tests for PatcherStep.hint
