@@ -39,7 +39,9 @@ from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.steps.base import BaseStep
+from topmark.pipeline.structured_diff import render_structured_unified_diff
 from topmark.pipeline.views import DiffView
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import ViewSlot
 from topmark.presentation.formatters.unified_diff import format_patch_plain
@@ -87,6 +89,7 @@ class PatcherStep(BaseStep):
                 {
                     ViewSlot.IMAGE,
                     ViewSlot.UPDATED,
+                    ViewSlot.EDIT,
                 }
             ),
         )
@@ -127,6 +130,14 @@ class PatcherStep(BaseStep):
         Mutations:
             ProcessingContext: The same context with ``ctx.views.diff`` set when a change is
                 detected, and with comparison status normalized when applicable.
+
+        Raises:
+            RuntimeError: During the GitHub issue #167 shadow-validation phase,
+                when the structured single-edit diff renderer produces output
+                that differs from the current `difflib.unified_diff()` result.
+                This temporary assertion protects the existing diff-output
+                contract while validating parity before any future backend
+                switch.
         """
         logger.debug(
             "File '%s' : header status %s, header comparison status: %s",
@@ -163,18 +174,63 @@ class PatcherStep(BaseStep):
 
         display_path: str = get_display_path(ctx)
 
+        fromfile: str = f"{display_path} (current)"
+        tofile: str = f"{display_path} (updated)"
+        fromfiledate: str = format_gnu_diff_timestamp(dt=ctx.timestamp)
+        tofiledate: str = format_gnu_diff_timestamp(dt=ctx.run_options.started_at)
+
         patch_lines: list[str] = list(
             difflib.unified_diff(
                 current_lines,
                 updated_lines,
-                fromfile=f"{display_path} (current)",
-                tofile=f"{display_path} (updated)",
-                fromfiledate=format_gnu_diff_timestamp(dt=ctx.timestamp),
+                fromfile=fromfile,
+                tofile=tofile,
+                fromfiledate=fromfiledate,
                 n=3,
                 lineterm=ctx.newline_style,
-                tofiledate=format_gnu_diff_timestamp(dt=ctx.run_options.started_at),
+                tofiledate=tofiledate,
             )
         )
+
+        # Transitional shadow-diff validation for GitHub issue #167.
+        #
+        # `difflib.unified_diff()` remains the production source of truth in this
+        # PR so the public diff contract stays unchanged. When the planner or
+        # stripper records exactly one structured edit, we also render the new
+        # structured diff and compare it with the difflib result. This intentionally
+        # duplicates diff work for now: the goal is to prove parity across the full
+        # test suite before a later PR can make the structured renderer the primary
+        # backend for single-splice edits.
+        #
+        # A mismatch is treated as a hard failure during this transitional phase.
+        # Silent fallback would hide cases where EditView metadata or structured
+        # rendering diverges from the existing output contract.
+        edit_view: EditView | None = ctx.views.edit
+        if edit_view is not None and len(edit_view.edits) == 1:
+            structured_patch_lines: list[str] | None = render_structured_unified_diff(
+                original_lines=current_lines,
+                edit=edit_view.edits[0],
+                fromfile=fromfile,
+                tofile=tofile,
+                fromfiledate=fromfiledate,
+                tofiledate=tofiledate,
+                lineterm=ctx.newline_style,
+                context=3,
+            )
+            if structured_patch_lines is not None and structured_patch_lines != patch_lines:
+                logger.debug(
+                    "structured diff shadow mismatch for %s: structured=%r difflib=%r",
+                    ctx.path,
+                    structured_patch_lines,
+                    patch_lines,
+                )
+                # Keep this as a temporary assertion until the structured renderer
+                # becomes the primary single-edit backend or this validation phase is
+                # explicitly retired.
+                raise RuntimeError(
+                    f"structured diff shadow mismatch for {ctx.path}: "
+                    f"structured={structured_patch_lines!r} difflib={patch_lines!r}"
+                )
         if len(patch_lines) == 0:
             ctx.status.comparison = ComparisonStatus.UNCHANGED
             ctx.status.patch = PatchStatus.SKIPPED

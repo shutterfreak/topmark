@@ -29,9 +29,12 @@ from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.base import BaseStep
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import HeaderView
+from topmark.pipeline.views import PlanEditKind
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import ViewSlot
+from topmark.pipeline.views import infer_single_planned_edit
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
 from topmark.processors.types import StripHeaderResult
@@ -40,6 +43,7 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import PlannedEdit
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -116,6 +120,7 @@ class StripperStep(BaseStep):
                 {
                     ViewSlot.IMAGE,
                     ViewSlot.HEADER,
+                    ViewSlot.EDIT,
                 }
             ),
         )
@@ -355,8 +360,24 @@ class StripperStep(BaseStep):
 
         # A header was present and removed
         ctx.views.updated = UpdatedView(lines=updated_lines)
+        planned_edit: PlannedEdit | None = infer_single_planned_edit(
+            kind=PlanEditKind.REMOVE,
+            original_lines=original_lines,
+            updated_lines=updated_lines,
+        )
+        ctx.views.edit = (
+            None
+            if planned_edit is None
+            else EditView(
+                edits=(planned_edit,),
+            )
+        )
         ctx.status.strip = StripStatus.READY
-        logger.debug("stripper: removed header lines at span %d..%d", removed[0], removed[1])
+        logger.debug(
+            "stripper: removed header lines at span %d..%d",
+            removed[0],
+            removed[1],
+        )
         return
 
     def hint(self, ctx: ProcessingContext) -> None:

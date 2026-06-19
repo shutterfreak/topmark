@@ -31,8 +31,10 @@ from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import ListFileImageView
+from topmark.pipeline.views import PlanEditKind
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
@@ -43,6 +45,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import PlannedEdit
 
 
 # --- Helper classes and context factory for stripper tests ---
@@ -153,6 +156,14 @@ def test_stripper_uses_span_and_trims_leading_blank(tmp_path: Path) -> None:
     assert updated_lines == ["code\n"]
     assert ctx.status.strip is StripStatus.READY
     assert ctx.status.header is HeaderStatus.DETECTED
+    # EditView records the full single-splice transformation used by the
+    # structured diff path, including the owned blank separator after the header.
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.REMOVE
+    assert edit.old_start == 0
+    assert edit.old_end == 4
+    assert edit.new_lines == ()
 
 
 # --- Additional stripper behavior tests ---
@@ -182,6 +193,14 @@ def test_stripper_preserves_shebang_before_header(tmp_path: Path) -> None:
         "#!/usr/bin/env python\n",
         "print('body')\n",
     ]
+    # The planned edit starts after the shebang, so structured diffs keep the
+    # interpreter line as unchanged context rather than part of the removal.
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.REMOVE
+    assert edit.old_start == 1
+    assert edit.old_end == 4
+    assert edit.new_lines == ()
 
 
 def test_stripper_removing_whole_file_header_keeps_final_newline_placeholder(
@@ -306,6 +325,38 @@ def test_stripper_preserves_crlf_newline_style_for_empty_placeholder(
     assert materialize_updated_lines(ctx) == ["\r\n"]
 
 
+def test_stripper_removing_bom_only_header_keeps_bom_placeholder(
+    tmp_path: Path,
+) -> None:
+    """BOM-only strip results should preserve the BOM and final newline semantics."""
+    lines: list[str] = [
+        f"\ufeff# {TOPMARK_START_MARKER}\n",
+        "# h\n",
+        f"# {TOPMARK_END_MARKER}\n",
+    ]
+    ctx: ProcessingContext = _make_strip_context(tmp_path / "bom_only.py", lines)
+    ctx.leading_bom = True
+    ctx.views.header = HeaderView(
+        range=(0, 2),
+        lines=lines,
+        block="".join(lines),
+        mapping={},
+    )
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.READY
+    assert materialize_updated_lines(ctx) == ["\ufeff\n"]
+    # The BOM placeholder is replacement content because the whole original
+    # image is removed by the splice.
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.REMOVE
+    assert edit.old_start == 0
+    assert edit.old_end == 3
+    assert edit.new_lines == ("\ufeff\n",)
+
+
 def test_stripper_preserves_leading_bom_on_remaining_body(tmp_path: Path) -> None:
     """If the original image had a BOM, stripped output should retain it."""
     lines: list[str] = [
@@ -327,6 +378,14 @@ def test_stripper_preserves_leading_bom_on_remaining_body(tmp_path: Path) -> Non
 
     assert ctx.status.strip is StripStatus.READY
     assert materialize_updated_lines(ctx) == ["\ufeffbody\n"]
+    # The structured edit describes the actual output transformation: the BOM
+    # is reattached to the remaining body, so the body line is replacement text.
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.REMOVE
+    assert edit.old_start == 0
+    assert edit.old_end == 4
+    assert edit.new_lines == ("\ufeffbody\n",)
 
 
 class _NoopEmptyStripProcessor(HeaderProcessor):
@@ -518,3 +577,69 @@ def test_stripper_drops_only_owned_exact_blank_separator(tmp_path: Path) -> None
 
     assert ctx.status.strip is StripStatus.READY
     assert materialize_updated_lines(ctx) == [" \n", "body\n"]
+
+
+def test_stripper_collapses_exact_blank_body_to_single_placeholder(
+    tmp_path: Path,
+) -> None:
+    """Exact blank-only bodies should collapse to one placeholder when FNL existed."""
+    lines: list[str] = [
+        f"# {TOPMARK_START_MARKER}\n",
+        "# h\n",
+        f"# {TOPMARK_END_MARKER}\n",
+        "\n",
+        "\n",
+    ]
+    ctx: ProcessingContext = _make_strip_context(tmp_path / "blank_body.py", lines)
+    ctx.views.header = HeaderView(
+        range=(0, 2),
+        lines=lines[:3],
+        block="".join(lines[:3]),
+        mapping={},
+    )
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.READY
+    assert materialize_updated_lines(ctx) == ["\n"]
+    # The final placeholder newline is the unchanged suffix line. The planned
+    # edit therefore removes only the header plus the first owned blank line.
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.REMOVE
+    assert edit.old_start == 0
+    assert edit.old_end == 4
+    assert edit.new_lines == ()
+
+
+def test_stripper_collapses_blank_body_without_final_newline_to_empty(
+    tmp_path: Path,
+) -> None:
+    """Exact blank-only bodies should collapse to empty without original FNL."""
+    lines: list[str] = [
+        f"# {TOPMARK_START_MARKER}\n",
+        "# h\n",
+        f"# {TOPMARK_END_MARKER}\n",
+        "\n",
+    ]
+    ctx: ProcessingContext = _make_strip_context(tmp_path / "blank_body_no_fnl.py", lines)
+    ctx.ends_with_newline = False
+    ctx.views.header = HeaderView(
+        range=(0, 2),
+        lines=lines[:3],
+        block="".join(lines[:3]),
+        mapping={},
+    )
+
+    ctx = run_stripper(ctx)
+
+    assert ctx.status.strip is StripStatus.READY
+    assert materialize_updated_lines(ctx) == []
+    # Without final-newline semantics to preserve, the full image is removed
+    # and no replacement lines are needed.
+    assert isinstance(ctx.views.edit, EditView)
+    edit: PlannedEdit = ctx.views.edit.edits[0]
+    assert edit.kind is PlanEditKind.REMOVE
+    assert edit.old_start == 0
+    assert edit.old_end == 4
+    assert edit.new_lines == ()

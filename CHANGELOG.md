@@ -49,6 +49,8 @@ ______________________________________________________________________
   run metadata, JSON reports, and Markdown summaries under `artifacts/perf/`.
 - Added a local `perf_baseline` Nox session and `make perf-baseline` entry point for reproducible
   memory/allocation baseline generation.
+- Added structured planned-edit metadata (`EditView`, `PlannedEdit`, and `PlanEditKind`) together
+  with a single-splice structured unified-diff renderer used for GitHub issue 167 validation work.
 
 ### Changed - Unreleased
 
@@ -149,6 +151,12 @@ ______________________________________________________________________
   behavior.
 - Strengthened public API `FileResult` DTO invariants so `bucket_key` and `bucket_label` are always
   populated strings, matching the aggregation data produced by durable result finalization.
+- Extended planner and stripper mutation paths to record structured single-splice edit metadata
+  alongside updated-content generation, preparing future diff generation work without changing
+  current unified-diff output contracts.
+- Added shadow-validation of structured unified-diff rendering against the existing difflib-based
+  patch generation path, keeping difflib as the production source of truth while parity is validated
+  for GitHub issue 167.
 
 ### Breaking Changes - Unreleased
 
@@ -419,6 +427,9 @@ ______________________________________________________________________
 - Removed the remaining context-oriented API runtime helpers `run_pipeline()` and
   `run_probe_pipeline()` after their check/strip, probe, and nested-configuration test consumers
   were migrated to durable result-oriented paths.
+- Added focused regression coverage for structured diff rendering, planned-edit inference,
+  planner/stripper edit metadata generation, patcher shadow-validation behavior, and unified-diff
+  formatter line-number rendering.
 
 ### Notes - Unreleased
 

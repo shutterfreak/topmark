@@ -36,20 +36,36 @@ if TYPE_CHECKING:
 @pytest.mark.pipeline
 def test_release_consumed_keeps_views_needed_by_remaining_steps() -> None:
     """The lifecycle helper must not release payloads with downstream consumers."""
-    header_mapping: Mapping[str, str] = {"project": "TopMark"}
-    build_mapping: Mapping[str, str] = {"project": "TopMark"}
+    header_mapping: Mapping[str, str] = {
+        "project": "TopMark",
+    }
+    build_mapping: Mapping[str, str] = {
+        "project": "TopMark",
+    }
     views = Views(
-        image=ListFileImageView(["print('hello')\n"]),
+        image=ListFileImageView(
+            ["print('hello')\n"],
+        ),
         header=HeaderView(
             range=(0, 4),
             lines=["# topmark:header:start\n"],
             block="# topmark:header:start\n",
             mapping=header_mapping,
         ),
-        build=BuilderView(builtins=build_mapping, selected=build_mapping),
-        render=RenderView(lines=["# rendered\n"], block="# rendered\n"),
-        updated=UpdatedView(lines=["# rendered\n", "print('hello')\n"]),
-        diff=DiffView(text="--- current\n+++ updated\n"),
+        build=BuilderView(
+            builtins=build_mapping,
+            selected=build_mapping,
+        ),
+        render=RenderView(
+            lines=["# rendered\n"],
+            block="# rendered\n",
+        ),
+        updated=UpdatedView(
+            lines=["# rendered\n", "print('hello')\n"],
+        ),
+        diff=DiffView(
+            text="--- current\n+++ updated\n",
+        ),
     )
 
     views.release_consumed(
@@ -85,17 +101,29 @@ def test_release_consumed_releases_payloads_not_needed_before_writer() -> None:
     header_mapping: Mapping[str, str] = {"project": "TopMark"}
     build_mapping: Mapping[str, str] = {"project": "TopMark"}
     views = Views(
-        image=ListFileImageView(["print('hello')\n"]),
+        image=ListFileImageView(
+            ["print('hello')\n"],
+        ),
         header=HeaderView(
             range=(0, 4),
             lines=["# topmark:header:start\n"],
             block="# topmark:header:start\n",
             mapping=header_mapping,
         ),
-        build=BuilderView(builtins=build_mapping, selected=build_mapping),
-        render=RenderView(lines=["# rendered\n"], block="# rendered\n"),
-        updated=UpdatedView(lines=["# rendered\n", "print('hello')\n"]),
-        diff=DiffView(text="--- current\n+++ updated\n"),
+        build=BuilderView(
+            builtins=build_mapping,
+            selected=build_mapping,
+        ),
+        render=RenderView(
+            lines=["# rendered\n"],
+            block="# rendered\n",
+        ),
+        updated=UpdatedView(
+            lines=["# rendered\n", "print('hello')\n"],
+        ),
+        diff=DiffView(
+            text="--- current\n+++ updated\n",
+        ),
     )
 
     views.release_consumed(
@@ -124,7 +152,10 @@ def test_release_consumed_releases_diff_unless_caller_keeps_it() -> None:
     """Diff payloads are retained only when explicitly requested."""
     views = Views(diff=DiffView(text="--- current\n+++ updated\n"))
 
-    views.release_consumed(remaining_view_consumers=set(), keep_diff_view=False)
+    views.release_consumed(
+        remaining_view_consumers=set(),
+        keep_diff_view=False,
+    )
 
     assert views.diff is not None
     assert views.diff.text is None
@@ -132,14 +163,30 @@ def test_release_consumed_releases_diff_unless_caller_keeps_it() -> None:
 
 @pytest.mark.pipeline
 def test_pipeline_steps_declare_expected_view_consumers() -> None:
-    """Concrete pipeline steps must declare view consumers for lifecycle pruning."""
+    """Verify the expected consumes_views declarations used by lifecycle pruning.
+
+    The step implementations remain the source of truth via their
+    ``consumes_views`` declarations. This test intentionally mirrors the
+    current contract so that view-pruning behavior changes require an
+    explicit test update and review.
+    """
     expected_by_step_name: dict[str, frozenset[ViewSlot]] = {
         "ReaderStep": frozenset(),
         "ResolverStep": frozenset(),
         "SnifferStep": frozenset(),
-        "ScannerStep": frozenset({ViewSlot.IMAGE}),
+        "ScannerStep": frozenset(
+            {
+                ViewSlot.IMAGE,
+            }
+        ),
         "BuilderStep": frozenset(),
-        "RendererStep": frozenset({ViewSlot.IMAGE, ViewSlot.HEADER, ViewSlot.BUILD}),
+        "RendererStep": frozenset(
+            {
+                ViewSlot.IMAGE,
+                ViewSlot.HEADER,
+                ViewSlot.BUILD,
+            }
+        ),
         "ComparerStep": frozenset(
             {
                 ViewSlot.IMAGE,
@@ -155,16 +202,36 @@ def test_pipeline_steps_declare_expected_view_consumers() -> None:
                 ViewSlot.HEADER,
                 ViewSlot.RENDER,
                 ViewSlot.UPDATED,
+                ViewSlot.EDIT,
             }
         ),
-        "StripperStep": frozenset({ViewSlot.IMAGE, ViewSlot.HEADER}),
-        "PatcherStep": frozenset({ViewSlot.IMAGE, ViewSlot.UPDATED}),
-        "WriterStep": frozenset({ViewSlot.UPDATED}),
+        "StripperStep": frozenset(
+            {
+                ViewSlot.IMAGE,
+                ViewSlot.HEADER,
+                ViewSlot.EDIT,
+            }
+        ),
+        "PatcherStep": frozenset(
+            {
+                ViewSlot.IMAGE,
+                ViewSlot.UPDATED,
+                ViewSlot.EDIT,
+            }
+        ),
+        "WriterStep": frozenset(
+            {
+                ViewSlot.UPDATED,
+            }
+        ),
     }
 
     steps_by_name: dict[str, Step[ProcessingContext]] = {
         step.name: step
-        for step in (*Pipeline.CHECK_APPLY_PATCH.steps, *Pipeline.STRIP_APPLY_PATCH.steps)
+        for step in (
+            *Pipeline.CHECK_APPLY_PATCH.steps,
+            *Pipeline.STRIP_APPLY_PATCH.steps,
+        )
     }
 
     assert set(steps_by_name) == set(expected_by_step_name)

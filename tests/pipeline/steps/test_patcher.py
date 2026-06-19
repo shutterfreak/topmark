@@ -35,14 +35,22 @@ from tests.helpers.pipeline import run_scanner
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import Hint
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.steps.patcher import PatcherStep
 from topmark.pipeline.views import DiffView
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import ListFileImageView
+from topmark.pipeline.views import PlanEditKind
+from topmark.pipeline.views import PlannedEdit
 from topmark.pipeline.views import UpdatedView
 from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.runtime.model import RunOptions
@@ -303,3 +311,154 @@ def test_patcher_uses_stdin_filename_in_unified_diff_labels(tmp_path: Path) -> N
     assert "--- logical/input.py (current)" in diff_text
     assert "+++ logical/input.py (updated)" in diff_text
     assert "materialized-stdin.py" not in diff_text
+
+
+def test_patcher_accepts_matching_structured_shadow_diff(tmp_path: Path) -> None:
+    """Matching structured edit metadata should preserve normal diff generation."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "structured_match.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=["new\n", "body\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=1,
+                new_lines=("new\n",),
+            ),
+        )
+    )
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+
+
+def test_patcher_rejects_mismatching_structured_shadow_diff(tmp_path: Path) -> None:
+    """Mismatching structured edit metadata should fail the shadow comparison."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "structured_mismatch.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=["new\n", "body\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=1,
+                new_lines=("different\n",),
+            ),
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="structured diff"):
+        run_patcher(ctx)
+
+
+def test_patcher_falls_back_when_structured_shadow_diff_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    """Invalid structured edit metadata should leave difflib as fallback output."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "structured_fallback.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=["new\n", "body\n"],
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=-1,
+                old_end=1,
+                new_lines=("new\n",),
+            ),
+        )
+    )
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+
+
+# Additional tests for PatcherStep.hint
+
+
+@pytest.mark.parametrize(
+    ("apply_changes", "expected_cluster"),
+    [
+        pytest.param(False, Cluster.WOULD_CHANGE, id="dry-run"),
+        pytest.param(True, Cluster.CHANGED, id="apply"),
+    ],
+)
+def test_patcher_hint_reports_generated_patch_cluster_by_apply_mode(
+    tmp_path: Path,
+    apply_changes: bool,
+    expected_cluster: Cluster,
+) -> None:
+    """Generated patch hints should distinguish previews from applied changes."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "generated_hint.py",
+        image_lines=["old\n"],
+        updated_lines=["new\n"],
+    )
+    ctx.status.patch = PatchStatus.GENERATED
+    ctx.run_options = RunOptions(apply_changes=apply_changes)
+
+    PatcherStep().hint(ctx)
+
+    hint: Hint = ctx.diagnostic_hints.items[-1]
+    assert hint.axis is Axis.PATCH
+    assert hint.code == KnownCode.PATCH_GENERATED.value
+    assert hint.cluster == expected_cluster.value
+    assert hint.terminal is False
+    assert ctx.halt_state is None
+
+
+def test_patcher_hint_reports_failed_patch(tmp_path: Path) -> None:
+    """Failed patch status should emit a terminal error hint."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "failed_hint.py",
+        image_lines=["old\n"],
+        updated_lines=["new\n"],
+    )
+    ctx.status.patch = PatchStatus.FAILED
+
+    PatcherStep().hint(ctx)
+
+    hint: Hint = ctx.diagnostic_hints.items[-1]
+    assert hint.axis is Axis.PATCH
+    assert hint.code == KnownCode.PATCH_FAILED.value
+    assert hint.cluster == Cluster.ERROR.value
+    assert hint.terminal is True
+    assert ctx.halt_state is None
+
+
+def test_patcher_hint_requests_halt_when_patch_status_is_pending(
+    tmp_path: Path,
+) -> None:
+    """Pending patch status should request a halt instead of emitting a hint."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "pending_hint.py",
+        image_lines=["old\n"],
+        updated_lines=["new\n"],
+    )
+    ctx.status.patch = PatchStatus.PENDING
+
+    PatcherStep().hint(ctx)
+
+    assert len(ctx.diagnostic_hints) == 0
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "PatcherStep did not set state."
+    assert ctx.halt_state.step_name == "PatcherStep"

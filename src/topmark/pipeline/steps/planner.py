@@ -60,12 +60,15 @@ from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import StripStatus
 from topmark.pipeline.steps.base import BaseStep
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import HeaderView
+from topmark.pipeline.views import PlanEditKind
 from topmark.pipeline.views import RenderView
 from topmark.pipeline.views import UpdatedContent
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import ViewSlot
 from topmark.pipeline.views import compose_updated_content
+from topmark.pipeline.views import infer_single_planned_edit
 from topmark.processors.base import NO_LINE_ANCHOR
 
 if TYPE_CHECKING:
@@ -76,6 +79,7 @@ if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
     from topmark.filetypes.model import InsertChecker
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import PlannedEdit
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -224,6 +228,7 @@ class PlannerStep(BaseStep):
                     ViewSlot.HEADER,
                     ViewSlot.RENDER,
                     ViewSlot.UPDATED,
+                    ViewSlot.EDIT,
                 }
             ),
         )
@@ -510,6 +515,18 @@ class PlannerStep(BaseStep):
                 return
             ctx.status.plan = PlanStatus.REPLACED if apply else PlanStatus.PREVIEWED
             ctx.views.updated = UpdatedView(lines=new_content)
+            planned_edit: PlannedEdit | None = infer_single_planned_edit(
+                kind=PlanEditKind.REPLACE,
+                original_lines=original_lines,
+                updated_lines=materialized_new_lines,
+            )
+            ctx.views.edit = (
+                None
+                if planned_edit is None
+                else EditView(
+                    edits=(planned_edit,),
+                )
+            )
             logger.trace("Updated file (replace):\n%s", "".join(materialized_new_lines))
             return
 
@@ -585,7 +602,20 @@ class PlannerStep(BaseStep):
                     ctx.status.plan = PlanStatus.SKIPPED
                     logger.trace("Updater: text-based insertion yields no changes for %s", ctx.path)
                     return
-                ctx.views.updated = UpdatedView(lines=new_text.splitlines(keepends=True))
+                materialized_new_lines = new_text.splitlines(keepends=True)
+                ctx.views.updated = UpdatedView(lines=materialized_new_lines)
+                planned_edit = infer_single_planned_edit(
+                    kind=PlanEditKind.INSERT,
+                    original_lines=original_lines,
+                    updated_lines=materialized_new_lines,
+                )
+                ctx.views.edit = (
+                    None
+                    if planned_edit is None
+                    else EditView(
+                        edits=(planned_edit,),
+                    )
+                )
                 ctx.status.plan = PlanStatus.INSERTED if apply else PlanStatus.PREVIEWED
                 return
         except (ValueError, TypeError, AttributeError) as e:
@@ -655,6 +685,18 @@ class PlannerStep(BaseStep):
             logger.trace("Updater: line-based insertion yields no changes for %s", ctx.path)
             return
         ctx.views.updated = UpdatedView(lines=new_lines)
+        planned_edit = infer_single_planned_edit(
+            kind=PlanEditKind.INSERT,
+            original_lines=original_lines,
+            updated_lines=new_lines,
+        )
+        ctx.views.edit = (
+            None
+            if planned_edit is None
+            else EditView(
+                edits=(planned_edit,),
+            )
+        )
         ctx.status.plan = PlanStatus.INSERTED if apply else PlanStatus.PREVIEWED
         logger.trace("Updated file (line-based):\n%s", "".join(new_lines))
         return
