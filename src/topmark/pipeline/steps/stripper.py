@@ -48,7 +48,10 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def _reapply_bom_after_strip(lines: list[str], ctx: ProcessingContext) -> list[str]:
+def _reapply_bom_after_strip(
+    lines: list[str],
+    ctx: ProcessingContext,
+) -> list[str]:
     """Re-attach a leading UTF-8 BOM to the first line when the original file had one.
 
     Unlike the updater's BOM policy (which avoids re-adding a BOM in the presence of a shebang),
@@ -125,7 +128,10 @@ class StripperStep(BaseStep):
             ),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Return True when content is processable and a processor is available.
 
         Requires:
@@ -142,7 +148,10 @@ class StripperStep(BaseStep):
 
         return ctx.status.content == ContentStatus.OK
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Remove the TopMark header using the processor and known span if available (view-based).
 
         Args:
@@ -380,7 +389,10 @@ class StripperStep(BaseStep):
         )
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach strip hints (non-binding).
 
         Args:
@@ -413,6 +425,4 @@ class StripperStep(BaseStep):
                 message="failed to prepare header removal",
                 terminal=True,
             )
-        elif st == StripStatus.PENDING:
-            # stripper did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

@@ -80,7 +80,10 @@ class ScannerStep(BaseStep):
             ),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Determine if processing can proceed to the scan step.
 
         Processing can proceed if all of the following apply:
@@ -101,7 +104,10 @@ class ScannerStep(BaseStep):
 
         return ctx.header_processor is not None and ctx.status.content == ContentStatus.OK
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Detect and extract a TopMark header from the file image.
 
         Behavior with discriminated ``HeaderBounds``:
@@ -137,6 +143,7 @@ class ScannerStep(BaseStep):
             # An empty file is considered to have no header, but we can still proceed
             logger.info("File %s is empty; no header to scan.", ctx.path)
             ctx.status.header = HeaderStatus.MISSING
+            self._halt_if_policy_blocks(ctx)
             return
 
         if ctx.image_line_count() == 0:
@@ -155,6 +162,7 @@ class ScannerStep(BaseStep):
         if hb.kind is BoundsKind.NONE:
             logger.info("No header found in '%s'", ctx.path)
             ctx.status.header = HeaderStatus.MISSING
+            self._halt_if_policy_blocks(ctx)
             return
 
         # MALFORMED → terminal (always)
@@ -261,6 +269,8 @@ class ScannerStep(BaseStep):
         else:
             ctx.status.header = HeaderStatus.DETECTED
 
+        self._halt_if_policy_blocks(ctx)
+
         logger.debug(
             "File status: %s, resolve status: %s, content status: %s, header status: %s",
             ctx.status.fs.value,
@@ -275,7 +285,22 @@ class ScannerStep(BaseStep):
 
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def _halt_if_policy_blocks(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
+        """Request halt when scanner policy forbids further processing.
+
+        Args:
+            ctx: The processing context.
+        """
+        if check_permitted_by_policy(ctx) is False:
+            ctx.request_halt(reason="stopped by policy", at_step=self)
+
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach header detection hints (non-binding).
 
         Args:
@@ -284,7 +309,6 @@ class ScannerStep(BaseStep):
         st: HeaderStatus = ctx.status.header
 
         # May proceed to next step (always):
-        permitted_by_policy: bool | None = check_permitted_by_policy(ctx)
         if st == HeaderStatus.DETECTED:
             ctx.hint(
                 axis=Axis.HEADER,
@@ -292,8 +316,6 @@ class ScannerStep(BaseStep):
                 cluster=Cluster.PENDING,
                 message="TopMark header detected",
             )
-            if permitted_by_policy is False:
-                ctx.request_halt(reason="stopped by policy", at_step=self)
             pass  # detected; normal path
         elif st == HeaderStatus.MISSING:
             ctx.hint(
@@ -302,8 +324,6 @@ class ScannerStep(BaseStep):
                 cluster=Cluster.PENDING,
                 message="no TopMark header detected",
             )
-            if permitted_by_policy is False:
-                ctx.request_halt(reason="stopped by policy", at_step=self)
 
         elif st == HeaderStatus.EMPTY:
             ctx.hint(
@@ -312,8 +332,6 @@ class ScannerStep(BaseStep):
                 cluster=Cluster.PENDING,
                 message="empty TopMark header",
             )
-            if permitted_by_policy is False:
-                ctx.request_halt(reason="stopped by policy", at_step=self)
         # May proceed to next step (policy):
         elif st == HeaderStatus.MALFORMED_ALL_FIELDS:
             ctx.hint(
@@ -338,6 +356,4 @@ class ScannerStep(BaseStep):
                 message="malformed TopMark header",
                 terminal=True,
             )
-        elif st == HeaderStatus.PENDING:
-            # scanner did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

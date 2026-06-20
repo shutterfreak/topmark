@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Axis
+    from topmark.pipeline.status import BaseStatus
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -59,7 +60,10 @@ class BaseStep:
     axes_written: tuple[Axis, ...] = ()
     consumes_views: frozenset[ViewSlot] = field(default_factory=frozenset[ViewSlot])
 
-    def __call__(self, ctx: ProcessingContext) -> ProcessingContext:
+    def __call__(
+        self,
+        ctx: ProcessingContext,
+    ) -> ProcessingContext:
         """Invoke the step lifecycle: gate → run (if allowed) → hint.
 
         This method centralizes per-step bookkeeping (e.g., invocation counts).
@@ -80,19 +84,43 @@ class BaseStep:
         if self.may_proceed(ctx):
             logger.info("BaseStep:   Pipeline step %s - running", self.name)
             self.run(ctx)
-            # Check flow status
-            if ctx.is_halted:
-                # Call hint() for consistent diagnostics
-                self.hint(ctx)
-                return ctx
+            self._request_halt_if_primary_axis_pending(ctx)
 
         else:
             logger.info("BaseStep: ⚠️ Pipeline step %s may not proceed", self.name)
+            self._request_halt_if_primary_axis_pending(ctx)
 
         self.hint(ctx)
         return ctx
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def _request_halt_if_primary_axis_pending(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
+        """Halt when a running step leaves its primary status pending.
+
+        This lifecycle guard keeps control-flow mutation out of ``hint()``.
+        Hints remain advisory, while ``run()`` and this base-class guard own
+        terminal flow decisions. Steps that already requested a halt keep their
+        more specific reason.
+
+        Args:
+            ctx: The mutable processing context.
+        """
+        if self.primary_axis is None or ctx.is_halted:
+            return
+
+        primary_status: BaseStatus = ctx.status.get(self.primary_axis)
+        if primary_status.name == "PENDING":
+            ctx.request_halt(
+                reason=f"{self.__class__.__name__} did not set state.",
+                at_step=self,
+            )
+
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Return whether the step should run given the current context.
 
         Default: ``True`` (always run). Override in subclasses to respect
@@ -106,7 +134,10 @@ class BaseStep:
         """
         return True
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Perform the step's primary work, mutating ``ctx`` in place.
 
         Subclasses must implement this method and only write to declared axes.
@@ -116,7 +147,10 @@ class BaseStep:
         """
         pass
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach non-binding hints/telemetry to ``ctx`` (optional).
 
         This method should never influence the final outcome directly.

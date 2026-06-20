@@ -157,6 +157,15 @@ ______________________________________________________________________
 - Added shadow-validation of structured unified-diff rendering against the existing difflib-based
   patch generation path, keeping difflib as the production source of truth while parity is validated
   for GitHub issue 167.
+- Reduced comparison-time materialization for supported single-edit pipeline mutations by allowing
+  `ComparerStep` to classify valid structured-edit contexts directly from retained `EditView`
+  metadata before falling back to full-image comparison.
+- Reduced patch-generation materialization for supported single-edit pipeline mutations by allowing
+  `PatcherStep` to render structured unified diffs directly from retained planned-edit metadata and
+  original image views before falling back to `difflib`-based diff generation.
+- Centralized pipeline lifecycle enforcement in `BaseStep`, making halt ownership a `run()`-phase
+  responsibility and treating `hint()` as diagnostic-only. Steps whose primary status axis remains
+  `PENDING` after execution are now halted consistently by the shared lifecycle wrapper.
 
 ### Breaking Changes - Unreleased
 
@@ -345,6 +354,9 @@ ______________________________________________________________________
   guidelines, ownership responsibilities, and future streaming/event-API compatibility expectations
   for pipeline families, selections, runtime options, and durable processing results (GitHub issue
   170).
+- Documented GitHub issue 183, including structured-edit-driven comparison, reduced patch-generation
+  materialization, centralized step lifecycle enforcement, follow-up benchmark measurements, and the
+  remaining comparison/diff ownership boundaries.
 
 ### Internal - Unreleased
 

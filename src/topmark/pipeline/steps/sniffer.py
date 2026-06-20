@@ -66,7 +66,10 @@ class _NLCounts:
     cr: int = 0
 
 
-def _count_newlines(buf: bytes, carry_cr: bool) -> tuple[_NLCounts, bool]:
+def _count_newlines(
+    buf: bytes,
+    carry_cr: bool,
+) -> tuple[_NLCounts, bool]:
     """Count newline sequences in a bytes buffer.
 
     Args:
@@ -112,7 +115,9 @@ def _count_newlines(buf: bytes, carry_cr: bool) -> tuple[_NLCounts, bool]:
     return _NLCounts(lf=lf, crlf=crlf, cr=cr), (n > 0 and buf[-1:] == b"\r")
 
 
-def inspect_bom_shebang(first_bytes: bytes) -> tuple[bool, bool, bool]:
+def inspect_bom_shebang(
+    first_bytes: bytes,
+) -> tuple[bool, bool, bool]:
     """Inspect the initial bytes for BOM and shebang ordering.
 
     This helper performs a lightweight inspection of the first few bytes of
@@ -149,7 +154,10 @@ def inspect_bom_shebang(first_bytes: bytes) -> tuple[bool, bool, bool]:
     return has_bom, has_shebang, shebang_after_bom
 
 
-def _commit_newline_stats(ctx: ProcessingContext, counts: _NLCounts) -> None:
+def _commit_newline_stats(
+    ctx: ProcessingContext,
+    counts: _NLCounts,
+) -> None:
     r"""Populate newline histogram and derived stats on the context.
 
     This helper converts raw newline counts into the derived attributes
@@ -197,7 +205,9 @@ def _commit_newline_stats(ctx: ProcessingContext, counts: _NLCounts) -> None:
     ctx.mixed_newlines = sum(1 for v in hist.values() if v > 0) >= 2
 
 
-def _sniff_stream(ctx: ProcessingContext) -> FsStatus | None:
+def _sniff_stream(
+    ctx: ProcessingContext,
+) -> FsStatus | None:
     """Sniff file bytes to classify text/binary, validate UTF-8, and compute newline stats.
 
     This helper performs the core sniffing logic for `SnifferStep.run`:
@@ -332,7 +342,10 @@ class SnifferStep(BaseStep):
             axes_written=(Axis.FS,),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Determine if processing can proceed to the read step.
 
         Processing can proceed if:
@@ -358,7 +371,10 @@ class SnifferStep(BaseStep):
 
         return ctx.status.resolve == ResolveStatus.RESOLVED
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Lightweight I/O step between resolver and reader.
 
         Responsibilities:
@@ -460,7 +476,10 @@ class SnifferStep(BaseStep):
         ctx.status.fs = FsStatus.OK
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach sniff outcome hints (non-binding).
 
         Args:
@@ -546,6 +565,4 @@ class SnifferStep(BaseStep):
                 message="Unicode decode error",
                 terminal=True,
             )
-        elif st == FsStatus.PENDING:
-            # sniffer did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

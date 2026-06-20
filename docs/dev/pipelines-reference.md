@@ -94,8 +94,14 @@ replacement file image while still supporting repeated consumption by comparison
 and writing.
 
 `WriterStep` streams both file writes and STDOUT emission through the updated-line iterator.
-`ComparerStep` and `PatcherStep` remain explicit algorithm-level materialization ownership points,
-while the pipeline catalogue and selection model remain agnostic to the concrete updated-content
+
+`ComparerStep` and `PatcherStep` consume structured edit metadata when available. Single-edit
+comparison and structured diff rendering can operate directly from
+\[`EditView`\][topmark.pipeline.views.EditView] state without materializing complete updated file
+images. Both steps retain explicit ownership of fallback materialization paths used when structured
+edit metadata is unavailable, invalid, or unsupported.
+
+The pipeline catalogue and selection model remain agnostic to the concrete updated-content
 representation.
 
 {% include-markdown "\_snippets/config-strictness.md" %}

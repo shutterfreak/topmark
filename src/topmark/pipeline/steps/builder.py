@@ -74,7 +74,10 @@ class BuilderStep(BaseStep):
             axes_written=(Axis.GENERATION,),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Determine if processing can proceed to the build step.
 
         Return whether the builder has the prerequisites to compute field values.
@@ -99,7 +102,10 @@ class BuilderStep(BaseStep):
         # - empty files can proceed only when allowed by policy (also ContentStatus.OK)
         return ctx.status.content == ContentStatus.OK
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Build the field dictionaries used to render a TopMark header.
 
         This step analyzes the processing context and configuration to compute:
@@ -277,7 +283,10 @@ class BuilderStep(BaseStep):
 
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach generation hints (non-binding).
 
         Args:
@@ -306,6 +315,4 @@ class BuilderStep(BaseStep):
                 message="header field generation skipped",
                 terminal=True,
             )
-        elif st == GenerationStatus.PENDING:
-            # builder did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

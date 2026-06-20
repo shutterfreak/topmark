@@ -44,7 +44,9 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def _ensure_resolution_probe(ctx: ProcessingContext) -> ResolutionProbeResult:
+def _ensure_resolution_probe(
+    ctx: ProcessingContext,
+) -> ResolutionProbeResult:
     """Return the resolution probe result for a context, creating it if needed.
 
     Args:
@@ -181,7 +183,10 @@ class ResolverStep(BaseStep):
             axes_written=(Axis.RESOLVE,),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Return True (resolver is the first step and always runs).
 
         Args:
@@ -192,7 +197,10 @@ class ResolverStep(BaseStep):
         """
         return True
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Resolve and assign the file type and header processor for the file.
 
         Updates these fields on the context when successful: `ctx.file_type`,
@@ -215,7 +223,10 @@ class ResolverStep(BaseStep):
         )
         apply_probe_resolution_to_context(ctx=ctx, step=self)
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Advise about resolution outcome (non-binding).
 
         Args:
@@ -252,6 +263,4 @@ class ResolverStep(BaseStep):
                 message="file type is not supported",
                 terminal=True,
             )
-        elif st == ResolveStatus.PENDING:
-            # resolver did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

@@ -620,6 +620,53 @@ separately so memory changes remain attributable to a specific architectural lay
 
 ______________________________________________________________________
 
+### Comparison and patch materialization follow-up (GitHub issue 183)
+
+GitHub issue 183 audited the remaining comparison-time and patch-generation materialization points
+after the structured edit metadata and structured diff backend work from GitHub issue 167. The
+implemented change keeps the existing structured-diff / `difflib` fallback architecture, but makes
+single-edit metadata the primary input for additional common-path decisions:
+
+- `ComparerStep` can classify contexts with one valid planned edit as changed from retained
+  `EditView` metadata without materializing the complete original and updated file images solely for
+  equality checks;
+- `PatcherStep` can render the structured unified diff for the same single-edit path from the
+  planned edit and original image view without first materializing the lazy updated view;
+- generic full-image comparison and `difflib` diff generation remain explicit fallbacks for missing,
+  invalid, or unsupported edit metadata.
+
+The same work also centralized step lifecycle protection in `BaseStep`: concrete steps may request
+terminal flow control from `run()`, while `hint()` remains diagnostic-only. `BaseStep` now detects
+primary status axes that remain `PENDING` after `run()` and halts with a lifecycle diagnostic. This
+removes repeated hint-time halt branches and makes step ownership easier to reason about, but it is
+not expected to be a meaningful benchmark driver.
+
+Representative pathological measurements after the issue 183 changes were:
+
+| Scenario             | Mode                | Peak traced |  Max RSS |
+| -------------------- | ------------------- | ----------: | -------: |
+| `huge_diff`          | `strip_diff_pruned` |     4.31 MB | 46.42 MB |
+| `strip_large_header` | `strip_diff_pruned` |     6.42 MB | 52.84 MB |
+| `huge_header`        | `check_diff_pruned` |     3.30 MB | 50.94 MB |
+| `strip_large_header` | `check_diff_pruned` |     7.40 MB | 54.03 MB |
+
+Compared with the GitHub issue 167 checkpoint, these results are effectively flat. The two
+`strip_diff_pruned` rows remain very close to the previous structured-diff measurements, while the
+`check_diff_pruned` rows show small workload- and platform-sensitive RSS variation. The important
+ownership change is visible in the retained-view counters for the key diff modes: the benchmark now
+records no retained updated-line view before final pruning for these single-edit paths, while the
+patch diff text remains retained for downstream reporting until final volatile-view release.
+
+The results therefore support a partial-reduction conclusion rather than a broad memory step-change.
+Issue 183 removes unnecessary full-image materialization from supported comparison and structured
+patch-generation paths, but the current pathological scenarios remain dominated by original file
+image ownership, scanner/header work, retained patch text, and platform allocator behavior. Future
+work that attempts to reduce the remaining diff-heavy memory profile should focus on reduced-window
+fallback rendering, lazy patch-preview ownership, or broader many-file/repository-scale benchmarks
+rather than further comparer-local eager-list removal.
+
+______________________________________________________________________
+
 ## Known caveats
 
 RSS availability is platform-dependent. Canonical RSS baselines are currently generated on Linux and
@@ -648,3 +695,4 @@ ______________________________________________________________________
 - GitHub issue 141: Evaluate alternative FileImageView implementations
 - GitHub issue 147: Design end-to-end streaming output architecture for CLI and machine formats
 - GitHub issue 165: Evaluate streaming-oriented reduction and incremental reporting architecture
+- GitHub issue 183: Audit and reduce comparison-time materialization in pipeline execution
