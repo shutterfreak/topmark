@@ -53,7 +53,9 @@ if TYPE_CHECKING:
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import BuilderView
+    from topmark.pipeline.views import EditView
     from topmark.pipeline.views import HeaderView
+    from topmark.pipeline.views import PlannedEdit
     from topmark.pipeline.views import RenderView
     from topmark.pipeline.views import UpdatedView
 
@@ -90,7 +92,10 @@ class ComparerStep(BaseStep):
             ),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Return True if comparison can run.
 
         Conditions:
@@ -117,7 +122,10 @@ class ComparerStep(BaseStep):
         updated_ready: bool = ctx.views.updated is not None and ctx.views.updated.lines is not None
         return rendered_ready or updated_ready
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Compare existing vs expected header and set `ctx.status.comparison`.
 
         The step runs only when header generation has completed or when there are no
@@ -152,15 +160,36 @@ class ComparerStep(BaseStep):
             HeaderStatus.MALFORMED_SOME_FIELDS,
         }:
             ctx.status.comparison = ComparisonStatus.SKIPPED
-            reason = f"Skipped: {ctx.status.header.value}"
+            reason: str = f"Skipped: {ctx.status.header.value}"
             ctx.diagnostics.add_warning(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
         logger.debug("OK to proceed, header Status: %s", ctx.status.header.value)
 
-        # If we have a precomputed full file updated content, use direct comparison
-        # (relevant for the strip pipeline)
+        # If a prior step produced structured edit metadata, use it as the
+        # comparison source of truth. Planner/stripper own this metadata and
+        # emit edits only after constructing an updated image, so a valid
+        # non-empty edit means the file image would change without needing to
+        # materialize both complete images just to prove inequality.
+        edit_view: EditView | None = ctx.views.edit
+        if edit_view is not None and len(edit_view.edits) == 1:
+            edit: PlannedEdit = edit_view.edits[0]
+            if (
+                edit.old_start >= 0
+                and edit.old_end >= edit.old_start
+                and edit.old_end <= ctx.image_line_count()
+            ):
+                ctx.status.comparison = ComparisonStatus.CHANGED
+                logger.debug(
+                    "comparer: single-edit comparison for %s -> %s",
+                    ctx.path,
+                    ctx.status.comparison.value,
+                )
+                return
+
+        # If we have a precomputed full file updated content but no usable edit
+        # metadata, fall back to direct full-image comparison.
         updated_view: UpdatedView | None = ctx.views.updated
         if updated_view and updated_view.lines is not None:
             # 1) Full file image comparison (strip step or similar)
@@ -233,7 +262,10 @@ class ComparerStep(BaseStep):
 
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach comparison hints (non-binding).
 
         Args:
@@ -273,6 +305,4 @@ class ComparerStep(BaseStep):
                 message="comparison skipped",
                 terminal=True,
             )
-        elif st == ComparisonStatus.PENDING:
-            # comparer did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

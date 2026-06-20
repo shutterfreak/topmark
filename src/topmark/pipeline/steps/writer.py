@@ -76,7 +76,9 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 # --- DRY helpers for writer sinks ---
-def _has_updated_lines(ctx: ProcessingContext) -> bool:
+def _has_updated_lines(
+    ctx: ProcessingContext,
+) -> bool:
     """Return whether an updated image exists without materializing it.
 
     Args:
@@ -89,7 +91,11 @@ def _has_updated_lines(ctx: ProcessingContext) -> bool:
     return uv is not None and uv.lines is not None
 
 
-def _write_encoded_lines(*, ctx: ProcessingContext, file: BinaryIO) -> int:
+def _write_encoded_lines(
+    *,
+    ctx: ProcessingContext,
+    file: BinaryIO,
+) -> int:
     """Stream updated lines to a binary file object.
 
     Args:
@@ -107,7 +113,9 @@ def _write_encoded_lines(*, ctx: ProcessingContext, file: BinaryIO) -> int:
     return bytes_written
 
 
-def _write_stdout_lines(ctx: ProcessingContext) -> int:
+def _write_stdout_lines(
+    ctx: ProcessingContext,
+) -> int:
     """Stream updated lines to standard output.
 
     Args:
@@ -147,7 +155,11 @@ class WriteSink(Protocol):
     not require shared sink state.
     """
 
-    def write(self, *, ctx: ProcessingContext) -> WriteResult:
+    def write(
+        self,
+        *,
+        ctx: ProcessingContext,
+    ) -> WriteResult:
         """Write the updated content for ``ctx`` to the target sink.
 
         Implementations perform the final write operation for a processed file,
@@ -182,7 +194,11 @@ class WriteResult:
 class NullSink:
     """Dry-run sink: does not write anything."""
 
-    def write(self, *, ctx: ProcessingContext) -> WriteResult:
+    def write(
+        self,
+        *,
+        ctx: ProcessingContext,
+    ) -> WriteResult:
         """No-op write for dry-run mode.
 
         Args:
@@ -197,7 +213,11 @@ class NullSink:
 class StdoutSink:
     """Standard-output sink (stdin-content mode)."""
 
-    def write(self, *, ctx: ProcessingContext) -> WriteResult:
+    def write(
+        self,
+        *,
+        ctx: ProcessingContext,
+    ) -> WriteResult:
         """Emit updated content to standard output.
 
         This sink is used when the CLI/API is configured to read a single file's
@@ -236,7 +256,11 @@ class InplaceFileSink(WriteSink):
         - Live readers may observe mid-write changes.
     """
 
-    def write(self, *, ctx: ProcessingContext) -> WriteResult:
+    def write(
+        self,
+        *,
+        ctx: ProcessingContext,
+    ) -> WriteResult:
         """Write updated content directly into the original file (in-place).
 
         Opens the file in binary write mode, truncates its contents, and streams
@@ -293,7 +317,11 @@ class AtomicFileSink(WriteSink):
         - Directory `fsync()` is POSIX-only and therefore skipped on Windows.
     """
 
-    def write(self, *, ctx: ProcessingContext) -> WriteResult:
+    def write(
+        self,
+        *,
+        ctx: ProcessingContext,
+    ) -> WriteResult:
         """Atomically replace the target file by writing to a temp file first.
 
         Streams `ctx.iter_updated_lines()` to a temporary file in the same directory,
@@ -373,7 +401,9 @@ class AtomicFileSink(WriteSink):
             return WriteResult(status=WriteStatus.FAILED)
 
 
-def _select_sink(ctx: ProcessingContext) -> WriteSink:
+def _select_sink(
+    ctx: ProcessingContext,
+) -> WriteSink:
     """Pick the appropriate sink for this write operation.
 
     Selection rules:
@@ -436,7 +466,10 @@ class WriterStep(BaseStep):
             ),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Return True if the writer is allowed to commit changes.
 
         The writer should only run when:
@@ -490,7 +523,10 @@ class WriterStep(BaseStep):
 
         return can_change(ctx) is True
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Writer step: commit updates to the selected sink.
 
         This step executes only when `may_proceed()` returns `True`.
@@ -546,7 +582,10 @@ class WriterStep(BaseStep):
         # Update write status:
         ctx.status.write = result.status
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach write hints (non-binding).
 
         Args:
@@ -581,6 +620,4 @@ class WriterStep(BaseStep):
                 message="write failed",
                 terminal=True,
             )
-        elif st == WriteStatus.PENDING:
-            # writer did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

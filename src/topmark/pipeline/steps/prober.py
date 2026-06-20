@@ -52,7 +52,10 @@ class ProberStep(BaseStep):
             axes_written=(Axis.RESOLVE,),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Return True because probing is the first and only probe step.
 
         Args:
@@ -63,20 +66,33 @@ class ProberStep(BaseStep):
         """
         return True
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Resolve and store probe-visible diagnostic details.
 
         Args:
             ctx: Processing context representing the file being probed.
         """
-        apply_probe_resolution_to_context(ctx=ctx, step=self)
+        apply_probe_resolution_to_context(
+            ctx=ctx,
+            step=self,
+        )
         if ctx.status.resolve == ResolveStatus.RESOLVED:
-            ctx.request_halt(reason="Resolution probe completed.", at_step=self)
+            ctx.request_halt(
+                reason="Resolution probe completed.",
+                at_step=self,
+            )
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Advise about probe resolution outcome.
 
         Args:
             ctx: The processing context.
         """
+        # BaseStep.__call__() handles PENDING state (step did not complete)
         return

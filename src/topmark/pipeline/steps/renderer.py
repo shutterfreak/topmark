@@ -78,7 +78,10 @@ class RendererStep(BaseStep):
             ),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Determine if processing can proceed to the render step.
 
         Processing can proceed if:
@@ -99,7 +102,10 @@ class RendererStep(BaseStep):
         }
         return outcome
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Render the expected header text from ``ctx.views.build.selected``.
 
         Args:
@@ -144,7 +150,7 @@ class RendererStep(BaseStep):
                 # Make it explicit that there is no "expected header" to compare against.
                 ctx.views.render = RenderView(lines=None, block=None)
                 ctx.status.render = RenderStatus.SKIPPED
-                # leave status as-is (PENDING) or set a neutral value if you add one
+                ctx.request_halt(reason=f"{self.__class__.__name__} skipped.", at_step=self)
             return
 
         # Now ctx.status.generation == GenerationStatus.GENERATED
@@ -197,7 +203,10 @@ class RendererStep(BaseStep):
 
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach render hints (non-binding).
 
         Args:
@@ -208,10 +217,6 @@ class RendererStep(BaseStep):
         # May proceed to next step (always):
         if st == RenderStatus.RENDERED:
             pass  # normal; no hint
-        # Stop processing:
         elif st == RenderStatus.SKIPPED:
-            # renderer skipped
-            ctx.request_halt(reason=f"{self.__class__.__name__} skipped.", at_step=self)
-        elif st == RenderStatus.PENDING:
-            # renderer did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+            pass  # already halted by run()
+        # BaseStep.__call__() handles PENDING state (step did not complete)

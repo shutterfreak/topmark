@@ -22,6 +22,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_comparer
 from tests.helpers.pipeline import run_reader
@@ -33,10 +35,14 @@ from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.views import BuilderView
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import ListFileImageView
+from topmark.pipeline.views import PlanEditKind
+from topmark.pipeline.views import PlannedEdit
 from topmark.pipeline.views import RenderView
 from topmark.pipeline.views import UpdatedView
 from topmark.processors.base import HeaderProcessor
@@ -46,6 +52,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.views import FileImageView
 
 
 def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
@@ -72,6 +79,7 @@ def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
     ctx = run_comparer(ctx)
 
     assert ctx.status.comparison is ComparisonStatus.CHANGED
+    assert ctx.status.generation is GenerationStatus.PENDING
 
 
 def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
@@ -98,6 +106,175 @@ def test_comparer_precomputed_lines_set_unchanged(tmp_path: Path) -> None:
     ctx = run_comparer(ctx)
 
     assert ctx.status.comparison is ComparisonStatus.UNCHANGED
+    assert ctx.status.generation is GenerationStatus.PENDING
+
+
+def test_comparer_uses_single_edit_metadata_without_materializing_images(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Single-edit metadata should classify changes without full image equality checks."""
+    file: Path = tmp_path / "edit.py"
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx.views.image = ListFileImageView(lines=["old\n", "body\n"])
+    ctx.views.updated = UpdatedView(lines=["new\n", "body\n"])
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=1,
+                new_lines=("new\n",),
+            ),
+        )
+    )
+    ctx.file_type = make_file_type(
+        local_key="test",
+        description="Test File Type",
+        extensions=[],
+        filenames=[],
+        patterns=[],
+    )
+    ctx.header_processor = HeaderProcessor()
+    ctx.status.resolve = ResolveStatus.RESOLVED
+
+    def fail_materialize_image_lines(self: ProcessingContext) -> list[str]:
+        del self
+        raise AssertionError("original image should not be materialized for edit comparison")
+
+    def fail_materialize_updated_lines(self: ProcessingContext) -> list[str]:
+        del self
+        raise AssertionError("updated image should not be materialized for edit comparison")
+
+    monkeypatch.setattr(type(ctx), "materialize_image_lines", fail_materialize_image_lines)
+    monkeypatch.setattr(type(ctx), "materialize_updated_lines", fail_materialize_updated_lines)
+
+    ctx = run_comparer(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+    assert ctx.views.edit is not None
+    assert len(ctx.views.edit.edits) == 1
+
+
+def test_comparer_invalid_single_edit_metadata_falls_back_to_full_image_comparison(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Invalid single-edit metadata should not bypass full-image comparison."""
+    file: Path = tmp_path / "invalid-edit.py"
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx.views.image = ListFileImageView(lines=["old\n", "body\n"])
+    ctx.views.updated = UpdatedView(lines=["new\n", "body\n"])
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=3,
+                new_lines=("new\n",),
+            ),
+        )
+    )
+    ctx.file_type = make_file_type(
+        local_key="test",
+        description="Test File Type",
+        extensions=[],
+        filenames=[],
+        patterns=[],
+    )
+    ctx.header_processor = HeaderProcessor()
+    ctx.status.resolve = ResolveStatus.RESOLVED
+
+    materialized: dict[str, bool] = {"image": False, "updated": False}
+
+    def materialize_image_lines(self: ProcessingContext) -> list[str]:
+        materialized["image"] = True
+        image_view: FileImageView | None = self.views.image
+        assert image_view is not None
+        return list(image_view.iter_lines())
+
+    def materialize_updated_lines(self: ProcessingContext) -> list[str]:
+        materialized["updated"] = True
+        updated_view: UpdatedView | None = self.views.updated
+        assert updated_view is not None
+        assert updated_view.lines is not None
+        return list(updated_view.lines)
+
+    monkeypatch.setattr(type(ctx), "materialize_image_lines", materialize_image_lines)
+    monkeypatch.setattr(type(ctx), "materialize_updated_lines", materialize_updated_lines)
+
+    ctx = run_comparer(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+    assert materialized == {"image": True, "updated": True}
+
+
+def test_comparer_generation_pending_without_updated_view_is_unchanged(tmp_path: Path) -> None:
+    """Mark UNCHANGED when no rendered or updated image is available in non-rendering flow."""
+    file: Path = tmp_path / "pending.py"
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx.views.render = RenderView(lines=[], block="")
+    ctx.status.render = RenderStatus.RENDERED
+    ctx.status.generation = GenerationStatus.PENDING
+    ctx.file_type = make_file_type(
+        local_key="test",
+        description="Test File Type",
+        extensions=[],
+        filenames=[],
+        patterns=[],
+    )
+    ctx.header_processor = HeaderProcessor()
+    ctx.status.resolve = ResolveStatus.RESOLVED
+
+    ctx = run_comparer(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.UNCHANGED
+
+
+@pytest.mark.parametrize(
+    "header_status",
+    [
+        HeaderStatus.MALFORMED_ALL_FIELDS,
+        HeaderStatus.MALFORMED_SOME_FIELDS,
+    ],
+)
+def test_comparer_skips_and_halts_for_malformed_headers(
+    tmp_path: Path,
+    header_status: HeaderStatus,
+) -> None:
+    """Skip comparison and halt when scanner found malformed header fields."""
+    file: Path = tmp_path / "malformed.py"
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(file, cfg)
+
+    ctx.views.render = RenderView(lines=[], block="")
+    ctx.status.render = RenderStatus.RENDERED
+    ctx.status.header = header_status
+    ctx.file_type = make_file_type(
+        local_key="test",
+        description="Test File Type",
+        extensions=[],
+        filenames=[],
+        patterns=[],
+    )
+    ctx.header_processor = HeaderProcessor()
+    ctx.status.resolve = ResolveStatus.RESOLVED
+
+    ctx = run_comparer(ctx)
+
+    reason: str = f"Skipped: {header_status.value}"
+    assert ctx.status.comparison is ComparisonStatus.SKIPPED
+    assert ctx.is_halted
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "ComparerStep"
+    assert ctx.halt_state.reason_code == reason
+    assert any(reason in d.message for d in ctx.diagnostics.items)
 
 
 def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:

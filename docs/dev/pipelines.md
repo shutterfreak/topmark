@@ -31,7 +31,8 @@ derived from the selected pipeline instead of being repeated independently by ea
 Pipelines do not make high-level decisions themselves. Instead:
 
 - Each step mutates a **strictly defined set of status axes**
-- Steps may **halt execution** when required by policy or safety rules
+- Steps may **halt execution from their run phase** when required by policy or safety rules
+- Step hints remain **diagnostic-only** and do not mutate halt state
 - Final outcomes (changed, unchanged, skipped, unsupported, error, ...) are **derived centrally** by
   the CLI and views from accumulated statuses and hints
 
@@ -339,11 +340,13 @@ Updated-file views may be represented either as materialized line sequences or a
 updated-content abstractions. This allows replacement planning to compose updated content lazily.
 Pipeline-generated lazy updated content must remain repeatable because comparison, patch generation,
 and writing may consume the same updated view. Planner and stripper steps may also attach structured
-edit metadata describing the contiguous splice that produced the updated image. Patch generation
-uses that metadata as the preferred structured diff source for supported single-edit changes, while
-retaining generic diff generation as a fallback. Writer file sinks and STDOUT emission stream
-through the context's updated-line iterator; comparison and patch generation still materialize
-updated lines where required by their current algorithms.
+edit metadata describing the contiguous splice that produced the updated image. Comparison and patch
+generation use that metadata for supported single-edit changes: comparison can classify the context
+as changed without materializing complete original and updated file images solely for equality, and
+patch generation can render the structured unified diff from the planned edit and original image
+view. Generic full-image comparison and diff generation remain explicit fallbacks when structured
+edit metadata is unavailable, invalid, or unsupported. Writer file sinks and STDOUT emission stream
+through the context's updated-line iterator.
 
 For filesystem inputs, the processing context path is the selected processing path. It may differ
 from the path spelling supplied on the command line or in configuration when symlinks or equivalent
@@ -673,8 +676,14 @@ Each step implements the \[`Step`\][topmark.pipeline.protocols.Step] protocol an
 
 - Declares which **status axes** it may write
 - Declares which pipeline view slots it may consume via `consumes_views`
-- May halt execution via `ctx.flow.halt`
-- Emits structured hints for diagnostics
+- May halt execution from `run()` via the processing context halt API when policy or safety rules
+  require terminal flow control
+- Emits structured hints for diagnostics without changing halt state
+
+\[`BaseStep`\][topmark.pipeline.steps.base.BaseStep] owns the common lifecycle wrapper. After a
+step's `run()` hook completes, the wrapper verifies that the step's primary status axis no longer
+remains `PENDING`; if it does, execution is halted with a lifecycle diagnostic. This keeps "step did
+not set state" protection centralized instead of repeating halt logic in individual `hint()` hooks.
 
 | Step                                                             | Responsibility                                                                                            |
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |

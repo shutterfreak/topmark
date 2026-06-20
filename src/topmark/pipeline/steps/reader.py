@@ -54,7 +54,9 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def _newline_histogram(lines: list[str]) -> dict[str, int]:
+def _newline_histogram(
+    lines: list[str],
+) -> dict[str, int]:
     hist: dict[str, int] = dict.fromkeys(STANDARD_NEWLINES, 0)
     for ln in lines[:-1]:
         if ln.endswith("\r\n"):
@@ -76,7 +78,9 @@ def _newline_histogram(lines: list[str]) -> dict[str, int]:
 
 
 # --- Emptiness detection helpers ---
-def _compute_empty_flags(lines: list[str]) -> tuple[bool, bool]:
+def _compute_empty_flags(
+    lines: list[str],
+) -> tuple[bool, bool]:
     """Compute `effective` and `logical` emptiness for a decoded, BOM-stripped image.
 
     Args:
@@ -144,7 +148,10 @@ class ReaderStep(BaseStep):
             axes_written=(Axis.CONTENT,),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Determine if processing can proceed to the read step.
 
         Processing can proceed if:
@@ -169,7 +176,10 @@ class ReaderStep(BaseStep):
         """
         return not ctx.is_halted
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Loads file lines and detects newline style.
 
         This function preserves native newline conventions and records them
@@ -224,7 +234,9 @@ class ReaderStep(BaseStep):
                 ctx.request_halt(reason=reason, at_step=self)
                 return
 
-        def _initialize_empty_file_content(ctx: ProcessingContext) -> None:
+        def _initialize_empty_file_content(
+            ctx: ProcessingContext,
+        ) -> None:
             """Initialize the in-memory image and content status for empty files.
 
             This helper is used both when Sniffer has already marked the file as EMPTY
@@ -441,7 +453,10 @@ class ReaderStep(BaseStep):
             ctx.request_halt(reason=reason, at_step=self)
             return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach content outcome hints (non-binding).
 
         Args:
@@ -494,6 +509,4 @@ class ReaderStep(BaseStep):
                 message="cannot read content",
                 terminal=True,
             )
-        elif st == ContentStatus.PENDING:
-            # reader did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

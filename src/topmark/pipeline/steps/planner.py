@@ -233,7 +233,10 @@ class PlannerStep(BaseStep):
             ),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Return True if the planner can compute an updated image.
 
         This gate only checks whether the planner has enough upstream
@@ -264,7 +267,10 @@ class PlannerStep(BaseStep):
         )
         return outcome
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Plan insert/replace/remove of the TopMark header for the current file (view-based).
 
         Behavior by case:
@@ -701,7 +707,10 @@ class PlannerStep(BaseStep):
         logger.trace("Updated file (line-based):\n%s", "".join(new_lines))
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach update hints (non-binding).
 
         Args:
@@ -777,6 +786,4 @@ class PlannerStep(BaseStep):
                 message="failed to compute update",
                 terminal=True,
             )
-        elif st == PlanStatus.PENDING:
-            # updater did not complete
-            ctx.request_halt(reason=f"{self.__class__.__name__} did not set state.", at_step=self)
+        # BaseStep.__call__() handles PENDING state (step did not complete)

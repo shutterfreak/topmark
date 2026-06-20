@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import difflib
 import logging
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
@@ -49,8 +50,6 @@ from topmark.presentation.shared.paths import get_display_path
 from topmark.utils.timestamp import format_gnu_diff_timestamp
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import PlannedEdit
@@ -64,7 +63,7 @@ def _apply_single_edit(
     original_lines: Sequence[str],
     edit: PlannedEdit,
 ) -> list[str] | None:
-    """Apply one planned edit to original lines for metadata validation.
+    """Apply one planned edit to original lines for optional validation.
 
     Args:
         original_lines: Original file image lines.
@@ -74,9 +73,10 @@ def _apply_single_edit(
         list[str] | None: Updated lines when the edit span is valid, otherwise
         ``None``.
     """
-    if edit.old_start < 0 or edit.old_end < edit.old_start:
-        return None
-    if edit.old_end > len(original_lines):
+    if not _is_valid_single_edit(
+        original_line_count=len(original_lines),
+        edit=edit,
+    ):
         return None
 
     return [
@@ -84,6 +84,27 @@ def _apply_single_edit(
         *edit.new_lines,
         *original_lines[edit.old_end :],
     ]
+
+
+def _is_valid_single_edit(
+    *,
+    original_line_count: int,
+    edit: PlannedEdit,
+) -> bool:
+    """Return True when a single edit span is valid for the original image.
+
+    Args:
+        original_line_count: Number of lines in the original image.
+        edit: Planned edit metadata to validate.
+
+    Returns:
+        bool: True when the edit span can be applied safely.
+    """
+    return (
+        edit.old_start >= 0
+        and edit.old_end >= edit.old_start
+        and edit.old_end <= original_line_count
+    )
 
 
 def _render_difflib_unified_diff(
@@ -117,30 +138,31 @@ def _render_difflib_unified_diff(
             fromfile=fromfile,
             tofile=tofile,
             fromfiledate=fromfiledate,
+            tofiledate=tofiledate,
             n=3,
             lineterm=lineterm,
-            tofiledate=tofiledate,
         )
     )
 
 
-def _render_patch_lines(
+def _render_structured_patch_lines(
     *,
     current_lines: Sequence[str],
-    updated_lines: Sequence[str],
     edit_view: EditView | None,
+    expected_updated_lines: Sequence[str] | None,
     fromfile: str,
     tofile: str,
     fromfiledate: str,
     tofiledate: str,
     lineterm: str,
-) -> list[str]:
-    """Render patch lines, preferring structured single-edit metadata.
+) -> list[str] | None:
+    """Render patch lines directly from valid single-edit metadata.
 
     Args:
         current_lines: Original file image lines.
-        updated_lines: Updated file image lines.
         edit_view: Structured planned edits, when available.
+        expected_updated_lines: Optional materialized updated image to validate
+            caller-provided metadata without additional materialization.
         fromfile: Diff label for the original file.
         tofile: Diff label for the updated file.
         fromfiledate: Timestamp label for the original file.
@@ -148,38 +170,37 @@ def _render_patch_lines(
         lineterm: Diff control-line terminator.
 
     Returns:
-        list[str]: Unified diff lines.
+        list[str] | None: Structured unified diff lines, or ``None`` when the
+        metadata is absent, invalid, or unsupported by the structured renderer.
     """
-    if edit_view is not None and len(edit_view.edits) == 1:
-        edit: PlannedEdit = edit_view.edits[0]
+    if edit_view is None or len(edit_view.edits) != 1:
+        return None
+
+    edit: PlannedEdit = edit_view.edits[0]
+    if not _is_valid_single_edit(
+        original_line_count=len(current_lines),
+        edit=edit,
+    ):
+        return None
+
+    if expected_updated_lines is not None:
         applied_lines: list[str] | None = _apply_single_edit(
             original_lines=current_lines,
             edit=edit,
         )
-        if applied_lines == list(updated_lines):
-            structured_patch_lines: list[str] | None = render_structured_unified_diff(
-                original_lines=current_lines,
-                edit=edit,
-                fromfile=fromfile,
-                tofile=tofile,
-                fromfiledate=fromfiledate,
-                tofiledate=tofiledate,
-                lineterm=lineterm,
-                context=3,
-            )
-            if structured_patch_lines is not None:
-                return structured_patch_lines
+        if applied_lines != list(expected_updated_lines):
+            logger.debug("structured diff metadata did not match updated image; falling back")
+            return None
 
-        logger.debug("structured diff unavailable for single edit; falling back to difflib")
-
-    return _render_difflib_unified_diff(
-        current_lines=current_lines,
-        updated_lines=updated_lines,
+    return render_structured_unified_diff(
+        original_lines=current_lines,
+        edit=edit,
         fromfile=fromfile,
         tofile=tofile,
         fromfiledate=fromfiledate,
         tofiledate=tofiledate,
         lineterm=lineterm,
+        context=3,
     )
 
 
@@ -221,7 +242,10 @@ class PatcherStep(BaseStep):
             ),
         )
 
-    def may_proceed(self, ctx: ProcessingContext) -> bool:
+    def may_proceed(
+        self,
+        ctx: ProcessingContext,
+    ) -> bool:
         """Determine if processing can proceed to the patcher step.
 
         Processing can proceed if:
@@ -241,7 +265,10 @@ class PatcherStep(BaseStep):
             ComparisonStatus.UNCHANGED,
         }
 
-    def run(self, ctx: ProcessingContext) -> None:
+    def run(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Generate and attach a unified diff to the processing context (view-based).
 
         The step runs only after comparison. If the comparison status is
@@ -274,23 +301,8 @@ class PatcherStep(BaseStep):
 
         # ctx.status.comparison == ComparisonStatus.CHANGED:
 
-        # Materialize lines from views once for diffing
+        # Materialize original file lines from views once for diffing
         current_lines: list[str] = ctx.materialize_image_lines()
-        updated_lines: list[str] | None = None
-        updated_view: UpdatedView | None = ctx.views.updated
-        if updated_view and updated_view.lines is not None:
-            updated_lines = ctx.materialize_updated_lines()
-
-        # We only generate a diff when we have an updated image; otherwise skip.
-        if updated_lines is None:
-            logger.debug(
-                "Patch skipped for %s: comparison=%s but no updated image present",
-                ctx.path,
-                ctx.status.comparison.value,
-            )
-            ctx.views.diff = DiffView(text=None)
-            ctx.status.patch = PatchStatus.SKIPPED
-            return
 
         display_path: str = get_display_path(ctx)
 
@@ -299,16 +311,52 @@ class PatcherStep(BaseStep):
         fromfiledate: str = format_gnu_diff_timestamp(dt=ctx.timestamp)
         tofiledate: str = format_gnu_diff_timestamp(dt=ctx.run_options.started_at)
 
-        patch_lines: list[str] = _render_patch_lines(
+        updated_view: UpdatedView | None = ctx.views.updated
+        expected_updated_lines: Sequence[str] | None = None
+        if (
+            updated_view is not None
+            and updated_view.lines is not None
+            and isinstance(updated_view.lines, Sequence)
+        ):
+            expected_updated_lines = updated_view.lines
+
+        patch_lines: list[str] | None = _render_structured_patch_lines(
             current_lines=current_lines,
-            updated_lines=updated_lines,
             edit_view=ctx.views.edit,
+            expected_updated_lines=expected_updated_lines,
             fromfile=fromfile,
             tofile=tofile,
             fromfiledate=fromfiledate,
             tofiledate=tofiledate,
             lineterm=ctx.newline_style,
         )
+
+        if patch_lines is None:
+            updated_lines: list[str] | None = None
+            if updated_view and updated_view.lines is not None:
+                updated_lines = ctx.materialize_updated_lines()
+
+            # We only generate a fallback diff when we have an updated image.
+            if updated_lines is None:
+                logger.debug(
+                    "Patch skipped for %s: comparison=%s but no updated image present",
+                    ctx.path,
+                    ctx.status.comparison.value,
+                )
+                ctx.views.diff = DiffView(text=None)
+                ctx.status.patch = PatchStatus.SKIPPED
+                return
+
+            #  Render the generic difflib unified diff fallback.
+            patch_lines = _render_difflib_unified_diff(
+                current_lines=current_lines,
+                updated_lines=updated_lines,
+                fromfile=fromfile,
+                tofile=tofile,
+                fromfiledate=fromfiledate,
+                tofiledate=tofiledate,
+                lineterm=ctx.newline_style,
+            )
 
         if len(patch_lines) == 0:
             ctx.status.comparison = ComparisonStatus.UNCHANGED
@@ -335,7 +383,10 @@ class PatcherStep(BaseStep):
 
         return
 
-    def hint(self, ctx: ProcessingContext) -> None:
+    def hint(
+        self,
+        ctx: ProcessingContext,
+    ) -> None:
         """Attach diff hints (non-binding).
 
         Args:
@@ -368,9 +419,4 @@ class PatcherStep(BaseStep):
                 message="change detected but patch generation failed",
                 terminal=True,
             )
-        elif st == PatchStatus.PENDING:
-            # patcher did not complete
-            ctx.request_halt(
-                reason=f"{self.__class__.__name__} did not set state.",
-                at_step=self,
-            )
+        # BaseStep.__call__() handles PENDING state (step did not complete)

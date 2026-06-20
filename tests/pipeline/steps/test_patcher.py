@@ -38,7 +38,6 @@ from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
-from topmark.pipeline.hints import Hint
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
@@ -53,6 +52,7 @@ from topmark.pipeline.views import ListFileImageView
 from topmark.pipeline.views import PlanEditKind
 from topmark.pipeline.views import PlannedEdit
 from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import compose_updated_content
 from topmark.presentation.formatters.unified_diff import format_patch_plain
 from topmark.runtime.model import RunOptions
 
@@ -62,6 +62,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.hints import Hint
 
 
 def _make_patcher_context(
@@ -101,7 +102,9 @@ def _run_to_patcher(file: Path, cfg: FrozenConfig) -> ProcessingContext:
     return ctx
 
 
-def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
+def test_patcher_diff_preserves_crlf_and_render_markers(
+    tmp_path: Path,
+) -> None:
     r"""CRLF-seeded file → diff lines use CRLF; render_patch shows \\r\\n markers."""
     path: Path = tmp_path / "a.ts"
     # Ensure file content is CRLF-seeded.
@@ -139,7 +142,9 @@ def test_patcher_diff_preserves_crlf_and_render_markers(tmp_path: Path) -> None:
     assert "\n\r" not in rendered  # avoid flipped sequence
 
 
-def test_patcher_skips_when_comparison_is_unchanged(tmp_path: Path) -> None:
+def test_patcher_skips_when_comparison_is_unchanged(
+    tmp_path: Path,
+) -> None:
     """UNCHANGED comparison should skip patch generation and attach an empty diff view."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "unchanged.py",
@@ -221,7 +226,10 @@ def test_patcher_formats_log_preview_only_when_info_logging_is_enabled(
     )
     formatted_patches: list[list[str] | str] = []
 
-    def record_format_patch_plain(*, patch: list[str] | str) -> str:
+    def record_format_patch_plain(
+        *,
+        patch: list[str] | str,
+    ) -> str:
         formatted_patches.append(patch)
         return "formatted preview"
 
@@ -240,7 +248,9 @@ def test_patcher_formats_log_preview_only_when_info_logging_is_enabled(
     assert bool(formatted_patches) is expect_preview_formatting
 
 
-def test_patcher_normalizes_empty_diff_to_unchanged(tmp_path: Path) -> None:
+def test_patcher_normalizes_empty_diff_to_unchanged(
+    tmp_path: Path,
+) -> None:
     """CHANGED comparison with identical images should normalize to unchanged."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "empty_diff.py",
@@ -276,7 +286,9 @@ def test_patcher_preserves_configured_newline_style_in_raw_diff(
     assert "\n\r" not in diff_text
 
 
-def test_patcher_halts_when_comparison_status_is_pending(tmp_path: Path) -> None:
+def test_patcher_halts_when_comparison_status_is_pending(
+    tmp_path: Path,
+) -> None:
     """BaseStep should halt if patcher is invoked before comparison completes."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "pending.py",
@@ -293,7 +305,9 @@ def test_patcher_halts_when_comparison_status_is_pending(tmp_path: Path) -> None
     assert ctx.halt_state.reason_code == "PatcherStep did not set state."
 
 
-def test_patcher_uses_stdin_filename_in_unified_diff_labels(tmp_path: Path) -> None:
+def test_patcher_uses_stdin_filename_in_unified_diff_labels(
+    tmp_path: Path,
+) -> None:
     """STDIN-backed diffs should label files with the logical stdin filename."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "materialized-stdin.py",
@@ -337,7 +351,9 @@ def test_patcher_uses_structured_diff_for_valid_single_edit(
         )
     )
 
-    def fail_difflib_fallback(**kwargs: object) -> list[str]:
+    def fail_difflib_fallback(
+        **kwargs: object,
+    ) -> list[str]:
         raise AssertionError("difflib fallback should not be used")
 
     monkeypatch.setattr(
@@ -354,7 +370,54 @@ def test_patcher_uses_structured_diff_for_valid_single_edit(
     assert "+new\n" in diff_text
 
 
-def test_patcher_falls_back_for_mismatching_structured_edit(tmp_path: Path) -> None:
+def test_patcher_uses_structured_diff_without_materializing_lazy_updated_lines(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lazy updated content should not be materialized when single-edit metadata is enough."""
+    ctx: ProcessingContext = _make_patcher_context(
+        tmp_path / "lazy_structured.py",
+        image_lines=["old\n", "body\n"],
+        updated_lines=None,
+        comparison_status=ComparisonStatus.CHANGED,
+    )
+    ctx.views.updated = UpdatedView(
+        lines=compose_updated_content(("new\n",), ("body\n",)),
+    )
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=1,
+                new_lines=("new\n",),
+            ),
+        )
+    )
+
+    def fail_materialize_updated_lines(
+        self: ProcessingContext,
+    ) -> list[str]:
+        del self
+        raise AssertionError("updated lines should not be materialized for structured diff")
+
+    monkeypatch.setattr(
+        type(ctx),
+        "materialize_updated_lines",
+        fail_materialize_updated_lines,
+    )
+
+    ctx = run_patcher(ctx)
+
+    diff_text: str = ctx.views.diff.text if ctx.views.diff and ctx.views.diff.text else ""
+    assert ctx.status.patch is PatchStatus.GENERATED
+    assert "-old\n" in diff_text
+    assert "+new\n" in diff_text
+
+
+def test_patcher_falls_back_for_mismatching_structured_edit(
+    tmp_path: Path,
+) -> None:
     """Mismatching structured edit metadata should use the difflib fallback."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "structured_mismatch.py",
@@ -536,7 +599,6 @@ def test_patcher_marks_failed_when_backend_returns_empty_text(
         *,
         current_lines: Sequence[str],
         updated_lines: Sequence[str],
-        edit_view: EditView | None,
         fromfile: str,
         tofile: str,
         fromfiledate: str,
@@ -552,7 +614,6 @@ def test_patcher_marks_failed_when_backend_returns_empty_text(
         del (
             current_lines,
             updated_lines,
-            edit_view,
             fromfile,
             tofile,
             fromfiledate,
@@ -563,7 +624,7 @@ def test_patcher_marks_failed_when_backend_returns_empty_text(
 
     monkeypatch.setattr(
         patcher_module,
-        "_render_patch_lines",
+        "_render_difflib_unified_diff",
         _render_empty_text_patch,
     )
 
@@ -608,7 +669,9 @@ def test_patcher_hint_reports_generated_patch_cluster_by_apply_mode(
     assert ctx.halt_state is None
 
 
-def test_patcher_hint_reports_failed_patch(tmp_path: Path) -> None:
+def test_patcher_hint_reports_failed_patch(
+    tmp_path: Path,
+) -> None:
     """Failed patch status should emit a terminal error hint."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "failed_hint.py",
@@ -627,10 +690,10 @@ def test_patcher_hint_reports_failed_patch(tmp_path: Path) -> None:
     assert ctx.halt_state is None
 
 
-def test_patcher_hint_requests_halt_when_patch_status_is_pending(
+def test_patcher_hint_does_not_halt_when_patch_status_is_pending(
     tmp_path: Path,
 ) -> None:
-    """Pending patch status should request a halt instead of emitting a hint."""
+    """Pending patch status should not mutate control flow from hint()."""
     ctx: ProcessingContext = _make_patcher_context(
         tmp_path / "pending_hint.py",
         image_lines=["old\n"],
@@ -641,6 +704,4 @@ def test_patcher_hint_requests_halt_when_patch_status_is_pending(
     PatcherStep().hint(ctx)
 
     assert len(ctx.diagnostic_hints) == 0
-    assert ctx.halt_state is not None
-    assert ctx.halt_state.reason_code == "PatcherStep did not set state."
-    assert ctx.halt_state.step_name == "PatcherStep"
+    assert ctx.halt_state is None
