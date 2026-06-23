@@ -325,6 +325,10 @@ def _render_per_file_guidance_markdown(
         Markdown fragment containing all rendered file sections.
     """
     blocks: list[str] = []
+
+    if not results:
+        return ""
+
     blocks.append("## Files")
     blocks.append("")
 
