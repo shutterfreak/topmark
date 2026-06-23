@@ -255,6 +255,8 @@ ______________________________________________________________________
   semantics and default report scope to both entry points.
 - Fixed Markdown pipeline output so report scopes with no visible per-file results no longer render
   an empty `## Files` section.
+- Fixed check/strip human diff output so TEXT and Markdown summary or per-file reports no longer
+  render empty diff sections when `--diff` is requested but no file has diff content.
 
 ### Documentation - Unreleased
 
@@ -460,6 +462,8 @@ ______________________________________________________________________
 - Made structured unified-diff rendering the primary patch-generation backend for valid single-edit
   pipeline mutations, with `difflib.unified_diff()` retained as a fallback for missing, invalid, or
   future multi-edit metadata.
+- Added focused CLI regression coverage for empty check/strip diff-output composition across TEXT
+  and Markdown summary and per-file report modes.
 
 ### Notes - Unreleased
 
