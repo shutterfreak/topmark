@@ -181,19 +181,44 @@ def _needs_attention(r: SupportsReportFiltering) -> bool:
 
 
 def would_change_result(result: SupportsOutcomeClassification) -> bool:
-    """Return the policy-aware change flag stored on a reduced result.
+    """Return the generic change flag stored on a reduced result.
 
-    This predicate is intended for result-primary report filtering after the
-    reduction boundary. It also accepts mutable contexts because they expose the
-    same outcome-flag protocol.
+    This predicate is useful for command-agnostic reporting. Prefer
+    `would_add_or_update_result` for `check` and `would_strip_result` for
+    `strip`, where report-scope filtering must follow command-specific mutation
+    intent.
 
     Args:
         result: Mutable context or durable result carrying outcome flags.
 
     Returns:
-        True when the result represents an effective pending or completed change.
+        True when the result represents a generic pending or completed change.
     """
     return result.outcome.would_change is True
+
+
+def would_add_or_update_result(result: SupportsOutcomeClassification) -> bool:
+    """Return whether a result is actionable for `check` report filtering.
+
+    Args:
+        result: Mutable context or durable result carrying outcome flags.
+
+    Returns:
+        True when `check` would add or update a header for this result.
+    """
+    return result.outcome.effective_would_add_or_update is True
+
+
+def would_strip_result(result: SupportsOutcomeClassification) -> bool:
+    """Return whether a result is actionable for `strip` report filtering.
+
+    Args:
+        result: Mutable context or durable result carrying outcome flags.
+
+    Returns:
+        True when `strip` would remove a header for this result.
+    """
+    return result.outcome.effective_would_strip is True
 
 
 def filter_results_for_report(

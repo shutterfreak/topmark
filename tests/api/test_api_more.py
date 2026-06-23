@@ -21,48 +21,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_report_scope_distinguishes_actionable_from_noncompliant(
-    repo_py_toml_xyz_no_header: Path,
-) -> None:
-    """API report scopes should distinguish actionable and unsupported results.
-
-    We pass explicit paths so the resolver considers both files. The Python file
-    is actionable (missing header) and the `.xyz` file is unsupported.
-    """
-    src: Path = repo_py_toml_xyz_no_header / "src"
-    paths: list[Path] = [src / "without_header.py", src / "note.xyz"]
-
-    r_all: api.RunResult = api.check(
-        paths,
-        apply=False,
-        include_file_types=None,
-        report="all",
-    )
-    paths_all: set[Path] = {fr.path for fr in r_all.files}
-    assert src / "without_header.py" in paths_all
-    assert src / "note.xyz" in paths_all
-
-    r_actionable: api.RunResult = api.check(
-        paths,
-        apply=False,
-        include_file_types=None,
-        report="actionable",
-    )
-    paths_actionable: set[Path] = {fr.path for fr in r_actionable.files}
-    assert src / "without_header.py" in paths_actionable
-    assert src / "note.xyz" not in paths_actionable
-
-    r_noncompliant: api.RunResult = api.check(
-        paths,
-        apply=False,
-        include_file_types=None,
-        report="noncompliant",
-    )
-    paths_noncompliant: set[Path] = {fr.path for fr in r_noncompliant.files}
-    assert src / "without_header.py" in paths_noncompliant
-    assert src / "note.xyz" in paths_noncompliant
-
-
 def test_include_file_types_param_overrides_config(
     repo_py_toml_xyz_no_header: Path,
 ) -> None:

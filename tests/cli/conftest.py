@@ -34,6 +34,7 @@ from click.testing import Result
 from topmark.cli.main import cli
 from topmark.cli.state import TopmarkCliState
 from topmark.core.exit_codes import ExitCode
+from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -262,6 +263,22 @@ ANSI_ESCAPE_RE: Final[re.Pattern[str]] = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 """ANSI control-sequence matcher used to normalize Rich-rendered test output."""
 
 
+# --- Human-output assertion helpers ---
+
+
+def _normalize_whitespace(text: str) -> str:
+    """Collapse repeated whitespace for semantic CLI-output assertions."""
+    return " ".join(text.split())
+
+
+def _join_soft_wrapped_option_tokens(text: str) -> str:
+    """Join Rich/Markdown soft wraps after hyphenated option-name fragments."""
+    return re.sub(r"(?<=-)\s+(?=[A-Za-z0-9])", "", text)
+
+
+# Rich/TEXT output ---------------------------------------------------------
+
+
 def normalize_rich_cli_output(output: str) -> str:
     """Normalize Rich-rendered CLI output for semantic substring assertions.
 
@@ -287,8 +304,7 @@ def normalize_rich_cli_output(output: str) -> str:
             stripped = stripped[1:].strip()
         content_lines.append(stripped)
 
-    normalized: str = " ".join(" ".join(content_lines).split())
-    return re.sub(r"(?<=-)\s+(?=[A-Za-z0-9])", "", normalized)
+    return _join_soft_wrapped_option_tokens(_normalize_whitespace(" ".join(content_lines)))
 
 
 def assert_rich_output_contains(
@@ -302,7 +318,7 @@ def assert_rich_output_contains(
     focused on emitted diagnostic content.
     """
     normalized_output: str = normalize_rich_cli_output(output)
-    normalized_expected: str = " ".join(expected.split())
+    normalized_expected: str = _normalize_whitespace(expected)
     assert normalized_expected in normalized_output
 
 
@@ -317,8 +333,228 @@ def assert_rich_output_does_not_contain(
     focused on emitted diagnostic content.
     """
     normalized_output: str = normalize_rich_cli_output(output)
-    normalized_expected: str = " ".join(expected.split())
+    normalized_expected: str = _normalize_whitespace(expected)
     assert normalized_expected not in normalized_output
+
+
+def assert_rich_output_contains_if(
+    *,
+    output: str,
+    expected: str,
+    expected_present: bool,
+) -> None:
+    """Assert conditional text visibility in Rich-rendered CLI output.
+
+    Args:
+        output: Rich-rendered CLI output to inspect.
+        expected: String expected to appear or not appear in the output.
+        expected_present: If True, assert that `expected` appears. If False,
+            assert that `expected` does not appear.
+    """
+    if expected_present:
+        assert_rich_output_contains(
+            output=output,
+            expected=expected,
+        )
+        return
+
+    assert_rich_output_does_not_contain(
+        output=output,
+        expected=expected,
+    )
+
+
+# Markdown output ----------------------------------------------------------
+
+
+def normalize_markdown_cli_output(output: str) -> str:
+    """Normalize Markdown-rendered CLI output for semantic substring assertions.
+
+    The comparison keeps Markdown syntax intact while ignoring layout-only line
+    breaks and escaped hard line-break markers.
+    """
+    content_lines: list[str] = []
+    for line in output.splitlines():
+        stripped: str = line.strip()
+        if not stripped:
+            continue
+        if stripped.endswith("\\"):
+            stripped = stripped.rstrip("\\").rstrip()
+        content_lines.append(stripped)
+
+    return _normalize_whitespace(" ".join(content_lines))
+
+
+def assert_markdown_output_contains(
+    output: str,
+    *,
+    expected: str,
+) -> None:
+    """Assert text appears in Markdown-rendered CLI output."""
+    normalized_output: str = normalize_markdown_cli_output(output)
+    normalized_expected: str = _normalize_whitespace(expected)
+    assert normalized_expected in normalized_output
+
+
+def assert_markdown_output_does_not_contain(
+    output: str,
+    *,
+    expected: str,
+) -> None:
+    """Assert text does not appear in Markdown-rendered CLI output."""
+    normalized_output: str = normalize_markdown_cli_output(output)
+    normalized_expected: str = _normalize_whitespace(expected)
+    assert normalized_expected not in normalized_output
+
+
+def assert_markdown_output_contains_if(
+    *,
+    output: str,
+    expected: str,
+    expected_present: bool,
+) -> None:
+    """Assert conditional text visibility in Markdown-rendered CLI output.
+
+    Args:
+        output: Markdown-rendered CLI output to inspect.
+        expected: String expected to appear or not appear in the output.
+        expected_present: If True, assert that `expected` appears. If False,
+            assert that `expected` does not appear.
+    """
+    if expected_present:
+        assert_markdown_output_contains(
+            output=output,
+            expected=expected,
+        )
+        return
+
+    assert_markdown_output_does_not_contain(
+        output=output,
+        expected=expected,
+    )
+
+
+# Format-aware human-output facade ----------------------------------------
+
+
+def assert_human_output_contains(
+    *,
+    output_format: OutputFormat | None,
+    output: str,
+    expected: str,
+) -> None:
+    """Assert text appears in human-readable CLI output.
+
+    Args:
+        output_format: Human output format requested by the test. `None` means
+            the CLI default, currently equivalent to `OutputFormat.TEXT`.
+        output: CLI output to inspect.
+        expected: String expected to appear in the output.
+
+    Raises:
+        ValueError: If `output_format` is not a human-readable output format.
+    """
+    match output_format:
+        case None | OutputFormat.TEXT:
+            assert_rich_output_contains(
+                output=output,
+                expected=expected,
+            )
+        case OutputFormat.MARKDOWN:
+            assert_markdown_output_contains(
+                output=output,
+                expected=expected,
+            )
+        case _:
+            msg: str = f"Invalid human output format specified: {output_format!r}"
+            raise ValueError(msg)
+
+
+def assert_human_output_does_not_contain(
+    *,
+    output_format: OutputFormat | None,
+    output: str,
+    expected: str,
+) -> None:
+    """Assert text does not appear in human-readable CLI output.
+
+    Args:
+        output_format: Human output format requested by the test. `None` means
+            the CLI default, currently equivalent to `OutputFormat.TEXT`.
+        output: CLI output to inspect.
+        expected: String expected not to appear in the output.
+
+    Raises:
+        ValueError: If `output_format` is not a human-readable output format.
+    """
+    match output_format:
+        case None | OutputFormat.TEXT:
+            assert_rich_output_does_not_contain(
+                output=output,
+                expected=expected,
+            )
+        case OutputFormat.MARKDOWN:
+            assert_markdown_output_does_not_contain(
+                output=output,
+                expected=expected,
+            )
+        case _:
+            msg: str = f"Invalid human output format specified: {output_format!r}"
+            raise ValueError(msg)
+
+
+def assert_human_format_does_not_contain(
+    *,
+    output_format: OutputFormat | None,
+    output: str,
+    expected: str,
+) -> None:
+    """Assert text is absent from human-readable CLI output.
+
+    This compatibility wrapper keeps the `human_format` spelling available for
+    tests that want to emphasize the selected output format. Prefer
+    `assert_human_output_does_not_contain` for new assertions.
+    """
+    assert_human_output_does_not_contain(
+        output_format=output_format,
+        output=output,
+        expected=expected,
+    )
+
+
+def assert_human_output_contains_if(
+    *,
+    output_format: OutputFormat | None,
+    output: str,
+    expected: str,
+    expected_present: bool,
+) -> None:
+    """Assert conditional text visibility in human-readable CLI output.
+
+    Args:
+        output_format: Human output format requested by the test. `None` means
+            the CLI default, currently equivalent to `OutputFormat.TEXT`.
+        output: CLI output to inspect.
+        expected: String expected to appear or not appear in the output.
+        expected_present: If True, assert that `expected` appears. If False,
+            assert that `expected` does not appear.
+
+    Raises:
+        ValueError: If `output_format` is not a human-readable output format.
+    """
+    if expected_present:
+        assert_human_output_contains(
+            output_format=output_format,
+            output=output,
+            expected=expected,
+        )
+        return
+
+    assert_human_output_does_not_contain(
+        output_format=output_format,
+        output=output,
+        expected=expected,
+    )
 
 
 CLICK_USAGE_ERROR_EXIT_CODE: Final[int] = 2

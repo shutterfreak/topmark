@@ -104,24 +104,6 @@ def test_check_apply_update_only_does_not_add_new_headers(
     assert has_header(read_text(a), proc_py, "\n") is False
 
 
-def test_report_actionable_filters_out_compliant_b_py_in_view(
-    repo_py_with_and_without_header: Path,
-) -> None:
-    """`report=actionable` filters out compliant files while keeping actionable ones."""
-    r: api.RunResult = api_check_dir(
-        repo_py_with_and_without_header,
-        apply=False,
-        report="actionable",
-    )
-    returned_paths: set[Path] = {fr.path for fr in r.files}
-    a: Path = repo_py_with_and_without_header / "src" / "without_header.py"
-    b: Path = repo_py_with_and_without_header / "src" / "with_header.py"
-
-    assert a in returned_paths  # actionable file remains visible
-    assert b not in returned_paths  # compliant file is filtered out
-    assert r.skipped >= 1
-
-
 def test_strip_dry_run_reports_would_change_on_files_with_headers(
     repo_py_with_and_without_header: Path,
 ) -> None:

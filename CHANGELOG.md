@@ -23,15 +23,16 @@ ______________________________________________________________________
 > [!CAUTION] **Breaking changes**
 >
 > This release includes breaking changes to CLI exit-code semantics, `config check` validation
-> failures, option-like path parsing, machine-readable processing-result path serialization, and
-> filename-rule validation/normalization. Consumers should review the **Breaking Changes** and
-> **Notes** sections before upgrading automation, CI jobs, golden tests, or plugin/custom file-type
-> definitions.
+> failures, option-like path parsing, machine-readable processing-result path serialization,
+> filename-rule validation/normalization, and public API report-scope defaults. Consumers should
+> review the **Breaking Changes** and **Notes** sections before upgrading automation, CI jobs,
+> golden tests, or plugin/custom file-type definitions.
 >
 > In particular, `WOULD_CHANGE` now exits with code `3` instead of `2`; Click parser-level usage
 > errors reserve exit code `2`; JSON/NDJSON `check` and `strip` result paths use POSIX `/`
-> separators on all platforms; and invalid `FileType.filenames` rules are rejected during file-type
-> construction.
+> separators on all platforms; invalid `FileType.filenames` rules are rejected during file-type
+> construction; and public API `check()` and `strip()` now default to `report="actionable"` instead
+> of `"all"`.
 
 ### Added - Unreleased
 
@@ -73,6 +74,9 @@ ______________________________________________________________________
 - Made human report-scope filtering result-compatible by introducing protocol-based filtering
   support for durable `ProcessingResult` snapshots while preserving context-based filtering support
   for pre-reduction probe consumers.
+- Aligned public API and CLI report-scope semantics by making `check()` and `strip()` default to the
+  actionable report scope and by using command-specific actionable classification for report
+  filtering.
 - Avoided formatting a duplicate unified-diff preview during patch generation when INFO-level
   pipeline logging is disabled, reducing transient allocations for diff-heavy workloads while
   preserving retained diff output.
@@ -195,6 +199,9 @@ ______________________________________________________________________
   - rules containing `.` or `..` path segments.
 - Plugin authors and custom file-type providers should treat `FileType.filenames` values as relative
   registry matching rules rather than filesystem paths.
+- Public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
+  Integrations that relied on receiving every processed file in `RunResult.files` must now pass
+  `report="all"` explicitly.
 
 ### Fixed - Unreleased
 
@@ -242,6 +249,10 @@ ______________________________________________________________________
   existing provenance and identity semantics.
 - Fixed the VS Code Run On Save Markdown formatter integration by simplifying the workspace `match`
   pattern so saves of `.md` files reliably trigger the configured `mdformat` command.
+- Fixed report-scope filtering for `strip` so supported files without removable headers are treated
+  as compliant rather than actionable.
+- Fixed report-scope parity between the CLI and public API by applying the same actionable-filtering
+  semantics and default report scope to both entry points.
 
 ### Documentation - Unreleased
 
@@ -308,6 +319,8 @@ ______________________________________________________________________
   maintenance work, including the later completion of the Rich and `rich-click` migration.
 - Clarified pytest marker documentation by restoring the `case_insensitive_fs` marker entry and
   fixing the malformed `pipeline` marker table row in CI test-validation guidance.
+- Clarified the report-scope contract, including the distinction between actionable and noncompliant
+  results and the applicability of report filtering across human-readable output formats.
 - Added dedicated performance-baseline documentation covering subprocess-isolated RSS measurement,
   tracemalloc methodology, benchmark-corpus scope, benchmark preservation guidance, and initial
   memory-baseline findings from GitHub issue 134.

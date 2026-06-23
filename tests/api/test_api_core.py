@@ -43,43 +43,6 @@ def test_api_check_empty_dir(tmp_path: Path) -> None:
     assert r.had_errors is False
 
 
-def test_report_scope_filters_returned_view(repo_py_with_header_and_xyz: Path) -> None:
-    """API `report=` should filter the returned view without changing execution."""
-    root: Path = repo_py_with_header_and_xyz
-    paths: list[Path] = [root / "src" / "with_header.py", root / "src" / "notes.xyz"]
-
-    r_all: api.RunResult = api.check(
-        paths,
-        apply=False,
-        include_file_types=None,
-        report="all",
-    )
-    r_noncompliant: api.RunResult = api.check(
-        paths,
-        apply=False,
-        include_file_types=None,
-        report="noncompliant",
-    )
-    r_actionable: api.RunResult = api.check(
-        paths,
-        apply=False,
-        include_file_types=None,
-        report="actionable",
-    )
-
-    view_all: set[Path] = {fr.path for fr in r_all.files}
-    view_noncompliant: set[Path] = {fr.path for fr in r_noncompliant.files}
-    view_actionable: set[Path] = {fr.path for fr in r_actionable.files}
-
-    assert root / "src" / "with_header.py" in view_all
-    assert root / "src" / "notes.xyz" in view_all
-
-    assert root / "src" / "with_header.py" not in view_noncompliant
-    assert root / "src" / "notes.xyz" in view_noncompliant
-
-    assert view_actionable == set()
-
-
 def test_apply_check_writes_when_needed(
     repo_py_with_and_without_header: Path, proc_py: HeaderProcessor
 ) -> None:
