@@ -582,6 +582,20 @@ def _render_pipeline_diffs_text(
     Returns:
         TEXT diff section.
     """
+    rendered_patches: list[str] = []
+    for result in results:
+        patch: str | None = _render_diff_text(
+            result.detail.diff_text,
+            styled=styled,
+            show_line_numbers=show_line_numbers,
+        )
+
+        if patch:
+            rendered_patches.append(patch)
+
+    if not rendered_patches:
+        return ""
+
     line_width: Final[int] = get_console_line_width()
 
     parts: list[str] = []
@@ -599,15 +613,7 @@ def _render_pipeline_diffs_text(
         )
     )
 
-    for result in results:
-        patch: str | None = _render_diff_text(
-            result.detail.diff_text,
-            styled=styled,
-            show_line_numbers=show_line_numbers,
-        )
-
-        if patch:
-            parts.append(patch)
+    parts.extend(rendered_patches)
 
     parts.append(
         diff_fence_style(

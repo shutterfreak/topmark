@@ -435,8 +435,7 @@ def _render_pipeline_diffs_markdown(
     Returns:
         Markdown diff section.
     """
-    # Keep Markdown diffs readable and copyable.
-    blocks: list[str] = ["## Diffs", ""]
+    diff_blocks: list[str] = []
     for result in results:
         patch: str | None = _render_diff_markdown(
             result.detail.diff_text,
@@ -444,17 +443,23 @@ def _render_pipeline_diffs_markdown(
         )
 
         if patch:
-            blocks.append(f"### {render_path_display_markdown(result)}")
-            blocks.append("")
-            blocks.append(
+            diff_blocks.append(f"### {render_path_display_markdown(result)}")
+            diff_blocks.append("")
+            diff_blocks.append(
                 render_fenced_code_block_markdown(
                     text=patch.rstrip("\n"),
                     language="diff",
                 )
             )
-            blocks.append("")
-    if len(blocks) > 2:
-        blocks.append("")
+            diff_blocks.append("")
+
+    if not diff_blocks:
+        return ""
+
+    # Keep Markdown diffs readable and copyable.
+    blocks: list[str] = ["## Diffs", ""]
+    blocks.extend(diff_blocks)
+    blocks.append("")
     return "\n".join(blocks).rstrip()
 
 
