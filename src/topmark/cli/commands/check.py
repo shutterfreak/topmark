@@ -109,7 +109,7 @@ from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportFilterResult
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import filter_results_for_report
-from topmark.pipeline.reporting import would_change_result
+from topmark.pipeline.reporting import would_add_or_update_result
 from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
@@ -521,7 +521,7 @@ def check_command(
     filtered: ReportFilterResult[ProcessingResult] = filter_results_for_report(
         results,
         report_scope=report_scope,
-        would_change=would_change_result,
+        would_change=would_add_or_update_result,
     )
 
     human_results: Sequence[ProcessingResult] = results if summary_mode else filtered.view_results

@@ -51,6 +51,7 @@ def test_bucket_ok_up_to_date(repo_py_with_header: Path) -> None:
         [root / "src" / "with_header.py"],
         apply=False,
         include_file_types=["python"],
+        report="all",
     )
     keys: set[str] = _summary_keys(r)
     assert topmark.core.outcomes.Outcome.UNCHANGED.value in keys
@@ -120,6 +121,7 @@ def test_bucket_blocked_policy_update_only_blocks_insert(tmp_path: Path) -> None
         apply=False,
         include_file_types=["python"],
         policy=policy,
+        report="all",
     )
     keys: set[str] = _summary_keys(r)
     # assert "blocked:policy" in keys

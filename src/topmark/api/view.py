@@ -338,8 +338,10 @@ def finalize_run_result(
         file_list: Resolved input files for the run.
         apply: Whether the run was in apply mode (affects counting).
         report_scope: Active report scope for the current view.
-        would_change: Predicate describing whether a result represents a file
-            TopMark would change (or did change, depending on caller context).
+        would_change: Command-specific predicate describing whether a result is
+            actionable for the selected pipeline intent. `check()` passes an
+            add/update predicate; `strip()` passes a strip predicate. The default
+            remains command-neutral for direct internal callers.
         update_statuses: Which `PlanStatus` values count as written/updated.
         encountered_exit_code: Fatal exit code if any was encountered.
 

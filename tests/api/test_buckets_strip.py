@@ -48,6 +48,7 @@ def test_bucket_strip_none_when_no_header(tmp_path: Path) -> None:
         [f],
         apply=False,
         include_file_types=["python"],
+        report="all",
     )
     keys: set[str] = _summary_keys(r)
     # assert "strip:none" in keys

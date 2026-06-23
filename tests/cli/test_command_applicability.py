@@ -32,6 +32,7 @@ from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.option_groups import PROBE_FORBIDDEN_OPTIONS
 from topmark.cli.option_groups import STRIP_FORBIDDEN_OPTIONS
+from topmark.pipeline.reporting import ReportScope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,7 +51,7 @@ _OPTION_VALUES: dict[str, str | None] = {
     CliOpt.WRITE_MODE: "stdout",
     CliOpt.RENDER_DIFF: None,
     CliOpt.RESULTS_SUMMARY_MODE: "compact",
-    CliOpt.REPORT: "all",
+    CliOpt.REPORT: ReportScope.ALL,
     CliOpt.POLICY_HEADER_MUTATION_MODE: "replace",
     CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES: None,
     CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: None,
@@ -165,7 +166,7 @@ def test_probe_rejects_first_inapplicable_option_when_multiple_are_present() -> 
         [
             CliCmd.PROBE,
             CliOpt.REPORT,
-            "all",
+            ReportScope.ALL,
             CliOpt.RENDER_DIFF,
         ]
     )

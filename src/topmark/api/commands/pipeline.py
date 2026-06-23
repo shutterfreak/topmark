@@ -39,10 +39,13 @@ from topmark.core.errors import InvalidReportScopeError
 from topmark.pipeline.pipelines import PipelineSelection
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reporting import ReportScope
+from topmark.pipeline.reporting import would_add_or_update_result
+from topmark.pipeline.reporting import would_strip_result
 from topmark.pipeline.status import PlanStatus
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Iterable
     from collections.abc import Mapping
     from collections.abc import Sequence
@@ -54,6 +57,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.result import ProcessingResult
 
 __all__ = (
     "check",
@@ -111,6 +115,7 @@ def _run_content_pipeline(
     include_file_types: Sequence[str] | None,
     exclude_file_types: Sequence[str] | None,
     report: PublicReportScopeLiteral,
+    would_change: Callable[[ProcessingResult], bool],
     prune_views: bool,
     update_statuses: frozenset[PlanStatus],
 ) -> RunResult:
@@ -128,6 +133,11 @@ def _run_content_pipeline(
         include_file_types: Optional whitelist of file type identifiers.
         exclude_file_types: Optional blacklist of file type identifiers.
         report: Reporting scope for the returned API view.
+        would_change: Command-specific predicate describing whether a result is
+            actionable for the selected pipeline intent. `check()` passes an
+            add/update predicate; `strip()` passes a strip predicate. Pass
+            [`would_change_result`][topmark.pipeline.reporting.would_change_result]
+            for command-neutral reporting.
         prune_views: If True, release consumed volatile views between pipeline steps.
         update_statuses: Plan statuses counted as write/update candidates by the
             public result finalizer.
@@ -168,6 +178,7 @@ def _run_content_pipeline(
         file_list=api_run.file_list,
         apply=apply,
         report_scope=report_scope,
+        would_change=would_change,
         update_statuses=update_statuses,
         encountered_exit_code=api_run.exit_code,
     )
@@ -183,7 +194,7 @@ def check(
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
-    report: PublicReportScopeLiteral = "all",
+    report: PublicReportScopeLiteral = "actionable",
     prune_views: bool = False,
 ) -> RunResult:
     """Validate or apply TopMark headers for the given paths.
@@ -228,6 +239,7 @@ def check(
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         report=report,
+        would_change=would_add_or_update_result,
         prune_views=prune_views,
         update_statuses=_CHECK_UPDATE_STATUSES,
     )
@@ -243,7 +255,7 @@ def strip(
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
     exclude_file_types: Sequence[str] | None = None,
-    report: PublicReportScopeLiteral = "all",
+    report: PublicReportScopeLiteral = "actionable",
     prune_views: bool = False,
 ) -> RunResult:
     """Remove TopMark headers from files (dry-run or apply).
@@ -287,6 +299,7 @@ def strip(
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         report=report,
+        would_change=would_strip_result,
         prune_views=prune_views,
         update_statuses=_STRIP_UPDATE_STATUSES,
     )

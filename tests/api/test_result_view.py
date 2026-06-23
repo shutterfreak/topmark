@@ -19,6 +19,7 @@ from topmark.api.view import finalize_run_result
 from topmark.pipeline.reduction import ProcessingReduction
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
+from topmark.pipeline.reporting import would_add_or_update_result
 from topmark.pipeline.status import PlanStatus
 
 if TYPE_CHECKING:
@@ -47,6 +48,7 @@ def test_finalize_run_result_consumes_durable_processing_results(
         file_list=[path],
         apply=False,
         report_scope=ReportScope.ALL,
+        would_change=would_add_or_update_result,
         update_statuses=frozenset(
             {
                 PlanStatus.INSERTED,
