@@ -28,6 +28,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.cli.conftest import assert_CONFIG_ERROR
+from tests.cli.conftest import assert_human_output_contains
+from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
@@ -36,6 +38,7 @@ from topmark.cli.keys import CliOpt
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.formats import OutputFormat
+from topmark.pipeline.reporting import ReportScope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,6 +66,13 @@ def _write_file_requiring_strip(tmp_path: Path) -> Path:
         "print('has header')\n",
         encoding="utf-8",
     )
+    return path
+
+
+def _write_supported_headerless_file(tmp_path: Path) -> Path:
+    """Create a supported Python file without a TopMark header."""
+    path: Path = tmp_path / "without_header.py"
+    path.write_text("print('without header')\n", encoding="utf-8")
     return path
 
 
@@ -288,6 +298,69 @@ def test_check_markdown_output_shows_hints_without_text_verbosity(tmp_path: Path
     assert_WOULD_CHANGE(result)
     assert "Hints:" in result.output
     assert "header:missing" in result.output
+
+
+@pytest.mark.parametrize(
+    ("cmd", "report_scope"),
+    [
+        (CliCmd.CHECK, None),
+        (CliCmd.CHECK, ReportScope.ACTIONABLE),
+        (CliCmd.CHECK, ReportScope.NONCOMPLIANT),
+        (CliCmd.STRIP, None),
+        (CliCmd.STRIP, ReportScope.ACTIONABLE),
+        (CliCmd.STRIP, ReportScope.NONCOMPLIANT),
+    ],
+)
+def test_pipeline_markdown_output_omits_empty_files_section(
+    tmp_path: Path,
+    cmd: str,
+    report_scope: ReportScope | None,
+) -> None:
+    """Markdown output should not render an empty `## Files` section.
+
+    The default/actionable and noncompliant report scopes may legitimately hide
+    every per-file result. Markdown should mirror TEXT behavior by omitting the
+    per-file section instead of rendering a heading with no file entries.
+    """
+    path: Path = _write_supported_headerless_file(tmp_path)
+
+    if cmd == CliCmd.CHECK:
+        apply_result: Result = run_cli(
+            [
+                CliCmd.CHECK,
+                CliOpt.APPLY_CHANGES,
+                str(path),
+            ]
+        )
+        assert_SUCCESS(apply_result)
+
+    args: list[str] = [
+        cmd,
+        CliOpt.OUTPUT_FORMAT,
+        OutputFormat.MARKDOWN.value,
+    ]
+    if report_scope is not None:
+        args.extend(
+            [
+                CliOpt.REPORT,
+                report_scope.value,
+            ]
+        )
+    args.append(str(path))
+
+    result: Result = run_cli(args)
+
+    assert_SUCCESS(result)
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="# TopMark",
+    )
+    assert_human_output_does_not_contain(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="## Files",
+    )
 
 
 # --- TEXT verbosity ---

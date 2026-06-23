@@ -253,6 +253,8 @@ ______________________________________________________________________
   as compliant rather than actionable.
 - Fixed report-scope parity between the CLI and public API by applying the same actionable-filtering
   semantics and default report scope to both entry points.
+- Fixed Markdown pipeline output so report scopes with no visible per-file results no longer render
+  an empty `## Files` section.
 
 ### Documentation - Unreleased
 
