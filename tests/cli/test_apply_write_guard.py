@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import Result
 
+from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
@@ -92,7 +93,11 @@ def test_diff_with_apply_is_usage_error(tmp_path: Path, command: str) -> None:
     )
 
     assert result.exit_code == ExitCode.USAGE_ERROR, result.output
-    assert "--diff and --apply are mutually exclusive" in result.output
+    assert_rich_output_contains(
+        output=result.output,
+        expected="--diff and --apply are mutually exclusive",
+    )
+
     assert f.read_text("utf-8") == before
 
 
@@ -344,7 +349,10 @@ def test_apply_with_diff_is_rejected_before_write_guard(
     )
 
     assert result.exit_code == ExitCode.USAGE_ERROR, result.output
-    assert "--diff and --apply are mutually exclusive" in result.output
+    assert_rich_output_contains(
+        output=result.output,
+        expected="--diff and --apply are mutually exclusive",
+    )
     assert py.read_text("utf-8") == before
 
 
