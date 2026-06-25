@@ -89,8 +89,9 @@ from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
-from topmark.cli.validators import validate_diff_policy_for_output_format
+from topmark.cli.validators import validate_diff_apply_mutual_exclusion
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
+from topmark.cli.validators import warn_if_machine_summary_diff_ignored
 from topmark.cli.validators import warn_if_report_scope_ignored
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
@@ -114,12 +115,12 @@ from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
-from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
 from topmark.presentation.markdown.version import render_version_footer_markdown
+from topmark.presentation.output.pipeline import render_pipeline_command_human_output
+from topmark.presentation.shared.pipeline import PipelineCommandHumanOutput
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
-from topmark.presentation.text.pipeline import render_pipeline_output_text
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
@@ -141,6 +142,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
+
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -339,13 +341,20 @@ def check_command(
         exclude_from=exclude_from,
     )
 
-    validate_diff_policy_for_output_format(ctx, diff=diff, fmt=fmt)
+    validate_diff_apply_mutual_exclusion(ctx, diff=diff, apply_changes=apply_changes)
 
     warn_if_report_scope_ignored(
         ctx,
         output_format=output_format or OutputFormat.TEXT,
         summary_mode=summary_mode,
         report_scope=report_scope,
+    )
+
+    warn_if_machine_summary_diff_ignored(
+        ctx,
+        output_format=output_format or OutputFormat.TEXT,
+        summary_mode=summary_mode,
+        diff=diff,
     )
 
     # Test harnesses may inject this via
@@ -415,6 +424,7 @@ def check_command(
     # diagnostics) to stderr.
     #
     # Console selection must happen after planning inputs because stdin mode affects routing.
+    machine_console: ConsoleProtocol = state.console
     console: ConsoleProtocol = maybe_route_console_to_stderr(
         ctx,
         run_options=run_options,
@@ -528,7 +538,7 @@ def check_command(
 
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
-            console=console,
+            console=machine_console,
             meta=meta,
             config=config,
             resolved_toml=prepared_cli_config.resolved_toml,
@@ -549,11 +559,19 @@ def check_command(
             apply_changes=apply_changes,
             styled=enable_color,
         )
+        output: PipelineCommandHumanOutput = render_pipeline_command_human_output(
+            report=report,
+            results=results,
+            fmt=fmt,
+        )
 
-        if fmt == OutputFormat.TEXT and not state.quiet:
-            console.print(render_pipeline_output_text(report))
-        elif fmt == OutputFormat.MARKDOWN:
-            console.print(render_pipeline_output_markdown(report))
+        if output.stdout:
+            click.echo(output.stdout)
+
+        if (fmt == OutputFormat.TEXT and not state.quiet and output.stderr) or (
+            fmt == OutputFormat.MARKDOWN and output.stderr
+        ):
+            console.print(output.stderr)
 
     if apply_changes:
         # Writes (only when --apply is set)

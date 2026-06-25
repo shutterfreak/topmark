@@ -50,12 +50,14 @@ from topmark.core.machine.envelopes import build_ndjson_record
 from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MetaPayload
 from topmark.diagnostic.machine.envelopes import iter_diagnostic_ndjson_records
+from topmark.pipeline.machine.payloads import build_processing_result_payload
 from topmark.pipeline.machine.payloads import build_processing_results_summary_rows_payload
+from topmark.pipeline.machine.payloads import build_standalone_processing_diff_payload
 from topmark.pipeline.machine.payloads import iter_probe_results_payload_items
-from topmark.pipeline.machine.payloads import iter_processing_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries
 from topmark.pipeline.machine.schemas import PipelineKey
 from topmark.pipeline.machine.schemas import PipelineRecordKind
+from topmark.pipeline.machine.schemas import StandaloneProcessingDiffPayload
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -230,13 +232,13 @@ def build_processing_results_json_envelope(
             PipelineKey.SUMMARY.value: summary_list,
         }
     else:
-        results_iter: Iterator[dict[str, object]] = iter_processing_results_payload_items(
-            results,
-        )
+        result_payloads: list[dict[str, object]] = [
+            build_processing_result_payload(result) for result in results
+        ]
         payload = {
             ConfigKey.CONFIG.value: cfg_payload,
             ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
-            PipelineKey.RESULTS.value: list(results_iter),
+            PipelineKey.RESULTS.value: result_payloads,
         }
 
     envelope: dict[str, object] = build_json_envelope(
@@ -263,8 +265,10 @@ def iter_processing_results_ndjson_records(
     2) `kind="config_diagnostics"` record (counts-only)
     3) zero or more `kind="diagnostic"` records for flattened compatibility config diagnostics
     4) then either:
-    - summary mode: one `kind="summary"` record per `(outcome, reason)` bucket
-    - detail mode: one `kind="result"` record per processed file
+        - summary mode: one `kind="summary"` record per `(outcome, reason)` bucket
+        - detail mode: one `kind="result"` record per processed file, followed
+          immediately by a `kind="diff"` record for that file when retained diff
+          text is available
 
     Args:
         meta: Shared metadata payload (`tool`/`version`).
@@ -310,9 +314,23 @@ def iter_processing_results_ndjson_records(
                 payload=record,
             )
     else:
-        for r in results:
+        for result in results:
             yield build_ndjson_record(
                 kind=PipelineRecordKind.RESULT,
                 meta=meta,
-                payload=r.to_dict(),
+                payload=build_processing_result_payload(
+                    result,
+                    include_diff=False,
+                ),  ## Diff payload is emitted with build_standalone_processing_diff_payload
             )
+            diff_payload: StandaloneProcessingDiffPayload | None = (
+                build_standalone_processing_diff_payload(
+                    result,
+                )
+            )
+            if diff_payload is not None:
+                yield build_ndjson_record(
+                    kind=PipelineRecordKind.DIFF,
+                    meta=meta,
+                    payload=diff_payload,
+                )

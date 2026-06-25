@@ -65,6 +65,7 @@ class PipelineKey(str, Enum):
         RESULT: Container key for a single processing result.
         RESULTS: Container key for a JSON list of processing results.
         SUMMARY: Container key for pipeline outcome summaries.
+        DIFF: Container key for a single processing diff payload.
     """
 
     PROBE = "probe"
@@ -72,6 +73,7 @@ class PipelineKey(str, Enum):
     RESULT = "result"
     RESULTS = "results"
     SUMMARY = "summary"
+    DIFF = "diff"
 
 
 class PipelineRecordKind(str, Enum):
@@ -81,11 +83,13 @@ class PipelineRecordKind(str, Enum):
         PROBE: One per-path resolution probe record, including filtered explicit inputs.
         RESULT: One per-file processing result record.
         SUMMARY: One per-summary-row record.
+        DIFF: One per-file diff payload record when diff text is available.
     """
 
     PROBE = "probe"
     RESULT = "result"
     SUMMARY = "summary"
+    DIFF = "diff"
 
 
 class OutcomeSummaryRow(TypedDict):
@@ -107,3 +111,39 @@ class OutcomeSummaryRow(TypedDict):
     outcome: str
     reason: str
     count: int
+
+
+class EmbeddedProcessingDiffPayload(TypedDict):
+    """Embedded unified diff payload for one JSON processing result.
+
+    Used as the optional `"diff"` object under one per-file JSON result. The
+    parent result already carries the serialized path, so this embedded payload
+    only contains the unified diff text.
+
+    Shape:
+        `{"diff_text": str}`
+
+    Fields:
+        diff_text: Unified diff payload text.
+    """
+
+    diff_text: str
+
+
+class StandaloneProcessingDiffPayload(TypedDict):
+    """Standalone unified diff payload for one NDJSON diff record.
+
+    Used as the payload under the `"diff"` container key in NDJSON detail-mode
+    output. Standalone records include the serialized path so each record remains
+    self-identifying.
+
+    Shape:
+        `{"path": str, "diff_text": str}`
+
+    Fields:
+        path: Machine-serialized path for the file that produced the diff.
+        diff_text: Unified diff payload text.
+    """
+
+    path: str
+    diff_text: str

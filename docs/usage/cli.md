@@ -244,16 +244,25 @@ ______________________________________________________________________
 
 Common shared options include the following, where supported by the selected command:
 
-| Option                                        | Description                                                      |
-| --------------------------------------------- | ---------------------------------------------------------------- |
-| `--config FILE`                               | Load and merge an additional configuration file                  |
-| `--apply`                                     | Apply file mutations instead of dry-run, where supported         |
-| `-v`, `--verbose`                             | Increase TEXT output detail, where supported                     |
-| `-q`, `--quiet`                               | Suppress TEXT output, where supported                            |
-| `--output-format {text,markdown,json,ndjson}` | Select output format, where machine-readable output is supported |
-| `--color` / `--no-color`                      | Enable or disable colorized terminal output, where supported     |
-| `--include-file-types`                        | Restrict processing to selected file types, where supported      |
-| `--exclude-file-types`                        | Exclude selected file types, where supported                     |
+| Option                                        | Description                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `--config FILE`                               | Load and merge an additional configuration file                                             |
+| `--apply`                                     | Apply file mutations instead of dry-run, where supported (mutually exclusive with `--diff`) |
+| `--diff`                                      | Preview changes as human unified diffs or machine diff payloads, where supported            |
+| `-v`, `--verbose`                             | Increase TEXT output detail, where supported                                                |
+| `-q`, `--quiet`                               | Suppress TEXT output, where supported                                                       |
+| `--output-format {text,markdown,json,ndjson}` | Select output format, where machine-readable output is supported                            |
+| `--color` / `--no-color`                      | Enable or disable colorized terminal output, where supported                                |
+| `--include-file-types`                        | Restrict processing to selected file types, where supported                                 |
+| `--exclude-file-types`                        | Exclude selected file types, where supported                                                |
+
+For commands that support `--diff`, presentation depends on the selected output format:
+
+- TEXT and Markdown render unified diffs for human review.
+- JSON detail output embeds structured per-result `diff` payloads.
+- NDJSON detail output emits adjacent standalone `diff` records.
+- Machine-readable summary output intentionally omits per-file diff payloads and emits a warning on
+  `stderr`.
 
 For command applicability, output, verbosity, and formatting options, see
 [Shared options](shared-options.md).
@@ -349,7 +358,9 @@ ______________________________________________________________________
 
 TopMark defaults to dry-run behavior.
 
-Without `--apply`, commands preview planned changes without mutating files.
+Without `--apply`, commands preview planned changes without mutating files. Use `--diff` when you
+want an explicit diff preview. `--apply` and `--diff` are mutually exclusive because `--diff`
+selects preview behavior while `--apply` performs mutation.
 
 Example:
 

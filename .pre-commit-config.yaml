@@ -68,7 +68,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.17
+    rev: v0.15.20
     hooks:
       - id: ruff-format
       - id: ruff-check
@@ -87,7 +87,7 @@ repos:
 
   # Docstring semantics for source and tooling modules
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.6
+    rev: 0.8.7
     hooks:
       - id: pydoclint
         args: ["-q"]
@@ -134,7 +134,7 @@ repos:
 
   # Type checker last
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.410
+    rev: v1.1.411
     hooks:
       - id: pyright
 

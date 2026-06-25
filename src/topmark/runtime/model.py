@@ -79,7 +79,7 @@ class RunOptions:
         stdin_filename: Synthetic filename associated with stdin content, used
             when header generation requires a file identity.
         prune_views: If True, release consumed volatile views between pipeline steps.
-        keep_diff_view: Whether to preserve the diff view.
+        emit_diff: Whether to emit diffs.
         started_at: Timestamp captured once for the whole run.
     """
 
@@ -90,7 +90,7 @@ class RunOptions:
     stdin_mode: bool = False
     stdin_filename: str | None = None
     prune_views: bool = True
-    keep_diff_view: bool = False
+    emit_diff: bool = False
 
     started_at: datetime = field(default_factory=get_utc_now)
 
@@ -117,13 +117,13 @@ class RunOptions:
 
         The selected pipeline supplies the overlapping execution intent:
         `selection.kind` becomes `pipeline_kind`, `selection.apply` becomes
-        `apply_changes`, and `selection.diff` becomes `keep_diff_view`. In other
-        words, mutation mode and diff-view preservation are derived from the
-        selected pipeline rather than repeated by the caller.
+        `apply_changes`, and `selection.diff` becomes `emit_diff`. In other
+        words, mutation mode and diff emission are derived from the selected
+        pipeline rather than repeated by the caller.
 
         Args:
             selection: Selected pipeline data exposing the pipeline kind,
-                mutation flag, and diff-preservation flag.
+                mutation flag, and diff-emission flag.
             output_target: Where output should be emitted for this run.
             file_write_strategy: How file writes should be performed when
                 `output_target` targets files.
@@ -145,6 +145,6 @@ class RunOptions:
             output_target=output_target,
             file_write_strategy=file_write_strategy,
             prune_views=prune_views,
-            keep_diff_view=selection.diff,
+            emit_diff=selection.diff,
             started_at=started_at or get_utc_now(),
         )

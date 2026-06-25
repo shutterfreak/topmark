@@ -26,6 +26,7 @@ The goal is to keep pipeline tests concise while still using the same
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import cast
 
 from typing_extensions import NotRequired
 from typing_extensions import Required
@@ -35,6 +36,7 @@ from tests.helpers.registry import resolve_processor_for_path
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import make_policy_registry
 from topmark.core.constants import STANDARD_NEWLINES
+from topmark.core.formats import OutputFormat
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE
@@ -411,6 +413,37 @@ def run_scan(path: Path, cfg: FrozenConfig) -> ProcessingContext:
     ctx: ProcessingContext = make_pipeline_context(path=path, cfg=cfg)
     run_steps(ctx, SCAN_STEPS)
     return ctx
+
+
+# --- OutputFormat helpers ---
+
+
+class FakeOutputFormat(str):
+    """Lightweight mock that looks and acts like an OutputFormat enum member."""
+
+    @property
+    def name(self) -> str:
+        """Return the member name."""
+        return self.upper()
+
+    @property
+    def value(self) -> str:
+        """Return the member value."""
+        return str(self)
+
+
+def unsupported_output_format(
+    fmt: OutputFormat | str,
+) -> OutputFormat:
+    """Return a deliberately unsupported value typed as `OutputFormat`.
+
+    The string branch intentionally casts an invalid runtime value so the tests
+    exercise serializer defensive guards that are unreachable through ordinary
+    CLI validation.
+    """
+    if isinstance(fmt, OutputFormat):
+        return fmt
+    return cast("OutputFormat", FakeOutputFormat(fmt))
 
 
 # --- Helper for canonical TopMark block signatures for test assertions ---

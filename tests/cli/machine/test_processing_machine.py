@@ -99,7 +99,208 @@ def _machine_meta() -> MetaPayload:
 
 def _empty_resolved_toml_sources() -> ResolvedTopmarkTomlSources:
     """Return an empty TOML resolution result for envelope-builder tests."""
-    return ResolvedTopmarkTomlSources(sources=[], writer_options=None, strict=None)
+    return ResolvedTopmarkTomlSources(
+        sources=[],
+        writer_options=None,
+        strict=None,
+    )
+
+
+def _write_plain_python_file(tmp_path: Path) -> Path:
+    """Write a Python file without a TopMark header."""
+    path: Path = tmp_path / "example.py"
+    path.write_text('print("hello")\n', encoding="utf-8")
+    return path
+
+
+def _write_markdown_file_with_topmark_header(tmp_path: Path) -> Path:
+    """Write a Markdown file containing a removable TopMark header."""
+    path: Path = tmp_path / "README.md"
+    path.write_text(
+        "\n".join(
+            [
+                "<!--",
+                "topmark:header:start",
+                "",
+                "  project   : Example",
+                "  file      : README.md",
+                "  license   : MIT",
+                "",
+                "topmark:header:end",
+                "-->",
+                "",
+                "# Example",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+# --- Path serialization contract tests ---
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_json_detail_diff_payload_shape(tmp_path: Path, command: str) -> None:
+    """JSON detail mode should embed per-file diff payloads under result entries."""
+    path: Path = (
+        _write_plain_python_file(tmp_path)
+        if command == CliCmd.CHECK
+        else _write_markdown_file_with_topmark_header(tmp_path)
+    )
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.RENDER_DIFF,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+            str(path.relative_to(tmp_path)),
+        ],
+    )
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+
+    payload: dict[str, object] = parse_json_object(result.output)
+    results_obj: object = payload["results"]
+    assert is_any_list(results_obj)
+    results: list[object] = results_obj
+    assert len(results) == 1
+
+    first_obj: object = results[0]
+    assert is_mapping(first_obj)
+    first: dict[str, object] = as_object_dict(first_obj)
+    assert "diff" in first
+
+    diff_obj: object | None = first.get("diff")
+    assert is_mapping(diff_obj)
+    diff: dict[str, object] = as_object_dict(diff_obj)
+    assert "path" not in diff
+
+    diff_text_obj: object | None = diff.get("diff_text")
+    assert isinstance(diff_text_obj, str)
+    assert f"--- {path.name}" in diff_text_obj
+    assert f"+++ {path.name}" in diff_text_obj
+    assert "@@" in diff_text_obj
+
+    detail_obj: object | None = first.get("detail")
+    if detail_obj is not None:
+        assert is_mapping(detail_obj)
+        detail: dict[str, object] = as_object_dict(detail_obj)
+        assert "diff_text" not in detail
+
+
+@pytest.mark.parametrize(
+    ("command", "output_format"),
+    [
+        pytest.param(CliCmd.CHECK, OutputFormat.JSON, id="check-json"),
+        pytest.param(CliCmd.CHECK, OutputFormat.NDJSON, id="check-ndjson"),
+        pytest.param(CliCmd.STRIP, OutputFormat.JSON, id="strip-json"),
+        pytest.param(CliCmd.STRIP, OutputFormat.NDJSON, id="strip-ndjson"),
+    ],
+)
+def test_processing_machine_summary_diff_omits_diff_payload_and_warns(
+    tmp_path: Path,
+    command: str,
+    output_format: OutputFormat,
+) -> None:
+    """Machine summary mode should warn and omit per-file diff payloads."""
+    path: Path = (
+        _write_plain_python_file(tmp_path)
+        if command == CliCmd.CHECK
+        else _write_markdown_file_with_topmark_header(tmp_path)
+    )
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.RENDER_DIFF,
+            CliOpt.RESULTS_SUMMARY_MODE,
+            CliOpt.OUTPUT_FORMAT,
+            output_format.value,
+            str(path.relative_to(tmp_path)),
+        ],
+    )
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+    assert (
+        f"--diff does not emit per-file diff payloads when --summary is enabled "
+        f"with --output-format={output_format.value}."
+    ) in result.stderr
+    assert "Note:" not in result.stdout
+
+    if output_format is OutputFormat.JSON:
+        payload: dict[str, object] = parse_json_object(result.stdout)
+        assert "summary" in payload
+        assert "results" not in payload
+        assert "diff" not in payload
+        assert "diffs" not in payload
+        return
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
+    assert "summary" in record_kinds(records)
+    assert "result" not in record_kinds(records)
+    assert "diff" not in record_kinds(records)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_processing_ndjson_detail_diff_record_shape(tmp_path: Path, command: str) -> None:
+    """NDJSON detail mode should emit adjacent standalone diff records."""
+    path: Path = (
+        _write_plain_python_file(tmp_path)
+        if command == CliCmd.CHECK
+        else _write_markdown_file_with_topmark_header(tmp_path)
+    )
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.RENDER_DIFF,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+            str(path.relative_to(tmp_path)),
+        ],
+    )
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    kinds: list[str] = record_kinds(records)
+    assert "result" in kinds
+    assert "diff" in kinds
+
+    result_index: int = kinds.index("result")
+    assert kinds[result_index + 1] == "diff"
+
+    result_obj: object | None = records[result_index].get("result")
+    assert is_mapping(result_obj)
+    result_payload: dict[str, object] = as_object_dict(result_obj)
+    assert "detail" not in result_payload
+    assert "diff" not in result_payload
+
+    diff_obj: object | None = records[result_index + 1].get("diff")
+    assert is_mapping(diff_obj)
+    diff_payload: dict[str, object] = as_object_dict(diff_obj)
+    assert diff_payload.get("path") == path.name
+
+    diff_text_obj: object | None = diff_payload.get("diff_text")
+    assert isinstance(diff_text_obj, str)
+    assert f"--- {path.name}" in diff_text_obj
+    assert f"+++ {path.name}" in diff_text_obj
+    assert "@@" in diff_text_obj
 
 
 # ----- JSON -----
@@ -140,15 +341,15 @@ def test_processing_json_includes_meta(tmp_path: Path, command: str) -> None:
     payload: dict[str, object] = parse_json_object(result.output)
     assert "meta" in payload
 
-    meta_obj = payload.get("meta")
+    meta_obj: object | None = payload.get("meta")
     assert is_mapping(meta_obj)
     meta: dict[str, object] = as_object_dict(meta_obj)
 
-    tool_obj = meta.get("tool")
+    tool_obj: object | None = meta.get("tool")
     assert isinstance(tool_obj, str)
     assert tool_obj == "topmark"
 
-    version_obj = meta.get("version")
+    version_obj: object | None = meta.get("version")
     assert isinstance(version_obj, str)
     assert version_obj != ""
 
@@ -166,7 +367,9 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     Verifies that the top-level wrapper and a single per-file result entry
     follow the documented machine-readable output schema (see `docs/usage/machine-output.md`).
     This focuses on structural stability (keys and types) rather than exact
-    labels or counts and applies equally to `check` and `strip`.
+    labels or counts and applies equally to `check` and `strip`. The optional
+    `detail` object is intentionally not required because empty detail payloads
+    are suppressed.
     """
     (tmp_path / "example.py").write_text(
         "#!/usr/bin/env python3\nprint('hi')\n",
@@ -209,15 +412,15 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
         "step_axes",
         "status",
         "outcome",
-        "detail",
     ):
         assert key in first
     assert "views" not in first
-
-    detail_raw: object = first["detail"]
-    assert is_mapping(detail_raw)
-    detail: dict[str, object] = as_object_dict(detail_raw)
-    assert "diff_text" in detail
+    assert "diff" not in first
+    detail_raw: object | None = first.get("detail")
+    if detail_raw is not None:
+        assert is_mapping(detail_raw)
+        detail: dict[str, object] = as_object_dict(detail_raw)
+        assert "diff_text" not in detail
 
     # steps: list of strings
     steps_raw: object = first["steps"]
@@ -242,12 +445,12 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     assert has_non_empty_axis_list
 
     # status: axis -> {axis, name, label}
-    status_obj = first["status"]
+    status_obj: object = first["status"]
     assert is_mapping(status_obj)
     status: dict[str, object] = as_object_dict(status_obj)
     # We expect at least the "resolve" axis entry
     assert "resolve" in status
-    resolve_status_obj = status["resolve"]
+    resolve_status_obj: object = status["resolve"]
     assert is_mapping(resolve_status_obj)
     resolve_status: dict[str, object] = as_object_dict(resolve_status_obj)
     assert resolve_status.get("axis") == "resolve"
@@ -255,7 +458,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
     assert isinstance(resolve_status.get("label"), str)
 
     # outcome: should be a mapping
-    outcome_obj = first["outcome"]
+    outcome_obj: object = first["outcome"]
     assert is_mapping(outcome_obj)
 
 
@@ -389,7 +592,7 @@ def test_processing_json_summary_shape(tmp_path: Path, command: str) -> None:
     # Summary replaces the results array in summary-mode
     assert "summary" in payload
 
-    summary_obj = payload["summary"]
+    summary_obj: object = payload["summary"]
     assert is_any_list(summary_obj)
     summary_rows: list[object] = summary_obj
     assert summary_rows  # at least one summary row
@@ -531,13 +734,13 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
     kinds: list[str] = record_kinds(records)
     for record, kind_obj in zip(records, kinds, strict=False):
         if kind_obj == "summary":
-            summary_obj = record.get("summary")
+            summary_obj: object | None = record.get("summary")
             assert is_mapping(summary_obj)
             summary: dict[str, object] = as_object_dict(summary_obj)
 
-            outcome_obj = summary.get("outcome")
-            reason_obj = summary.get("reason")
-            count_obj = summary.get("count")
+            outcome_obj: object | None = summary.get("outcome")
+            reason_obj: object | None = summary.get("reason")
+            count_obj: object | None = summary.get("count")
             assert isinstance(outcome_obj, str)
             assert isinstance(reason_obj, str)
             assert isinstance(count_obj, int)

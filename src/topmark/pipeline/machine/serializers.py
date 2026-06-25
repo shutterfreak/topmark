@@ -93,6 +93,7 @@ def serialize_probe_results(
         )
         return iter_ndjson_strings(records)
 
+    # Defensive guard
     raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
 
 
