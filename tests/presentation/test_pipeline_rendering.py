@@ -18,9 +18,11 @@ from typing import cast
 import pytest
 
 from tests.helpers.pipeline import make_pipeline_context
+from tests.helpers.pipeline import unsupported_output_format
 from tests.helpers.registry import make_file_type
 from tests.presentation.conftest import find_table_row
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.core.formats import OutputFormat
 from topmark.diagnostic.model import Diagnostic
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.pipeline.hints import Axis
@@ -42,6 +44,7 @@ from topmark.pipeline.views import DiffView
 from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
+from topmark.presentation.output.pipeline import render_pipeline_command_human_output
 from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.paths import render_path_display_text
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
@@ -468,3 +471,52 @@ def test_pipeline_renderers_reject_invalid_pipeline_kind(tmp_path: Path) -> None
 
     with pytest.raises(RuntimeError, match="Invalid pipeline kind selected"):
         render_pipeline_output_markdown(report)
+
+
+@pytest.mark.parametrize(
+    ("fmt", "is_supported"),
+    [
+        (OutputFormat.TEXT, True),
+        (OutputFormat.MARKDOWN, True),
+        (OutputFormat.JSON, False),
+        (OutputFormat.NDJSON, False),
+        ("bad_format", False),
+    ],
+)
+def test_render_pipeline_command_human_output_accepts_only_human_formats(
+    fmt: OutputFormat | str,
+    is_supported: bool,
+) -> None:
+    """Human output facade should accept only human output formats."""
+    report = PipelineCommandHumanReport(
+        verbosity_level=0,
+        styled=False,
+        pipeline_kind="check",
+        file_list_total=0,
+        view_results=[],
+        report_scope=ReportScope.ALL,
+        unsupported_count=0,
+        summary_mode=False,
+        show_diffs=False,
+        apply_changes=False,
+    )
+
+    effective_fmt: OutputFormat = unsupported_output_format(fmt)
+
+    if is_supported:
+        render_pipeline_command_human_output(
+            report=report,
+            results=[],
+            fmt=effective_fmt,
+        )
+        return
+
+    with pytest.raises(
+        RuntimeError,
+        match=f"Unsupported human output format: {effective_fmt.value}",
+    ):
+        render_pipeline_command_human_output(
+            report=report,
+            results=[],
+            fmt=effective_fmt,
+        )

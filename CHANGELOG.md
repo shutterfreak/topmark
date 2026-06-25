@@ -23,16 +23,19 @@ ______________________________________________________________________
 > [!CAUTION] **Breaking changes**
 >
 > This release includes breaking changes to CLI exit-code semantics, `config check` validation
-> failures, option-like path parsing, machine-readable processing-result path serialization,
-> filename-rule validation/normalization, and public API report-scope defaults. Consumers should
-> review the **Breaking Changes** and **Notes** sections before upgrading automation, CI jobs,
-> golden tests, or plugin/custom file-type definitions.
+> failures, option-like path parsing, `check`/`strip` diff-option semantics, STDOUT/STDERR output
+> routing, machine-readable processing-result serialization, filename-rule validation/normalization,
+> and public API report-scope defaults. Consumers should review the **Breaking Changes** and
+> **Notes** sections before upgrading automation, CI jobs, golden tests, machine-output parsers, or
+> plugin/custom file-type definitions.
 >
 > In particular, `WOULD_CHANGE` now exits with code `3` instead of `2`; Click parser-level usage
-> errors reserve exit code `2`; JSON/NDJSON `check` and `strip` result paths use POSIX `/`
-> separators on all platforms; invalid `FileType.filenames` rules are rejected during file-type
-> construction; and public API `check()` and `strip()` now default to `report="actionable"` instead
-> of `"all"`.
+> errors reserve exit code `2`; `--diff` is now supported for machine-readable detail output;
+> machine-readable diff information is emitted as dedicated structured diff payloads rather than via
+> `ProcessingResult.details`; CLI diagnostics are consistently routed to `stderr` while machine
+> payloads remain on `stdout`; JSON/NDJSON `check` and `strip` result paths use POSIX `/` separators
+> on all platforms; invalid `FileType.filenames` rules are rejected during file-type construction;
+> and public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
 
 ### Added - Unreleased
 
@@ -62,6 +65,12 @@ ______________________________________________________________________
   `ProcessingResult` snapshots after context reduction, using reduced detail snapshots for JSON and
   NDJSON detail output while deriving summary classification from each result's execution-mode
   snapshot.
+- Refined machine-readable diff presentation so JSON detail embeds an optional per-result `diff`
+  object while NDJSON detail emits adjacent standalone `diff` records, preserving streaming output
+  for NDJSON and aligning machine-readable diff ownership with durable `ProcessingResult` snapshots.
+- Relaxed the previous output-format restriction on `--diff`; machine-readable detail output now
+  supports retained diff payloads while machine-readable summary output intentionally suppresses
+  per-file diffs and emits a diagnostic warning.
 - Migrated `check`/`strip` TEXT and Markdown human report rendering to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced display-path and diff-detail
   state while keeping probe rendering and patcher-generated diff headers context-based.
@@ -186,6 +195,17 @@ ______________________________________________________________________
 - `topmark check` and `topmark strip` JSON/NDJSON `result.path` values now use POSIX `/` separators
   on all platforms. Consumers that compare Windows machine-output paths literally may need to update
   expectations from backslash-separated paths to slash-separated paths.
+- `check` and `strip` no longer reject `--diff` for machine-readable output. CLI validation now
+  enforces only the semantic mutual exclusion between `--diff` and `--apply`; machine-readable
+  summary output intentionally ignores retained diff payloads and emits a diagnostic warning.
+- Machine-readable `check` and `strip` diff serialization has changed. The previous
+  `ProcessingResult.details`-based diff representation has been replaced by explicit structured diff
+  payloads: JSON detail embeds an optional per-result `diff` object, while NDJSON detail emits
+  dedicated adjacent `diff` records. Consumers parsing previous machine-output payloads must update
+  accordingly.
+- CLI output ownership has been clarified. Machine-readable payloads are emitted exclusively on
+  standard output while warnings, diagnostics, and informational messages are emitted on standard
+  error. Automation that previously consumed mixed output streams should be updated.
 - `FileType.filenames` tail-subpath rules are now canonicalized during file-type construction.
   Definitions that previously used backslash separators are normalized to POSIX-style `/` separators
   before matching, registry composition, presentation, and machine-readable output.
@@ -257,6 +277,9 @@ ______________________________________________________________________
   an empty `## Files` section.
 - Fixed check/strip human diff output so TEXT and Markdown summary or per-file reports no longer
   render empty diff sections when `--diff` is requested but no file has diff content.
+- Fixed machine-readable diff output to avoid embedding terminal-oriented unified diff text inside
+  processing-result payloads, replacing it with structured diff payloads that preserve streaming
+  NDJSON behavior and provide a clearer JSON compatibility contract.
 
 ### Documentation - Unreleased
 
@@ -346,6 +369,9 @@ ______________________________________________________________________
 - Documented GitHub issue 147, including output ownership findings, streaming-output architecture
   alternatives, benchmark relevance, and the rationale for closing Track B without further
   implementation.
+- Documented the revised machine-readable diff contract, including JSON versus NDJSON detail
+  rendering, summary-mode diff suppression, `--diff` applicability across output formats, and the
+  separation between human unified-diff rendering and structured machine-readable diff payloads.
 - Clarified the architecture boundary between mutable `ProcessingContext` execution state and
   durable `ProcessingResult` snapshots, including execution-context ownership, reduction-driven
   volatile-view release, outcome classification, report filtering, reduced detail snapshots,

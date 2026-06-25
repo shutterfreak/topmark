@@ -624,6 +624,44 @@ def _render_pipeline_diffs_text(
     return "\n".join(parts)
 
 
+def render_pipeline_diffs_text(
+    *,
+    results: Sequence[ProcessingResult],
+    styled: bool,
+    show_line_numbers: bool = False,
+) -> str:
+    """Render standalone TEXT diff payload output for a pipeline command.
+
+    This output is separate from the human per-file report. Commands use it for
+    `--diff` stdout payloads while routing guidance and summaries through the
+    regular human report path. Unlike report-embedded diff sections, this
+    payload intentionally omits human-facing section fences so STDOUT remains a
+    patch-like stream.
+
+    Args:
+        results: Durable processing results to inspect for retained diffs.
+        styled: Whether ANSI-capable styling is enabled.
+        show_line_numbers: Whether to prepend line numbers.
+
+    Returns:
+        TEXT diff payload output, or an empty string when no diff is available.
+    """
+    rendered_patches: list[str] = []
+    for result in results:
+        patch: str | None = _render_diff_text(
+            result.detail.diff_text,
+            styled=styled,
+            show_line_numbers=show_line_numbers,
+        )
+        if patch:
+            rendered_patches.append(patch.rstrip("\n"))
+
+    if not rendered_patches:
+        return ""
+
+    return "\n\n".join(rendered_patches)
+
+
 # ---- Summary rendering ----
 
 

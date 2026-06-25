@@ -79,34 +79,37 @@ This boundary is intentionally conservative:
 - it does **not** make public API calls, CLI commands, JSON output, Markdown output, or summary
   generation incremental;
 - it keeps output ordering, exit-code selection, report-scope filtering, public API DTO assembly,
-  human rendering, and machine-readable result serialization on batch-compatible durable result
-  collections;
+  human rendering, JSON envelope assembly, and summary-oriented machine output on batch-compatible
+  durable result collections;
 - it keeps runner-owned pruning limited to between-step release of consumed volatile views, while
   final view release happens only after
   \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] has
-  copied durable detail fields such as `detail.diff_text`;
+  copied retained durable detail facts such as generated unified diff text;
 - it makes summary, exit-code, report-scope filtering, public API DTO assembly, human rendering, and
-  machine-readable result serialization testable against durable results without requiring
-  output-facing consumers to retain mutable contexts.
+  machine-readable payload assembly testable against durable results without requiring output-facing
+  consumers to retain mutable contexts.
 
 Report filtering is intentionally protocol-based at this boundary: both mutable contexts and durable
 results expose the status, diagnostics, and outcome flags needed to decide whether an entry belongs
 in an actionable, noncompliant, or all-results report view. Durable results now also carry a reduced
-\[`ProcessingDetailSnapshot`\][topmark.pipeline.result.ProcessingDetailSnapshot] for reportable
-detail facts that are safe to retain after volatile context views are released. The first detail
-field is `diff_text`, copied from the diff view by
+\[`ProcessingDetailSnapshot`\][topmark.pipeline.result.ProcessingDetailSnapshot] for detail facts
+that are safe to retain after volatile context views are released. Its retained `diff_text` value is
+copied from the diff view by
 \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] without
-retaining the view object, original file image, or updated file image.
+retaining the view object, original file image, or updated file image. Presentation and
+machine-readable layers then decide how to expose that retained diff text: human TEXT/Markdown
+render unified diffs, JSON detail embeds per-result `diff` payloads, and NDJSON detail emits
+adjacent standalone `diff` records.
 
 The public Python API `check()` and `strip()` result packaging now consume durable
 `ProcessingResult` snapshots through the result-oriented runtime path. This keeps API DTO assembly,
 report filtering, write counting, diagnostics aggregation, outcome bucketing, and public diff
 exposure on reduced result state rather than on live context views.
 
-Check/strip human rendering and machine-readable result serialization now consume durable
-`ProcessingResult` snapshots, including reduced display-path state and the reduced
-`detail.diff_text` field. Probe rendering, probe machine output, and probe public API DTO assembly
-now consume durable `ProcessingResult` snapshots carrying reduced
+Check/strip human rendering and machine-readable payload assembly now consume durable
+`ProcessingResult` snapshots, including reduced display-path state and retained diff text. Probe
+rendering, probe machine output, and probe public API DTO assembly now consume durable
+`ProcessingResult` snapshots carrying reduced
 \[`ProbeSnapshot`\][topmark.pipeline.result.ProbeSnapshot] state. TEXT, Markdown, JSON, NDJSON, and
 public API result output therefore no longer project from live
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances once the
@@ -135,9 +138,11 @@ hint helpers.
 This design deliberately stops short of a streaming public API. Public and CLI consumers still see
 complete result collections, and final summaries remain batch-derived. Future work can build on the
 same iterator seam for truly incremental output formats, but those would be separate contract
-decisions. Diff generation remains isolated behind the durable boundary and the structured-edit
-metadata seam, so later performance work can evaluate reduced-window fallback rendering or other
-lower-memory diff strategies without changing output-facing result contracts.
+decisions. NDJSON detail output already preserves per-result ordering by emitting result records and
+adjacent diff records from durable results, while JSON envelopes and summaries remain
+batch-compatible. Diff generation remains isolated behind the durable boundary and the
+structured-edit metadata seam, so later performance work can evaluate reduced-window fallback
+rendering or other lower-memory diff strategies without changing output-facing result contracts.
 
 ______________________________________________________________________
 
@@ -183,8 +188,7 @@ Pipeline selection is also outside layered configuration. CLI and API entry poin
 pipeline definition from the pipeline catalogue using the requested pipeline family (`check`,
 `strip`, or `probe`) and invocation flags such as apply and diff mode.
 \[`RunOptions`\][topmark.runtime.model.RunOptions] then copies the overlapping execution state from
-that selection, so mutation mode and diff-view preservation are not repeated independently by each
-caller.
+that selection, so mutation mode and diff emission are not repeated independently by each caller.
 
 Project-chain discovery starts from the resolved discovery anchor before configuration-source
 identity is evaluated. This keeps workspace-root discovery separate from configuration-source
@@ -467,6 +471,12 @@ Machine-readable output is also intentionally decoupled from process exit codes.
 payloads serialize structured results, diagnostics, and resolution state; they do not embed the CLI
 exit code. Consumers must inspect the process exit status separately from parsing machine payloads.
 
+Diff output follows the same boundary. Human TEXT and Markdown output render retained diffs as
+unified diff text for review. Machine-readable detail output exposes retained diffs as structured
+payloads instead: JSON embeds an optional per-result `diff` object, while NDJSON emits an adjacent
+standalone `diff` record after the corresponding `result` record. Machine-readable summary output
+suppresses per-file diff payloads and emits a warning when `--diff` is requested.
+
 Path representation follows the same separation between machine-facing serialization and
 human-facing presentation:
 
@@ -508,16 +518,17 @@ For path-processing commands, command applicability and pipeline selection are r
 runtime execution. The selected
 \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection] records the executable
 pipeline definition for that invocation, while \[`RunOptions`\][topmark.runtime.model.RunOptions]
-carries durable execution metadata such as pipeline kind, mutation mode, diff-view preservation,
-STDIN mode, writer behavior, and view-pruning policy onto processing contexts and reduced results.
+carries durable execution metadata such as pipeline kind, mutation mode, diff emission, STDIN mode,
+writer behavior, and view-pruning policy onto processing contexts and reduced results.
 
 Important invariants:
 
 - [`check`](../usage/commands/check.md) may compare, render, plan, preview, and mutate headers when
-  `--apply` is provided.
-- [`strip`](../usage/commands/strip.md) shares file input, reporting, diff, and write behavior with
-  [`check`](../usage/commands/check.md), but is removal-only and rejects generated-header
-  insertion/update controls.
+  `--apply` is provided. The user-facing `--apply` and `--diff` options are mutually exclusive.
+- [`strip`](../usage/commands/strip.md) shares file input, reporting, diff preview, and write
+  behavior with [`check`](../usage/commands/check.md), but is removal-only and rejects
+  generated-header insertion/update controls. The user-facing `--apply` and `--diff` options are
+  mutually exclusive.
 - [`probe`](../usage/commands/probe.md) shares file input and filtering behavior with
   [`check`](../usage/commands/check.md) and [`strip`](../usage/commands/strip.md), but is read-only
   and diagnostic-only. The CLI rejects mutation, patch-planning, reporting-summary, diff, and

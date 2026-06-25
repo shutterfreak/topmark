@@ -36,6 +36,7 @@ from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.core.exit_codes import ExitCode
 from topmark.pipeline.reporting import ReportScope
 
 if TYPE_CHECKING:
@@ -54,7 +55,12 @@ def test_default_summary_apply_runs_apply_pipeline(tmp_path: Path) -> None:
     f.write_text("print('z')\n", "utf-8")
 
     result: Result = run_cli(
-        [CliCmd.CHECK, CliOpt.RESULTS_SUMMARY_MODE, CliOpt.APPLY_CHANGES, str(f)],
+        [
+            CliCmd.CHECK,
+            CliOpt.RESULTS_SUMMARY_MODE,
+            CliOpt.APPLY_CHANGES,
+            str(f),
+        ],
     )
 
     assert_SUCCESS(result)
@@ -63,19 +69,31 @@ def test_default_summary_apply_runs_apply_pipeline(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER in f.read_text("utf-8")
 
 
-def test_default_diff_with_apply_emits_patch(tmp_path: Path) -> None:
-    """`--diff --apply` should apply changes and still show a patch."""
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_diff_with_apply_is_usage_error(tmp_path: Path, command: str) -> None:
+    """`--diff --apply` should be rejected before applying changes."""
     f: Path = tmp_path / "x.py"
     f.write_text("print('z')\n", "utf-8")
+    before: str = f.read_text("utf-8")
 
     result: Result = run_cli(
-        [CliCmd.CHECK, CliOpt.RENDER_DIFF, CliOpt.APPLY_CHANGES, str(f)],
+        [
+            command,
+            CliOpt.RENDER_DIFF,
+            CliOpt.APPLY_CHANGES,
+            str(f),
+        ],
     )
 
-    # Apply succeeded; diff should be emitted for changed file.
-    assert_SUCCESS(result)
-
-    assert "--- " in result.output and "+++ " in result.output
+    assert result.exit_code == ExitCode.USAGE_ERROR, result.output
+    assert "--diff and --apply are mutually exclusive" in result.output
+    assert f.read_text("utf-8") == before
 
 
 # --- Write guard: skipped / unsupported inputs ---
@@ -134,7 +152,11 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
     # First apply: header should be inserted.
     result_1: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "x.py"],
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            "x.py",
+        ],
     )
 
     assert_SUCCESS(result_1)
@@ -146,7 +168,11 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
     # Second apply: must be a no-op; content identical.
     result_2: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "x.py"],
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            "x.py",
+        ],
     )
 
     assert_SUCCESS(result_2)
@@ -176,7 +202,11 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
     # 2) Apply strip
     result_1: Result = run_cli_in(
         tmp_path,
-        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "h.py"],
+        [
+            CliCmd.STRIP,
+            CliOpt.APPLY_CHANGES,
+            "h.py",
+        ],
     )
 
     assert_SUCCESS(result_1)
@@ -189,7 +219,11 @@ def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -
     # Second run: must be a no-op
     result_2: Result = run_cli_in(
         tmp_path,
-        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "h.py"],
+        [
+            CliCmd.STRIP,
+            CliOpt.APPLY_CHANGES,
+            "h.py",
+        ],
     )
 
     assert_SUCCESS(result_2)
@@ -215,7 +249,12 @@ def test_apply_write_guard_respects_relative_patterns(tmp_path: Path) -> None:
     # Use relative glob; absolute globs are unsupported by the resolver
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "*.py", "LICENSE"],
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            "*.py",
+            "LICENSE",
+        ],
     )
 
     assert_SUCCESS(result)
@@ -238,7 +277,11 @@ def test_apply_does_not_write_binary_like_file(tmp_path: Path) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "favicon.ico"],
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            "favicon.ico",
+        ],
     )
 
     assert_SUCCESS(result)
@@ -257,7 +300,13 @@ def test_apply_guard_mixed_changed_and_skipped(tmp_path: Path) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, "*.py", "LICENSE", "py.typed"],
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            "*.py",
+            "LICENSE",
+            "py.typed",
+        ],
     )
 
     assert_SUCCESS(result)
@@ -268,29 +317,35 @@ def test_apply_guard_mixed_changed_and_skipped(tmp_path: Path) -> None:
 
 
 # --- Interaction: apply + diff rendering ---
-def test_apply_with_diff_respects_write_guard(tmp_path: Path) -> None:
-    """`--apply --diff` should write only when updater sets INSERTED/REPLACED."""
+@pytest.mark.parametrize(
+    "command",
+    [
+        CliCmd.CHECK,
+        CliCmd.STRIP,
+    ],
+)
+def test_apply_with_diff_is_rejected_before_write_guard(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """`--apply --diff` should fail before write-guard decisions are needed."""
     py: Path = tmp_path / "x.py"
     py.write_text("print('a')\n", "utf-8")
-    lic: Path = tmp_path / "LICENSE"
-    lic.write_text("MIT\n", "utf-8")
-    result_1: Result = run_cli_in(
+    before: str = py.read_text("utf-8")
+
+    result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, CliOpt.RENDER_DIFF, "x.py"],
+        [
+            command,
+            CliOpt.APPLY_CHANGES,
+            CliOpt.RENDER_DIFF,
+            "x.py",
+        ],
     )
 
-    assert_SUCCESS(result_1)
-
-    assert "--- " in result_1.output
-
-    result_2: Result = run_cli_in(
-        tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, CliOpt.RENDER_DIFF, "LICENSE"],
-    )
-
-    assert_SUCCESS(result_2)
-
-    assert "--- " not in result_2.output
+    assert result.exit_code == ExitCode.USAGE_ERROR, result.output
+    assert "--diff and --apply are mutually exclusive" in result.output
+    assert py.read_text("utf-8") == before
 
 
 # --- Strip no-op semantics ---
@@ -302,14 +357,22 @@ def test_strip_apply_no_header_is_noop(tmp_path: Path) -> None:
 
     result_1: Result = run_cli_in(
         tmp_path,
-        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "no_header.py"],
+        [
+            CliCmd.STRIP,
+            CliOpt.APPLY_CHANGES,
+            "no_header.py",
+        ],
     )
 
     assert_SUCCESS(result_1)
 
     result_2: Result = run_cli_in(
         tmp_path,
-        [CliCmd.STRIP, CliOpt.APPLY_CHANGES, "no_header.py"],
+        [
+            CliCmd.STRIP,
+            CliOpt.APPLY_CHANGES,
+            "no_header.py",
+        ],
     )
 
     assert_SUCCESS(result_2)
@@ -326,7 +389,12 @@ def test_apply_write_guard_with_stdin(tmp_path: Path) -> None:
 
     result: Result = run_cli_in(
         tmp_path,
-        [CliCmd.CHECK, CliOpt.APPLY_CHANGES, CliOpt.FILES_FROM, "-"],
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            CliOpt.FILES_FROM,
+            "-",
+        ],
         input_text=input_list,
     )
 

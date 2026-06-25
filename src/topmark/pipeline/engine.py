@@ -362,7 +362,7 @@ def iter_steps_for_files(
                 ctx_obj,
                 pipeline.steps,
                 prune_views=run_options.prune_views,
-                keep_diff_view=run_options.keep_diff_view,
+                keep_diff_view=run_options.emit_diff,
             )
         except (FileNotFoundError, PermissionError, IsADirectoryError) as e:
             logger.error("Filesystem error while processing %s: %s", path, e)

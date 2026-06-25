@@ -25,8 +25,10 @@ At runtime, command intent is represented separately from the executable step se
 entry points first select a \[`PipelineSelection`\][topmark.pipeline.pipelines.PipelineSelection]
 from a high-level pipeline family (`check`, `strip`, or `probe`) plus invocation flags such as
 `--apply` and `--diff`. The selected pipeline then feeds
-\[`RunOptions`\][topmark.runtime.model.RunOptions], so mutation mode and diff-view preservation are
-derived from the selected pipeline instead of being repeated independently by each caller.
+\[`RunOptions`\][topmark.runtime.model.RunOptions], so mutation mode and diff emission are derived
+from the selected pipeline instead of being repeated independently by each caller. The user-facing
+`--apply` and `--diff` options are mutually exclusive: `--apply` selects mutation behavior, while
+`--diff` selects diff-producing preview behavior.
 
 Pipelines do not make high-level decisions themselves. Instead:
 
@@ -59,9 +61,9 @@ Pipeline selection and runtime options deliberately model different ownership bo
   \[`PipelineDefinition`\][topmark.pipeline.pipelines.PipelineDefinition], and the immutable step
   sequence exposed by that definition.
 - \[`RunOptions`\][topmark.runtime.model.RunOptions] owns invocation-specific runtime state. It
-  carries execution metadata and policy such as mutation mode, diff-view preservation, STDIN
-  handling, writer behavior, view-pruning policy, and run-scoped timestamp state onto processing
-  contexts and reduced results.
+  carries execution metadata and policy such as mutation mode, diff emission, STDIN handling, writer
+  behavior, view-pruning policy, and run-scoped timestamp state onto processing contexts and reduced
+  results.
 
 The intentional ownership chain is:
 
@@ -77,9 +79,9 @@ ProcessingResult
 
 `RunOptions.from_pipeline_selection(...)` is therefore an explicit derivation boundary, not a sign
 that callers should configure pipeline intent twice. Overlapping values such as pipeline family,
-apply mode, and diff-view preservation are selected once through the pipeline catalogue, then copied
-into durable runtime options so downstream context, result, reporting, and future streaming/event
-layers do not depend on executable catalogue objects.
+apply mode, and diff emission are selected once through the pipeline catalogue, then copied into
+durable runtime options so downstream context, result, reporting, and future streaming/event layers
+do not depend on executable catalogue objects.
 
 This split keeps catalogue evolution separate from runtime execution evolution: new pipeline
 variants and selection metadata belong with `PipelineDefinition` and `PipelineSelection`, while
@@ -148,7 +150,7 @@ The following changes should be treated as potentially breaking and require comp
 
 - removing or renaming existing `Pipeline` values;
 - changing the semantic meaning of established families such as `check`, `strip`, or `probe`;
-- changing whether an existing pipeline mutates files, emits patches, or preserves diff views;
+- changing whether an existing pipeline mutates files, emits patches, or emits retained diffs;
 - changing execution order in a way that changes hints, status transitions, durable result ordering,
   or write behavior;
 - changing dry-run or `--apply` safety semantics;
@@ -197,8 +199,9 @@ and strip orchestration use the result-oriented runtime adapter
 \[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results]. Probe orchestration uses
 \[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results], including
 durable synthetic results for missing or filtered explicit probe inputs. Public surfaces still
-collect the ordered durable results where stable summaries, exit codes, and machine-output schemas
-require batch-compatible state.
+collect the ordered durable results where stable summaries, exit codes, JSON machine-output
+envelopes, and other batch-compatible schemas require batch-compatible state. NDJSON detail output
+can still preserve per-result ordering by emitting adjacent result and diff records.
 
 Pipeline execution also consumes a selected **processing path**. File-list resolution performs
 filesystem-identity evaluation before ordinary pipeline execution begins.
@@ -368,8 +371,9 @@ metadata and immutable step sequence; and
 made for one invocation.
 
 CLI and API entry points select among these immutable pipeline variants based on command intent and
-flags such as `--patch` and `--apply`. The selected pipeline is then passed through runtime and
-engine layers instead of passing a raw tuple of steps.
+flags such as `--diff` and `--apply`. These two user-facing options are mutually exclusive: `--diff`
+selects a diff-producing preview pipeline, while `--apply` selects a writer pipeline. The selected
+pipeline is then passed through runtime and engine layers instead of passing a raw tuple of steps.
 
 ### PROBE
 
@@ -527,7 +531,8 @@ CP --> P --> H
 display-path policy as TEXT and Markdown reports, including the logical `--stdin-filename` for
 STDIN-backed processing when available. They are not machine-readable path serialization fields.
 
-Used when `--patch` is requested without `--apply`.
+Used when `--diff` is requested. `--diff` is dry-run preview behavior and is mutually exclusive with
+`--apply`.
 
 ______________________________________________________________________
 
@@ -578,7 +583,11 @@ W[<tt>WriterStep</tt>]
 CP --> P --> H --> W
 ```
 
-Primarily useful for CI or audit workflows.
+This catalogue variant is not selected by the current CLI because user-facing `--apply` and `--diff`
+are mutually exclusive. Keep compatibility review in mind before exposing any apply-and-diff
+behavior through a public interface. This catalogue variant is not selected by the current CLI
+because user-facing `--apply` and `--diff` are mutually exclusive. Keep compatibility review in mind
+before exposing any apply-and-diff behavior through a public interface.
 
 ______________________________________________________________________
 
@@ -955,7 +964,7 @@ ______________________________________________________________________
 
 These diagrams describe the **user-visible** execution paths behind
 [`topmark check`](../usage/commands/check.md) and [`topmark strip`](../usage/commands/strip.md),
-including the `--patch` and `--apply` switches.
+including the mutually exclusive `--diff` and `--apply` switches.
 
 ### [`topmark check`](../usage/commands/check.md)
 
@@ -980,8 +989,8 @@ flowchart TD
   C --> D
   D -->|unchanged| E
   D -->|would change| F
-  F -->|no --patch, no --apply| G
-  F -->|--patch| H
+  F -->|no --diff, no --apply| G
+  F -->|--diff| H
   F -->|--apply| I
   H --> J
   I --> K
@@ -1011,8 +1020,8 @@ flowchart TD
   C --> D
   D -->|nothing to remove| E
   D -->|would remove| F
-  F -->|no --patch, no --apply| G
-  F -->|--patch| H
+  F -->|no --diff, no --apply| G
+  F -->|--diff| H
   F -->|--apply| I
   H --> J
   I --> K

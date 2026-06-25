@@ -463,6 +463,30 @@ def _render_pipeline_diffs_markdown(
     return "\n".join(blocks).rstrip()
 
 
+def render_pipeline_diffs_markdown(
+    *,
+    results: Sequence[ProcessingResult],
+    show_line_numbers: bool = False,
+) -> str:
+    """Render standalone Markdown diff output for a pipeline command.
+
+    This output is separate from the human per-file report. Commands use it for
+    `--diff` stdout payloads while routing guidance and summaries through the
+    regular human report path.
+
+    Args:
+        results: Durable processing results to inspect for retained diffs.
+        show_line_numbers: Whether to prepend line numbers.
+
+    Returns:
+        Markdown diff output, or an empty string when no diff is available.
+    """
+    return _render_pipeline_diffs_markdown(
+        results=results,
+        show_line_numbers=show_line_numbers,
+    )
+
+
 # ---- Summary rendering ----
 
 

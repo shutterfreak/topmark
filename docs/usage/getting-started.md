@@ -150,12 +150,18 @@ ______________________________________________________________________
 
 ## 4. Preview changes (unified diff)
 
-The precise changes TopMark will apply to files are generated as unified diff when specifying the
-`--diff` option:
+Preview the precise file changes TopMark would make by requesting unified diffs:
 
 ```bash
 topmark check --diff .
 ```
+
+> [!NOTE]
+>
+> `--diff` performs a dry-run preview and is therefore mutually exclusive with `--apply`. Human TEXT
+> and Markdown output render unified diffs, while JSON and NDJSON expose structured diff payloads
+> for machine-readable consumers. See [Machine-readable output](./machine-output.md) for the JSON
+> and NDJSON payload contracts.
 
 ______________________________________________________________________
 

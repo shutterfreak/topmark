@@ -48,7 +48,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Iterator
 
+    from topmark.pipeline.machine.schemas import EmbeddedProcessingDiffPayload
     from topmark.pipeline.machine.schemas import OutcomeSummaryRow
+    from topmark.pipeline.machine.schemas import StandaloneProcessingDiffPayload
     from topmark.pipeline.result import ProcessingResult
 
 
@@ -92,22 +94,80 @@ def iter_probe_results_payload_items(
         yield build_probe_result_payload(result)
 
 
-def iter_processing_results_payload_items(
-    results: Iterable[ProcessingResult],
-) -> Iterator[dict[str, object]]:
-    """Yield per-file processing result objects for machine-readable output (detail mode).
+def build_processing_result_payload(
+    result: ProcessingResult,
+    *,
+    include_diff: bool = True,
+) -> dict[str, object]:
+    """Build a machine payload for one durable processing result.
 
-    Each yielded mapping corresponds to one processed file and is produced by
-    [`ProcessingResult.to_dict()`][topmark.pipeline.result.ProcessingResult.to_dict].
+    The processing result remains status- and outcome-oriented. Retained unified
+    diff text is moved out of the generic `detail` snapshot and rendered as an
+    optional first-class `diff` payload on the per-file result.
 
     Args:
-        results: Ordered iterable of durable per-file processing results.
+        result: Durable per-file processing result.
+        include_diff: Whether to include thd unified diff in the payload.
 
-    Yields:
-        One per-file result mapping per processed context, in the same order as `results`.
+    Returns:
+        JSON-compatible processing result payload without embedded
+        `detail.diff_text`. When a retained unified diff is available, the
+        payload includes `diff: {"diff_text": ...}`.
     """
-    for r in results:
-        yield r.to_dict()
+    payload: dict[str, object] = result.to_dict()
+
+    # Do not retain ProcessingResult.detail:
+    payload.pop("detail", None)
+
+    if include_diff:
+        # Generate the diff payload from the processing result:
+        diff_payload: EmbeddedProcessingDiffPayload | None = build_embedded_processing_diff_payload(
+            result,
+        )
+
+        if diff_payload is not None:
+            payload["diff"] = diff_payload
+
+    return payload
+
+
+def build_embedded_processing_diff_payload(
+    result: ProcessingResult,
+) -> EmbeddedProcessingDiffPayload | None:
+    """Build an embedded JSON diff payload for one processing result.
+
+    Args:
+        result: Durable per-file processing result.
+
+    Returns:
+        Embedded diff payload when a retained unified diff is available,
+        otherwise `None`.
+    """
+    diff_text: str | None = result.detail.diff_text
+    if not diff_text:
+        return None
+    return {"diff_text": diff_text}
+
+
+def build_standalone_processing_diff_payload(
+    result: ProcessingResult,
+) -> StandaloneProcessingDiffPayload | None:
+    """Build a standalone NDJSON diff payload for one processing result.
+
+    Args:
+        result: Durable per-file processing result.
+
+    Returns:
+        Standalone diff payload when a retained unified diff is available,
+        otherwise `None`.
+    """
+    diff_text: str | None = result.detail.diff_text
+    if not diff_text:
+        return None
+    return {
+        "path": format_machine_path(result.path),
+        "diff_text": diff_text,
+    }
 
 
 def _summary_rows_from_counts(
@@ -122,7 +182,12 @@ def _summary_rows_from_counts(
         List of [`OutcomeSummaryRow`][topmark.pipeline.machine.schemas.OutcomeSummaryRow] objects.
     """
     return [
-        {"outcome": row.outcome.value, "reason": row.reason, "count": row.count} for row in counts
+        {
+            "outcome": row.outcome.value,
+            "reason": row.reason,
+            "count": row.count,
+        }
+        for row in counts
     ]
 
 

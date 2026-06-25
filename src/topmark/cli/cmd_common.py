@@ -262,14 +262,16 @@ def maybe_route_console_to_stderr(
     run_options: RunOptions,
     enable_color: bool,
 ) -> ConsoleProtocol:
-    """Route human-facing console output to stderr when stdout carries file content.
+    """Route human-facing console output to stderr when stdout is reserved.
 
-    TopMark can emit rewritten file content to STDOUT in two situations:
+    TopMark reserves STDOUT for machine-consumable payloads in these situations:
 
+    - diff-producing human runs, where STDOUT carries unified diff output;
     - content-on-STDIN mode (a lone `-` path) when ``--apply`` is set; and
-    - when ``--write-mode=stdout`` is used with ``--apply``.
+    - ``--write-mode=stdout`` with ``--apply``, where STDOUT carries rewritten
+        file content.
 
-    In both cases, the command must keep STDOUT clean for the content stream so
+    In these cases, the command must keep STDOUT clean for the payload stream so
     that output can be piped safely. Human-facing output (summaries, warnings,
     diagnostics) is therefore routed to STDERR.
 
@@ -284,11 +286,12 @@ def maybe_route_console_to_stderr(
     Returns:
         The effective console instance to use for human-facing output.
     """
-    emits_content_to_stdout: bool = bool(run_options.apply_changes) and (
-        run_options.stdin_mode or (run_options.output_target == OutputTarget.STDOUT)
+    reserves_stdout_for_payload: bool = run_options.emit_diff or (
+        bool(run_options.apply_changes)
+        and (run_options.stdin_mode or run_options.output_target == OutputTarget.STDOUT)
     )
 
-    if emits_content_to_stdout:
+    if reserves_stdout_for_payload:
         console = Console(
             enable_color=enable_color,
             out=sys.stderr,

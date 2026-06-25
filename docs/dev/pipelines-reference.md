@@ -68,8 +68,10 @@ processing, and presentation layers:
   step execution. If multiple selected processing paths are hard links to the same filesystem
   object, each affected path receives a terminal policy-blocked result; no source, target, winner,
   or loser path is selected.
-- `PatcherStep` generates unified diffs for human review; diff file labels use human-facing display
-  paths rather than machine-readable path serialization.
+- `PatcherStep` generates retained unified diffs for downstream presentation. Human TEXT and
+  Markdown frontends render those diffs using human-facing display paths rather than
+  machine-readable path serialization. Machine-readable presentation derives structured diff
+  payloads from the retained diff data instead of rendering terminal-oriented unified diff blocks.
 - TEXT and Markdown frontends share display-path helpers so STDIN-backed processing consistently
   displays the logical `--stdin-filename` when available.
 
@@ -94,6 +96,8 @@ replacement file image while still supporting repeated consumption by comparison
 and writing.
 
 `WriterStep` streams both file writes and STDOUT emission through the updated-line iterator.
+Presentation-layer diff rendering is intentionally separate from writing so human and
+machine-readable frontends can expose retained diffs using different output contracts.
 
 `ComparerStep` and `PatcherStep` consume structured edit metadata when available. Single-edit
 comparison and structured diff rendering can operate directly from
@@ -103,6 +107,11 @@ edit metadata is unavailable, invalid, or unsupported.
 
 The pipeline catalogue and selection model remain agnostic to the concrete updated-content
 representation.
+
+Likewise, pipeline execution is agnostic to the eventual presentation format. Human frontends render
+retained unified diffs as terminal output, while machine-readable frontends expose structured diff
+payloads (embedded in JSON detail output or emitted as adjacent NDJSON `diff` records). Summary
+output intentionally omits per-file diff payloads regardless of presentation format.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 

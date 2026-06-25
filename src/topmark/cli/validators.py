@@ -274,6 +274,46 @@ def warn_if_report_scope_ignored(
         state.console.warn(msg)
 
 
+def warn_if_machine_summary_diff_ignored(
+    ctx: click.Context,
+    *,
+    output_format: OutputFormat,
+    summary_mode: bool,
+    diff: bool,
+) -> None:
+    """Warn when machine summary output suppresses explicitly requested diffs.
+
+    Diff payloads are per-file detail data in machine-readable output. They are
+    emitted in detail mode, but summary mode intentionally emits aggregated
+    outcome rows only and suppresses per-file diff payloads.
+
+    To avoid noisy warnings for defaults or internal configuration, this helper
+    only warns when `--diff` was explicitly provided on the command line.
+
+    Warnings are emitted through the CLI console helper so machine-readable
+    payloads on stdout remain unchanged.
+
+    Args:
+        ctx: Active Click context.
+        output_format: Effective output format.
+        summary_mode: Whether summary-only mode is enabled.
+        diff: Whether unified diff payloads were requested.
+    """
+    if not diff or not summary_mode or not is_machine_format(output_format):
+        return
+
+    param_source: ParameterSource | None = ctx.get_parameter_source(ArgKey.RENDER_DIFF)
+    if param_source is not click.core.ParameterSource.COMMANDLINE:
+        return
+
+    state: TopmarkCliState = get_cli_state(ctx)
+    state.console.warn(
+        f"Note: {ctx.command_path}: {CliOpt.RENDER_DIFF} does not emit per-file "
+        f"diff payloads when {CliOpt.RESULTS_SUMMARY_MODE} is enabled with "
+        f"{CliOpt.OUTPUT_FORMAT}={output_format.value}."
+    )
+
+
 def apply_color_policy_for_output_format(
     ctx: click.Context,
     *,
@@ -425,30 +465,27 @@ def validate_output_verbosity_policy(
     # Raises: TopmarkCliUsageError: If both flags are enabled for TEXT output.
 
 
-def validate_diff_policy_for_output_format(
+def validate_diff_apply_mutual_exclusion(
     ctx: click.Context,
     *,
     diff: bool,
-    fmt: OutputFormat,
+    apply_changes: bool,
 ) -> None:
-    """Validate that unified diffs are only supported with human-readable output formats.
-
-    Unified diffs are a human-facing rendering feature and are not supported for machine-readable
-    output (`json`/`ndjson`). If `--diff` is requested with a machine-readable format, raise a
-    `TopmarkCliUsageError`.
+    """Validate that diff preview mode and mutation mode are not combined.
 
     Args:
         ctx: Active Click context carrying the shared typed CLI state.
         diff: Whether the user requested unified diffs.
-        fmt: Effective output format for this invocation.
+        apply_changes: Whether the user requested mutation/write mode.
     """
-    validate_machine_format_forbids_flags(
+    validate_mutually_exclusive(
         ctx,
-        fmt=fmt,
-        flags={CliOpt.RENDER_DIFF: diff},
-        reason="is not supported with machine-readable output formats.",
+        flags={
+            CliOpt.RENDER_DIFF: diff,
+            CliOpt.APPLY_CHANGES: apply_changes,
+        },
     )
-    # Raises: TopmarkCliUsageError: If diff is True and fmt is JSON/NDJSON.
+    # Raises: TopmarkCliUsageError: If both diff and apply mode are enabled.
 
 
 def validate_human_only_config_flags_for_machine_format(

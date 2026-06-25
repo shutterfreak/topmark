@@ -34,7 +34,7 @@ topmark check src/
 # Apply in place
 topmark check --apply src/
 
-# Show unified diffs (human output)
+# Show unified diffs in human output
 topmark check --diff src/
 
 # Summary-only view (CI-friendly)
@@ -58,6 +58,8 @@ ______________________________________________________________________
 ## Input applicability
 
 - Dry-run by default; exit code `WOULD_CHANGE (3)` when changes would occur.
+- `--apply` and `--diff` are mutually exclusive. Use `--diff` to preview changes or `--apply` to
+  write them.
 - Preserves the file's original newline style (LF/CRLF/CR).
 - Preserves a leading UTF-8 BOM if present.
 - Places headers according to file-type policy (shebang and PEP 263 in Python; XML
@@ -300,9 +302,12 @@ Notes:
 - In TEXT rendering, per-line diagnostics are shown with `-v` and above.
 - Primary/headline hint selection is presentation-level guidance and is not part of the stable CLI
   contract; rely on exit codes and machine-readable output for automation.
-- The `--diff` option is human-readable only and rejected for JSON or NDJSON output.
-  Machine-readable result payloads may expose reduced detail fields, but normal CLI JSON and NDJSON
-  output does not render unified diff blocks.
+- The `--diff` option is supported by both human and machine-readable output. TEXT and Markdown
+  render unified diffs for human review; JSON and NDJSON expose structured diff payloads in detail
+  mode. With human output, unified diffs are written to STDOUT and report/guidance output is routed
+  to STDERR.
+- `--apply` and `--diff` are mutually exclusive because `--diff` reserves STDOUT for preview
+  payloads while `--apply` performs mutation.
 
 ______________________________________________________________________
 
@@ -333,9 +338,11 @@ processing target. Configuration payloads also emit normalized file type filters
 
 Notes:
 
-- The `--diff` option is human-readable only and rejected for JSON or NDJSON output.
-  Machine-readable result payloads may expose reduced detail fields, but normal CLI JSON and NDJSON
-  output does not render unified diff blocks.
+- The `--diff` option is supported for machine-readable detail output. JSON embeds an optional
+  `diff` object under each affected result, while NDJSON emits an adjacent standalone `kind="diff"`
+  record after the corresponding result record.
+- Machine-readable summary output omits per-file diff payloads even when `--diff` is requested.
+  TopMark emits a warning on STDERR to make that suppression explicit.
 - Summary mode aggregates outcomes and suppresses per-file guidance lines.
 - The `config` payload in JSON and NDJSON is the resolved runtime configuration snapshot after
   per-source TOML validation, layered configuration merge, staged configuration-loading validation,
@@ -360,7 +367,11 @@ When `--summary` is **not** set, `topmark check` emits a single JSON object:
 ```
 
 The per-file result payload mirrors [`strip`](strip.md) but reflects the *check* intent (e.g.
-`outcome.check.*` fields instead of `outcome.strip.*`).
+`outcome.check.*` fields instead of `outcome.strip.*`). When `--diff` is requested, changed results
+may include an optional `diff` object with a `diff_text` field. See
+[Machine-readable output](../machine-output.md#per-file-result-payload) for the canonical schema.
+When `--diff` is combined with machine-readable summary mode, per-file diff payloads are omitted and
+TopMark emits a warning on STDERR.
 
 ### JSON schema (summary mode)
 
@@ -389,8 +400,10 @@ or per-bucket `summary` records (summary mode):
   1. zero or more `kind="diagnostic"` records (each with `domain="config"`; these may originate from
      TOML-source, merged-config, or runtime applicability diagnostics)
 - Then:
-  - detail mode (no `--summary`): one `kind="result"` record per file
-  - summary mode (`--summary`): one `kind="summary"` record per `(outcome, reason)` bucket
+  - detail mode (no `--summary`): one `kind="result"` record per file, optionally followed by an
+    adjacent `kind="diff"` record when `--diff` is requested and a diff is available for that file
+  - summary mode (`--summary`): one `kind="summary"` record per `(outcome, reason)` bucket; per-file
+    `result` and `diff` records are omitted
 
 Example (summary mode):
 
@@ -406,8 +419,8 @@ ______________________________________________________________________
 
 | Option                        | Description                                                                  |
 | ----------------------------- | ---------------------------------------------------------------------------- |
-| `--apply`                     | Write changes to files (off by default).                                     |
-| `--diff`                      | Show unified diffs (human output only).                                      |
+| `--apply`                     | Write changes to files (off by default; mutually exclusive with `--diff`).   |
+| `--diff`                      | Preview diffs; emits human unified diffs or machine diff payloads.           |
 | `--summary`                   | Show outcome counts instead of per-file details.                             |
 | `-q`, `--quiet`               | Suppress TEXT rendering while preserving the command's exit status.          |
 | `--files-from`                | Read newline-delimited paths from file (use '-' for STDIN).                  |

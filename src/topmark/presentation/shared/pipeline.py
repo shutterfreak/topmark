@@ -82,7 +82,7 @@ class PipelineCommandHumanReport:
         report_scope: Active report scope for the current view.
         unsupported_count: Number of unsupported files omitted from actionable listings.
         summary_mode: Whether to render grouped outcome counts instead of per-file sections.
-        show_diffs: Whether to include unified diffs.
+        show_diffs: Whether to render unified diffs as separate payload output.
         apply_changes: Whether the command runs in apply mode.
     """
 
@@ -96,6 +96,25 @@ class PipelineCommandHumanReport:
     summary_mode: bool
     show_diffs: bool
     apply_changes: bool
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PipelineCommandHumanOutput:
+    """Rendered human pipeline command output split by output stream.
+
+    The split keeps payload output and report output separate without coupling
+    presentation renderers to Click, Rich console objects, or concrete stream
+    handles. Commands remain responsible for writing `stdout` and `stderr` to
+    the appropriate streams.
+
+    Attributes:
+        stdout: Payload-oriented output intended for standard output.
+        stderr: Human report, guidance, summary, or diagnostic output intended
+            for standard error when standard output is reserved for a payload.
+    """
+
+    stdout: str
+    stderr: str
 
 
 def get_file_type_label(

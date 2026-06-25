@@ -197,7 +197,7 @@ class Mode:
     diff: bool
     output_target: OutputTarget
     prune_views: bool
-    keep_diff_view: bool
+    emit_diff: bool
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -539,7 +539,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.FILE,
                 prune_views=False,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "check_diff":
             return Mode(
@@ -549,7 +549,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=True,
                 output_target=OutputTarget.FILE,
                 prune_views=False,
-                keep_diff_view=True,
+                emit_diff=True,
             )
         case "check_apply":
             return Mode(
@@ -559,7 +559,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.FILE,
                 prune_views=False,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "check_stdout":
             return Mode(
@@ -569,7 +569,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.STDOUT,
                 prune_views=False,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "strip":
             return Mode(
@@ -579,7 +579,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.FILE,
                 prune_views=False,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "strip_diff":
             return Mode(
@@ -589,7 +589,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=True,
                 output_target=OutputTarget.FILE,
                 prune_views=False,
-                keep_diff_view=True,
+                emit_diff=True,
             )
         case "check_pruned":
             return Mode(
@@ -599,7 +599,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.FILE,
                 prune_views=True,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "check_diff_pruned":
             return Mode(
@@ -609,7 +609,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=True,
                 output_target=OutputTarget.FILE,
                 prune_views=True,
-                keep_diff_view=True,
+                emit_diff=True,
             )
         case "check_apply_pruned":
             return Mode(
@@ -619,7 +619,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.FILE,
                 prune_views=True,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "check_stdout_pruned":
             return Mode(
@@ -629,7 +629,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.STDOUT,
                 prune_views=True,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "strip_pruned":
             return Mode(
@@ -639,7 +639,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=False,
                 output_target=OutputTarget.FILE,
                 prune_views=True,
-                keep_diff_view=False,
+                emit_diff=False,
             )
         case "strip_diff_pruned":
             return Mode(
@@ -649,7 +649,7 @@ def _mode_from_name(name: str) -> Mode:
                 diff=True,
                 output_target=OutputTarget.FILE,
                 prune_views=True,
-                keep_diff_view=True,
+                emit_diff=True,
             )
         case _:
             choices: str = ", ".join(ALL_MODES)
@@ -698,7 +698,7 @@ def _run_steps_with_samples(
                     remaining_view_consumers.update(remaining_step.consumes_views)
                 ctx.views.release_consumed(
                     remaining_view_consumers=remaining_view_consumers,
-                    keep_diff_view=mode.keep_diff_view,
+                    keep_diff_view=mode.emit_diff,
                 )
             elapsed_ns: int = time.perf_counter_ns() - step_start
             current_bytes, peak_bytes = tracemalloc.get_traced_memory()

@@ -374,6 +374,8 @@ Common NDJSON kinds include:
 - `config_diagnostics` (counts-only in NDJSON prefix records)
 - `diagnostic` (one diagnostic per record; see "Diagnostics" below)
 - `result` (per-file result)
+- `diff` (standalone per-file diff payload emitted after a `result` record in processing detail mode
+  when `--diff` is requested and a diff is available)
 - `probe` (per-path resolution probe, including filtered explicit file inputs and missing explicit
   inputs that could not produce a normal resolution probe)
 - `summary` (one aggregated `(outcome, reason)` summary entry)
@@ -432,11 +434,15 @@ share conventions:
   - `config_diagnostics` (counts-only)
   - zero or more `diagnostic` records (config diagnostics, domain=`"config"` via
     \[`MachineDomain`\][topmark.core.machine.schemas.MachineDomain])
-  - then either per-file `result` records (detail mode) or per-outcome **reason-preserving**
-    `summary` records (summary mode)
+  - then either per-file `result` records, optionally followed by adjacent standalone `diff` records
+    (detail mode), or per-outcome **reason-preserving** `summary` records (summary mode)
 
 These diagnostics correspond to the flattened compatibility view derived from staged config-loading
 validation logs.
+
+The `--diff` option affects payload shape only in detail mode. It does not affect summary
+aggregation, exit-code selection, or whether processing runs. Summary output is still aggregated by
+outcome and reason, and therefore intentionally omits per-file diff payloads.
 
 Machine-readable output for processing commands is unaffected by TEXT verbosity or quiet mode; these
 flags only influence human TEXT output.
@@ -454,10 +460,19 @@ is reported as a policy-blocked unsupported processing target, using the same st
 surface as the runtime pipeline. Processing commands do not choose a source, target, winner, or
 loser path for the hard-link group.
 
-Processing result payloads may include reduced detail fields such as `detail.diff_text`. These
-fields represent durable result state, not human diff rendering. The `--diff` option remains
-human-only and is rejected for machine-readable output formats; normal CLI JSON and NDJSON
-processing output does not render unified diff blocks.
+When `--diff` is requested in machine-readable detail mode, processing commands expose structured
+per-file diff payloads instead of rendering human unified diff blocks:
+
+- JSON detail output embeds an optional `diff` object under each affected per-file result. The
+  embedded object contains `diff_text` and does not repeat `path` because the parent result already
+  identifies the file.
+- NDJSON detail output emits an adjacent standalone `kind="diff"` record after the corresponding
+  `kind="result"` record. The standalone payload includes both `path` and `diff_text` so every
+  NDJSON record remains self-identifying and stream consumers can process one result at a time.
+
+Machine-readable summary mode suppresses per-file detail. When `--diff` is combined with JSON or
+NDJSON summary output, TopMark emits a warning on `stderr` and omits per-file diff payloads. Human
+TEXT and Markdown output remain responsible for terminal-oriented unified diff rendering.
 
 In **summary mode**, TopMark aggregates results by the pair `(outcome, reason)` rather than
 collapsing all reasons under a single outcome bucket.

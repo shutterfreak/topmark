@@ -62,11 +62,13 @@ Preview whether TopMark would insert or update headers:
 topmark check .
 ```
 
-Preview the changes TopMark would insert or update:
+Preview the changes TopMark would insert or update as unified diffs:
 
 ```bash
 topmark check --diff .
 ```
+
+`--diff` is a dry-run preview mode and is therefore mutually exclusive with `--apply`.
 
 Apply the changes once the preview looks right:
 
@@ -187,6 +189,9 @@ A dry-run preview makes the intended change explicit before files are modified:
 
 ```
 
+The same retained diff information is also available to machine-readable consumers through JSON and
+NDJSON output, using structured diff payloads instead of terminal-oriented unified diff rendering.
+
 Header rendering and placement rules for supported file types are documented in:
 
 - [Header placement rules (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/header-placement/)
@@ -247,6 +252,10 @@ topmark strip --diff .    # preview unified diffs
 topmark strip --apply .   # remove headers
 ```
 
+`--diff` previews retained changes without mutating files. Human TEXT and Markdown output render
+unified diffs, while JSON detail embeds structured per-file `diff` payloads and NDJSON detail emits
+adjacent standalone `diff` records. `--apply` and `--diff` are mutually exclusive.
+
 Common commands:
 
 | Command            | Purpose                                                 |
@@ -277,10 +286,11 @@ Configuration discovery is evaluated before runtime filesystem processing. For c
 filesystem inputs, project-chain discovery starts from the resolved discovery anchor derived from
 the first selected input path when available, or from the current working directory otherwise.
 
-All available commands, shared options, output formats, STDIN behavior, and exit codes are
-documented in:
+All available commands, shared options, output formats, machine-readable payload contracts, STDIN
+behavior, and exit codes are documented in:
 
 - [Command-line interface (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/cli/)
+- [Machine-readable output (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/machine-output/)
 - [Command reference (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/commands/check/)
 - [Exit codes (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/exit-codes/)
 
