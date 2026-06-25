@@ -44,7 +44,16 @@ logger: TopmarkLogger = get_logger(__name__)
 class TopmarkCliError(click.ClickException):
     """Base class for all TopMark CLI errors."""
 
-    exit_code: ExitCode = ExitCode.FAILURE
+    exit_code: int
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        exit_code: ExitCode = ExitCode.USAGE_ERROR,
+    ) -> None:
+        super().__init__(message)
+        self.exit_code = int(exit_code)
 
     def format_message(self) -> str:  # pragma: no cover - trivial
         """Return the plain error message text.
