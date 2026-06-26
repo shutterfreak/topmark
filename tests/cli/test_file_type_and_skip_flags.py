@@ -31,6 +31,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.cli.conftest import assert_CONFIG_ERROR
+from tests.cli.conftest import assert_human_output_contains
+from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli
@@ -175,7 +177,11 @@ def test_report_actionable_hides_unsupported_per_file_but_summary_counts_it(tmp_
 
     # Nothing to do, and the unsupported file is hidden from per-file output.
     assert_SUCCESS(result_normal)
-    assert ResolveStatus.UNSUPPORTED.value not in result_normal.output.lower()
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result_normal.output.lower(),
+        expected=ResolveStatus.UNSUPPORTED.value,
+    )
 
     # Summary mode should still count the unsupported bucket.
     result_summary: Result = run_cli(
@@ -189,7 +195,11 @@ def test_report_actionable_hides_unsupported_per_file_but_summary_counts_it(tmp_
     )
 
     assert_SUCCESS(result_summary)
-    assert ResolveStatus.UNSUPPORTED.value in result_summary.output.lower()
+    assert_human_output_contains(
+        output_format=None,
+        output=result_summary.output.lower(),
+        expected=ResolveStatus.UNSUPPORTED.value,
+    )
 
 
 # ---- Test hidden singular option aliases ----
@@ -351,11 +361,22 @@ def test_strict_file_type_filter_overlap_reports_actionable_warning(
     )
 
     assert_CONFIG_ERROR(result)
-    out: str = result.output.lower()
-    assert "file types specified in both include and exclude filters" in out
-    assert "exclusion wins" in out
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output.lower(),
+        expected="file types specified in both include and exclude filters",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output.lower(),
+        expected="exclusion wins",
+    )
     for expected_removed_file_type in expected_removed_file_types:
-        assert expected_removed_file_type in out
+        assert_human_output_contains(
+            output_format=None,
+            output=result.output.lower(),
+            expected=expected_removed_file_type,
+        )
 
 
 @pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP, CliCmd.PROBE])

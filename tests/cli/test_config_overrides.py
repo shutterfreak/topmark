@@ -29,6 +29,7 @@ import pytest
 from click.testing import Result
 
 from tests.cli.conftest import assert_CONFIG_ERROR
+from tests.cli.conftest import assert_strict_file_type_overlap_warning
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
@@ -246,8 +247,8 @@ def test_strict_config_warning_renders_actionable_diagnostic_for_processing_comm
         ],
     )
 
-    assert_CONFIG_ERROR(result)
-    out: str = result.output.lower()
-    assert "file types specified in both include and exclude filters" in out
-    assert "exclusion wins" in out
-    assert "topmark:python" in out
+    assert_strict_file_type_overlap_warning(
+        result,
+        output_format=None,
+        expected_removed_file_types=("topmark:python",),
+    )

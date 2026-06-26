@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
@@ -102,8 +103,16 @@ def test_check_uses_canonical_path_fields_for_mismatched_invocation_casing(
 
     assert_SUCCESS(result)
     assert readme_path.read_text(encoding="utf-8") == before
-    assert "would update" not in result.output.lower()
-    assert "changes found" not in result.output.lower()
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result.output,
+        expected="would update",
+    )
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result.output,
+        expected="changes found",
+    )
 
 
 def test_check_apply_preserves_file_for_mismatched_invocation_casing_when_unchanged(
@@ -150,5 +159,13 @@ def test_check_uses_canonical_path_fields_for_absolute_mismatched_invocation_cas
 
     assert_SUCCESS(result)
     assert readme_path.read_text(encoding="utf-8") == before
-    assert "would update" not in result.output.lower()
-    assert "changes found" not in result.output.lower()
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result.output,
+        expected="would update",
+    )
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result.output,
+        expected="changes found",
+    )

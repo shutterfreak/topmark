@@ -26,8 +26,10 @@ import pytest
 from click.testing import CliRunner
 from click.testing import Result
 
-from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_FILE_NOT_FOUND
+from tests.cli.conftest import assert_human_output_contains
+from tests.cli.conftest import assert_human_output_does_not_contain
+from tests.cli.conftest import assert_strict_file_type_overlap_warning
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from topmark.cli.keys import CliCmd
@@ -79,16 +81,40 @@ def test_probe_text_output_progressively_expands_with_verbosity(tmp_path: Path) 
     assert_SUCCESS(result_vv)
 
     # Default TEXT output is a compact one-line summary.
-    assert "resolved" in result_default.output
-    assert "processor=" in result_default.output
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result_default.output,
+        expected="resolved",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result_default.output,
+        expected="processor=",
+    )
 
     # `-v` adds selected file type and processor details.
-    assert "selected file type" in result_v.output
-    assert "selected processor" in result_v.output
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result_v.output,
+        expected="selected file type",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result_v.output,
+        expected="selected processor",
+    )
 
     # `-vv` adds candidate and match details.
-    assert "candidates:" in result_vv.output
-    assert "match:" in result_vv.output
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result_vv.output,
+        expected="candidates:",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result_vv.output,
+        expected="match:",
+    )
 
     # Each verbosity level should provide a distinct TEXT rendering.
     assert result_default.output != result_v.output
@@ -123,8 +149,16 @@ def test_probe_text_output_reports_explicitly_filtered_input(
 
     assert_UNSUPPORTED_FILE_TYPE(result)
 
-    assert "<filtered>" in result.output
-    assert "filtered: excluded_by_path_filter" in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="<filtered>",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="filtered: excluded_by_path_filter",
+    )
 
 
 def test_probe_text_output_omits_directory_filtered_result_when_children_selected(
@@ -160,9 +194,21 @@ def test_probe_text_output_omits_directory_filtered_result_when_children_selecte
 
     assert_SUCCESS(result)
 
-    assert "example.py" in result.output
-    assert "README.md" in result.output
-    assert "<filtered>" not in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="example.py",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="README.md",
+    )
+    assert_human_output_does_not_contain(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="<filtered>",
+    )
 
 
 def test_probe_text_output_reports_missing_input_only_once(
@@ -182,8 +228,16 @@ def test_probe_text_output_reports_missing_input_only_once(
 
     assert_FILE_NOT_FOUND(result)
 
-    assert "probe-missing" in result.output
-    assert "<filtered>" not in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="probe-missing",
+    )
+    assert_human_output_does_not_contain(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="<filtered>",
+    )
 
 
 # --- TEXT output: strict config diagnostics ---
@@ -233,12 +287,11 @@ def test_probe_text_output_reports_strict_file_type_overlap_warning(
         ],
     )
 
-    assert_CONFIG_ERROR(result)
-    out: str = result.output.lower()
-    assert "file types specified in both include and exclude filters" in out
-    assert "exclusion wins" in out
-    for expected_removed_file_type in expected_removed_file_types:
-        assert expected_removed_file_type in out
+    assert_strict_file_type_overlap_warning(
+        result,
+        output_format=None,
+        expected_removed_file_types=expected_removed_file_types,
+    )
 
 
 # --- Markdown output: strict config diagnostics ---
@@ -267,12 +320,15 @@ def test_probe_markdown_output_reports_strict_file_type_overlap_warning(
         ],
     )
 
-    assert_CONFIG_ERROR(result)
-    out: str = result.output.lower()
-    assert "file types specified in both include and exclude filters" in out
-    assert "exclusion wins" in out
-    assert "topmark:python" in out
-    assert "topmark:markdown" in out
+    expected_removed_file_types = (
+        "topmark:python",
+        "topmark:markdown",
+    )
+    assert_strict_file_type_overlap_warning(
+        result,
+        output_format=None,
+        expected_removed_file_types=expected_removed_file_types,
+    )
 
 
 # --- Markdown output: verbosity and quiet controls ---
@@ -312,9 +368,21 @@ def test_probe_markdown_output_ignores_text_verbosity(tmp_path: Path) -> None:
     assert result_default.output == result_v.output
 
     # Basic Markdown structure checks.
-    assert "TopMark Resolution Probe Results" in result_default.output
-    assert "## Files" in result_default.output
-    assert "###" in result_default.output
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result_default.output,
+        expected="TopMark Resolution Probe Results",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result_default.output,
+        expected="## Files",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result_default.output,
+        expected="###",
+    )
 
 
 def test_probe_markdown_output_ignores_text_quiet(tmp_path: Path) -> None:
@@ -339,4 +407,8 @@ def test_probe_markdown_output_ignores_text_quiet(tmp_path: Path) -> None:
 
     # Markdown should still render full document output.
     assert result.output.strip() != ""
-    assert "TopMark Resolution Probe Results" in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="TopMark Resolution Probe Results",
+    )

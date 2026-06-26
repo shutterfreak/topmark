@@ -27,6 +27,8 @@ from typing import ClassVar
 
 import pytest
 
+from tests.cli.conftest import assert_human_output_contains
+from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
@@ -34,6 +36,7 @@ from tests.helpers.registry import make_file_type
 from tests.helpers.registry import patched_effective_registries
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.formats import OutputFormat
 from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
@@ -122,9 +125,21 @@ def test_registry_filetypes_text_output_is_compact_by_default(
     )
 
     assert_SUCCESS(result)
-    assert "pytest:bound_ft" in result.output
-    assert "pytest:unbound_ft" in result.output
-    assert "Extensions:" not in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:bound_ft",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:unbound_ft",
+    )
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result.output,
+        expected="Extensions:",
+    )
 
 
 def test_registry_filetypes_text_verbose_shows_console_heading(
@@ -141,8 +156,16 @@ def test_registry_filetypes_text_verbose_shows_console_heading(
     )
 
     assert_SUCCESS(result)
-    assert "Supported file types (canonical identities):" in result.output
-    assert "pytest:bound_ft" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="Supported file types (canonical identities):",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:bound_ft",
+    )
 
 
 def test_registry_filetypes_text_long_shows_details(
@@ -159,8 +182,16 @@ def test_registry_filetypes_text_long_shows_details(
     )
 
     assert_SUCCESS(result)
-    assert "pytest:bound_ft" in result.output
-    assert ".bound" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:bound_ft",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected=".bound",
+    )
 
 
 # --- Unsupported quiet mode ---
@@ -263,10 +294,26 @@ def test_registry_filetypes_markdown_long_shows_details(
     )
 
     assert_SUCCESS(result)
-    assert "# Supported File Types" in result.output
-    assert "pytest:bound_ft" in result.output
-    assert "Bound registry test file type." in result.output
-    assert ".bound" in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="# Supported File Types",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="pytest:bound_ft",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="Bound registry test file type.",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected=".bound",
+    )
 
 
 # --- Markdown output: processors and bindings ---
@@ -346,7 +393,23 @@ def test_registry_bindings_markdown_long_shows_binding_details(
     )
 
     assert_SUCCESS(result)
-    assert "# Effective File-Type-to-Processor Bindings" in result.output
-    assert "pytest:bound_ft" in result.output
-    assert "pytest:bound_processor" in result.output
-    assert "Bound registry test file type." in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="# Effective File-Type-to-Processor Bindings",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="pytest:bound_ft",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="pytest:bound_processor",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="Bound registry test file type.",
+    )

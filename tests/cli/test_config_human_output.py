@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import Result
 
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
@@ -197,7 +198,11 @@ def test_config_dump_text_verbose_adds_progressive_disclosure_details() -> None:
     assert_SUCCESS(base)
     assert_SUCCESS(verbose)
     assert verbose.output != base.output
-    assert "Config files processed" in verbose.output
+    assert_human_output_contains(
+        output_format=None,
+        output=verbose.output,
+        expected="Config files processed",
+    )
 
 
 # --- Markdown document content ---
@@ -214,4 +219,8 @@ def test_config_dump_markdown_includes_document_sections_by_default() -> None:
     )
 
     assert_SUCCESS(result)
-    assert "Config files processed" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="Config files processed",
+    )

@@ -27,9 +27,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_human_output_does_not_contain
+from tests.cli.conftest import assert_strict_file_type_overlap_warning
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
@@ -88,19 +88,6 @@ def _write_file_requiring_pipeline_change(tmp_path: Path, cmd: str) -> Path:
 # --- Strict config diagnostics ---
 
 
-def _assert_strict_file_type_overlap_warning(
-    result: Result,
-    expected_removed_file_types: tuple[str, ...],
-) -> None:
-    """Assert strict file-type overlap output includes actionable diagnostics."""
-    assert_CONFIG_ERROR(result)
-    out: str = result.output.lower()
-    assert "file types specified in both include and exclude filters" in out
-    assert "exclusion wins" in out
-    for expected_removed_file_type in expected_removed_file_types:
-        assert expected_removed_file_type in out
-
-
 @pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
 @pytest.mark.parametrize(
     ("include_file_types", "exclude_file_types", "expected_removed_file_types"),
@@ -145,7 +132,11 @@ def test_pipeline_text_output_reports_strict_file_type_overlap_warning(
         ]
     )
 
-    _assert_strict_file_type_overlap_warning(result, expected_removed_file_types)
+    assert_strict_file_type_overlap_warning(
+        result,
+        output_format=None,
+        expected_removed_file_types=expected_removed_file_types,
+    )
 
 
 @pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
@@ -171,9 +162,14 @@ def test_pipeline_markdown_output_reports_strict_file_type_overlap_warning(
         ]
     )
 
-    _assert_strict_file_type_overlap_warning(
+    expected_removed_file_types = (
+        "topmark:python",
+        "topmark:markdown",
+    )
+    assert_strict_file_type_overlap_warning(
         result,
-        ("topmark:python", "topmark:markdown"),
+        output_format=OutputFormat.MARKDOWN,
+        expected_removed_file_types=expected_removed_file_types,
     )
 
 
@@ -278,7 +274,11 @@ def test_pipeline_markdown_output_always_renders_document_banner(
     )
 
     assert_WOULD_CHANGE(result)
-    assert "# TopMark" in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="# TopMark",
+    )
 
 
 def test_check_markdown_output_shows_hints_without_text_verbosity(tmp_path: Path) -> None:
@@ -296,8 +296,16 @@ def test_check_markdown_output_shows_hints_without_text_verbosity(tmp_path: Path
     )
 
     assert_WOULD_CHANGE(result)
-    assert "Hints:" in result.output
-    assert "header:missing" in result.output
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="Hints:",
+    )
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="header:missing",
+    )
 
 
 @pytest.mark.parametrize(
