@@ -139,7 +139,7 @@ dependencies = [
     # Docstring formatter:
     "pydocstringformatter>=0.7.3,<1.0.0",
     # Extra Markdown extensions:
-    "pymdown-extensions>=10.17.1,<11.0.0",
+    "pymdown-extensions>=10.17.1,<12.0.0",
     # Rich rendering on the terminal (ANSI, Markdown, tables...):
     "rich>=15.0.0,<16.0.0",
     # Python linter and formatter (formatter used for docs tooling):
