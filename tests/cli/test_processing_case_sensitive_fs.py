@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.cli.conftest import assert_FILE_NOT_FOUND
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 
@@ -54,4 +55,8 @@ def test_check_does_not_resolve_mismatched_invocation_casing_on_case_sensitive_f
     )
 
     assert_FILE_NOT_FOUND(result)
-    assert "REadme.md" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="REadme.md",
+    )

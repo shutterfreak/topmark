@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
@@ -46,4 +47,8 @@ def test_registry_filetypes_lists_supported_types() -> None:
 
     # Default TEXT output is compact and does not include the verbose heading.
     assert result.output.strip() != ""
-    assert "topmark:" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="topmark:",
+    )

@@ -493,6 +493,15 @@ ______________________________________________________________________
   future multi-edit metadata.
 - Added focused CLI regression coverage for empty check/strip diff-output composition across TEXT
   and Markdown summary and per-file report modes.
+- Audited CLI human-output regression tests, introduced reusable semantic assertion helpers for
+  strict file-type overlap diagnostics, and reduced duplication while preserving output-contract
+  coverage.
+- Added focused regression coverage for Rich-aware CLI output assertion helpers, including
+  layout-independent verification of strict file-type overlap diagnostics across ANSI styling, panel
+  rendering, and wrapped terminal output.
+- Hardened CLI human-output regression tests against Rich styling, panel borders, terminal-width
+  wrapping, and other layout differences by replacing brittle raw output assertions with semantic
+  Rich-aware assertion helpers.
 
 ### Notes - Unreleased
 

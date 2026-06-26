@@ -557,6 +557,53 @@ def assert_human_output_contains_if(
     )
 
 
+# Domain-specific human-output assertions ----------------------------------
+
+
+FILE_TYPE_OVERLAP_WARNING_PREFIX: Final[str] = (
+    "File types specified in both include and exclude filters; exclusion wins:"
+)
+"""Stable prefix for strict include/exclude file-type overlap diagnostics."""
+
+
+def assert_strict_file_type_overlap_warning(
+    result: Result,
+    *,
+    output_format: OutputFormat | None,
+    expected_removed_file_types: tuple[str, ...],
+) -> None:
+    """Assert strict file-type overlap output includes actionable diagnostics.
+
+    This helper verifies the semantic contract for strict include/exclude
+    file-type overlap handling without depending on incidental Rich or Markdown
+    layout. The diagnostic prefix and each removed file type are asserted
+    separately so line wrapping, panel borders, and punctuation around the
+    rendered list do not make the test brittle.
+
+    Args:
+        result: CLI result returned by `run_cli` or `run_cli_in`.
+        output_format: Human output format requested by the test. `None` means
+            the CLI default, currently equivalent to `OutputFormat.TEXT`.
+        expected_removed_file_types: File-type labels expected to be removed
+            from the include filter because the exclude filter wins.
+    """
+    assert_CONFIG_ERROR(result)
+    assert_human_output_contains(
+        output_format=output_format,
+        output=result.output,
+        expected=FILE_TYPE_OVERLAP_WARNING_PREFIX,
+    )
+    for expected_removed_file_type in expected_removed_file_types:
+        assert_human_output_contains(
+            output_format=output_format,
+            output=result.output,
+            expected=expected_removed_file_type,
+        )
+
+
+# Parser-level Rich Click assertions ---------------------------------------
+
+
 CLICK_USAGE_ERROR_EXIT_CODE: Final[int] = 2
 """Raw exit code used by Click for parser-level usage errors."""
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
@@ -39,7 +40,11 @@ def test_cli_help_outputs_usage_and_exits_success() -> None:
 
     assert_SUCCESS(result)
 
-    assert "usage" in result.output.lower()
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="Usage",
+    )
 
 
 # --- Version command ---
@@ -51,4 +56,8 @@ def test_cli_version_outputs_project_version() -> None:
 
     assert_SUCCESS(result)
 
-    assert TOPMARK_VERSION in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected=TOPMARK_VERSION,
+    )

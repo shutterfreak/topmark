@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import Result
 
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_USAGE_ERROR
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
@@ -72,7 +73,11 @@ def test_check_rejects_content_stdin_with_file(tmp_path: Path) -> None:
 
     assert_USAGE_ERROR(result)
     # Diagnostic should point users toward the STDIN/path conflict.
-    assert "-" in result.output or "STDIN" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="-",
+    )
 
 
 def test_strip_rejects_content_stdin_with_file(tmp_path: Path) -> None:
@@ -86,7 +91,11 @@ def test_strip_rejects_content_stdin_with_file(tmp_path: Path) -> None:
     )
 
     assert_USAGE_ERROR(result)
-    assert "-" in result.output or "STDIN" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="-",
+    )
 
 
 def test_check_rejects_content_stdin_with_directory(tmp_path: Path) -> None:
@@ -101,7 +110,11 @@ def test_check_rejects_content_stdin_with_directory(tmp_path: Path) -> None:
     )
 
     assert_USAGE_ERROR(result)
-    assert "-" in result.output or "STDIN" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="-",
+    )
 
 
 def test_strip_rejects_content_stdin_with_directory(tmp_path: Path) -> None:
@@ -114,7 +127,11 @@ def test_strip_rejects_content_stdin_with_directory(tmp_path: Path) -> None:
         input_text="<!-- topmark:header:start -->\n",
     )
     assert_USAGE_ERROR(result)
-    assert "-" in result.output or "STDIN" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="-",
+    )
 
 
 # --- List/pattern-list STDIN modes: single consumer rule ---
@@ -129,4 +146,8 @@ def test_only_one_list_mode_option_may_consume_stdin(tmp_path: Path) -> None:
     )
 
     assert_USAGE_ERROR(result)
-    assert "-" in result.output or "STDIN" in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="-",
+    )

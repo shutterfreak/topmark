@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import Result
 
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
@@ -134,7 +135,11 @@ def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
     assert_SUCCESS(result)
 
     # Output should indicate no changes; content must remain intact.
-    assert "no changes to apply." in result.output
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="no changes to apply.",
+    )
     assert lic.read_text("utf-8") == original  # content intact
 
 
