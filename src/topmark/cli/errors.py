@@ -24,6 +24,7 @@ from __future__ import annotations
 from typing import IO
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import ClassVar
 
 import click
 
@@ -44,16 +45,7 @@ logger: TopmarkLogger = get_logger(__name__)
 class TopmarkCliError(click.ClickException):
     """Base class for all TopMark CLI errors."""
 
-    exit_code: int
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        exit_code: ExitCode = ExitCode.USAGE_ERROR,
-    ) -> None:
-        super().__init__(message)
-        self.exit_code = int(exit_code)
+    exit_code: ClassVar[int] = int(ExitCode.FAILURE)
 
     def format_message(self) -> str:  # pragma: no cover - trivial
         """Return the plain error message text.
@@ -97,58 +89,58 @@ class TopmarkCliError(click.ClickException):
 class TopmarkCliUsageError(TopmarkCliError):
     """Error for command-line invocation errors (invalid flags/args)."""
 
-    exit_code = ExitCode.USAGE_ERROR
+    exit_code: ClassVar[int] = int(ExitCode.USAGE_ERROR)
 
 
 class TopmarkCliConfigError(TopmarkCliError):
     """Error for configuration errors (missing/invalid/malformed config)."""
 
-    exit_code = ExitCode.CONFIG_ERROR
+    exit_code: ClassVar[int] = int(ExitCode.CONFIG_ERROR)
 
 
 class TopmarkCliFileNotFoundError(TopmarkCliError):
     """Error when input path does not exist."""
 
-    exit_code = ExitCode.FILE_NOT_FOUND
+    exit_code: ClassVar[int] = int(ExitCode.FILE_NOT_FOUND)
 
 
 class TopmarkCliPermissionDeniedError(TopmarkCliError):
     """Error for insufficient permissions (read/write)."""
 
-    exit_code = ExitCode.PERMISSION_DENIED
+    exit_code: ClassVar[int] = int(ExitCode.PERMISSION_DENIED)
 
 
 class TopmarkCliIOError(TopmarkCliError):
     """Error for I/O errors reading/writing files."""
 
-    exit_code = ExitCode.IO_ERROR
+    exit_code: ClassVar[int] = int(ExitCode.IO_ERROR)
 
 
 class TopmarkCliEncodingError(TopmarkCliError):
     """Error for text decoding/encoding errors (e.g., UnicodeDecodeError)."""
 
-    exit_code = ExitCode.ENCODING_ERROR
+    exit_code: ClassVar[int] = int(ExitCode.ENCODING_ERROR)
 
 
 class TopmarkCliUnsupportedFileTypeError(TopmarkCliError):
     """Error for known/unsupported file types (skipped as per policy)."""
 
-    exit_code = ExitCode.UNSUPPORTED_FILE_TYPE
+    exit_code: ClassVar[int] = int(ExitCode.UNSUPPORTED_FILE_TYPE)
 
 
 class TopmarkCliPipelineError(TopmarkCliError):
     """Error for internal pipeline failures (processor/step contract violation)."""
 
-    exit_code = ExitCode.PIPELINE_ERROR
+    exit_code: ClassVar[int] = int(ExitCode.PIPELINE_ERROR)
 
 
 class TopmarkCliVersionConversionError(TopmarkCliError):
     """Error for PEP440-to-SemVer version conversion."""
 
-    exit_code = ExitCode.VERSION_CONVERSION_ERROR
+    exit_code: ClassVar[int] = int(ExitCode.VERSION_CONVERSION_ERROR)
 
 
 class TopmarkCliUnexpectedError(TopmarkCliError):
     """Error for unhandled/unknown errors (last-resort)."""
 
-    exit_code = ExitCode.UNEXPECTED_ERROR
+    exit_code: ClassVar[int] = int(ExitCode.UNEXPECTED_ERROR)
