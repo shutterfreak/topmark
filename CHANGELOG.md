@@ -405,7 +405,10 @@ ______________________________________________________________________
 
 - Removed stale tox references.
 - Updated pre-commit dependencies, including TopMark itself.
-- Refreshed locked dependencies including Ruff, Hypothesis, and uv.
+- Raised the minimum supported runtime dependency version for `click` to 8.4.2 to align with the
+  current validated compatibility baseline.
+- Raised the minimum supported development dependency version for `build` to 1.5.0 and refreshed
+  locked development tooling, including `ruff`, `hypothesis`, and `uv`.
 - Added shared machine-path formatting helpers and regression coverage for Windows-style processing
   machine-output path serialization.
 - Expanded cross-platform filesystem regression coverage for machine-readable path serialization,
