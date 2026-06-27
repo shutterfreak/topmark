@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_processor_key_token.py
-#   file_relpath : tests/unit/test_processor_key_token.py
+#   file_relpath : tests/processors/test_processor_key_token.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
