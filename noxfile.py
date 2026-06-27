@@ -28,6 +28,7 @@ Sessions:
   - `code_hygiene`: Enforce lightweight Python prose hygiene (custom tool).
   - `qa`: Per-Python session that runs pytest and pyright.
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
+  - `pre_pr`: Recommended local pre-PR validation gate.
   - `api_snapshot`: Public API snapshot test (per Python).
   - `property_test`: Long-running property tests (opt-in).
   - `perf_baseline`: Local pipeline memory/allocation baseline benchmarks (opt-in).
@@ -46,6 +47,7 @@ Common invocations:
   - `nox -s format_check`
   - `nox -s docs`
   - `nox -s qa` (runs for all configured Python versions)
+  - `nox -s pre_pr` (recommended before opening or updating a PR)
 """
 
 from __future__ import annotations
@@ -292,6 +294,52 @@ def qa_api(session: nox.Session) -> None:
         "pyright",
         "--pythonversion",
         py_ver,
+    )
+
+
+@nox.session(python=False)
+def pre_pr(session: nox.Session) -> None:
+    """Run the recommended local pre-PR validation gate.
+
+    This session is a source-tree confidence check for routine pull-request preparation.
+    It intentionally does not replace GitHub CI, cross-platform filesystem validation,
+    release-artifact construction, or network-dependent link validation.
+
+    Any arguments passed after `--` are forwarded to the canonical `qa` pytest run.
+    """
+    serial_sessions: tuple[str, ...] = (
+        "format_check",
+        "lint",
+        "docstring_links",
+        "docs_hygiene",
+        "code_hygiene",
+        "docs",
+    )
+    for session_name in serial_sessions:
+        session.run(
+            "nox",
+            "-s",
+            session_name,
+            external=True,
+        )
+
+    session.run(
+        "nox",
+        "-s",
+        "qa",
+        "-p",
+        CANONICAL_PYTHON,
+        "--",
+        *session.posargs,
+        external=True,
+    )
+    session.run(
+        "nox",
+        "-s",
+        "api_snapshot",
+        "-p",
+        CANONICAL_PYTHON,
+        external=True,
     )
 
 

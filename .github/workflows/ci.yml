@@ -370,8 +370,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Linux canonical QA is already covered by the supported Python matrix.
+        # This job keeps the additional platform/filesystem coverage focused on macOS and Windows.
         os:
-          - ubuntu-latest
           - macos-latest
           - windows-latest
     steps:

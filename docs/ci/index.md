@@ -14,7 +14,8 @@ topmark:header:end
 
 TopMark uses a deliberately explicit CI and validation structure. GitHub workflows provide
 orchestration, nox sessions define stable reusable validation contracts, pytest markers describe
-validation intent, and Makefile targets provide local developer shortcuts.
+validation intent, and Makefile targets provide local developer shortcuts, including the recommended
+pre-PR validation gate.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -37,8 +38,9 @@ workflows rather than correctness-validation or release-gating checks.
   linting, API snapshots, and release artifacts produced from trusted CI runs.
 - [Setup Python + nox action](./setup-python-nox-action.md) - documents the shared Python, uv,
   cache, and nox bootstrap layer used by CI jobs.
-- [Test validation](./test-validation.md) - explains pytest markers, validation categories, local
-  test commands, CI inclusion rules, and how nox and Makefile targets map onto the test suite.
+- [Test validation](./test-validation.md) - explains pytest markers, validation categories, the
+  recommended local pre-PR validation gate, local test commands, CI inclusion rules, and how nox and
+  Makefile targets map onto the test suite.
 - [Published artifact validation](./published-artifact-validation.md) - validates installation and
   runtime behavior from packages already published to PyPI or TestPyPI in clean runner environments.
 
@@ -74,6 +76,7 @@ Use this family of pages as follows:
 
 | Question                                                         | Start here                                                          |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| What should I run before opening or updating a pull request?     | [Test validation](./test-validation.md)                             |
 | What runs on pull requests and pushes?                           | [CI workflow](./ci-workflow.md)                                     |
 | How are Python, uv, and nox bootstrapped in CI jobs?             | [Setup Python + nox action](./setup-python-nox-action.md)           |
 | Which tests are included, skipped, slow, or integration-focused? | [Test validation](./test-validation.md)                             |

@@ -51,9 +51,12 @@ cd topmark
 make venv
 make venv-sync-dev
 
-# Run core quality checks and tests
+# Run the recommended local pre-PR validation gate
+make pre-pr     # formatting, lint, docs, canonical QA, API snapshot
+
+# Additional validation commands
 make verify     # lint, formatting, docs, links
-make test       # canonical nox validation matrix
+make test       # full nox validation matrix
 
 # Run tests locally (current interpreter only)
 make pytest     # supports PYTEST_PAR="-n auto"
@@ -72,6 +75,14 @@ For the full installation and development-environment setup guide, see:
 ______________________________________________________________________
 
 ## Testing
+
+Before opening or updating a pull request, run the recommended local pre-PR validation gate:
+
+```bash
+make pre-pr
+```
+
+This provides a fast local confidence check but does not replace the full GitHub CI validation.
 
 Run the full `nox` test matrix:
 
@@ -386,7 +397,7 @@ Keep messages short (≤72 chars) and use the body to explain *why*.
 
 - [ ] PR title follows Conventional Commits
 - [ ] Related issue referenced when applicable
-- [ ] `make verify` and `make test` pass
+- [ ] `make pre-pr` passes
 - [ ] Docs updated if needed
 - [ ] Public API snapshot updated if applicable
 - [ ] Release tag / changelog plan is correct for release-related PRs

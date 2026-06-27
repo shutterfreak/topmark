@@ -130,6 +130,16 @@ Supported Python versions are resolved by `noxfile.py` from `pyproject.toml` usi
 metadata helpers. Matrix sessions run across the supported Python versions, while canonical
 single-version sessions use the second most recent supported Python version.
 
+Run the recommended local pre-PR validation gate before opening or updating a pull request:
+
+```bash
+make pre-pr
+```
+
+The pre-PR gate runs formatting checks, lint checks, documentation hygiene, a strict docs build, the
+canonical Python QA session, and the public API snapshot check. It is a local confidence shortcut
+rather than a replacement for GitHub CI.
+
 Run the full default test suite through nox on the canonical Python version:
 
 ```bash
@@ -165,6 +175,33 @@ Run slow property tests only when intentionally investigating property-test beha
 ```bash
 pytest -m hypothesis_slow
 ```
+
+______________________________________________________________________
+
+## Parallel local pytest execution
+
+TopMark includes `pytest-xdist` in the test dependency group. Normal nox sessions and selected
+Makefile targets keep pytest execution serial by default, but they support forwarded pytest
+arguments for local experimentation and faster feedback.
+
+Common opt-in examples are:
+
+```bash
+make pre-pr PYTEST_PAR="-n auto"
+make test PYTEST_PAR="-n auto"
+make coverage PYTEST_PAR="-n auto"
+make release-check PYTEST_PAR="-n auto"
+nox -s pre_pr -- -n auto
+nox -s qa -p 3.13 -- -n auto
+nox -s qa_api -p 3.13 -- -n auto
+nox -s coverage -p 3.13 -- -n auto
+nox -s release_check -- -n auto
+```
+
+CI keeps pytest execution serial inside each job even though local parallel execution is supported.
+The workflow already uses job-level parallelism for the supported Python matrix and the
+cross-platform filesystem checks. Keeping per-job pytest execution serial makes coverage artifacts,
+release-gate diagnostics, and failure logs easier to compare across runs.
 
 ______________________________________________________________________
 
@@ -216,8 +253,10 @@ Common mappings are:
 
 | Need                                              | Preferred command                  |
 | ------------------------------------------------- | ---------------------------------- |
+| Run the recommended local pre-PR gate             | `make pre-pr`                      |
 | Run the main quality gate on the canonical Python | `nox -s qa -p 3.13`                |
 | Generate canonical coverage data                  | `nox -s coverage -p 3.13`          |
+| Run local pytest in parallel                      | `nox -s qa -p 3.13 -- -n auto`     |
 | Print CI Python metadata                          | `nox -s print_python_matrix`       |
 | Run a marker-specific test subset                 | `nox -s qa -p 3.13 -- -m <marker>` |
 | Build documentation                               | `nox -s docs`                      |

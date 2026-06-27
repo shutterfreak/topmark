@@ -403,6 +403,10 @@ ______________________________________________________________________
 - Documented GitHub issue 183, including structured-edit-driven comparison, reduced patch-generation
   materialization, centralized step lifecycle enforcement, follow-up benchmark measurements, and the
   remaining comparison/diff ownership boundaries.
+- Documented supported local `pytest-xdist` workflows, including the rationale for keeping CI pytest
+  execution serial within individual jobs while using job-level parallelism.
+- Updated contributor and CI guidance to recommend the local pre-PR validation gate, document its
+  relationship to GitHub CI, and cross-reference the relevant validation workflow documentation.
 
 ### Internal - Unreleased
 
@@ -515,6 +519,15 @@ ______________________________________________________________________
 - Hardened CLI human-output regression tests against Rich styling, panel borders, terminal-width
   wrapping, and other layout differences by replacing brittle raw output assertions with semantic
   Rich-aware assertion helpers.
+- Reduced duplicate Linux validation in GitHub Actions by limiting the dedicated cross-platform
+  filesystem job to macOS and Windows while retaining canonical Linux QA through the supported
+  Python-version matrix.
+- Added a dedicated `pre_pr` Nox session together with a `make pre-pr` convenience target,
+  establishing the recommended local pre-PR validation gate while preserving GitHub CI as the
+  authoritative validation surface.
+- Standardized Makefile `.PHONY` declarations by colocating them with their associated targets,
+  reducing maintenance overhead for predominantly phony developer targets and aligning with the
+  project's `mbake` formatting conventions.
 
 ### Notes - Unreleased
 
