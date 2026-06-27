@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_resolve_file_list.py
-#   file_relpath : tests/unit/test_resolve_file_list.py
+#   file_relpath : tests/resolver/test_resolve_file_list.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

@@ -404,6 +404,12 @@ ______________________________________________________________________
 ### Internal - Unreleased
 
 - Removed stale tox references.
+- Migrated pytest collection to `--import-mode=importlib` and made repository-local developer
+  tooling imports explicit for the test suite.
+- Packaged all test subdirectories consistently and relocated remaining generic unit tests into
+  source-aligned test packages.
+- Added dedicated developer-validation tests for registry integrity, processor strategy usage, and
+  test package layout invariants.
 - Updated pre-commit dependencies, including TopMark itself.
 - Raised the minimum supported runtime dependency version for `click` to 8.4.2 to align with the
   current validated compatibility baseline.

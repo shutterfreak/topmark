@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_enum_mixins.py
-#   file_relpath : tests/unit/test_enum_mixins.py
+#   file_relpath : tests/core/test_enum_mixins.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

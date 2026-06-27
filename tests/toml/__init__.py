@@ -2,12 +2,12 @@
 #
 #   project      : TopMark
 #   file         : __init__.py
-#   file_relpath : tests/resolver/__init__.py
+#   file_relpath : tests/toml/__init__.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""File-resolution tests for topmark.resolution."""
+"""TOML parsing, validation, and surgery tests for topmark.toml."""
 
 from __future__ import annotations

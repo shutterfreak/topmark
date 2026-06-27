@@ -8,6 +8,6 @@
 #
 # topmark:header:end
 
-"""TopMark Test Framework."""
+"""TopMark test package for repository-local validation of the topmark package."""
 
 from __future__ import annotations

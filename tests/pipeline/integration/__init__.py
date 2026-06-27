@@ -8,6 +8,6 @@
 #
 # topmark:header:end
 
-"""TopMark Test Framework: Pipeline - Integration."""
+"""End-to-end pipeline integration tests for topmark.pipeline."""
 
 from __future__ import annotations

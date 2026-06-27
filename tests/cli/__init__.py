@@ -8,6 +8,6 @@
 #
 # topmark:header:end
 
-"""TopMark Test Framework: CLI."""
+"""CLI tests for topmark.cli and command-line behavior."""
 
 from __future__ import annotations
