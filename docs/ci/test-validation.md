@@ -87,7 +87,7 @@ Pytest markers are declared in `pyproject.toml` under `[tool.pytest.ini_options]
 | `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                          | Run where the host filesystem can exercise them.     |
 | `cli`                 | Tests that exercise the command-line interface.                                                    | Included in normal test runs.                        |
 | `config`              | Tests for configuration deserialization, path normalization, strictness, and layer merge behavior. | Included in normal test runs.                        |
-| `dev_validation`      | Developer validation tests for internal invariants such as registry consistency.                   | Included in normal test runs.                        |
+| `dev_validation`      | Developer validation tests for internal invariants such as registry and test-layout consistency.   | Included in normal test runs.                        |
 | `exit_code`           | Tests that validate the CLI exit-code contract.                                                    | Included in normal test runs.                        |
 | `hypothesis_slow`     | Long-running property tests.                                                                       | Skipped in CI unless explicitly selected.            |
 | `integration`         | Environment-dependent integration checks, such as shell completion.                                | Run selectively where the environment supports them. |
@@ -101,11 +101,12 @@ ______________________________________________________________________
 The `dev_validation` marker identifies tests that check internal invariants rather than user-facing
 behavior.
 
-Typical examples include:
+Typical examples live under `tests/dev_validation/` and include:
 
 - registry consistency between processors and file types;
 - sanity checks for internal plugin mappings;
-- placement-strategy checks for XML/HTML-like processors.
+- placement-strategy checks for XML/HTML-like processors;
+- test-package layout checks that keep Python test directories importable by absolute package name.
 
 Example:
 
@@ -193,9 +194,12 @@ Developer-validation checks include:
   identity.
 - **Placement strategy for XML/HTML**: processors based on `XmlHeaderProcessor` must signal the
   character-offset strategy by returning `NO_LINE_ANCHOR` from `get_header_insertion_index()`.
+- **Test package layout**: every directory under `tests/` that contains Python modules must include
+  an `__init__.py` marker so test modules have stable absolute package names.
 
-These checks avoid accidental miswiring, such as registering a processor under a typo key, and help
-prevent XML/HTML-like processors from regressing into line-based insertion behavior.
+These checks avoid accidental miswiring, such as registering a processor under a typo key, help
+prevent XML/HTML-like processors from regressing into line-based insertion behavior, and keep the
+test suite aligned with TopMark's absolute-import convention.
 
 ______________________________________________________________________
 

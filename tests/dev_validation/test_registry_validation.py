@@ -2,13 +2,13 @@
 #
 #   project      : TopMark
 #   file         : test_registry_validation.py
-#   file_relpath : tests/pipeline/test_registry_validation.py
+#   file_relpath : tests/dev_validation/test_registry_validation.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""CI guardrails for processor↔filetype registry integrity and strategy usage."""
+"""Developer-validation checks for registry integrity and processor strategy usage."""
 
 from __future__ import annotations
 
