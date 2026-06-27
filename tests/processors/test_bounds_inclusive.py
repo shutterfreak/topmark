@@ -19,9 +19,6 @@ that explicitly covers the *start directive*, a *single payload line*, and the
 
 * return the same span `(0, 2)`, and
 * remove the entire header block, leaving only the body content intact.
-
-These tests are marked with `@pytest.mark.pipeline` to indicate they exercise
-pipeline-level processor behavior.
 """
 
 from __future__ import annotations
@@ -40,8 +37,6 @@ if TYPE_CHECKING:
 
     from topmark.processors.base import HeaderProcessor
     from topmark.processors.types import StripHeaderResult
-
-mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
 
 
 @pytest.mark.parametrize(
@@ -70,7 +65,6 @@ mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
         ),
     ],
 )
-@pytest.mark.pipeline
 def test_strip_bounds_are_inclusive(
     tmp_path: Path, ext: str, header_open: str, header_line: str, header_close: str, body: str
 ) -> None:

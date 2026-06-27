@@ -23,8 +23,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.helpers.config import make_mutable_config
 from tests.helpers.diagnostics import NON_EMPTY
 from tests.helpers.diagnostics import assert_diagnostic_level_stats
@@ -42,7 +40,6 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
 
 
-@pytest.mark.config
 def test_load_resolved_config_applies_strictness_from_config_table(
     tmp_path: Path,
 ) -> None:
@@ -64,7 +61,6 @@ def test_load_resolved_config_applies_strictness_from_config_table(
     assert resolved_config.resolved.strict is True
 
 
-@pytest.mark.config
 def test_explicit_strictness_override_false_wins_over_resolved_true(
     tmp_path: Path,
 ) -> None:
@@ -87,7 +83,6 @@ def test_explicit_strictness_override_false_wins_over_resolved_true(
     assert resolved_config.resolved.strict is False
 
 
-@pytest.mark.config
 def test_explicit_strictness_override_true_wins_over_resolved_false(
     tmp_path: Path,
 ) -> None:
@@ -110,7 +105,6 @@ def test_explicit_strictness_override_true_wins_over_resolved_false(
     assert resolved_config.resolved.strict is True
 
 
-@pytest.mark.config
 def test_replayed_toml_warning_is_non_strict_valid_but_strict_invalid(
     tmp_path: Path,
 ) -> None:
@@ -155,7 +149,6 @@ def test_replayed_toml_warning_is_non_strict_valid_but_strict_invalid(
     assert frozen.is_valid(strict=True) is False
 
 
-@pytest.mark.config
 def test_missing_section_info_does_not_fail_even_when_strict(
     tmp_path: Path,
 ) -> None:
@@ -203,7 +196,6 @@ def test_missing_section_info_does_not_fail_even_when_strict(
     )
 
 
-@pytest.mark.config
 def test_sanitization_warning_is_non_strict_valid_but_strict_invalid() -> None:
     """Sanitization warnings participate in strict validity but not non-strict validity."""
     draft: MutableConfig = make_mutable_config(include_from=["patterns/*.txt"])
@@ -241,7 +233,6 @@ def test_sanitization_warning_is_non_strict_valid_but_strict_invalid() -> None:
     )
 
 
-@pytest.mark.config
 def test_is_valid_false_on_errors() -> None:
     """Merged-config errors always make the config invalid."""
     draft: MutableConfig = mutable_config_from_defaults()
@@ -252,7 +243,6 @@ def test_is_valid_false_on_errors() -> None:
     assert c.is_valid() is False
 
 
-@pytest.mark.config
 def test_is_valid_true_on_warnings() -> None:
     """Merged-config warnings do not make the config invalid by default."""
     draft: MutableConfig = mutable_config_from_defaults()
@@ -263,7 +253,6 @@ def test_is_valid_true_on_warnings() -> None:
     assert c.is_valid() is True
 
 
-@pytest.mark.config
 def test_is_valid_false_on_warnings_when_strict() -> None:
     """Merged-config warnings make the config invalid when strict mode is enabled."""
     draft: MutableConfig = mutable_config_from_defaults()
@@ -274,7 +263,6 @@ def test_is_valid_false_on_warnings_when_strict() -> None:
     assert c.is_valid(strict=True) is False
 
 
-@pytest.mark.config
 def test_freeze_preserves_diagnostics() -> None:
     """freeze() must preserve staged diagnostics and their flattened view."""
     draft: MutableConfig = mutable_config_from_defaults()

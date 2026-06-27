@@ -54,7 +54,6 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-@pytest.mark.pipeline
 def test_pound_processor_basics(tmp_path: Path) -> None:
     """Basic detection and scan.
 
@@ -84,7 +83,6 @@ def test_pound_processor_basics(tmp_path: Path) -> None:
     assert ctx.views.header is None
 
 
-@pytest.mark.pipeline
 def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     """Test that PoundHeaderProcessor correctly detects an existing TopMark header.
 
@@ -135,7 +133,6 @@ def test_pound_processor_detects_existing_header(tmp_path: Path) -> None:
     ctx.views.release_all()  # Release the views
 
 
-@pytest.mark.pipeline
 def test_pound_processor_missing_header(tmp_path: Path) -> None:
     """Test that PoundHeaderProcessor handles files with no TopMark header.
 
@@ -168,7 +165,6 @@ def test_pound_processor_missing_header(tmp_path: Path) -> None:
     assert ctx.status.header.name == "MISSING"
 
 
-@pytest.mark.pipeline
 @pytest.mark.parametrize(
     "header_fields, expected_status",
     [
@@ -225,7 +221,6 @@ def test_pound_malformed_header_fields(
     assert ctx.status.header == expected_status
 
 
-@pytest.mark.pipeline
 def test_insert_with_shebang_adds_single_blank_line(tmp_path: Path) -> None:
     """Insert after shebang with exactly one blank line.
 
@@ -264,7 +259,6 @@ def test_insert_with_shebang_adds_single_blank_line(tmp_path: Path) -> None:
     assert lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_insert_with_shebang_existing_blank_not_duplicated(tmp_path: Path) -> None:
     """Do not duplicate an existing blank line after the shebang.
 
@@ -289,7 +283,6 @@ def test_insert_with_shebang_existing_blank_not_duplicated(tmp_path: Path) -> No
     assert start_idx == 2, f"expected header at index 2, got {start_idx}"
 
 
-@pytest.mark.pipeline
 def test_insert_with_shebang_and_encoding(tmp_path: Path) -> None:
     """Insert after shebang + encoding with one blank.
 
@@ -314,7 +307,6 @@ def test_insert_with_shebang_and_encoding(tmp_path: Path) -> None:
     assert start_idx == 3, f"expected header at index 3 after shebang+encoding, got {start_idx}"
 
 
-@pytest.mark.pipeline
 def test_insert_without_shebang_starts_at_top_and_blank_after(tmp_path: Path) -> None:
     """Insert at top of file when there is no shebang, with a trailing blank.
 
@@ -340,7 +332,6 @@ def test_insert_without_shebang_starts_at_top_and_blank_after(tmp_path: Path) ->
     assert lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_insert_trailing_blank_not_added_if_next_line_is_blank(tmp_path: Path) -> None:
     """Avoid adding an extra trailing blank when the next line is already blank.
 
@@ -375,7 +366,8 @@ def test_insert_trailing_blank_not_added_if_next_line_is_blank(tmp_path: Path) -
 
 
 # Additional tests for more file types and scenarios
-@pytest.mark.pipeline
+
+
 def test_shell_with_shebang_spacing(tmp_path: Path) -> None:
     """Shell: exactly one blank between shebang and header; trailing blank ensured."""
     file: Path = tmp_path / "script.sh"
@@ -393,7 +385,6 @@ def test_shell_with_shebang_spacing(tmp_path: Path) -> None:
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_r_with_shebang_spacing(tmp_path: Path) -> None:
     """R: shebang honored with exactly one blank before header."""
     file: Path = tmp_path / "analysis.R"
@@ -409,7 +400,6 @@ def test_r_with_shebang_spacing(tmp_path: Path) -> None:
     assert start_idx == 2
 
 
-@pytest.mark.pipeline
 def test_julia_with_shebang_spacing(tmp_path: Path) -> None:
     """Julia: shebang honored with exactly one blank before header."""
     file: Path = tmp_path / "compute.jl"
@@ -425,7 +415,6 @@ def test_julia_with_shebang_spacing(tmp_path: Path) -> None:
     assert start_idx == 2
 
 
-@pytest.mark.pipeline
 def test_ruby_with_shebang_and_encoding(tmp_path: Path) -> None:
     """Ruby: shebang + encoding; header after inserted blank at index 3."""
     file: Path = tmp_path / "tool.rb"
@@ -441,7 +430,6 @@ def test_ruby_with_shebang_and_encoding(tmp_path: Path) -> None:
     assert start_idx == 3
 
 
-@pytest.mark.pipeline
 def test_perl_with_shebang_spacing(tmp_path: Path) -> None:
     """Perl: exactly one blank between shebang and header."""
     file: Path = tmp_path / "script.pl"
@@ -457,7 +445,6 @@ def test_perl_with_shebang_spacing(tmp_path: Path) -> None:
     assert start_idx == 2
 
 
-@pytest.mark.pipeline
 def test_dockerfile_top_and_trailing_blank(tmp_path: Path) -> None:
     """Dockerfile: header at top; trailing blank ensured."""
     file: Path = tmp_path / "Dockerfile"
@@ -474,7 +461,6 @@ def test_dockerfile_top_and_trailing_blank(tmp_path: Path) -> None:
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_yaml_top_and_trailing_blank(tmp_path: Path) -> None:
     """YAML: header at top; trailing blank ensured."""
     file: Path = tmp_path / "config.yaml"
@@ -491,7 +477,6 @@ def test_yaml_top_and_trailing_blank(tmp_path: Path) -> None:
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_toml_top_and_trailing_blank(tmp_path: Path) -> None:
     """TOML: header at top; trailing blank ensured."""
     file: Path = tmp_path / "pyproject.toml"
@@ -508,7 +493,6 @@ def test_toml_top_and_trailing_blank(tmp_path: Path) -> None:
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_env_without_shebang_top_and_trailing_blank(tmp_path: Path) -> None:
     """.env: header at top; trailing blank ensured."""
     file: Path = tmp_path / ".env"
@@ -525,7 +509,6 @@ def test_env_without_shebang_top_and_trailing_blank(tmp_path: Path) -> None:
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_pound_crlf_preserves_newlines(tmp_path: Path) -> None:
     r"""CRLF fixtures: Pound header preserves CRLF newline style.
 
@@ -553,7 +536,6 @@ def test_pound_crlf_preserves_newlines(tmp_path: Path) -> None:
 # --- Additional tests for banner comments and placement ---
 
 
-@pytest.mark.pipeline
 def test_pound_banner_at_top_header_precedes_banner(tmp_path: Path) -> None:
     """Pound: header at top even if a banner of `#` lines exists.
 
@@ -580,7 +562,6 @@ def test_pound_banner_at_top_header_precedes_banner(tmp_path: Path) -> None:
     assert banner_idx > end_idx
 
 
-@pytest.mark.pipeline
 def test_pound_shebang_then_banner_header_between(tmp_path: Path) -> None:
     """Pound: header sits between shebang and an existing `#` banner.
 
@@ -612,7 +593,6 @@ def test_pound_shebang_then_banner_header_between(tmp_path: Path) -> None:
     assert banner_idx > end_idx
 
 
-@pytest.mark.pipeline
 def test_pound_shebang_encoding_then_banner_header_between(tmp_path: Path) -> None:
     """Pound: shebang + encoding, header between prolog and banner.
 
@@ -644,7 +624,6 @@ def test_pound_shebang_encoding_then_banner_header_between(tmp_path: Path) -> No
     assert banner_idx > end_idx
 
 
-@pytest.mark.pipeline
 def test_pound_crlf_with_banner_preserves_newlines_and_order(tmp_path: Path) -> None:
     r"""CRLF: header preserves CRLF and precedes existing banner.
 
@@ -675,7 +654,6 @@ def test_pound_crlf_with_banner_preserves_newlines_and_order(tmp_path: Path) -> 
 # --- New tests for banner variants with leading blanks and long hash rule separators ---
 
 
-@pytest.mark.pipeline
 def test_pound_banner_with_leading_blanks(tmp_path: Path) -> None:
     """Pound: header at top, preserves leading blanks before an existing banner.
 
@@ -711,7 +689,6 @@ def test_pound_banner_with_leading_blanks(tmp_path: Path) -> None:
     assert banner_idx == end_idx + 3
 
 
-@pytest.mark.pipeline
 def test_pound_long_hash_rule_banner(tmp_path: Path) -> None:
     """Pound: header at top when file starts with long hash rule lines.
 
@@ -739,7 +716,6 @@ def test_pound_long_hash_rule_banner(tmp_path: Path) -> None:
     assert lines[end_idx + 2].startswith("#")
 
 
-@pytest.mark.pipeline
 def test_pound_shebang_then_long_hash_rule_banner(tmp_path: Path) -> None:
     """Pound: shebang first, then hash rule banner; header inserted between.
 
@@ -766,7 +742,6 @@ def test_pound_shebang_then_long_hash_rule_banner(tmp_path: Path) -> None:
     assert lines[end_idx + 2].startswith("#")
 
 
-@pytest.mark.pipeline
 def test_pound_crlf_leading_blank_and_banner(tmp_path: Path) -> None:
     r"""CRLF: header at top; preserves leading blank and banner order.
 
@@ -803,7 +778,8 @@ def test_pound_crlf_leading_blank_and_banner(tmp_path: Path) -> None:
 
 
 # --- strip_header_block: test both with and without span, preserving shebang ---
-@pytest.mark.pipeline
+
+
 def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Path) -> None:
     """`strip_header_block` removes the header and preserves the shebang.
 
@@ -846,7 +822,6 @@ def test_strip_header_block_with_and_without_span_preserves_shebang(tmp_path: Pa
     assert strip_result_2.removed_span == (1, 3)
 
 
-@pytest.mark.pipeline
 def test_pound_encoding_only_at_top(tmp_path: Path) -> None:
     """Encoding line without shebang (PEP 263 at top).
 
@@ -865,7 +840,6 @@ def test_pound_encoding_only_at_top(tmp_path: Path) -> None:
     assert find_line(lines, sig["start_line"]) == 0
 
 
-@pytest.mark.pipeline
 def test_pound_bom_preserved(tmp_path: Path) -> None:
     """Preserve a leading UTF-8 BOM at the start of the output.
 

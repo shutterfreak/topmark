@@ -21,8 +21,8 @@ Notes:
 * The strip tests build a header+body fixture with the requested newline style
   and exercise `strip_header_block`, asserting preserved newlines in the result.
 
-These tests are marked with `@pytest.mark.pipeline` and are parameterized across
-extensions and newline styles for broad coverage.
+These tests are parameterized across extensions and newline styles for broad
+coverage.
 """
 
 from __future__ import annotations
@@ -46,8 +46,6 @@ if TYPE_CHECKING:
     from topmark.processors.base import HeaderProcessor
     from topmark.processors.types import StripHeaderResult
 
-mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
-
 
 @pytest.mark.parametrize(
     "ext, pre, post",
@@ -58,7 +56,6 @@ mark_pipeline: pytest.MarkDecorator = pytest.mark.pipeline
     ],
 )
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])  # LF and CRLF
-@pytest.mark.pipeline
 def test_insert_preserves_newline_style(
     tmp_path: Path, ext: str, pre: str, post: str, newline: str
 ) -> None:
@@ -106,7 +103,6 @@ def test_insert_preserves_newline_style(
     ],
 )
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])  # LF and CRLF
-@pytest.mark.pipeline
 def test_strip_preserves_newline_style(
     tmp_path: Path,
     ext: str,

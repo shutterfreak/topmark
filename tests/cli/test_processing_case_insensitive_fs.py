@@ -33,10 +33,7 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-pytestmark: list[pytest.MarkDecorator] = [
-    pytest.mark.cli,
-    pytest.mark.case_insensitive_fs,
-]
+pytestmark: pytest.MarkDecorator = pytest.mark.case_insensitive_fs
 
 
 def _write_readme_without_header(root: Path) -> Path:

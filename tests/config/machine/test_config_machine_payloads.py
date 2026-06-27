@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.machine.payloads import build_config_check_summary_payload
 from topmark.config.machine.schemas import ConfigDiagnosticsPayload
@@ -29,7 +27,6 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
 
 
-@pytest.mark.pipeline
 def test_config_check_summary_reuses_precomputed_diagnostic_counts(
     tmp_path: Path,
 ) -> None:
@@ -62,7 +59,6 @@ def test_config_check_summary_reuses_precomputed_diagnostic_counts(
     assert summary.config_files == [config_file.as_posix()]
 
 
-@pytest.mark.pipeline
 def test_config_check_summary_builds_diagnostic_counts_when_missing() -> None:
     """Config-check summaries should compute diagnostic counts when not precomputed."""
     config: FrozenConfig = mutable_config_from_defaults().freeze()

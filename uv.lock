@@ -1702,6 +1702,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
+    { name = "tomlkit" },
 ]
 
 [package.metadata]
@@ -1742,6 +1743,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'docs'", specifier = ">=0.15.20,<0.16.0" },
     { name = "taplo", marker = "extra == 'dev'", specifier = ">=0.9.3,<0.10.0" },
     { name = "tomlkit", specifier = ">=0.15.0,<0.16.0" },
+    { name = "tomlkit", marker = "extra == 'test'", specifier = ">=0.15.0,<0.16.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=6.2.0,<7.0.0" },
     { name = "typing-extensions", specifier = ">=4.15.0,<5.0.0" },
     { name = "typing-extensions", marker = "extra == 'docs'", specifier = ">=4.15.0,<5.0.0" },

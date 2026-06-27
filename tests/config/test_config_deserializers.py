@@ -45,7 +45,6 @@ if TYPE_CHECKING:
 # --- Layered-config deserialization tests (remain in topmark.config) ---
 
 
-@pytest.mark.config
 def test_header_fields_wrong_type_is_treated_as_empty() -> None:
     """Wrong-type [header].fields is treated as empty (must not crash)."""
     draft: MutableConfig = mutable_config_from_layered_toml_table(
@@ -58,7 +57,6 @@ def test_header_fields_wrong_type_is_treated_as_empty() -> None:
     assert draft.header_fields == []
 
 
-@pytest.mark.config
 def test_header_fields_mixed_types_ignores_non_strings(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -97,7 +95,6 @@ def test_header_fields_mixed_types_ignores_non_strings(
     )
 
 
-@pytest.mark.config
 def test_policy_by_type_section_wrong_type_is_ignored() -> None:
     """Non-table [policy_by_type] values are ignored (must not crash)."""
     draft: MutableConfig = mutable_config_from_layered_toml_table(
@@ -114,7 +111,6 @@ _empty_str_list: list[str] = []
 _empty_str_set: set[str] = set()
 
 
-@pytest.mark.config
 @pytest.mark.parametrize(
     "key,_kind,expect_empty",
     [
@@ -156,7 +152,6 @@ def test_files_list_valued_keys_wrong_type_is_treated_as_empty(
         assert draft.exclude_file_types == expect_empty
 
 
-@pytest.mark.config
 def test_include_from_mixed_types_ignores_non_strings(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
@@ -200,7 +195,6 @@ def test_include_from_mixed_types_ignores_non_strings(
     )
 
 
-@pytest.mark.config
 @pytest.mark.parametrize(
     "key,is_include",
     [
@@ -250,7 +244,6 @@ def test_glob_patterns_mixed_types_ignores_non_strings(
     )
 
 
-@pytest.mark.config
 @pytest.mark.parametrize(
     "key,is_include",
     [
@@ -303,7 +296,6 @@ def test_glob_patterns_all_non_strings_results_in_empty_list(
     )
 
 
-@pytest.mark.config
 def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -362,7 +354,6 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
     )
 
 
-@pytest.mark.config
 def test_header_fields_can_reference_missing_custom_fields_without_error() -> None:
     """header.fields may reference names not present in [fields] and should not crash."""
     draft: MutableConfig = mutable_config_from_layered_toml_table(
@@ -383,7 +374,6 @@ def test_header_fields_can_reference_missing_custom_fields_without_error() -> No
     assert draft.field_values["project"] == "TopMark"
 
 
-@pytest.mark.config
 @pytest.mark.parametrize("bad_val", ["x", 123, {"a": 1}, None])
 def test_header_fields_wrong_type_falls_back_to_empty_list(
     bad_val: TomlValue,
@@ -402,7 +392,6 @@ def test_header_fields_wrong_type_falls_back_to_empty_list(
     assert draft.header_fields == []
 
 
-@pytest.mark.config
 def test_duplicate_include_file_types_warns_and_is_recorded(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -436,7 +425,6 @@ def test_duplicate_include_file_types_warns_and_is_recorded(
     )
 
 
-@pytest.mark.config
 def test_duplicate_exclude_file_types_warns_and_is_recorded(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -470,7 +458,6 @@ def test_duplicate_exclude_file_types_warns_and_is_recorded(
     )
 
 
-@pytest.mark.config
 def test_extend_pattern_sources_resolves_relative_paths_against_base(
     tmp_path: Path,
 ) -> None:

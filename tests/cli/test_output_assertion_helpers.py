@@ -31,8 +31,6 @@ from tests.cli.conftest import normalize_rich_cli_output
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 
-pytestmark: pytest.MarkDecorator = pytest.mark.cli
-
 
 def test_normalize_rich_cli_output_strips_ansi_panels_and_soft_wraps() -> None:
     """Rich normalization should preserve content while removing layout noise."""

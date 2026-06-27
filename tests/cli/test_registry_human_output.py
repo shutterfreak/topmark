@@ -63,9 +63,6 @@ class UnusedHumanRegistryProcessor(HeaderProcessor):
     description: ClassVar[str] = "Processor left intentionally unused."
 
 
-pytestmark: pytest.MarkDecorator = pytest.mark.cli
-
-
 @pytest.fixture
 def registry_snapshot() -> Iterator[None]:
     """Patch a small deterministic registry for output rendering tests."""

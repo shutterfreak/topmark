@@ -158,6 +158,8 @@ dependencies = [
     "pytest-cov>=7.1.0,<8.0.0",
     # Parallel test execution:
     "pytest-xdist>=3.8.0,<4.0.0",
+    # TOML configuration file manipulation:
+    "tomlkit>=0.15.0,<0.16.0",
   ]
   typing = []
 
@@ -275,16 +277,11 @@ reportUnusedVariable               = true
 
 [tool.pytest.ini_options]
 markers = [
-  "api: tests that exercise the API",
   "case_insensitive_fs: tests for case-insensitive file systems",
-  "cli: tests that exercise the CLI",
-  "config: tests for config deserialization, path normalization, strictness, and layer merge behavior",
   "dev_validation: developer validation tests for repository and internal invariants",
   "exit_code: tests that validate the CLI exit-code contract",
   "hypothesis_slow: long-running property tests (skipped in CI)",
   "integration: environment-dependent integration checks (e.g., shell completion)",
-  "pipeline: tests that exercise the processing pipeline",
-  "toml: tests for TopMark TOML loading, extraction, schema validation, and source resolution",
 ]
 testpaths = ["tests"]
 norecursedirs = [

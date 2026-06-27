@@ -79,7 +79,6 @@ def test_output_format_completion_lists_all_values() -> None:
 
 
 # adapt if enum values change
-@pytest.mark.cli
 @pytest.mark.parametrize("prefix", ["t", "m", "j", "n"])
 # adapt if enum values change
 def test_output_format_completion_filters_by_prefix(prefix: str) -> None:
@@ -96,14 +95,12 @@ def test_output_format_completion_filters_by_prefix(prefix: str) -> None:
         assert expected & values
 
 
-@pytest.mark.cli
 def test_output_format_completion_handles_nonmatching_prefix() -> None:
     """Non-matching prefixes should yield an empty suggestion list."""
     items: list[CompletionItem] = _complete("zzz")
     assert _values(items) == set()
 
 
-@pytest.mark.cli
 def test_output_format_completion_works_across_commands() -> None:
     """The same option type should complete in other commands that accept it."""
     # If another command (e.g., check) exposes --header-format, it should complete too.

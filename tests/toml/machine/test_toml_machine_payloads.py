@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.toml.keys import Toml
 from topmark.toml.machine.payloads import build_toml_provenance_payload
@@ -38,7 +36,6 @@ if TYPE_CHECKING:
     from topmark.toml.validation import TomlValidationIssue
 
 
-@pytest.mark.pipeline
 def test_toml_provenance_payload_uses_posix_paths_for_file_backed_layers(
     tmp_path: Path,
 ) -> None:
@@ -86,7 +83,6 @@ def test_toml_provenance_payload_uses_posix_paths_for_file_backed_layers(
     assert file_backed_layer.toml[Toml.SECTION_FIELDS] == {"project": "Demo"}
 
 
-@pytest.mark.pipeline
 def test_toml_provenance_payload_uses_posix_path_for_discovery_anchor(
     tmp_path: Path,
 ) -> None:
@@ -105,7 +101,6 @@ def test_toml_provenance_payload_uses_posix_path_for_discovery_anchor(
     assert payload.to_dict()["discovery_anchor"] == workspace.as_posix()
 
 
-@pytest.mark.pipeline
 def test_toml_schema_accepts_dump_only_keys_in_provenance_mode() -> None:
     """Provenance validation should accept dump-only schema keys."""
     issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate_section_keys(
@@ -117,7 +112,6 @@ def test_toml_schema_accepts_dump_only_keys_in_provenance_mode() -> None:
     assert issues == ()
 
 
-@pytest.mark.pipeline
 def test_toml_schema_rejects_dump_only_keys_in_input_mode() -> None:
     """Input validation should reject dump-only schema keys."""
     issues: tuple[TomlValidationIssue, ...] = TOPMARK_TOML_SCHEMA.validate_section_keys(

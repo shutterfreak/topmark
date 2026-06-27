@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from topmark.toml.parse import ParsedTopmarkToml
 
 
-@pytest.mark.toml
 def test_policy_by_type_unknown_keys_warn(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -63,7 +62,6 @@ def test_policy_by_type_unknown_keys_warn(
     )
 
 
-@pytest.mark.toml
 def test_policy_by_type_entry_wrong_type_warns(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -80,7 +78,6 @@ def test_policy_by_type_entry_wrong_type_warns(
     )
 
 
-@pytest.mark.toml
 def test_policy_by_type_entry_wrong_type_uses_invalid_nested_section_type_code() -> None:
     """Malformed nested policy tables emit INVALID_NESTED_SECTION_TYPE and are ignored."""
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
@@ -112,7 +109,6 @@ def test_policy_by_type_entry_wrong_type_uses_invalid_nested_section_type_code()
     }
 
 
-@pytest.mark.toml
 def test_policy_by_type_entry_wrong_type_does_not_become_effective_policy_override() -> None:
     """Malformed nested policy entries do not produce effective policy overrides."""
     draft: MutableConfig = draft_from_topmark_toml_table(
@@ -126,7 +122,6 @@ def test_policy_by_type_entry_wrong_type_does_not_become_effective_policy_overri
     assert draft.policy_by_type == {}
 
 
-@pytest.mark.toml
 def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -153,7 +148,6 @@ def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
     )
 
 
-@pytest.mark.toml
 @pytest.mark.parametrize("policy_file_type_id", ["python", "topmark:python"])
 def test_policy_by_type_public_identifier_freezes_to_qualified_key(
     policy_file_type_id: str,
@@ -175,7 +169,6 @@ def test_policy_by_type_public_identifier_freezes_to_qualified_key(
     assert cfg.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
 
 
-@pytest.mark.toml
 def test_policy_by_type_quoted_qualified_toml_key_parses_and_freezes() -> None:
     """Quoted qualified TOML table keys support canonical file type identifiers."""
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(

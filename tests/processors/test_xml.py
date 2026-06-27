@@ -74,7 +74,6 @@ def _xml_processor_with_policy(*, ensure_blank_after_header: bool) -> XmlHeaderP
     return processor
 
 
-@pytest.mark.pipeline
 def test_xml_processor_basics(tmp_path: Path) -> None:
     """Basic detection and scan.
 
@@ -97,7 +96,6 @@ def test_xml_processor_basics(tmp_path: Path) -> None:
     assert ctx.views.header is None
 
 
-@pytest.mark.pipeline
 def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
     """Insert header at the very top of plain HTML and keep a trailing blank.
 
@@ -123,7 +121,6 @@ def test_html_top_of_file_with_trailing_blank(tmp_path: Path) -> None:
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_xml_with_declaration_only(tmp_path: Path) -> None:
     """XML with only a declaration: insert after declaration (+1 blank).
 
@@ -149,7 +146,6 @@ def test_xml_with_declaration_only(tmp_path: Path) -> None:
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_xml_with_declaration_and_doctype(tmp_path: Path) -> None:
     """XML with declaration + DOCTYPE: insert after both (+1 blank).
 
@@ -175,7 +171,6 @@ def test_xml_with_declaration_and_doctype(tmp_path: Path) -> None:
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_svg_with_declaration(tmp_path: Path) -> None:
     """SVG (XML) with declaration: insert after declaration (+1 blank).
 
@@ -200,7 +195,6 @@ def test_svg_with_declaration(tmp_path: Path) -> None:
     assert start_idx == 3
 
 
-@pytest.mark.pipeline
 def test_vue_top_of_file(tmp_path: Path) -> None:
     """Vue SFC behaves like HTML: header at top with trailing blank.
 
@@ -222,7 +216,6 @@ def test_vue_top_of_file(tmp_path: Path) -> None:
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_svelte_top_of_file(tmp_path: Path) -> None:
     """Svelte component behaves like HTML: header at top with trailing blank.
 
@@ -244,7 +237,6 @@ def test_svelte_top_of_file(tmp_path: Path) -> None:
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_xml_single_line_declaration(tmp_path: Path) -> None:
     """Declaration and root on one line: insert after decl (+1 blank).
 
@@ -347,7 +339,6 @@ def test_xml_prolog_and_body_on_same_line_alllowed_by_policy(tmp_path: Path) -> 
     assert re.sub(r"\s+", "", original) == re.sub(r"\s+", "", roundtrip)
 
 
-@pytest.mark.pipeline
 def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     """Declaration + DOCTYPE + root on one line: insert after prolog (+1 blank).
 
@@ -369,7 +360,6 @@ def test_xml_single_line_decl_and_doctype(tmp_path: Path) -> None:
     assert ctx.is_halted is True
 
 
-@pytest.mark.pipeline
 def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
     """Header must precede any pre-existing banner comment in HTML.
 
@@ -399,7 +389,6 @@ def test_html_with_existing_banner_comment(tmp_path: Path) -> None:
         assert banner_idx > close_idx
 
 
-@pytest.mark.pipeline
 def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
     """XML with declaration and a banner: header after decl, before banner.
 
@@ -427,7 +416,6 @@ def test_xml_decl_then_existing_banner_comment(tmp_path: Path) -> None:
         assert banner_idx > close_idx
 
 
-@pytest.mark.pipeline
 def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
     """XML with declaration + DOCTYPE and a banner: header after prolog.
 
@@ -460,7 +448,8 @@ def test_xml_decl_doctype_then_existing_banner_comment(tmp_path: Path) -> None:
 
 
 # --- strip_header_block: test XML declaration is preserved, header is removed ---
-@pytest.mark.pipeline
+
+
 def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     """`strip_header_block` removes the header and preserves the XML declaration.
 
@@ -502,7 +491,6 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     assert strip_result_2.removed_span == (1, 3)
 
 
-@pytest.mark.pipeline
 def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     """DOCTYPE with simple internal subset (multi-line) is respected.
 
@@ -526,7 +514,6 @@ def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
     assert start_idx == 5  # decl(0) doctype(1..3) blank(4) start(5)
 
 
-@pytest.mark.pipeline
 def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
     """Ensure XML processor preserves BOM on text-insert path.
 

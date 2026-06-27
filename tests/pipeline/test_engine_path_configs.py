@@ -26,8 +26,6 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from typing import Any
 
-import pytest
-
 from tests.helpers.config import make_frozen_config
 from tests.helpers.pipeline import TEST_NOOP_PIPELINE_SELECTION
 from topmark.pipeline import engine
@@ -36,6 +34,8 @@ from topmark.runtime.model import RunOptions
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
+
+    import pytest
 
     from topmark.config.model import FrozenConfig
     from topmark.config.policy import PolicyRegistry
@@ -52,7 +52,6 @@ def _fake_runner_run(
     return ctx
 
 
-@pytest.mark.pipeline
 def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -128,7 +127,6 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
     assert bootstrap_calls[1][3] == {"header_fields": ("license",)}
 
 
-@pytest.mark.pipeline
 def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -193,7 +191,6 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
     assert bootstrap_calls[1][3] == {"header_fields": ("project", "file")}
 
 
-@pytest.mark.pipeline
 def test_iter_steps_for_files_yields_contexts_before_later_files_are_bootstrapped(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -247,7 +244,6 @@ def test_iter_steps_for_files_yields_contexts_before_later_files_are_bootstrappe
     assert bootstrapped_paths == [file_a, file_b]
 
 
-@pytest.mark.pipeline
 def test_iter_steps_for_files_records_engine_exit_code_in_state(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

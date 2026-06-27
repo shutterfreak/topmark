@@ -22,6 +22,8 @@ from topmark.api.runtime import run_pipeline_results
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.runtime.model import RunOptions
 
+pytestmark: pytest.MarkDecorator = pytest.mark.integration
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -35,7 +37,6 @@ def _write(path: Path, content: str) -> None:
     path.write_text(textwrap.dedent(content).lstrip("\n"), encoding="utf-8")
 
 
-@pytest.mark.pipeline
 def test_nested_config_applies_only_within_its_subtree(tmp_path: Path) -> None:
     """A nested config should affect durable output for its own subtree only.
 

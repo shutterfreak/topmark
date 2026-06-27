@@ -46,9 +46,6 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-pytestmark: pytest.MarkDecorator = pytest.mark.cli
-
-
 def _write_file_requiring_check_update(tmp_path: Path) -> Path:
     """Create a Python file that requires header insertion by `check`."""
     path: Path = tmp_path / "needs_header.py"

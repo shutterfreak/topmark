@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
 
 
-@pytest.mark.pipeline
 def test_to_toml_strips_none_entries() -> None:
     """to_toml() rejects None by stripping (regression guard).
 
@@ -62,7 +61,6 @@ def test_to_toml_strips_none_entries() -> None:
     assert ArgKey.ALIGN_FIELDS not in s  # or whatever your stripper does
 
 
-@pytest.mark.pipeline
 def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tables(
     tmp_path: Path,
 ) -> None:
@@ -147,7 +145,6 @@ def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tabl
     assert first_files_from_source[Toml.KEY_PATH] == files_txt_path.as_posix()
 
 
-@pytest.mark.pipeline
 def test_config_to_toml_dict_rebased_mode_flattens_pattern_groups(
     tmp_path: Path,
 ) -> None:
@@ -187,7 +184,6 @@ def test_config_to_toml_dict_rebased_mode_flattens_pattern_groups(
     assert exclude_pattern.endswith("build/**")
 
 
-@pytest.mark.pipeline
 def test_config_to_toml_dict_includes_file_list_when_requested() -> None:
     """Explicit file-list export should include discovered files when requested."""
     draft: MutableConfig = mutable_config_from_defaults()
@@ -210,7 +206,6 @@ def test_config_to_toml_dict_includes_file_list_when_requested() -> None:
     ]
 
 
-@pytest.mark.pipeline
 @pytest.mark.parametrize(
     ("mode", "expected_keys", "unexpected_keys"),
     [

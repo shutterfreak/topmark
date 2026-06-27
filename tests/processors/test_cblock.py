@@ -53,7 +53,6 @@ if TYPE_CHECKING:
     from topmark.processors.types import StripHeaderResult
 
 
-@pytest.mark.pipeline
 def test_cblock_processor_basics(tmp_path: Path) -> None:
     """Basics: resolve to a C-block style processor and no pre-existing header."""
     path: Path = tmp_path / "styles.css"
@@ -82,7 +81,6 @@ def test_cblock_processor_basics(tmp_path: Path) -> None:
     assert ctx.status.header.name == "MISSING"
 
 
-@pytest.mark.pipeline
 @pytest.mark.parametrize(
     "ext,body",
     [
@@ -117,7 +115,6 @@ def test_cblock_all_registrations_insert_and_trailing_blank(
         assert close_idx + 1 < len(lines) and lines[close_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     """Detect an existing C-block header that was produced by TopMark itself."""
     path: Path = tmp_path / "existing.css"
@@ -160,7 +157,6 @@ def test_cblock_detect_existing_header_with_star_prefix(tmp_path: Path) -> None:
     ctx_check.views.release_all()  # Release the views
 
 
-@pytest.mark.pipeline
 def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path) -> None:
     """Scanner tolerates directives without '*' inside the block."""
     path: Path = tmp_path / "nostar.css"
@@ -211,7 +207,6 @@ def test_cblock_detect_existing_header_without_star_on_directives(tmp_path: Path
     assert ctx2.views.header.range is not None
 
 
-@pytest.mark.pipeline
 def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
     """Preserve CRLF newlines on Windows-style CSS inputs."""
     file: Path = tmp_path / "win.less"
@@ -227,7 +222,6 @@ def test_cblock_crlf_preserves_newlines(tmp_path: Path) -> None:
         assert ln.endswith("\r\n"), f"line {i} not CRLF: {ln!r}"
 
 
-@pytest.mark.pipeline
 def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     """`strip_header_block` removes the block with or without explicit bounds."""
     file: Path = tmp_path / "strip_me.css"
@@ -254,7 +248,6 @@ def test_cblock_strip_header_block_with_and_without_span(tmp_path: Path) -> None
     assert strip_result_2.removed_span == (0, 4)
 
 
-@pytest.mark.pipeline
 def test_cblock_banner_comment_after_header(tmp_path: Path) -> None:
     """Header must precede any pre-existing banner comment."""
     file: Path = tmp_path / "banner.css"
@@ -278,7 +271,6 @@ def test_cblock_banner_comment_after_header(tmp_path: Path) -> None:
         assert banner_idx > close_idx
 
 
-@pytest.mark.pipeline
 def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     """strip_header_block removes a canonical TopMark C-block header."""
     file: Path = tmp_path / "strip_me.css"
@@ -302,7 +294,6 @@ def test_cblock_strip_header_block_generated(tmp_path: Path) -> None:
     assert TOPMARK_START_MARKER not in "".join(strip_result.lines)
 
 
-@pytest.mark.pipeline
 def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> None:
     """When inserting *not* at the top, ensure exactly one leading blank is added.
 
