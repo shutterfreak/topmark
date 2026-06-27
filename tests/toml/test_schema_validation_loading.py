@@ -44,7 +44,6 @@ if TYPE_CHECKING:
 # --- Pyproject extraction and source-loading validation ---
 
 
-@pytest.mark.toml
 def test_load_topmark_toml_table_extracts_tool_topmark_from_pyproject_table() -> None:
     """`load_topmark_toml_table(..., from_pyproject=True)` extracts `[tool.topmark]`."""
     pyproject_tbl: TomlTable = tomlkit.parse(
@@ -69,7 +68,6 @@ def test_load_topmark_toml_table_extracts_tool_topmark_from_pyproject_table() ->
     assert header_section[Toml.KEY_FIELDS] == ["file"]
 
 
-@pytest.mark.toml
 def test_load_topmark_toml_source_distinguishes_missing_vs_empty_tool_topmark(
     tmp_path: Path,
 ) -> None:
@@ -131,7 +129,6 @@ def test_load_topmark_toml_source_distinguishes_missing_vs_empty_tool_topmark(
 # --- File-based TOML validation helpers ---
 
 
-@pytest.mark.toml
 @pytest.mark.parametrize(
     "filename",
     ["topmark.toml", "pyproject.toml"],
@@ -176,7 +173,6 @@ def test_unknown_keys_reported_via_from_toml_file(
     )
 
 
-@pytest.mark.toml
 def test_unknown_key_in_config_section_warns_via_from_toml_file(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
@@ -201,7 +197,6 @@ def test_unknown_key_in_config_section_warns_via_from_toml_file(
     )
 
 
-@pytest.mark.toml
 def test_unknown_key_in_writer_section_warns_via_from_toml_file(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,

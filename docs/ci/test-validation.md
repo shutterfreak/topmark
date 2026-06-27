@@ -81,18 +81,18 @@ ______________________________________________________________________
 
 Pytest markers are declared in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
-| Marker                | Purpose                                                                                            | CI expectation                                       |
-| --------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `api`                 | Tests that exercise the public API.                                                                | Included in normal test runs.                        |
-| `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                          | Run where the host filesystem can exercise them.     |
-| `cli`                 | Tests that exercise the command-line interface.                                                    | Included in normal test runs.                        |
-| `config`              | Tests for configuration deserialization, path normalization, strictness, and layer merge behavior. | Included in normal test runs.                        |
-| `dev_validation`      | Developer validation tests for internal invariants such as registry and test-layout consistency.   | Included in normal test runs.                        |
-| `exit_code`           | Tests that validate the CLI exit-code contract.                                                    | Included in normal test runs.                        |
-| `hypothesis_slow`     | Long-running property tests.                                                                       | Skipped in CI unless explicitly selected.            |
-| `integration`         | Environment-dependent integration checks, such as shell completion.                                | Run selectively where the environment supports them. |
-| `pipeline`            | Tests that exercise the processing pipeline, including filesystem-identity and target eligibility. | Included in normal test runs.                        |
-| `toml`                | Tests for TopMark TOML loading, extraction, schema validation, and source resolution.              | Included in normal test runs.                        |
+Pytest markers are reserved for cross-cutting test semantics rather than package membership.
+Package- or subsystem-specific test selection should normally use test paths (for example,
+`pytest tests/cli`) instead of markers. Nox marker expressions should reference only declared
+markers so exclusions remain visible in the central pytest configuration.
+
+| Marker                | Purpose                                                                                                                                                             | CI expectation                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                                                                                           | Run where the host filesystem can exercise them.     |
+| `dev_validation`      | Developer validation tests for internal invariants such as registry integrity, test-layout consistency, and pytest marker hygiene.                                  | Included in normal test runs.                        |
+| `exit_code`           | Tests that validate the CLI exit-code contract.                                                                                                                     | Included in normal test runs.                        |
+| `hypothesis_slow`     | Long-running property tests.                                                                                                                                        | Skipped in CI unless explicitly selected.            |
+| `integration`         | Environment-dependent integration checks that exercise interactions with external tooling, the operating system, or shell features (for example, shell completion). | Run selectively where the environment supports them. |
 
 ______________________________________________________________________
 
@@ -107,6 +107,7 @@ Typical examples live under `tests/dev_validation/` and include:
 - sanity checks for internal plugin mappings;
 - placement-strategy checks for XML/HTML-like processors;
 - test-package layout checks that keep Python test directories importable by absolute package name.
+- pytest marker declarations and marker-expression consistency.
 
 Example:
 
@@ -196,6 +197,9 @@ Developer-validation checks include:
   character-offset strategy by returning `NO_LINE_ANCHOR` from `get_header_insertion_index()`.
 - **Test package layout**: every directory under `tests/` that contains Python modules must include
   an `__init__.py` marker so test modules have stable absolute package names.
+- **Pytest marker hygiene**: every custom marker used by the test suite is declared in
+  `pyproject.toml`, and marker expressions referenced by project tooling remain aligned with the
+  declared marker set.
 
 These checks avoid accidental miswiring, such as registering a processor under a typo key, help
 prevent XML/HTML-like processors from regressing into line-based insertion behavior, and keep the
@@ -266,7 +270,9 @@ Slow and environment-dependent tests should be marked explicitly.
   environment-specific assumptions.
 
 These markers make CI exclusions visible and intentional instead of relying on hidden filename or
-directory-selection conventions.
+directory-selection conventions. Marker expressions used by Nox and other project tooling (such as
+the `Makefile`) should remain aligned with the declarations in `pyproject.toml`;
+developer-validation tests help detect stale references.
 
 ______________________________________________________________________
 

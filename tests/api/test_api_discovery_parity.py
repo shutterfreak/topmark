@@ -60,8 +60,6 @@ def _contains_unaligned_fields(diff: str) -> bool:
     return ("file:" in diff) and ("file         :" not in diff)
 
 
-@pytest.mark.api
-@pytest.mark.cli
 @pytest.mark.integration
 def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
     """Nearest directory: topmark.toml should override pyproject.toml in the same dir."""
@@ -125,8 +123,6 @@ def test_same_dir_precedence_topmark_over_pyproject(tmp_path: Path) -> None:
     assert _contains_aligned_fields(cli_diff), "CLI-like did not reflect topmark.toml override"
 
 
-@pytest.mark.api
-@pytest.mark.cli
 @pytest.mark.integration
 def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     """Anchor in subdir: parent pyproject.toml, child topmark.toml - child wins."""
@@ -187,8 +183,6 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
     assert _contains_aligned_fields(cli_diff), "CLI-like did not honor nearest (child) config"
 
 
-@pytest.mark.api
-@pytest.mark.cli
 @pytest.mark.integration
 def test_root_true_stops_traversal(tmp_path: Path) -> None:
     """root=true in parent prevents overrides from ancestors."""
@@ -254,8 +248,6 @@ def test_root_true_stops_traversal(tmp_path: Path) -> None:
     assert _contains_unaligned_fields(cli_diff), "CLI-like did not stop at root=true boundary"
 
 
-@pytest.mark.api
-@pytest.mark.cli
 @pytest.mark.integration
 def test_cli_like_positional_paths_preserve_discovered_exclude_from_gitignore(
     tmp_path: Path,

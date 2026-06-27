@@ -23,8 +23,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import HeaderMutationMode
@@ -38,7 +36,6 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import MutableDiagnosticLog
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_provenance_and_diagnostics_accumulate() -> None:
     """config_files and merged-config diagnostics should always accumulate."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -79,7 +76,6 @@ def test_merge_invariant_provenance_and_diagnostics_accumulate() -> None:
     assert list(merged.validation_logs.runtime_applicability.items) == []
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_header_fields_nearest_non_empty_wins() -> None:
     """header_fields uses nearest-wins semantics for non-empty child lists."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -93,7 +89,6 @@ def test_merge_invariant_header_fields_nearest_non_empty_wins() -> None:
     assert merged.header_fields == ["project", "file"]
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_empty_header_fields_do_not_clear_parent() -> None:
     """An empty child header_fields list is treated as not-set in merge_with()."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -107,7 +102,6 @@ def test_merge_invariant_empty_header_fields_do_not_clear_parent() -> None:
     assert merged.header_fields == ["project", "license"]
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_field_values_overlay_by_key() -> None:
     """field_values should merge by key, with child keys overriding parent keys."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -131,7 +125,6 @@ def test_merge_invariant_field_values_overlay_by_key() -> None:
     }
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_pattern_groups_accumulate() -> None:
     """include/exclude pattern groups should append across layers."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -162,7 +155,6 @@ def test_merge_invariant_pattern_groups_accumulate() -> None:
     ]
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_pattern_sources_accumulate() -> None:
     """include_from/exclude_from/files_from should append across layers."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -203,7 +195,6 @@ def test_merge_invariant_pattern_sources_accumulate() -> None:
     ]
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_explicit_files_nearest_non_empty_wins() -> None:
     """Files uses nearest-wins semantics for non-empty child lists."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -217,7 +208,6 @@ def test_merge_invariant_explicit_files_nearest_non_empty_wins() -> None:
     assert merged.files == ["/repo/pkg/module.py"]
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_empty_files_do_not_clear_parent() -> None:
     """An empty child files list is treated as not-set in merge_with()."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -231,7 +221,6 @@ def test_merge_invariant_empty_files_do_not_clear_parent() -> None:
     assert merged.files == ["/repo/README.md"]
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_file_type_filters_nearest_non_empty_wins() -> None:
     """include/exclude file type filters should replace, not union."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -248,7 +237,6 @@ def test_merge_invariant_file_type_filters_nearest_non_empty_wins() -> None:
     assert merged.exclude_file_types == {"xml"}
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_policy_by_type_merges_by_key() -> None:
     """policy_by_type should preserve unrelated parent keys and merge shared keys."""
     base: MutableConfig = mutable_config_from_defaults()
@@ -275,7 +263,6 @@ def test_merge_invariant_policy_by_type_merges_by_key() -> None:
 # --- Additional three-layer invariants ---
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_three_layer_field_values_and_policy_overlay() -> None:
     """Three-layer merges should preserve ordering for mappings and per-type policies."""
     root: MutableConfig = mutable_config_from_defaults()
@@ -323,7 +310,6 @@ def test_merge_invariant_three_layer_field_values_and_policy_overlay() -> None:
     assert merged.policy_by_type["html"].allow_content_probe is True
 
 
-@pytest.mark.pipeline
 def test_merge_invariant_three_layer_include_from_accumulates_in_order() -> None:
     """Three-layer merges should accumulate include_from sources in precedence order."""
     root: MutableConfig = mutable_config_from_defaults()

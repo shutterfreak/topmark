@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_insert
 from tests.helpers.pipeline import run_steps
@@ -37,6 +39,8 @@ from topmark.pipeline.steps import resolver
 from topmark.pipeline.steps import scanner
 from topmark.pipeline.views import BuilderView
 from topmark.pipeline.views import RenderView
+
+pytestmark: pytest.MarkDecorator = pytest.mark.integration
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -65,7 +65,7 @@ help:
 	@echo "  hygiene         Run all prose/documentation hygiene checks"
 	@echo "Tests:"
 	@echo "  test            Run the test suite (nox: qa)"
-	@echo "  pytest          Run tests with current interpreter (no nox), skipping slow tests; supports PYTEST_PAR=-n auto"
+	@echo "  pytest          Run tests with current interpreter (no nox), skipping Hypothesis slow tests; supports PYTEST_PAR=-n auto"
 	@echo "  pytest-full     Run all tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
 	@echo "  coverage        Run coverage testing"
 	@echo "  coverage-erase  Erase coverage testing output (.coverage coverage.xml coverage.json htmlcov .coverage.*)"
@@ -178,11 +178,11 @@ hygiene: docs-hygiene code-hygiene
 
 # Run pytest directly (no nox) with the current interpreter
 pytest:
-	@echo "Running pytest locally -- skipping slow tests"
-	pytest $(PYTEST_PAR) -m "not slow and not hypothesis_slow" -q
+	@echo "Running pytest locally -- skipping Hypothesis slow tests"
+	pytest $(PYTEST_PAR) -m "not hypothesis_slow" -q
 
 pytest-full:
-	@echo "Running all pytest locally -- including slow tests"
+	@echo "Running all pytest locally -- including Hypothesis slow tests"
 	pytest $(PYTEST_PAR) -q
 
 property-test: check-venv

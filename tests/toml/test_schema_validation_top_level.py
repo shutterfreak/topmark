@@ -42,7 +42,6 @@ if TYPE_CHECKING:
 # --- In-memory whole-source TOML validation ---
 
 
-@pytest.mark.toml
 def test_unknown_top_level_keys_warn_and_are_recorded(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -61,7 +60,6 @@ def test_unknown_top_level_keys_warn_and_are_recorded(
     )
 
 
-@pytest.mark.toml
 def test_unknown_top_level_table_warns_and_is_recorded(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -80,7 +78,6 @@ def test_unknown_top_level_table_warns_and_is_recorded(
     )
 
 
-@pytest.mark.toml
 def test_unknown_top_level_scalar_uses_unknown_top_level_key_code() -> None:
     """Unknown top-level scalar entries use the dedicated key diagnostic code."""
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
@@ -102,7 +99,6 @@ def test_unknown_top_level_scalar_uses_unknown_top_level_key_code() -> None:
     assert matching[0].path == ("unknown_root_key",)
 
 
-@pytest.mark.toml
 def test_unknown_top_level_table_uses_unknown_top_level_section_code() -> None:
     """Unknown top-level tables use the dedicated section diagnostic code."""
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
@@ -124,7 +120,6 @@ def test_unknown_top_level_table_uses_unknown_top_level_section_code() -> None:
     assert matching[0].path == ("bogus",)
 
 
-@pytest.mark.toml
 def test_unknown_keys_are_reported_individually(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -152,7 +147,6 @@ def test_unknown_keys_are_reported_individually(
     )
 
 
-@pytest.mark.toml
 def test_unknown_section_keys_warn_and_are_recorded(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -174,7 +168,6 @@ def test_unknown_section_keys_warn_and_are_recorded(
     )
 
 
-@pytest.mark.toml
 @pytest.mark.parametrize(
     "section, valid_key, valid_value",
     [
@@ -208,7 +201,6 @@ def test_unknown_key_in_known_section_warns_and_is_recorded(
     )
 
 
-@pytest.mark.toml
 def test_section_wrong_type_warns_and_is_ignored(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -224,7 +216,6 @@ def test_section_wrong_type_warns_and_is_ignored(
     )
 
 
-@pytest.mark.toml
 def test_section_wrong_type_uses_invalid_section_type_code_and_is_ignored() -> None:
     """Malformed known sections emit INVALID_SECTION_TYPE and are ignored."""
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(

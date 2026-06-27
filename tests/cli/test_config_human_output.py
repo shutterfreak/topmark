@@ -38,9 +38,6 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-pytestmark: pytest.MarkDecorator = pytest.mark.cli
-
-
 # --- Quiet mode: TEXT output ---
 @pytest.mark.parametrize(
     "cmd",

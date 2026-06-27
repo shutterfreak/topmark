@@ -41,7 +41,6 @@ if TYPE_CHECKING:
 # --- In-memory special-section validation ---
 
 
-@pytest.mark.toml
 def test_fields_table_is_free_form_and_not_subject_to_unknown_key_validation(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -69,7 +68,6 @@ def test_fields_table_is_free_form_and_not_subject_to_unknown_key_validation(
 # --- Source-local and dump-only section rules ---
 
 
-@pytest.mark.toml
 def test_unknown_key_in_config_section_warns_and_known_key_still_resolves(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -93,7 +91,6 @@ def test_unknown_key_in_config_section_warns_and_known_key_still_resolves(
     assert draft.header_fields == []
 
 
-@pytest.mark.toml
 def test_unknown_key_in_writer_section_warns_and_is_recorded(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -115,7 +112,6 @@ def test_unknown_key_in_writer_section_warns_and_is_recorded(
     )
 
 
-@pytest.mark.toml
 @pytest.mark.parametrize(
     ("section", "dump_only_key"),
     [
@@ -146,7 +142,6 @@ def test_dump_only_keys_in_input_mode_warn_and_are_recorded(
     )
 
 
-@pytest.mark.toml
 @pytest.mark.parametrize(
     ("section", "dump_only_key"),
     [

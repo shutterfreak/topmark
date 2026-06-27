@@ -57,9 +57,6 @@ class UnusedRegistryProcessor(HeaderProcessor):
     description: ClassVar[str] = "Processor left intentionally unused in registry tests."
 
 
-pytestmark: pytest.MarkDecorator = pytest.mark.cli
-
-
 FILETYPE_BRIEF_KEYS: frozenset[str] = frozenset(
     {"local_key", "namespace", "qualified_key", "description"}
 )

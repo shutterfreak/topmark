@@ -53,7 +53,6 @@ if TYPE_CHECKING:
     from topmark.processors.types import StripHeaderResult
 
 
-@pytest.mark.pipeline
 def test_slash_processor_basics(tmp_path: Path) -> None:
     """Basics: detect file type and confirm no pre-existing header.
 
@@ -69,7 +68,6 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
     assert ctx.views.header is None
 
 
-@pytest.mark.pipeline
 def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Path) -> None:
     """Detect `.json` content as JSONC and confirm no pre-existing header.
 
@@ -86,7 +84,6 @@ def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Pa
     assert ctx.views.header is None
 
 
-@pytest.mark.pipeline
 def test_slash_insert_top_and_trailing_blank(tmp_path: Path) -> None:
     """Insert a header at the top and ensure a trailing blank line follows.
 
@@ -105,7 +102,6 @@ def test_slash_insert_top_and_trailing_blank(tmp_path: Path) -> None:
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_slash_detect_existing_header(tmp_path: Path) -> None:
     """Detect an existing header and parse fields.
 
@@ -147,7 +143,6 @@ def test_slash_detect_existing_header(tmp_path: Path) -> None:
     ctx.views.release_all()  # Release the views
 
 
-@pytest.mark.pipeline
 @pytest.mark.parametrize(
     "header_fields, expected_status",
     [
@@ -202,7 +197,6 @@ def test_slash_malformed_header_fields(
     assert ctx.status.header == expected_status
 
 
-@pytest.mark.pipeline
 def test_slash_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     """Re-applying insertion is a no-op (idempotent).
 
@@ -225,7 +219,6 @@ def test_slash_idempotent_reapply_no_diff(tmp_path: Path) -> None:
     assert lines1 == lines2
 
 
-@pytest.mark.pipeline
 def test_slash_crlf_preserves_newlines(tmp_path: Path) -> None:
     """Preserve CRLF newlines on Windows-style inputs.
 
@@ -243,7 +236,6 @@ def test_slash_crlf_preserves_newlines(tmp_path: Path) -> None:
         assert ln.endswith("\r\n"), f"line {i} not CRLF: {ln!r}"
 
 
-@pytest.mark.pipeline
 def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     """`strip_header_block` removes the block with or without explicit bounds.
 
@@ -272,7 +264,6 @@ def test_slash_strip_header_block_with_and_without_span(tmp_path: Path) -> None:
     assert strip_result_2.lines == strip_result_1.lines
 
 
-@pytest.mark.pipeline
 def test_slash_replace_preserves_crlf(tmp_path: Path) -> None:
     """Ensure replace path preserves CRLF newlines for C++ sources.
 

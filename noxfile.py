@@ -236,7 +236,7 @@ def qa(session: nox.Session) -> None:
         "-q",
         "tests",
         "-m",
-        "not slow and not hypothesis_slow",
+        "not hypothesis_slow",
         *session.posargs,
     )
 
@@ -272,7 +272,7 @@ def qa_api(session: nox.Session) -> None:
         "-q",
         "tests",
         "-m",
-        "not slow and not hypothesis_slow",
+        "not hypothesis_slow",
         *session.posargs,
     )
 
@@ -354,7 +354,7 @@ def coverage(session: nox.Session) -> None:
         "-q",
         "tests",
         "-m",
-        "not slow and not hypothesis_slow",
+        "not hypothesis_slow",
         "--cov=topmark",
         "--cov-branch",
         "--cov-report=term-missing",
@@ -750,7 +750,7 @@ def release_check(session: nox.Session) -> None:
         "-q",
         "tests",
         "-m",
-        "not slow and not hypothesis_slow",
+        "not hypothesis_slow",
         *session.posargs,
     )
     # Entry point check -- We call it as a function to reuse the current session environment

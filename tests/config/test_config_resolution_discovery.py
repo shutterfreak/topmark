@@ -21,8 +21,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.helpers.paths import symlink_or_skip
 from tests.toml.conftest import write_toml_document
 from topmark.config.resolution.bridge import ResolvedConfigDraft
@@ -31,11 +29,11 @@ from topmark.config.resolution.bridge import resolve_toml_sources_and_build_muta
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
+
     from topmark.config.resolution.bridge import ResolvedConfigDraft
 
 
-@pytest.mark.config
-@pytest.mark.toml
 def test_same_dir_precedence_topmark_over_pyproject(
     tmp_path: Path,
 ) -> None:
@@ -65,8 +63,6 @@ def test_same_dir_precedence_topmark_over_pyproject(
     assert resolved_config.draft.align_fields is True
 
 
-@pytest.mark.config
-@pytest.mark.toml
 def test_root_true_stops_traversal(
     tmp_path: Path,
 ) -> None:
@@ -104,8 +100,6 @@ def test_root_true_stops_traversal(
     assert resolved_config.draft.align_fields is True
 
 
-@pytest.mark.config
-@pytest.mark.toml
 def test_symlinked_discovery_anchor_uses_resolved_project_chain(
     tmp_path: Path,
 ) -> None:
@@ -134,8 +128,6 @@ def test_symlinked_discovery_anchor_uses_resolved_project_chain(
     assert resolved_config.draft.config_files == [repo.resolve() / "topmark.toml"]
 
 
-@pytest.mark.config
-@pytest.mark.toml
 def test_symlinked_cwd_discovery_uses_resolved_project_chain(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -164,8 +156,6 @@ def test_symlinked_cwd_discovery_uses_resolved_project_chain(
     assert resolved_config.draft.config_files == [repo.resolve() / "topmark.toml"]
 
 
-@pytest.mark.config
-@pytest.mark.toml
 def test_repo_below_symlinked_parent_discovers_real_project_chain(
     tmp_path: Path,
 ) -> None:
@@ -196,8 +186,6 @@ def test_repo_below_symlinked_parent_discovers_real_project_chain(
     assert resolved_config.draft.config_files == [repo.resolve() / "topmark.toml"]
 
 
-@pytest.mark.config
-@pytest.mark.toml
 def test_malformed_toml_in_discovered_config_is_ignored(
     tmp_path: Path,
 ) -> None:

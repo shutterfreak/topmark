@@ -21,8 +21,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.helpers.diagnostics import assert_not_warned
 from tests.toml.conftest import draft_from_topmark_toml_table
 from topmark.diagnostic.model import DiagnosticLevel
@@ -33,6 +31,8 @@ from topmark.toml.validation import TomlDiagnosticCode
 from topmark.toml.validation import TomlValidationIssue
 
 if TYPE_CHECKING:
+    import pytest
+
     from topmark.config.model import MutableConfig
     from topmark.toml.parse import ParsedTopmarkToml
 
@@ -40,7 +40,6 @@ if TYPE_CHECKING:
 # --- Missing-section and empty-source validation ---
 
 
-@pytest.mark.toml
 def test_empty_topmark_toml_table_produces_empty_draft_without_schema_warning(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -56,7 +55,6 @@ def test_empty_topmark_toml_table_produces_empty_draft_without_schema_warning(
     assert stats.n_info > 0
 
 
-@pytest.mark.toml
 def test_empty_topmark_toml_table_emits_info_diagnostics_for_missing_sections() -> None:
     """An empty TopMark TOML table emits INFO issues for each missing known section."""
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table({})
@@ -89,7 +87,6 @@ def test_empty_topmark_toml_table_emits_info_diagnostics_for_missing_sections() 
     }
 
 
-@pytest.mark.toml
 def test_present_section_is_not_reported_as_missing_info_diagnostic() -> None:
     """Present known sections are excluded from missing-section INFO diagnostics."""
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(

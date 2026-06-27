@@ -27,8 +27,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.helpers.pipeline import BlockSignatures
 from tests.helpers.pipeline import expected_block_lines_for
 from tests.helpers.pipeline import find_line
@@ -52,7 +50,6 @@ if TYPE_CHECKING:
     from topmark.pipeline.protocols import Step
 
 
-@pytest.mark.pipeline
 def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     """JSONC insertion starts at column 0 and adds one blank line after the block.
 
@@ -81,7 +78,6 @@ def test_jsonc_insert_at_top_with_no_pre_prefix_indent(tmp_path: Path) -> None:
     assert end_idx + 1 < len(lines) and lines[end_idx + 1].strip() == ""
 
 
-@pytest.mark.pipeline
 def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     """Replacement preserves pre-prefix indentation of an existing TopMark header.
 
@@ -145,7 +141,6 @@ def test_jsonc_replace_preserves_pre_prefix_indent(tmp_path: Path) -> None:
     assert after_prefix.startswith("  "), after_prefix
 
 
-@pytest.mark.pipeline
 def test_jsonc_replace_keeps_crlf_and_indent(tmp_path: Path) -> None:
     """Replacement keeps CRLF line endings and preserved pre-prefix indent."""
     file_name: str = "crlf_indented.jsonc"

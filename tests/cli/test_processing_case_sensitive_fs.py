@@ -32,9 +32,6 @@ if TYPE_CHECKING:
     from click.testing import Result
 
 
-pytestmark: list[pytest.MarkDecorator] = [pytest.mark.cli]
-
-
 def test_check_does_not_resolve_mismatched_invocation_casing_on_case_sensitive_fs(
     tmp_path: Path,
 ) -> None:

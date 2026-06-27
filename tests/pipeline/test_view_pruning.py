@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.views import BuilderView
 from topmark.pipeline.views import DiffView
@@ -33,7 +31,6 @@ if TYPE_CHECKING:
     from topmark.pipeline.protocols import Step
 
 
-@pytest.mark.pipeline
 def test_release_consumed_keeps_views_needed_by_remaining_steps() -> None:
     """The lifecycle helper must not release payloads with downstream consumers."""
     header_mapping: Mapping[str, str] = {
@@ -95,7 +92,6 @@ def test_release_consumed_keeps_views_needed_by_remaining_steps() -> None:
     assert views.diff.text is not None
 
 
-@pytest.mark.pipeline
 def test_release_consumed_releases_payloads_not_needed_before_writer() -> None:
     """Only the updated image and requested diff need to survive before the writer."""
     header_mapping: Mapping[str, str] = {"project": "TopMark"}
@@ -147,7 +143,6 @@ def test_release_consumed_releases_payloads_not_needed_before_writer() -> None:
     assert views.diff.text is not None
 
 
-@pytest.mark.pipeline
 def test_release_consumed_releases_diff_unless_caller_keeps_it() -> None:
     """Diff payloads are retained only when explicitly requested."""
     views = Views(diff=DiffView(text="--- current\n+++ updated\n"))
@@ -161,7 +156,6 @@ def test_release_consumed_releases_diff_unless_caller_keeps_it() -> None:
     assert views.diff.text is None
 
 
-@pytest.mark.pipeline
 def test_pipeline_steps_declare_expected_view_consumers() -> None:
     """Verify the expected consumes_views declarations used by lifecycle pruning.
 

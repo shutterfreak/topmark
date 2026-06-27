@@ -23,8 +23,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.helpers.diagnostics import NON_EMPTY
 from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from tests.helpers.diagnostics import assert_validation_stage_totals
@@ -50,7 +48,6 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import MutableDiagnosticLog
 
 
-@pytest.mark.config
 def test_include_from_accumulates_across_multiple_applicable_layers(
     tmp_path: Path,
 ) -> None:
@@ -93,7 +90,6 @@ def test_include_from_accumulates_across_multiple_applicable_layers(
     ]
 
 
-@pytest.mark.config
 def test_files_nearest_non_empty_list_wins_across_layers(
     tmp_path: Path,
 ) -> None:
@@ -123,7 +119,6 @@ def test_files_nearest_non_empty_list_wins_across_layers(
     assert resolved_config.draft.files == [str((child / "module.py").resolve())]
 
 
-@pytest.mark.config
 def test_include_file_types_nearest_non_empty_set_wins_across_layers(
     tmp_path: Path,
 ) -> None:
@@ -153,7 +148,6 @@ def test_include_file_types_nearest_non_empty_set_wins_across_layers(
     assert resolved_config.draft.include_file_types == {"markdown"}
 
 
-@pytest.mark.config
 def test_select_applicable_layers_filters_child_scoped_layer(
     tmp_path: Path,
 ) -> None:
@@ -194,7 +188,6 @@ def test_select_applicable_layers_filters_child_scoped_layer(
     assert not any(layer.scope_root == child.resolve() for layer in sibling_layers)
 
 
-@pytest.mark.config
 def test_build_effective_config_for_path_merges_only_applicable_layers(
     tmp_path: Path,
 ) -> None:
@@ -247,7 +240,6 @@ def test_build_effective_config_for_path_merges_only_applicable_layers(
     assert "file" not in sibling_cfg.field_values
 
 
-@pytest.mark.config
 def test_merge_layers_globally_empty_returns_defaults() -> None:
     """Merging an empty layer sequence should fall back to defaults."""
     draft: MutableConfig = merge_layers_globally(())
@@ -258,7 +250,6 @@ def test_merge_layers_globally_empty_returns_defaults() -> None:
     assert draft.include_pattern_groups == default_draft.include_pattern_groups
 
 
-@pytest.mark.config
 def test_cli_overrides_merge_last(
     tmp_path: Path,
 ) -> None:
@@ -288,7 +279,6 @@ def test_cli_overrides_merge_last(
     assert resolved_config.draft.align_fields is True
 
 
-@pytest.mark.config
 def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
     """Override application diagnostics should land in the merged-config stage."""
     proj: Path = tmp_path / "proj"

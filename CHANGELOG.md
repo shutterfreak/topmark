@@ -346,6 +346,9 @@ ______________________________________________________________________
   maintenance work, including the later completion of the Rich and `rich-click` migration.
 - Clarified pytest marker documentation by restoring the `case_insensitive_fs` marker entry and
   fixing the malformed `pipeline` marker table row in CI test-validation guidance.
+- Documented the normalized pytest marker taxonomy, including the shift to cross-cutting semantic
+  markers, path-based package or subsystem test selection, marker-expression hygiene expectations,
+  and the reduced marker set used by CI and local validation tooling.
 - Clarified the report-scope contract, including the distinction between actionable and noncompliant
   results and the applicability of report filtering across human-readable output formats.
 - Added dedicated performance-baseline documentation covering subprocess-isolated RSS measurement,
@@ -409,7 +412,11 @@ ______________________________________________________________________
 - Packaged all test subdirectories consistently and relocated remaining generic unit tests into
   source-aligned test packages.
 - Added dedicated developer-validation tests for registry integrity, processor strategy usage, and
-  test package layout invariants.
+- Audited and normalized pytest marker usage by removing package-only subsystem markers, retaining
+  only cross-cutting semantic markers, and aligning Nox and Makefile marker expressions with the
+  declared marker set.
+- Added developer-validation coverage for pytest marker hygiene so undeclared marker usage, stale
+  marker declarations, and stale Nox marker expressions are detected during repository validation.
 - Updated pre-commit dependencies, including TopMark itself.
 - Raised the minimum supported runtime dependency version for `click` to 8.4.2 to align with the
   current validated compatibility baseline.

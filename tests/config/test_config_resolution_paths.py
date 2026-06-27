@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from topmark.resolution.files import FileListResolution
 
 
-@pytest.mark.config
 def test_relative_to_resolves_against_config_dir(
     tmp_path: Path,
 ) -> None:
@@ -68,7 +67,6 @@ def test_relative_to_resolves_against_config_dir(
     assert resolved_config.draft.relative_to == proj.resolve()
 
 
-@pytest.mark.config
 def test_include_from_normalized_to_patternsources(
     tmp_path: Path,
 ) -> None:
@@ -95,7 +93,6 @@ def test_include_from_normalized_to_patternsources(
     assert ps.base == proj.resolve()
 
 
-@pytest.mark.config
 def test_cli_path_options_resolve_from_cwd(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -124,7 +121,6 @@ def test_cli_path_options_resolve_from_cwd(
     assert ps.base == cwd.resolve()
 
 
-@pytest.mark.config
 def test_globs_evaluated_relative_to_relative_to(
     tmp_path: Path,
 ) -> None:
@@ -156,7 +152,6 @@ def test_globs_evaluated_relative_to_relative_to(
     assert py.resolve() in paths
 
 
-@pytest.mark.config
 def test_relative_to_inheritance_across_multiple_discovered_configs(
     tmp_path: Path,
 ) -> None:
@@ -189,7 +184,6 @@ def test_relative_to_inheritance_across_multiple_discovered_configs(
     assert resolved_config.draft.relative_to == root.resolve()
 
 
-@pytest.mark.config
 def test_child_overrides_relative_to_with_its_own_dir(
     tmp_path: Path,
 ) -> None:
@@ -221,7 +215,6 @@ def test_child_overrides_relative_to_with_its_own_dir(
     assert resolved_config.draft.relative_to == sub.resolve()
 
 
-@pytest.mark.config
 def test_parent_include_from_and_child_exclude_from_normalized_with_proper_bases(
     tmp_path: Path,
 ) -> None:
@@ -264,7 +257,6 @@ def test_parent_include_from_and_child_exclude_from_normalized_with_proper_bases
     assert resolved_config.draft.exclude_from[0].base == child.resolve()
 
 
-@pytest.mark.config
 def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -301,7 +293,6 @@ def test_config_seeding_globs_when_no_inputs_and_cwd_differs(
     assert rel == ["proj/src/mod.py"]
 
 
-@pytest.mark.config
 def test_include_patterns_seed_candidates_when_no_files_are_configured(
     tmp_path: Path,
 ) -> None:
@@ -339,7 +330,6 @@ def test_include_patterns_seed_candidates_when_no_files_are_configured(
     assert list(resolution.selected) == [py.resolve()]
 
 
-@pytest.mark.config
 def test_files_from_declared_in_config_normalizes_to_patternsource(
     tmp_path: Path,
 ) -> None:
@@ -364,7 +354,6 @@ def test_files_from_declared_in_config_normalizes_to_patternsource(
     assert ps.base == proj.resolve()
 
 
-@pytest.mark.config
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows drive semantics only")
 def test_cli_path_options_resolve_from_windows_drive_cwd(
     tmp_path: Path,
@@ -395,7 +384,6 @@ def test_cli_path_options_resolve_from_windows_drive_cwd(
         assert pattern_source.path.drive == cwd.resolve().drive
 
 
-@pytest.mark.config
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows drive semantics only")
 def test_relative_to_resolves_against_windows_config_drive(
     tmp_path: Path,
@@ -420,7 +408,6 @@ def test_relative_to_resolves_against_windows_config_drive(
     assert draft.relative_to.drive == workspace.resolve().drive
 
 
-@pytest.mark.config
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows drive semantics only")
 def test_config_file_discovery_accepts_windows_absolute_input_path(
     tmp_path: Path,
@@ -447,7 +434,6 @@ def test_config_file_discovery_accepts_windows_absolute_input_path(
     assert resolved_config.draft.relative_to.drive == proj.resolve().drive
 
 
-@pytest.mark.config
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows absolute path semantics only")
 def test_config_resolution_preserves_absolute_cli_path(
     tmp_path: Path,
