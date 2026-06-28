@@ -411,6 +411,9 @@ ______________________________________________________________________
   compatibility guarantees, additive minor-release evolution, breaking-change boundaries,
   unknown-field handling, JSON versus NDJSON operational differences, and the current absence of a
   separate `schema_version` field.
+- Documented CLI stream-routing ownership, including STDOUT payload ownership, STDERR
+  diagnostics/signaling, machine-readable parseability, and human diff/content-to-STDOUT routing
+  behavior.
 
 ### Internal - Unreleased
 
@@ -539,6 +542,8 @@ ______________________________________________________________________
   project's `mbake` formatting conventions.
 - Added focused machine-output contract tests covering documented JSON/NDJSON compatibility
   guarantees, including stable envelope structure and additive-schema compatibility expectations.
+- Added CLI stream-routing contract tests and small command-layer stream-emission helpers clarifying
+  explicit STDOUT payload ownership for check/strip output.
 
 ### Notes - Unreleased
 

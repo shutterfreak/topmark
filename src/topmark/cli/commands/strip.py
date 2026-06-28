@@ -57,7 +57,7 @@ from topmark.cli.cmd_common import exit_for_config_validation_error
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
-from topmark.cli.cmd_common import maybe_route_console_to_stderr
+from topmark.cli.cmd_common import resolve_human_console
 from topmark.cli.emitters.machine import emit_processing_results_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
@@ -82,6 +82,7 @@ from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
+from topmark.cli.streaming import emit_stdout_payload
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_apply_mutual_exclusion
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
@@ -384,7 +385,7 @@ def strip_command(
     #
     # Console selection must happen after planning inputs because stdin mode affects routing.
     machine_console: ConsoleProtocol = state.console
-    console: ConsoleProtocol = maybe_route_console_to_stderr(
+    console: ConsoleProtocol = resolve_human_console(
         ctx,
         run_options=run_options,
         enable_color=enable_color,
@@ -524,8 +525,7 @@ def strip_command(
             fmt=fmt,
         )
 
-        if output.stdout:
-            click.echo(output.stdout)
+        emit_stdout_payload(output.stdout)
 
         if (fmt == OutputFormat.TEXT and not state.quiet and output.stderr) or (
             fmt == OutputFormat.MARKDOWN and output.stderr

@@ -275,6 +275,20 @@ contract.
 
 ______________________________________________________________________
 
+## STDOUT and STDERR
+
+STDOUT is the primary payload stream. Normal command payloads, including reports, configuration
+dumps, registry listings, version output, JSON, and NDJSON, are emitted on STDOUT. Diagnostics and
+signaling that should not be parsed as payload are emitted on STDERR.
+
+Machine-readable JSON and NDJSON keep STDOUT parseable. Warnings such as machine-summary diff
+suppression are therefore emitted on STDERR. For human `check --diff` / `strip --diff`, STDOUT is
+reserved for unified diff payloads and the human report is emitted on STDERR. For apply-mode content
+processing through STDIN or `--write-mode=stdout`, STDOUT is reserved for rewritten file content and
+human reports or summaries are emitted on STDERR.
+
+______________________________________________________________________
+
 ## File type filters
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}

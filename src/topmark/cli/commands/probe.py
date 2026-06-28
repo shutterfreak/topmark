@@ -57,7 +57,7 @@ from topmark.cli.cmd_common import exit_for_config_validation_error
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
-from topmark.cli.cmd_common import maybe_route_console_to_stderr
+from topmark.cli.cmd_common import resolve_human_console
 from topmark.cli.emitters.machine import emit_probe_results_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
@@ -321,16 +321,12 @@ def probe_command(
 
     logger.debug("run options: %s", run_options)
 
-    # Content-to-STDOUT modes: keep stdout clean for the rewritten file content.
+    # Resolve the console for human-facing output.
     #
-    # - STDIN content mode emits the updated file to stdout when --apply is set.
-    # - write_mode="stdout" also emits updated content to stdout.
-    #
-    # In both cases, route all human-facing console output (summaries, warnings,
-    # diagnostics) to stderr.
-    #
-    # Console selection must happen after planning inputs because stdin mode affects routing.
-    console: ConsoleProtocol = maybe_route_console_to_stderr(
+    # `probe` normally writes reports to the shared console. The helper keeps
+    # the command aligned with the CLI stream-routing policy and remains the
+    # single place where any future payload-routing rules would be applied.
+    console: ConsoleProtocol = resolve_human_console(
         ctx,
         run_options=run_options,
         enable_color=enable_color,

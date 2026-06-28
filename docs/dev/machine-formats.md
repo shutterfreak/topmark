@@ -72,6 +72,26 @@ Notes:
 - Markdown output is also independent from machine-readable formats and follows its own
   document-oriented contract.
 
+______________________________________________________________________
+
+## Stream ownership
+
+TopMark treats STDOUT as the primary payload stream. JSON and NDJSON output are emitted on STDOUT
+and must remain parseable without stripping banners, guidance, warnings, or other human-facing
+chatter. Commands route warnings and non-payload signaling to STDERR when those messages would
+otherwise pollute a machine payload.
+
+Human formats also use STDOUT for ordinary command payloads, such as TEXT/Markdown reports,
+configuration dumps, registry listings, and version information. Some human command modes reserve
+STDOUT for a different payload: `check --diff` and `strip --diff` emit unified diff text on STDOUT,
+and apply-mode content processing with `-` or `--write-mode=stdout` emits rewritten file content on
+STDOUT. In those modes, human reports, summaries, and guidance are routed to STDERR so the payload
+stream remains pipe-safe.
+
+Click parser errors are Click-owned and remain error-oriented. TopMark semantic diagnostics may be
+part of a requested human report when that report is the payload, but they must not be mixed into
+STDOUT for machine-readable payloads.
+
 This page describes the conventions shared across machine-readable formats.
 
 For the canonical field-level schema reference, see

@@ -256,53 +256,54 @@ def exit_if_no_files(file_list: list[Path], *, console: ConsoleProtocol, styled:
     return False
 
 
-def maybe_route_console_to_stderr(
+def resolve_human_console(
     ctx: click.Context,
     *,
     run_options: RunOptions,
     enable_color: bool,
 ) -> ConsoleProtocol:
-    """Route human-facing console output to stderr when stdout is reserved.
+    """Return the console that should receive human-facing command output.
 
-    TopMark reserves STDOUT for machine-consumable payloads in these situations:
+    Most commands use the console initialized by `init_common_state()`, which
+    writes regular human output to STDOUT and diagnostics to STDERR. Some
+    pipeline invocations reserve STDOUT for a primary payload that must remain
+    pipe-safe:
 
-    - diff-producing human runs, where STDOUT carries unified diff output;
-    - content-on-STDIN mode (a lone `-` path) when ``--apply`` is set; and
-    - ``--write-mode=stdout`` with ``--apply``, where STDOUT carries rewritten
-        file content.
+    - unified diff output for diff-producing human runs;
+    - rewritten content produced from content-on-STDIN when ``--apply`` is set;
+    - rewritten content produced by ``--write-mode=stdout`` when ``--apply`` is set.
 
-    In these cases, the command must keep STDOUT clean for the payload stream so
-    that output can be piped safely. Human-facing output (summaries, warnings,
-    diagnostics) is therefore routed to STDERR.
-
-    The function updates the console stored on the shared typed CLI state when
-    rerouting is needed and returns the effective console instance.
+    When STDOUT is reserved for one of those payloads, this helper replaces the
+    shared human console with a STDERR-backed console. Command code should keep
+    any previously captured machine-output console unchanged so JSON and NDJSON
+    emitters can continue writing their payloads to STDOUT.
 
     Args:
-        ctx: Current Click context.
+        ctx: Current Click context carrying the shared typed CLI state.
         run_options: Invocation-wide runtime options for the current run.
         enable_color: Whether color output is enabled for this invocation.
 
     Returns:
-        The effective console instance to use for human-facing output.
+        The console to use for human-facing reports, summaries, warnings, and
+        diagnostics in the current command invocation.
     """
-    reserves_stdout_for_payload: bool = run_options.emit_diff or (
+    stdout_reserved_for_payload: bool = run_options.emit_diff or (
         bool(run_options.apply_changes)
         and (run_options.stdin_mode or run_options.output_target == OutputTarget.STDOUT)
     )
 
-    if reserves_stdout_for_payload:
-        console = Console(
-            enable_color=enable_color,
-            out=sys.stderr,
-            err=sys.stderr,
-        )
-        state: TopmarkCliState = get_cli_state(ctx)
-        state.console = console
-        return console
+    state: TopmarkCliState = get_cli_state(ctx)
+    if not stdout_reserved_for_payload:
+        # Use the console initialized by `init_common_state`.
+        return state.console
 
-    # Fall back to the console initialized by `init_common_state`.
-    return get_cli_state(ctx).console
+    console = Console(
+        enable_color=enable_color,
+        out=sys.stderr,
+        err=sys.stderr,
+    )
+    state.console = console
+    return console
 
 
 def maybe_exit_on_error(*, code: ExitCode | None, temp_path: Path | None) -> None:
