@@ -33,7 +33,7 @@ import rich_click
 
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import init_common_state
-from topmark.cli.cmd_common import maybe_route_console_to_stderr
+from topmark.cli.cmd_common import resolve_human_console
 from topmark.cli.emitters.machine import emit_config_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
@@ -276,16 +276,13 @@ def config_dump_command(
 
     logger.debug("run options: %s", run_options)
 
-    # Content-to-STDOUT modes: keep stdout clean for the rewritten file content.
+    # Resolve the console for human-facing output.
     #
-    # - STDIN content mode emits the updated file to stdout when --apply is set.
-    # - write_mode="stdout" also emits updated content to stdout.
-    #
-    # In both cases, route all human-facing console output (summaries, warnings,
-    # diagnostics) to stderr.
-    #
-    # Console selection must happen after planning inputs because stdin mode affects routing.
-    console: ConsoleProtocol = maybe_route_console_to_stderr(
+    # `config dump` is not a mutating pipeline command and does not emit
+    # rewritten-content payloads. It still uses the shared resolver so
+    # STDIN-backed pattern-source handling follows the same stream-routing
+    # decision point as pipeline commands.
+    console: ConsoleProtocol = resolve_human_console(
         ctx,
         run_options=run_options,
         enable_color=enable_color,
