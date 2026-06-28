@@ -13,7 +13,7 @@ topmark:header:end
 # Machine-readable formats
 
 This page documents TopMark's stable **machine-readable output conventions** across commands for the
-1.x line.
+current major release line.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -89,6 +89,30 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Compatibility boundary
+
+The machine-readable compatibility contract is documented in
+[Machine-readable output](../usage/machine-output.md#compatibility-and-evolution-policy). This
+developer page explains the implementation conventions behind that contract, but it does not freeze
+undocumented serializer internals.
+
+For the current major release line:
+
+- documented JSON envelope keys and NDJSON record-envelope fields are stable;
+- documented payload fields keep their type and meaning;
+- additional fields, record kinds, diagnostics, and enum-like string values are additive
+  minor-release evolution;
+- consumers are expected to ignore unknown fields and skip unknown NDJSON `kind` values;
+- removals, renames, type changes, semantic repurposing, or baseline envelope-shape changes require
+  a major release or an explicit breaking-change signal.
+
+There is no dedicated `schema_version` field today. Shared `meta.version` reports the TopMark
+package version, not a separate schema version. If schema-level negotiation becomes necessary later,
+adding a `schema_version` field is additive; consumers should already tolerate it as an unknown
+field.
+
+______________________________________________________________________
+
 ## Machine-stable guarantees
 
 The `json` and `ndjson` formats are designed for CI, scripting, and programmatic use.
@@ -102,7 +126,7 @@ Stability guarantees:
   processing paths, not a guarantee that original invocation spellings are preserved.
 - Header metadata path fields describe the selected processing target and are serialized with POSIX
   `/` separators when TopMark renders headers.
-- New fields may be added over time as additive 1.x evolution.
+- New fields may be added over time as additive current-major evolution.
 - Existing fields are not removed or renamed without a breaking-change signal.
 - Resolved file type identities are emitted using canonical qualified keys when available.
 - Configuration provenance payloads use configuration-source identities; runtime processing payloads
@@ -224,7 +248,7 @@ ______________________________________________________________________
 
 ## NDJSON envelope contract
 
-Each NDJSON line is a JSON object with a stable 1.x envelope:
+Each NDJSON line is a JSON object with a stable current-major envelope:
 
 ```jsonc
 {"kind": "<kind>", "meta": { ... }, "<kind>": { ... } }
@@ -400,9 +424,9 @@ Diagnostics emitted in machine-readable output represent the flattened compatibi
 from staged config-validation logs. Internally, these diagnostics may originate from TOML-source,
 merged-config, or runtime applicability validation.
 
-For the stable 1.x line, this flattened compatibility view is the machine-readable compatibility
-contract for configuration-loading diagnostics. Machine-readable output intentionally does **not**
-serialize stage-local validation structure; the emitted diagnostic entry shape remains
+For the stable current-major line, this flattened compatibility view is the machine-readable
+compatibility contract for configuration-loading diagnostics. Machine-readable output intentionally
+does **not** serialize stage-local validation structure; the emitted diagnostic entry shape remains
 `{level, message}`.
 
 Diagnostics may include warnings for unknown, malformed, or ambiguous file type identifiers detected
@@ -632,9 +656,9 @@ Example [`config check`](../usage/commands/config/check.md) NDJSON prefix:
 }}
 ```
 
-For the stable 1.x line, this boundary is intentional: staged validation remains an internal
-representation, while machine-readable output exposes the flattened compatibility diagnostics
-contract.
+For the stable current-major line, this boundary is intentional: staged validation remains an
+internal representation, while machine-readable output exposes the flattened compatibility
+diagnostics contract.
 
 For [`config dump --show-layers`](../usage/commands/config/dump.md), machine-readable output
 preserves the same logical ordering as the human-facing layered export:

@@ -13,7 +13,7 @@ topmark:header:end
 # Machine-readable output
 
 This document describes the stable machine-readable JSON and NDJSON formats emitted by TopMark for
-the 1.x line.
+the current major release line.
 
 It is intended for integrators and tooling authors who consume TopMark programmatically.
 
@@ -76,6 +76,70 @@ Notes:
   render unified diffs for human review. JSON and NDJSON expose structured diff payloads in detail
   mode instead of treating unified diff blocks as normal report text. Display-path labels remain a
   human presentation concern and are not part of the JSON/NDJSON machine-readable path contract.
+
+______________________________________________________________________
+
+## Compatibility and evolution policy
+
+TopMark treats documented `json` and `ndjson` output as a public machine-readable contract for the
+current major release line. The contract is intentionally narrower than the implementation:
+consumers may rely on the fields and meanings documented on this page, but should not treat
+incidental object ordering, undocumented helper fields, or internal Python module layout as stable.
+
+Stable contract surface:
+
+- `json` output is one complete JSON document per invocation with a top-level `meta` object and
+  command-specific documented payload keys.
+- `ndjson` output is a sequence of newline-delimited JSON objects. Each record has `kind`, `meta`,
+  and a payload stored under the key named by `kind`.
+- Baseline `meta` fields are `tool`, `version`, and `platform`. Some command families also emit
+  `detail_level` to describe a machine-facing projection such as `brief` or `long`.
+- Documented command-specific payload fields, path serialization rules, diagnostics shapes, summary
+  rows, result payloads, probe payloads, registry identities, version payloads, and diff payloads
+  are stable for the current major release line.
+- String values documented as identifiers, record kinds, domains, detail levels, outcomes,
+  diagnostic levels, and canonical registry keys are stable once emitted, but new values may be
+  added in minor releases.
+
+Allowed additive evolution in minor releases:
+
+- adding new fields to existing JSON objects or NDJSON payloads;
+- adding new command-specific top-level JSON payload keys where the existing documented keys keep
+  their meanings;
+- adding new NDJSON record kinds;
+- adding new enum-like string values such as `kind`, `domain`, diagnostic levels, outcomes, reasons,
+  file-type identifiers, or registry identifiers;
+- adding new diagnostics, warnings, or partial-result records for situations that were previously
+  less precisely reported.
+
+Breaking changes that require a major release or an explicit breaking-change signal include:
+
+- removing or renaming documented fields;
+- changing the type or meaning of a documented field;
+- moving a documented payload to a different container key;
+- changing the baseline NDJSON envelope shape;
+- changing documented path serialization semantics for machine-readable path fields;
+- reusing an existing `kind`, `domain`, or documented enum-like string value for a different
+  meaning;
+- changing whether a documented result, diagnostic, summary, or diff payload is emitted for an
+  already documented command mode.
+
+Consumer guidance:
+
+- Ignore unknown fields.
+- In NDJSON, skip or log unknown `kind` values unless the consumer explicitly needs them.
+- In JSON, read documented top-level keys and tolerate additional top-level keys.
+- Treat enum-like string values as open sets unless this page explicitly says otherwise.
+- Check the process exit code separately from parsing machine-readable payloads.
+- Treat diagnostics as advisory structured records that may accompany partial results. A command can
+  emit valid configuration diagnostics even when validation prevents normal `probes`, `results`, or
+  `summary` payloads from being emitted.
+
+TopMark does not currently emit a separate `schema_version` field in machine-readable output. The
+package `meta.version`, the documented command shape, and the current major release line together
+define the compatibility boundary. A future `schema_version` field may be added as an additive field
+if TopMark needs schema-level negotiation independent from the package version. Consumers should
+therefore ignore an unknown `schema_version` field if one appears in a future minor release.
 
 ______________________________________________________________________
 
@@ -186,8 +250,8 @@ package-local schema modules such as:
 
 ### Naming conventions
 
-The machine-readable output naming audit for the stable 1.x line adopts the following conventions
-across domains:
+The machine-readable output naming audit for the stable current major line adopts the following
+conventions across domains:
 
 - Shared envelope and metadata keys are owned by
   \[`topmark.core.machine.schemas`\][topmark.core.machine.schemas].
@@ -205,7 +269,7 @@ across domains:
   - `detail_level` is emitted only by command families whose machine-readable output exposes a brief
     vs long projection
 
-These conventions are part of the stable 1.x machine-readable output contract.
+These conventions are part of the stable current-major machine-readable output contract.
 
 ### File type identity fields
 
@@ -789,9 +853,9 @@ These diagnostics may originate from staged config-loading validation logs for:
 - merged-config diagnostics
 - runtime applicability diagnostics
 
-For the stable 1.x line, the machine-readable contract for configuration-loading diagnostics is this
-flattened compatibility view. Stage-local validation structure remains internal and is not
-serialized directly.
+For the stable current major line, the machine-readable contract for configuration-loading
+diagnostics is this flattened compatibility view. Stage-local validation structure remains internal
+and is not serialized directly.
 
 JSON shape:
 
@@ -806,7 +870,7 @@ JSON shape:
 ```
 
 The individual diagnostic entry shape is intentionally fixed at `{level, message}` for the stable
-1.x line.
+current major line.
 
 Example JSON diagnostics payload:
 
@@ -1024,8 +1088,9 @@ from TOML source configuration (`[config].strict`) and may be overridden by CLI 
 strictness is evaluated across staged config-loading validation, while `config_diagnostics` remains
 the flattened compatibility view exposed in machine-readable output.
 
-For the stable 1.x line, this is the explicit contract decision: staged config-loading validation
-remains internal, and machine-readable output serializes only the flattened compatibility view.
+For the stable current major line, this is the explicit contract decision: staged config-loading
+validation remains internal, and machine-readable output serializes only the flattened compatibility
+view.
 
 Machine-readable output for [`config check`](../usage/commands/config/check.md) is unaffected by
 TEXT verbosity or quiet mode.
@@ -1299,7 +1364,8 @@ ______________________________________________________________________
 ## Backwards compatibility and evolution
 
 TopMark's machine-readable output schema is part of its stable integration surface. For the stable
-1.x line, documented JSON and NDJSON shapes are treated as machine-readable compatibility contracts.
+current major line, documented JSON and NDJSON shapes are treated as machine-readable compatibility
+contracts.
 
 Consumers should:
 
@@ -1308,16 +1374,16 @@ Consumers should:
 - Rely on `kind` for NDJSON.
 - Treat unknown fields as optional/ignorable.
 - Prefer parsing and schema-tolerant logic over strict string matching.
-- Assume additive fields may appear over time within the 1.x compatibility model.
+- Assume additive fields may appear over time within the current-major compatibility model.
 - Prefer canonical identity fields such as `qualified_key`, `file_type_key`, and `processor_key`
   over display-oriented names.
 - Treat filesystem `path`, `discovery_anchor`, `origin`, and `scope_root` fields as serialized
   processing/provenance paths, not as lossless echoes of the original invocation spelling.
 
 Consumers should not infer the original workspace-root discovery-anchor spelling from
-machine-readable payloads. The stable 1.x contract serializes the resolved discovery anchor in
-`config_provenance.discovery_anchor` when provenance is requested, plus discovered configuration
-sources and scope roots where applicable.
+machine-readable payloads. The stable current-major contract serializes the resolved discovery
+anchor in `config_provenance.discovery_anchor` when provenance is requested, plus discovered
+configuration sources and scope roots where applicable.
 
 Breaking machine-readable output changes should be signaled through Conventional Commits using the
 `!` marker and documented in the changelog.

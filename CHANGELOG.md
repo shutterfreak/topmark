@@ -407,6 +407,10 @@ ______________________________________________________________________
   execution serial within individual jobs while using job-level parallelism.
 - Updated contributor and CI guidance to recommend the local pre-PR validation gate, document its
   relationship to GitHub CI, and cross-reference the relevant validation workflow documentation.
+- Documented the machine-readable JSON/NDJSON compatibility and evolution policy, including stable
+  compatibility guarantees, additive minor-release evolution, breaking-change boundaries,
+  unknown-field handling, JSON versus NDJSON operational differences, and the current absence of a
+  separate `schema_version` field.
 
 ### Internal - Unreleased
 
@@ -533,6 +537,8 @@ ______________________________________________________________________
 - Standardized Makefile `.PHONY` declarations by colocating them with their associated targets,
   reducing maintenance overhead for predominantly phony developer targets and aligning with the
   project's `mbake` formatting conventions.
+- Added focused machine-output contract tests covering documented JSON/NDJSON compatibility
+  guarantees, including stable envelope structure and additive-schema compatibility expectations.
 
 ### Notes - Unreleased
 
