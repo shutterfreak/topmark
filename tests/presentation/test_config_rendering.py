@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from typing import Protocol
 
 import pytest
+import tomlkit
 
 import topmark.presentation.shared.config as shared_config
 from topmark.config.io.deserializers import mutable_config_from_defaults
@@ -324,8 +325,17 @@ def test_build_config_dump_human_report_exports_file_backed_source_layer(
     )
 
     assert report.provenance_toml is not None
+
+    # Parse the rendered TOML before asserting path values. Comparing the raw
+    # serialized string is platform-dependent because TOML escapes Windows
+    # backslashes (e.g. `C:\\Users\\...`), whereas the parsed value preserves
+    # the original native path representation.
+    data: tomlkit.TOMLDocument = tomlkit.loads(report.provenance_toml)
+    assert data["layers"][1]["scope_root"] == str(tmp_path)
+
+    # These fields are platform-independent and may be asserted directly on the
+    # serialized TOML.
     assert 'kind = "explicit"' in report.provenance_toml
-    assert f'scope_root = "{tmp_path}"' in report.provenance_toml
     assert 'project = "Layered"' in report.provenance_toml
 
 
