@@ -48,7 +48,34 @@ class LooseDiagnostic:
     message: object
 
 
-def _log_with_entries(entries: list[tuple[DiagnosticLevel, str]]) -> MutableDiagnosticLog:
+@dataclass(frozen=True, slots=True)
+class StringValueLevel:
+    """Level-like object with a string value attribute."""
+
+    value: str
+
+
+@dataclass(frozen=True, slots=True)
+class NonStringValueLevel:
+    """Level-like object with a non-string value attribute."""
+
+    value: int
+
+
+@dataclass(frozen=True, slots=True)
+class StringOnlyLevel:
+    """Level-like object without a value attribute."""
+
+    name: str
+
+    def __str__(self) -> str:
+        """Return the human level string for fallback formatting."""
+        return self.name
+
+
+def _log_with_entries(
+    entries: list[tuple[DiagnosticLevel, str]],
+) -> MutableDiagnosticLog:
     """Build a mutable diagnostic log with stable insertion order."""
     log = MutableDiagnosticLog()
     for level, message in entries:
@@ -61,8 +88,14 @@ def test_human_diagnostics_text_summary_at_default_verbosity() -> None:
     output: str = render_human_diagnostics_text(
         counts=HumanDiagnosticCounts(error=1, warning=2, info=3),
         diagnostics=[
-            HumanDiagnosticLine(level="error", message="Invalid config"),
-            HumanDiagnosticLine(level="warning", message="Deprecated option"),
+            HumanDiagnosticLine(
+                level="error",
+                message="Invalid config",
+            ),
+            HumanDiagnosticLine(
+                level="warning",
+                message="Deprecated option",
+            ),
         ],
         verbosity_level=0,
     )
@@ -78,8 +111,14 @@ def test_human_diagnostics_markdown_renders_stable_document_output() -> None:
         title="Configuration diagnostics",
         counts=HumanDiagnosticCounts(error=1, warning=2, info=3),
         diagnostics=[
-            HumanDiagnosticLine(level="error", message="Invalid config"),
-            HumanDiagnosticLine(level="warning", message="Deprecated option"),
+            HumanDiagnosticLine(
+                level="error",
+                message="Invalid config",
+            ),
+            HumanDiagnosticLine(
+                level="warning",
+                message="Deprecated option",
+            ),
         ],
     )
 
@@ -103,8 +142,14 @@ def test_human_diagnostics_text_details_at_verbose_level() -> None:
     output: str = render_human_diagnostics_text(
         counts=HumanDiagnosticCounts(error=1, warning=1, info=0),
         diagnostics=[
-            HumanDiagnosticLine(level="error", message="Invalid config"),
-            HumanDiagnosticLine(level="warning", message="Deprecated option"),
+            HumanDiagnosticLine(
+                level="error",
+                message="Invalid config",
+            ),
+            HumanDiagnosticLine(
+                level="warning",
+                message="Deprecated option",
+            ),
         ],
         verbosity_level=1,
     )
@@ -143,18 +188,36 @@ def test_human_diagnostics_render_empty_when_no_diagnostics() -> None:
 def test_prepare_human_diagnostics_counts_known_levels() -> None:
     """Shared diagnostic preparation should count known diagnostic levels."""
     diagnostics: list[Diagnostic] = [
-        Diagnostic(level=DiagnosticLevel.ERROR, message="Broken"),
-        Diagnostic(level=DiagnosticLevel.WARNING, message="Deprecated"),
-        Diagnostic(level=DiagnosticLevel.INFO, message="FYI"),
+        Diagnostic(
+            level=DiagnosticLevel.ERROR,
+            message="Broken",
+        ),
+        Diagnostic(
+            level=DiagnosticLevel.WARNING,
+            message="Deprecated",
+        ),
+        Diagnostic(
+            level=DiagnosticLevel.INFO,
+            message="FYI",
+        ),
     ]
 
     human_diagnostics: HumanDiagnostics = prepare_human_diagnostics(diagnostics)
 
     assert human_diagnostics.counts == HumanDiagnosticCounts(error=1, warning=1, info=1)
     assert human_diagnostics.lines == [
-        HumanDiagnosticLine(level="error", message="Broken"),
-        HumanDiagnosticLine(level="warning", message="Deprecated"),
-        HumanDiagnosticLine(level="info", message="FYI"),
+        HumanDiagnosticLine(
+            level="error",
+            message="Broken",
+        ),
+        HumanDiagnosticLine(
+            level="warning",
+            message="Deprecated",
+        ),
+        HumanDiagnosticLine(
+            level="info",
+            message="FYI",
+        ),
     ]
 
 
@@ -163,8 +226,14 @@ def test_prepare_human_diagnostics_treats_unknown_levels_as_info() -> None:
     diagnostics: Iterable[Diagnostic] = cast(
         "Iterable[Diagnostic]",
         [
-            LooseDiagnostic(level=CustomLevel.NOTICE, message=123),
-            LooseDiagnostic(level="", message="empty level"),
+            LooseDiagnostic(
+                level=CustomLevel.NOTICE,
+                message=123,
+            ),
+            LooseDiagnostic(
+                level="",
+                message="empty level",
+            ),
         ],
     )
 
@@ -172,8 +241,53 @@ def test_prepare_human_diagnostics_treats_unknown_levels_as_info() -> None:
 
     assert human_diagnostics.counts == HumanDiagnosticCounts(error=0, warning=0, info=2)
     assert human_diagnostics.lines == [
-        HumanDiagnosticLine(level="notice", message="123"),
-        HumanDiagnosticLine(level="info", message="empty level"),
+        HumanDiagnosticLine(
+            level="notice",
+            message="123",
+        ),
+        HumanDiagnosticLine(
+            level="info",
+            message="empty level",
+        ),
+    ]
+
+
+def test_prepare_human_diagnostics_normalizes_level_like_objects() -> None:
+    """Level-like objects should fall back to stable human-facing strings."""
+    diagnostics: Iterable[Diagnostic] = cast(
+        "Iterable[Diagnostic]",
+        [
+            LooseDiagnostic(
+                level=StringValueLevel(value="debug"),
+                message="string value",
+            ),
+            LooseDiagnostic(
+                level=NonStringValueLevel(value=404),
+                message="numeric value",
+            ),
+            LooseDiagnostic(
+                level=StringOnlyLevel(name="notice"),
+                message="string fallback",
+            ),
+        ],
+    )
+
+    human_diagnostics: HumanDiagnostics = prepare_human_diagnostics(diagnostics)
+
+    assert human_diagnostics.counts == HumanDiagnosticCounts(error=0, warning=0, info=3)
+    assert human_diagnostics.lines == [
+        HumanDiagnosticLine(
+            level="debug",
+            message="string value",
+        ),
+        HumanDiagnosticLine(
+            level="nonstringvaluelevel(value=404)",
+            message="numeric value",
+        ),
+        HumanDiagnosticLine(
+            level="notice",
+            message="string fallback",
+        ),
     ]
 
 
@@ -193,9 +307,18 @@ def test_render_diagnostics_text_compact_error_warning_summary() -> None:
     """At verbosity 0, TEXT diagnostics should summarize high-severity entries only."""
     log: MutableDiagnosticLog = _log_with_entries(
         [
-            (DiagnosticLevel.ERROR, "Broken config"),
-            (DiagnosticLevel.WARNING, "Deprecated key"),
-            (DiagnosticLevel.INFO, "Extra detail"),
+            (
+                DiagnosticLevel.ERROR,
+                "Broken config",
+            ),
+            (
+                DiagnosticLevel.WARNING,
+                "Deprecated key",
+            ),
+            (
+                DiagnosticLevel.INFO,
+                "Extra detail",
+            ),
         ]
     )
 
@@ -212,8 +335,14 @@ def test_render_diagnostics_text_compact_info_only_summary() -> None:
     """At verbosity 0, TEXT diagnostics should include info when no higher severity exists."""
     log: MutableDiagnosticLog = _log_with_entries(
         [
-            (DiagnosticLevel.INFO, "First detail"),
-            (DiagnosticLevel.INFO, "Second detail"),
+            (
+                DiagnosticLevel.INFO,
+                "First detail",
+            ),
+            (
+                DiagnosticLevel.INFO,
+                "Second detail",
+            ),
         ]
     )
 
@@ -230,9 +359,18 @@ def test_render_diagnostics_text_verbose_renders_all_entries() -> None:
     """At verbosity >= 1, TEXT diagnostics should include one line per entry."""
     log: MutableDiagnosticLog = _log_with_entries(
         [
-            (DiagnosticLevel.ERROR, "Broken config"),
-            (DiagnosticLevel.WARNING, "Deprecated key"),
-            (DiagnosticLevel.INFO, "Extra detail"),
+            (
+                DiagnosticLevel.ERROR,
+                "Broken config",
+            ),
+            (
+                DiagnosticLevel.WARNING,
+                "Deprecated key",
+            ),
+            (
+                DiagnosticLevel.INFO,
+                "Extra detail",
+            ),
         ]
     )
 
@@ -261,9 +399,18 @@ def test_render_diagnostics_markdown_renders_error_warning_summary() -> None:
     """Markdown diagnostics should render a stable triage block and entries."""
     log: MutableDiagnosticLog = _log_with_entries(
         [
-            (DiagnosticLevel.ERROR, "Broken config"),
-            (DiagnosticLevel.WARNING, "Deprecated key"),
-            (DiagnosticLevel.INFO, "Extra detail"),
+            (
+                DiagnosticLevel.ERROR,
+                "Broken config",
+            ),
+            (
+                DiagnosticLevel.WARNING,
+                "Deprecated key",
+            ),
+            (
+                DiagnosticLevel.INFO,
+                "Extra detail",
+            ),
         ]
     )
 
@@ -288,8 +435,14 @@ def test_render_diagnostics_markdown_renders_info_only_summary() -> None:
     """Markdown diagnostics should include info counts when no higher severity exists."""
     log: MutableDiagnosticLog = _log_with_entries(
         [
-            (DiagnosticLevel.INFO, "First detail"),
-            (DiagnosticLevel.INFO, "Second detail"),
+            (
+                DiagnosticLevel.INFO,
+                "First detail",
+            ),
+            (
+                DiagnosticLevel.INFO,
+                "Second detail",
+            ),
         ]
     )
 

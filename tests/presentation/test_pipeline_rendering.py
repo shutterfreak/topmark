@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from typing import cast
 
@@ -21,6 +22,7 @@ from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import unsupported_output_format
 from tests.helpers.registry import make_file_type
 from tests.presentation.conftest import find_table_row
+from topmark.cli.errors import TopmarkCliPipelineError
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.formats import OutputFormat
 from topmark.diagnostic.model import Diagnostic
@@ -40,6 +42,7 @@ from topmark.pipeline.status import PatchStatus
 from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
+from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.views import DiffView
 from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
@@ -125,6 +128,44 @@ def _add_diff(ctx: ProcessingContext) -> None:
     """Attach a deterministic unified diff to a context."""
     ctx.status.patch = PatchStatus.GENERATED
     ctx.views.diff = DiffView(text="--- old\n+++ new\n@@ -1 +1 @@\n-old\n+new\n")
+
+
+def _force_check_actionable_with_no_concrete_intent(
+    result: ProcessingResult,
+) -> ProcessingResult:
+    """Return a check-actionable result whose statuses imply no concrete intent."""
+    return replace(
+        result,
+        status=replace(
+            result.status,
+            header=HeaderStatus.PENDING,
+            strip=StripStatus.PENDING,
+        ),
+        outcome=replace(
+            result.outcome,
+            would_add_or_update=True,
+            effective_would_add_or_update=True,
+        ),
+    )
+
+
+def _force_strip_actionable_with_insert_intent(
+    result: ProcessingResult,
+) -> ProcessingResult:
+    """Return a strip-actionable result whose statuses imply insert intent."""
+    return replace(
+        result,
+        status=replace(
+            result.status,
+            header=HeaderStatus.MISSING,
+            strip=StripStatus.PENDING,
+        ),
+        outcome=replace(
+            result.outcome,
+            would_strip=True,
+            effective_would_strip=True,
+        ),
+    )
 
 
 def test_render_path_display_text_uses_regular_display_path(tmp_path: Path) -> None:
@@ -325,6 +366,100 @@ def test_render_pipeline_output_text_strip_guidance_uses_strip_command(
     assert "to strip the TopMark header from this file." in output
 
 
+def test_render_pipeline_output_text_apply_mode_reports_write_skipped(
+    tmp_path: Path,
+) -> None:
+    """TEXT apply-mode guidance should report defensive skipped writes."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "skipped.py",
+        apply_changes=True,
+    )
+    ctx.status.write = WriteStatus.SKIPPED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_text(
+        _make_report(
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "write was skipped" in output
+    assert "⚠️  Could not insert header (write skipped)." in output
+
+
+def test_render_pipeline_output_markdown_apply_mode_reports_write_failed(
+    tmp_path: Path,
+) -> None:
+    """Markdown apply-mode guidance should report failed writes explicitly."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "failed.py",
+        apply_changes=True,
+    )
+    ctx.status.write = WriteStatus.FAILED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "write failed" in output
+    assert "❌ Could not insert header: write failed" in output
+
+
+def test_render_pipeline_output_text_renders_hint_detail_at_double_verbose(
+    tmp_path: Path,
+) -> None:
+    """TEXT hints should reveal multiline details at ``-vv`` verbosity."""
+    ctx: ProcessingContext = _make_context(tmp_path / "hints.py")
+    ctx.diagnostic_hints.add(
+        make_hint(
+            axis=Axis.PLAN,
+            code=KnownCode.PLAN_INSERT,
+            message="Would insert header",
+            detail="first detail\nsecond detail",
+            cluster=Cluster.WOULD_CHANGE,
+            terminal=True,
+        )
+    )
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_text(
+        _make_report(
+            view_results=reduction.results,
+            verbosity_level=2,
+        )
+    )
+
+    assert "⏹ plan" in output
+    assert "(terminal)" in output
+    assert "first detail" in output
+    assert "second detail" in output
+    assert "use '-vv'" not in output
+
+
+def test_render_pipeline_output_text_empty_summary_reports_total_only() -> None:
+    """TEXT summary mode should render a total even when no rows are visible."""
+    output: str = render_pipeline_output_text(
+        _make_report(
+            view_results=[],
+            file_list_total=0,
+            summary_mode=True,
+        )
+    )
+
+    assert "Summary by outcome:" in output
+    assert "TOTAL" in output
+    assert ": 0" in output
+    assert "─" not in output
+
+
 def test_render_pipeline_output_markdown_per_file_includes_diagnostics_hints_and_diff(
     tmp_path: Path,
 ) -> None:
@@ -455,6 +590,272 @@ def test_render_pipeline_apply_summary_markdown_reports_noop_and_failed() -> Non
     assert "> ⚠️ `topmark strip`: failed to write **1** file(s). See log for details." in output
 
 
+def test_render_pipeline_output_markdown_check_guidance_uses_stdin_filename(
+    tmp_path: Path,
+) -> None:
+    """Markdown check guidance should render the STDIN apply command contract."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "stdin-buffer.py",
+        stdin_mode=True,
+        stdin_filename="logical/input.py",
+    )
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            view_results=reduction.results,
+        )
+    )
+
+    assert "`logical/input.py` (python)" in output
+    assert (
+        "Run `topmark check --apply --stdin-filename logical/input.py -` "
+        "to add a TopMark header to this file."
+    ) in output
+
+
+def test_render_pipeline_output_markdown_check_guidance_reports_update(
+    tmp_path: Path,
+) -> None:
+    """Markdown check guidance should distinguish update from insert intent."""
+    ctx: ProcessingContext = _make_context(tmp_path / "update.py")
+    ctx.status.header = HeaderStatus.DETECTED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            view_results=reduction.results,
+        )
+    )
+
+    assert "to update the TopMark header in this file." in output
+    assert "to add a TopMark header to this file." not in output
+
+
+def test_render_pipeline_output_markdown_strip_guidance_uses_strip_command(
+    tmp_path: Path,
+) -> None:
+    """Markdown strip rendering should produce strip-specific dry-run guidance."""
+    ctx: ProcessingContext = _make_context(tmp_path / "strip.md.py", pipeline_kind="strip")
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.strip = StripStatus.READY
+    ctx.status.plan = PlanStatus.PREVIEWED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            pipeline_kind="strip",
+            view_results=reduction.results,
+        )
+    )
+
+    assert "# TopMark strip Results" in output
+    assert "Run `topmark strip --apply" in output
+    assert "to strip the TopMark header from this file." in output
+
+
+def test_render_pipeline_output_markdown_strip_apply_mode_reports_write_skipped(
+    tmp_path: Path,
+) -> None:
+    """Markdown strip apply-mode guidance should report defensive skipped writes."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "strip-skipped.py",
+        pipeline_kind="strip",
+        apply_changes=True,
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.strip = StripStatus.READY
+    ctx.status.plan = PlanStatus.REMOVED
+    ctx.status.write = WriteStatus.SKIPPED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            pipeline_kind="strip",
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "write skipped" in output
+    assert "⚠️  Could not strip header (write skipped)." in output
+
+
+def test_render_pipeline_output_text_per_file_renders_diff_fences(
+    tmp_path: Path,
+) -> None:
+    """TEXT per-file output should render optional diff fences outside summary mode."""
+    ctx: ProcessingContext = _make_context(tmp_path / "diff-fences.py")
+    _add_diff(ctx)
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_text(
+        _make_report(
+            view_results=reduction.results,
+            show_diffs=True,
+        )
+    )
+
+    assert " diff - start " in output
+    assert "--- old" in output
+    assert "+new" in output
+    assert " diff - end " in output
+
+
+def test_render_pipeline_apply_summary_markdown_reports_written_and_failed() -> None:
+    """Markdown apply summary should report written and failed counts together."""
+    output: str = render_pipeline_apply_summary_markdown(
+        command_path="topmark check",
+        written=2,
+        failed=1,
+    )
+
+    assert "✅ `topmark check`: applied changes to **2** file(s)." in output
+    assert "> ⚠️ `topmark check`: failed to write **1** file(s). See log for details." in output
+
+
+def test_render_pipeline_output_text_check_guidance_reports_update(
+    tmp_path: Path,
+) -> None:
+    """TEXT check guidance should distinguish update from insert intent."""
+    ctx: ProcessingContext = _make_context(tmp_path / "text-update.py")
+    ctx.status.header = HeaderStatus.DETECTED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_text(
+        _make_report(
+            view_results=reduction.results,
+        )
+    )
+
+    assert "to update the TopMark header in this file." in output
+    assert "to add a TopMark header to this file." not in output
+
+
+def test_render_pipeline_output_markdown_check_apply_mode_reports_write_skipped(
+    tmp_path: Path,
+) -> None:
+    """Markdown check apply-mode guidance should report defensive skipped writes."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "markdown-skipped.py",
+        apply_changes=True,
+    )
+    ctx.status.write = WriteStatus.SKIPPED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "write skipped" in output
+    assert "⚠️  Could not insert header (write skipped)." in output
+
+
+def test_render_pipeline_output_markdown_strip_apply_mode_reports_write_failed(
+    tmp_path: Path,
+) -> None:
+    """Markdown strip apply-mode guidance should report defensive failed writes."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "strip-failed.py",
+        pipeline_kind="strip",
+        apply_changes=True,
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.strip = StripStatus.READY
+    ctx.status.plan = PlanStatus.REMOVED
+    ctx.status.write = WriteStatus.FAILED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            pipeline_kind="strip",
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "write failed" in output
+    assert "❌ Could not strip header: write failed" in output
+
+
+def test_render_pipeline_output_text_strip_apply_mode_reports_write_failed(
+    tmp_path: Path,
+) -> None:
+    """TEXT strip apply-mode guidance should report defensive failed writes."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "strip-failed-text.py",
+        pipeline_kind="strip",
+        apply_changes=True,
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.strip = StripStatus.READY
+    ctx.status.plan = PlanStatus.REMOVED
+    ctx.status.write = WriteStatus.FAILED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_text(
+        _make_report(
+            pipeline_kind="strip",
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "write failed" in output
+    assert "❌ Could not strip header: write failed" in output
+
+
+def test_pipeline_check_guidance_rejects_missing_concrete_intent(
+    tmp_path: Path,
+) -> None:
+    """Check guidance should reject actionable snapshots without insert/update intent."""
+    ctx: ProcessingContext = _make_context(tmp_path / "invalid-check.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    result: ProcessingResult = _force_check_actionable_with_no_concrete_intent(
+        reduction.results[0],
+    )
+    report: PipelineCommandHumanReport = _make_report(view_results=[result])
+
+    with pytest.raises(TopmarkCliPipelineError, match="Unexpected intent none"):
+        render_pipeline_output_text(report)
+
+    with pytest.raises(TopmarkCliPipelineError, match="Unexpected intent none"):
+        render_pipeline_output_markdown(report)
+
+
+def test_pipeline_strip_guidance_rejects_non_strip_intent(
+    tmp_path: Path,
+) -> None:
+    """Strip guidance should reject actionable snapshots without strip intent."""
+    ctx: ProcessingContext = _make_context(tmp_path / "invalid-strip.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    result: ProcessingResult = _force_strip_actionable_with_insert_intent(
+        reduction.results[0],
+    )
+    report: PipelineCommandHumanReport = _make_report(
+        pipeline_kind="strip",
+        view_results=[result],
+    )
+
+    with pytest.raises(TopmarkCliPipelineError, match="Unexpected intent insert"):
+        render_pipeline_output_text(report)
+
+    with pytest.raises(TopmarkCliPipelineError, match="Unexpected intent insert"):
+        render_pipeline_output_markdown(report)
+
+
 def test_pipeline_renderers_reject_invalid_pipeline_kind(tmp_path: Path) -> None:
     """Both renderers should reject invalid pipeline kinds defensively."""
     ctx: ProcessingContext = _make_context(tmp_path / "invalid.py")
@@ -471,6 +872,156 @@ def test_pipeline_renderers_reject_invalid_pipeline_kind(tmp_path: Path) -> None
 
     with pytest.raises(RuntimeError, match="Invalid pipeline kind selected"):
         render_pipeline_output_markdown(report)
+
+
+def test_render_pipeline_output_markdown_apply_mode_reports_insert_success(
+    tmp_path: Path,
+) -> None:
+    """Markdown check apply-mode guidance should report successful insert writes."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "inserted.py",
+        apply_changes=True,
+    )
+    ctx.status.write = WriteStatus.WRITTEN
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "➕ Adding header in" in output
+    assert "inserted.py" in output
+
+
+def test_render_pipeline_output_markdown_strip_apply_mode_reports_success(
+    tmp_path: Path,
+) -> None:
+    """Markdown strip apply-mode guidance should report successful removals."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "stripped.py",
+        pipeline_kind="strip",
+        apply_changes=True,
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.strip = StripStatus.READY
+    ctx.status.plan = PlanStatus.REMOVED
+    ctx.status.write = WriteStatus.WRITTEN
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            pipeline_kind="strip",
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "🧹 Stripping header in" in output
+    assert "stripped.py" in output
+
+
+def test_render_pipeline_output_markdown_missing_file_omits_file_type_label(
+    tmp_path: Path,
+) -> None:
+    """Markdown file summaries should omit file-type labels for missing synthetic files."""
+    ctx: ProcessingContext = _make_context(tmp_path / "missing.py")
+    ctx.file_type = None
+    ctx.status.fs = FsStatus.NOT_FOUND
+    ctx.status.header = HeaderStatus.PENDING
+    ctx.status.comparison = ComparisonStatus.SKIPPED
+    ctx.status.plan = PlanStatus.SKIPPED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            view_results=reduction.results,
+            report_scope=ReportScope.ALL,
+        )
+    )
+
+    assert "missing.py` - `" in output
+    assert "missing.py` (" not in output
+
+
+def test_render_pipeline_output_markdown_per_file_omits_empty_diff_block(
+    tmp_path: Path,
+) -> None:
+    """Markdown per-file output should not add a fenced block for an empty retained diff."""
+    ctx: ProcessingContext = _make_context(tmp_path / "empty-diff.py")
+    ctx.status.patch = PatchStatus.GENERATED
+    ctx.views.diff = DiffView(text="")
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_markdown(
+        _make_report(
+            view_results=reduction.results,
+            show_diffs=True,
+        )
+    )
+
+    assert "empty-diff.py" in output
+    assert "```diff" not in output
+
+
+def test_render_pipeline_apply_summary_markdown_reports_written_without_failures() -> None:
+    """Markdown apply summary should omit warning block when all writes succeeded."""
+    output: str = render_pipeline_apply_summary_markdown(
+        command_path="topmark check",
+        written=3,
+        failed=0,
+    )
+
+    assert "applied changes to **3** file(s)" in output
+    assert "failed to write" not in output
+
+
+def test_render_pipeline_diffs_helpers_return_empty_for_results_without_patches(
+    tmp_path: Path,
+) -> None:
+    """Standalone diff renderers should return an empty payload when no patch renders."""
+    from topmark.presentation.markdown.pipeline import render_pipeline_diffs_markdown
+    from topmark.presentation.text.pipeline import render_pipeline_diffs_text
+
+    ctx: ProcessingContext = _make_context(tmp_path / "no-patch.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    assert render_pipeline_diffs_markdown(results=reduction.results) == ""
+    assert render_pipeline_diffs_text(results=reduction.results, styled=False) == ""
+
+
+def test_render_pipeline_output_text_strip_apply_mode_reports_write_skipped(
+    tmp_path: Path,
+) -> None:
+    """TEXT strip apply-mode guidance should report defensive skipped writes."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "strip-skipped-text.py",
+        pipeline_kind="strip",
+        apply_changes=True,
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.strip = StripStatus.READY
+    ctx.status.plan = PlanStatus.REMOVED
+    ctx.status.write = WriteStatus.SKIPPED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_text(
+        _make_report(
+            pipeline_kind="strip",
+            view_results=reduction.results,
+            apply_changes=True,
+        )
+    )
+
+    assert "write was skipped" in output
+    assert "⚠️  Could not strip header (write skipped)." in output
 
 
 @pytest.mark.parametrize(

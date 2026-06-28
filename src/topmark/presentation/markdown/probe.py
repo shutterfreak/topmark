@@ -24,12 +24,12 @@ from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_markdown_table
+from topmark.presentation.shared.probe import format_probe_match_signals
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.pipeline.result import ProbeCandidateSnapshot
-    from topmark.pipeline.result import ProbeMatchSnapshot
     from topmark.pipeline.result import ProbeSnapshot
     from topmark.pipeline.result import ProcessingResult
     from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
@@ -131,17 +131,7 @@ def _render_probe_match_signals_markdown(
     Returns:
         Compact Markdown-safe match signal summary.
     """
-    match: ProbeMatchSnapshot = candidate.match
-    parts: list[str] = [
-        f"extension={str(match.extension).lower()}",
-        f"filename={str(match.filename).lower()}",
-        f"pattern={str(match.pattern).lower()}",
-        f"content_probe={str(match.content_probe_allowed).lower()}",
-        f"content_match={str(match.content_match).lower()}",
-    ]
-    if match.content_error is not None:
-        parts.append(f"content_error={match.content_error}")
-    return markdown_code_span(" ".join(parts))
+    return markdown_code_span(format_probe_match_signals(candidate))
 
 
 def _render_probe_candidates_markdown(
