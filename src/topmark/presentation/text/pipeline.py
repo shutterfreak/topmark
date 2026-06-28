@@ -43,9 +43,7 @@ from topmark.core.logging import get_logger
 from topmark.core.presentation import StyleRole
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.outcomes import ResultActionIntent
-from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import determine_result_action_intent
-from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
@@ -53,8 +51,7 @@ from topmark.presentation.shared.outcomes import collect_outcome_counts_styled
 from topmark.presentation.shared.outcomes import get_outcome_style_role
 from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.paths import render_path_display_text
-from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
-from topmark.presentation.shared.pipeline import get_file_type_label
+from topmark.presentation.shared.pipeline import summarize_pipeline_file
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
@@ -62,11 +59,12 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.result import ProcessingResult
+    from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
+    from topmark.presentation.shared.pipeline import PipelineFileSummary
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -87,7 +85,11 @@ _HINT_CLUSTER_STYLE_ROLE: Final[dict[str, StyleRole]] = {
 # ---- Hint rendering ----
 
 
-def _hint_styler(cluster: str | None, *, styled: bool) -> TextStyler:
+def _hint_styler(
+    cluster: str | None,
+    *,
+    styled: bool,
+) -> TextStyler:
     """Return the semantic text styler for a hint cluster.
 
     Args:
@@ -97,8 +99,14 @@ def _hint_styler(cluster: str | None, *, styled: bool) -> TextStyler:
     Returns:
         Text styler for the hint cluster.
     """
-    role: StyleRole = _HINT_CLUSTER_STYLE_ROLE.get(cluster or "", StyleRole.MUTED)
-    return style_for_role(role, styled=styled)
+    role: StyleRole = _HINT_CLUSTER_STYLE_ROLE.get(
+        cluster or "",
+        StyleRole.MUTED,
+    )
+    return style_for_role(
+        role,
+        styled=styled,
+    )
 
 
 def _render_hint_text(
@@ -120,8 +128,14 @@ def _render_hint_text(
         Rendered text for one hint entry.
     """
     # Style helpers already respect the selected color policy.
-    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
-    hint_styler: TextStyler = _hint_styler(hint.cluster, styled=styled)
+    muted_styler: TextStyler = style_for_role(
+        StyleRole.MUTED,
+        styled=styled,
+    )
+    hint_styler: TextStyler = _hint_styler(
+        hint.cluster,
+        styled=styled,
+    )
 
     lines: list[str] = []
 
@@ -181,8 +195,14 @@ def _render_pipeline_banner_text(
         TEXT banner shown before verbose pipeline command output.
     """
     # Style helpers already respect the selected color policy.
-    heading_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=styled)
-    info_styler: TextStyler = style_for_role(StyleRole.INFO, styled=styled)
+    heading_styler: TextStyler = style_for_role(
+        StyleRole.HEADING_TITLE,
+        styled=styled,
+    )
+    info_styler: TextStyler = style_for_role(
+        StyleRole.INFO,
+        styled=styled,
+    )
 
     return "\n".join(
         [
@@ -257,7 +277,10 @@ def _render_check_guidance_message_text(
             else f"✏️  Updating header in {path_label}"
         )
 
-    apply_cmd: str = _render_apply_command_text(command=CliCmd.CHECK, result=result)
+    apply_cmd: str = _render_apply_command_text(
+        command=CliCmd.CHECK,
+        result=result,
+    )
 
     if intent == ResultActionIntent.INSERT:
         action: str = "add a TopMark header to this file"
@@ -303,7 +326,10 @@ def _render_strip_guidance_message_text(
 
         return f"🧹 Stripping header in {path_label}"
 
-    apply_cmd: str = _render_apply_command_text(command=CliCmd.STRIP, result=result)
+    apply_cmd: str = _render_apply_command_text(
+        command=CliCmd.STRIP,
+        result=result,
+    )
 
     if intent == ResultActionIntent.STRIP:
         action: str = "strip the TopMark header from this file"
@@ -339,71 +365,50 @@ def _render_file_summary_line_text(
     parts: list[str] = [f"{get_display_path(result)}:"]
 
     # Style helpers already respect the selected color policy.
-    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
+    muted_styler: TextStyler = style_for_role(
+        StyleRole.MUTED,
+        styled=styled,
+    )
 
-    # Shared helper keeps missing-file and unresolved-type labels consistent
-    # across TEXT and Markdown renderers.
-    ft_label: str | None = get_file_type_label(result)
-    if ft_label is not None:
-        parts.append(muted_styler(ft_label))
+    summary: PipelineFileSummary = summarize_pipeline_file(result)
+    if summary.file_type_label is not None:
+        parts.append(muted_styler(summary.file_type_label))
         parts.append("-")
 
-    # Resolve the public bucket for this result using its own execution mode and
-    # style the summary from its semantic outcome role.
-    apply_changes: bool = result.execution_mode.apply_changes is True
-    bucket: ResultBucket = map_bucket(result, apply=apply_changes)
-    key: str = bucket.outcome.value
-    label: str = bucket.reason or "(no reason provided)"
-
-    # Retrieve the bucket's text styler based on the bucket outcome's semantic style role:
+    # Retrieve the bucket's text styler based on the bucket outcome's semantic style role.
     outcome_styler: TextStyler = style_for_role(
-        get_outcome_style_role(bucket.outcome),
+        get_outcome_style_role(summary.bucket.outcome),
         styled=styled,
     )
 
     parts.append(
         outcome_styler(
-            f"{key}: {label}",
+            f"{summary.key}: {summary.label}",
         )
     )
 
-    # Secondary hints: write status > diff marker > diagnostics
-    if result.status.has_write_outcome():
+    for secondary_part in summary.secondary_parts:
         parts.append("-")
-        write_styler: TextStyler = style_for_role(
-            result.status.write.role,
-            styled=styled,
-        )
-        parts.append(
-            write_styler(
-                result.status.write.value,
+        if secondary_part == result.status.write.value and result.status.has_write_outcome():
+            write_styler: TextStyler = style_for_role(
+                result.status.write.role,
+                styled=styled,
             )
-        )
-    elif result.detail.diff_text:
-        parts.append("-")
-        diff_styler: TextStyler = style_for_role(
-            StyleRole.WOULD_CHANGE,
-            styled=styled,
-        )
-        parts.append(
-            diff_styler(
-                "diff",
+            parts.append(write_styler(secondary_part))
+        elif secondary_part == "diff" and result.detail.diff_text:
+            diff_styler: TextStyler = style_for_role(
+                StyleRole.WOULD_CHANGE,
+                styled=styled,
             )
-        )
+            parts.append(diff_styler(secondary_part))
+        else:
+            parts.append(secondary_part)
 
     diag_show_hint: str = ""
-    if result.diagnostics:
-        # Compose a compact triage summary such as "1 error, 2 warnings".
-        stats: DiagnosticStats = result.diagnostics.stats()
-        triage_summary: str = stats.triage_summary()
-        if triage_summary:
-            parts.append("-")
-            parts.append(triage_summary)
-
-        if verbosity_level <= 0 and stats.total > 0:
-            diag_show_hint = muted_styler(
-                f" (use '{CliShortOpt.VERBOSE}' to view)",
-            )
+    if verbosity_level <= 0 and summary.diagnostic_total > 0:
+        diag_show_hint = muted_styler(
+            f" (use '{CliShortOpt.VERBOSE}' to view)",
+        )
 
     return " ".join(parts) + diag_show_hint
 
@@ -440,8 +445,14 @@ def _render_per_file_guidance_text(
     parts: list[str] = []
 
     # Style helpers already respect the selected color policy.
-    muted_styler: TextStyler = style_for_role(StyleRole.MUTED, styled=styled)
-    emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=styled)
+    muted_styler: TextStyler = style_for_role(
+        StyleRole.MUTED,
+        styled=styled,
+    )
+    emphasis_styler: TextStyler = style_for_role(
+        StyleRole.EMPHASIS,
+        styled=styled,
+    )
 
     # Use the Box Drawing Light Horizontal character (U+2500) for a solid line
     diff_start_fence: Final[str] = " diff - start ".center(line_width, "─")
@@ -605,7 +616,10 @@ def _render_pipeline_diffs_text(
     diffs_end_fence: Final[str] = " diffs - end ".center(line_width, "─")
 
     # Style helpers already respect the selected color policy.
-    diff_fence_style: TextStyler = style_for_role(StyleRole.DIFF_LINE_NO, styled=styled)
+    diff_fence_style: TextStyler = style_for_role(
+        StyleRole.DIFF_LINE_NO,
+        styled=styled,
+    )
 
     parts.append(
         diff_fence_style(
@@ -682,9 +696,18 @@ def _render_summary_counts_text(
         TEXT summary grouped by outcome and reason.
     """
     # Style helpers already respect the selected color policy.
-    heading_styler: TextStyler = style_for_role(StyleRole.HEADING_TITLE, styled=styled)
-    emphasis_styler: TextStyler = style_for_role(StyleRole.EMPHASIS, styled=styled)
-    italic_styler: TextStyler = style_for_role(StyleRole.ITALIC, styled=styled)
+    heading_styler: TextStyler = style_for_role(
+        StyleRole.HEADING_TITLE,
+        styled=styled,
+    )
+    emphasis_styler: TextStyler = style_for_role(
+        StyleRole.EMPHASIS,
+        styled=styled,
+    )
+    italic_styler: TextStyler = style_for_role(
+        StyleRole.ITALIC,
+        styled=styled,
+    )
 
     parts: list[str] = []
 
@@ -755,7 +778,10 @@ def render_pipeline_output_text(
         raise RuntimeError(f"Invalid pipeline kind selected: {report.pipeline_kind}")
 
     # Style helpers already respect the selected color policy.
-    warning_styler: TextStyler = style_for_role(StyleRole.WARNING, styled=report.styled)
+    warning_styler: TextStyler = style_for_role(
+        StyleRole.WARNING,
+        styled=report.styled,
+    )
 
     parts: list[str] = []
 
@@ -835,8 +861,14 @@ def render_pipeline_apply_summary_text(
     """
     parts: list[str] = []
     # Style helpers already respect the selected color policy.
-    changed_styler: TextStyler = style_for_role(StyleRole.CHANGED, styled=styled)
-    warning_styler: TextStyler = style_for_role(StyleRole.WARNING, styled=styled)
+    changed_styler: TextStyler = style_for_role(
+        StyleRole.CHANGED,
+        styled=styled,
+    )
+    warning_styler: TextStyler = style_for_role(
+        StyleRole.WARNING,
+        styled=styled,
+    )
 
     if written:
         msg: str = f"\n✅ {command_path}: applied changes to {written} file(s)."

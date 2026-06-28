@@ -32,10 +32,8 @@ from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.logging import get_logger
 from topmark.pipeline.outcomes import ResultActionIntent
-from topmark.pipeline.outcomes import ResultBucket
 from topmark.pipeline.outcomes import collect_outcome_reason_counts
 from topmark.pipeline.outcomes import determine_result_action_intent
-from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import WriteStatus
@@ -46,19 +44,19 @@ from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_fenced_code_block_markdown
 from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.presentation.shared.paths import get_display_path
-from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
-from topmark.presentation.shared.pipeline import get_file_type_label
+from topmark.presentation.shared.pipeline import summarize_pipeline_file
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Sequence
 
     from topmark.core.logging import TopmarkLogger
-    from topmark.diagnostic.model import DiagnosticStats
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.outcomes import OutcomeReasonCount
     from topmark.pipeline.result import ProcessingResult
+    from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
+    from topmark.presentation.shared.pipeline import PipelineFileSummary
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -268,35 +266,15 @@ def _render_file_summary_line_markdown(
     Returns:
         One-line Markdown summary for the file.
     """
-    # Shared helper keeps missing-file and unresolved-type labels consistent
-    # across TEXT and Markdown renderers.
-    ft_label: str | None = get_file_type_label(result)
+    summary: PipelineFileSummary = summarize_pipeline_file(result)
+    suffix: str = " - " + " - ".join(summary.secondary_parts) if summary.secondary_parts else ""
 
-    # Resolve the public bucket for this result using its own execution mode.
-    apply_changes: bool = result.execution_mode.apply_changes is True
-    bucket: ResultBucket = map_bucket(result, apply=apply_changes)
-    key: str = bucket.outcome.value
-    label: str = bucket.reason or "(no reason provided)"
-
-    # Secondary hints: write status > diff marker > diagnostics
-    parts: list[str] = []
-    if result.status.has_write_outcome():
-        parts.append(result.status.write.value)
-    elif result.detail.diff_text:
-        parts.append("diff")
-
-    if result.diagnostics:
-        # Compose a compact triage summary such as "1 error, 2 warnings".
-        stats: DiagnosticStats = result.diagnostics.stats()
-        triage_summary: str = stats.triage_summary()
-        if triage_summary:
-            parts.append(triage_summary)
-
-    suffix: str = (" - " + " - ".join(parts)) if parts else ""
-
-    if ft_label is not None:
-        return f"`{get_display_path(result)}` ({ft_label}) - `{key}`: {label}{suffix}"
-    return f"`{get_display_path(result)}` - `{key}`: {label}{suffix}"
+    if summary.file_type_label is not None:
+        return (
+            f"`{get_display_path(result)}` ({summary.file_type_label}) - "
+            f"`{summary.key}`: {summary.label}{suffix}"
+        )
+    return f"`{get_display_path(result)}` - `{summary.key}`: {summary.label}{suffix}"
 
 
 def _render_per_file_guidance_markdown(
@@ -347,13 +325,13 @@ def _render_per_file_guidance_markdown(
             blocks.append(f"  - {msg}")
 
         # 3. diagnostics block; Markdown shows diagnostics whenever present.
-        if len(result.diagnostics) > 0:
+        if result.diagnostics:
             diag_md: str = render_diagnostics_markdown(
                 diagnostics=result.diagnostics,
             ).rstrip()
-            if diag_md:
-                for line in diag_md.splitlines():
-                    blocks.append(f"  {line}" if line else "")
+            # Triage summary is nonempty if there are diagnostics:
+            for line in diag_md.splitlines():
+                blocks.append(f"  {line}" if line else "")
 
         # 4. hints; Markdown shows all hints whenever present.
         hints: list[Hint] = list(result.hints)

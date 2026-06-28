@@ -544,6 +544,9 @@ ______________________________________________________________________
   guarantees, including stable envelope structure and additive-schema compatibility expectations.
 - Added CLI stream-routing contract tests and small command-layer stream-emission helpers clarifying
   explicit STDOUT payload ownership for check/strip output.
+- Centralized shared pipeline summary preparation for TEXT and Markdown renderers, keeping compact
+  file-type, outcome, write/diff, and diagnostic triage semantics consistent while leaving styling
+  and Markdown escaping in the format-specific presentation layers.
 
 ### Notes - Unreleased
 
