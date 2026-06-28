@@ -499,6 +499,10 @@ human-facing presentation:
 - Synthetic configuration-source identifiers are stable labels, not filesystem paths.
 - TEXT and Markdown output use shared display-path helpers so regular paths follow human-facing
   display policy and STDIN-backed processing shows the logical `--stdin-filename` when available.
+- TEXT and Markdown pipeline summaries share format-neutral summary preparation for file-type
+  labels, result buckets, write/diff markers, and diagnostic triage. Format-specific renderers
+  remain responsible for terminal styling, Markdown escaping, verbosity-specific nudges, and
+  document structure.
 - Unified diff file labels are human-facing display labels. They are not machine-readable path
   serialization fields and should not be treated like JSON or NDJSON path values.
 

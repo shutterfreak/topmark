@@ -31,7 +31,6 @@ from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.hints import make_hint
-from topmark.pipeline.reduction import ProcessingReduction
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.status import ComparisonStatus
@@ -46,13 +45,16 @@ from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.views import DiffView
 from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
+from topmark.presentation.markdown.pipeline import render_pipeline_diffs_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
 from topmark.presentation.output.pipeline import render_pipeline_command_human_output
 from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.paths import render_path_display_text
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.shared.pipeline import get_file_type_label
+from topmark.presentation.shared.pipeline import summarize_pipeline_file
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
+from topmark.presentation.text.pipeline import render_pipeline_diffs_text
 from topmark.presentation.text.pipeline import render_pipeline_output_text
 from topmark.runtime.model import RunOptions
 
@@ -63,7 +65,9 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.reduction import ProcessingReduction
     from topmark.pipeline.result import ProcessingResult
+    from topmark.presentation.shared.pipeline import PipelineFileSummary
 
 
 def _make_context(
@@ -124,7 +128,9 @@ def _make_report(
     )
 
 
-def _add_diff(ctx: ProcessingContext) -> None:
+def _add_diff(
+    ctx: ProcessingContext,
+) -> None:
     """Attach a deterministic unified diff to a context."""
     ctx.status.patch = PatchStatus.GENERATED
     ctx.views.diff = DiffView(text="--- old\n+++ new\n@@ -1 +1 @@\n-old\n+new\n")
@@ -168,14 +174,18 @@ def _force_strip_actionable_with_insert_intent(
     )
 
 
-def test_render_path_display_text_uses_regular_display_path(tmp_path: Path) -> None:
+def test_render_path_display_text_uses_regular_display_path(
+    tmp_path: Path,
+) -> None:
     """TEXT path labels should quote regular display paths without STDIN annotation."""
     ctx: ProcessingContext = _make_context(tmp_path / "regular.py")
 
     assert render_path_display_text(ctx) == f"'{ctx.path}'"
 
 
-def test_render_path_display_text_uses_stdin_filename(tmp_path: Path) -> None:
+def test_render_path_display_text_uses_stdin_filename(
+    tmp_path: Path,
+) -> None:
     """TEXT path labels should show the logical stdin filename in STDIN mode."""
     ctx: ProcessingContext = _make_context(
         tmp_path / "materialized-stdin.py",
@@ -186,14 +196,18 @@ def test_render_path_display_text_uses_stdin_filename(tmp_path: Path) -> None:
     assert render_path_display_text(ctx) == "'logical/input.py' (via STDIN)"
 
 
-def test_render_path_display_markdown_uses_regular_display_path(tmp_path: Path) -> None:
+def test_render_path_display_markdown_uses_regular_display_path(
+    tmp_path: Path,
+) -> None:
     """Markdown path labels should render regular display paths as code spans."""
     ctx: ProcessingContext = _make_context(tmp_path / "regular.py")
 
     assert render_path_display_markdown(ctx) == f"`{ctx.path}`"
 
 
-def test_render_path_display_markdown_uses_stdin_filename(tmp_path: Path) -> None:
+def test_render_path_display_markdown_uses_stdin_filename(
+    tmp_path: Path,
+) -> None:
     """Markdown path labels should show the logical stdin filename in STDIN mode."""
     ctx: ProcessingContext = _make_context(
         tmp_path / "materialized-stdin.py",
@@ -204,7 +218,9 @@ def test_render_path_display_markdown_uses_stdin_filename(tmp_path: Path) -> Non
     assert render_path_display_markdown(ctx) == "`logical/input.py` _(via STDIN)_"
 
 
-def test_shared_display_path_uses_stdin_filename_for_stdin_context(tmp_path: Path) -> None:
+def test_shared_display_path_uses_stdin_filename_for_stdin_context(
+    tmp_path: Path,
+) -> None:
     """Shared path rendering should prefer logical STDIN filenames."""
     ctx: ProcessingContext = _make_context(
         tmp_path / "stdin-buffer.py",
@@ -236,7 +252,84 @@ def test_shared_file_type_label_falls_back_to_unknown_for_unresolved_type(
     assert get_file_type_label(ctx) == "<unknown>"
 
 
-def test_render_pipeline_output_text_compact_check_guidance(tmp_path: Path) -> None:
+def test_shared_pipeline_file_summary_centralizes_compact_suffixes(
+    tmp_path: Path,
+) -> None:
+    """Shared summary data should capture suffix semantics without format details."""
+    ctx: ProcessingContext = _make_context(tmp_path / "summary-shared.py")
+    _add_diff(ctx)
+    ctx.diagnostics.add(
+        Diagnostic(level=DiagnosticLevel.WARNING, message="Check this file"),
+    )
+
+    result: ProcessingResult = reduce_processing_contexts([ctx]).results[0]
+
+    summary: PipelineFileSummary = summarize_pipeline_file(result)
+
+    assert summary.file_type_label == "python"
+    assert summary.key == "would insert"
+    assert summary.label == "header missing, changes found"
+    assert summary.secondary_parts == ("diff", "1 warning")
+    assert summary.diagnostic_total == 1
+
+
+def test_shared_pipeline_file_summary_prioritizes_write_status_over_diff(
+    tmp_path: Path,
+) -> None:
+    """Write outcomes should remain the primary compact suffix for both renderers."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "written.py",
+        apply_changes=True,
+    )
+    _add_diff(ctx)
+    ctx.status.write = WriteStatus.WRITTEN
+
+    result: ProcessingResult = reduce_processing_contexts([ctx]).results[0]
+
+    summary: PipelineFileSummary = summarize_pipeline_file(result)
+
+    assert summary.secondary_parts == ("changes written to file",)
+    assert summary.diagnostic_total == 0
+
+
+@pytest.mark.parametrize(
+    (
+        "diagnostic_level",
+        "expected_triage_summary",
+        "expected_secondary_parts",
+        "expected_diagnostic_total",
+    ),
+    [
+        (None, "", (), 0),
+        (DiagnosticLevel.WARNING, "1 warning", ("1 warning",), 1),
+    ],
+)
+def test_shared_pipeline_file_summary_reports_diagnostic_summary(
+    tmp_path: Path,
+    diagnostic_level: DiagnosticLevel | None,
+    expected_triage_summary: str,
+    expected_secondary_parts: tuple[str, ...],
+    expected_diagnostic_total: int,
+) -> None:
+    """Shared summary data should report diagnostics only when present."""
+    ctx: ProcessingContext = _make_context(tmp_path / "diagnostics-summary.py")
+    if diagnostic_level is not None:
+        ctx.diagnostics.add(
+            Diagnostic(level=diagnostic_level, message="Check this file"),
+        )
+
+    result: ProcessingResult = reduce_processing_contexts([ctx]).results[0]
+
+    summary: PipelineFileSummary = summarize_pipeline_file(result)
+
+    assert result.diagnostics.stats().triage_summary() == expected_triage_summary
+    assert summary.secondary_parts == expected_secondary_parts
+    assert summary.diagnostic_total == expected_diagnostic_total
+
+
+def test_render_pipeline_output_text_compact_check_guidance(
+    tmp_path: Path,
+) -> None:
     """Compact TEXT check output should include summary, diff hint, and apply guidance."""
     ctx: ProcessingContext = _make_context(tmp_path / "demo.py")
     _add_diff(ctx)
@@ -299,7 +392,9 @@ def test_render_pipeline_output_text_verbose_includes_banner_diagnostics_and_hin
     assert "use '-vv' to display detailed hints" in output
 
 
-def test_render_pipeline_output_text_summary_with_diff_section(tmp_path: Path) -> None:
+def test_render_pipeline_output_text_summary_with_diff_section(
+    tmp_path: Path,
+) -> None:
     """TEXT summary mode should render optional diffs plus grouped outcome counts."""
     ctx: ProcessingContext = _make_context(tmp_path / "summary.py")
     _add_diff(ctx)
@@ -503,7 +598,9 @@ def test_render_pipeline_output_markdown_per_file_includes_diagnostics_hints_and
     assert "+new" in output
 
 
-def test_render_pipeline_output_markdown_summary_table_and_total(tmp_path: Path) -> None:
+def test_render_pipeline_output_markdown_summary_table_and_total(
+    tmp_path: Path,
+) -> None:
     """Markdown summary mode should render grouped outcome table and total."""
     ctx: ProcessingContext = _make_context(tmp_path / "summary.md.py")
 
@@ -522,7 +619,9 @@ def test_render_pipeline_output_markdown_summary_table_and_total(tmp_path: Path)
     assert "Total files: **5**" in output
 
 
-def test_render_pipeline_output_markdown_summary_diff_section(tmp_path: Path) -> None:
+def test_render_pipeline_output_markdown_summary_diff_section(
+    tmp_path: Path,
+) -> None:
     """Markdown summary mode should render the separate diff section when requested."""
     path: Path = tmp_path / "diffs.py"
     ctx: ProcessingContext = _make_context(path)
@@ -707,6 +806,28 @@ def test_render_pipeline_output_text_per_file_renders_diff_fences(
     assert " diff - end " in output
 
 
+def test_render_pipeline_output_text_per_file_omits_empty_diff_block(
+    tmp_path: Path,
+) -> None:
+    """TEXT per-file output should not add diff fences for an empty retained diff."""
+    ctx: ProcessingContext = _make_context(tmp_path / "empty-diff-text.py")
+    ctx.status.patch = PatchStatus.GENERATED
+    ctx.views.diff = DiffView(text="")
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_output_text(
+        _make_report(
+            view_results=reduction.results,
+            show_diffs=True,
+        )
+    )
+
+    assert "empty-diff-text.py" in output
+    assert " diff - start " not in output
+    assert " diff - end " not in output
+
+
 def test_render_pipeline_apply_summary_markdown_reports_written_and_failed() -> None:
     """Markdown apply summary should report written and failed counts together."""
     output: str = render_pipeline_apply_summary_markdown(
@@ -856,7 +977,9 @@ def test_pipeline_strip_guidance_rejects_non_strip_intent(
         render_pipeline_output_markdown(report)
 
 
-def test_pipeline_renderers_reject_invalid_pipeline_kind(tmp_path: Path) -> None:
+def test_pipeline_renderers_reject_invalid_pipeline_kind(
+    tmp_path: Path,
+) -> None:
     """Both renderers should reject invalid pipeline kinds defensively."""
     ctx: ProcessingContext = _make_context(tmp_path / "invalid.py")
 
@@ -986,14 +1109,35 @@ def test_render_pipeline_diffs_helpers_return_empty_for_results_without_patches(
     tmp_path: Path,
 ) -> None:
     """Standalone diff renderers should return an empty payload when no patch renders."""
-    from topmark.presentation.markdown.pipeline import render_pipeline_diffs_markdown
-    from topmark.presentation.text.pipeline import render_pipeline_diffs_text
-
     ctx: ProcessingContext = _make_context(tmp_path / "no-patch.py")
     reduction: ProcessingReduction = reduce_processing_contexts([ctx])
 
     assert render_pipeline_diffs_markdown(results=reduction.results) == ""
     assert render_pipeline_diffs_text(results=reduction.results, styled=False) == ""
+
+
+def test_render_pipeline_diffs_text_supports_line_numbers(
+    tmp_path: Path,
+) -> None:
+    """Standalone TEXT diff rendering should support optional line numbers."""
+    ctx: ProcessingContext = _make_context(tmp_path / "numbered-diff.py")
+    _add_diff(ctx)
+
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    output: str = render_pipeline_diffs_text(
+        results=reduction.results,
+        styled=False,
+        show_line_numbers=True,
+    )
+
+    assert " diff - start " not in output
+    assert " diff - end " not in output
+    assert "0001|--- old" in output
+    assert "0002|+++ new" in output
+    assert "0005|+new" in output
+    assert "--- old" in output
+    assert "+new" in output
 
 
 def test_render_pipeline_output_text_strip_apply_mode_reports_write_skipped(

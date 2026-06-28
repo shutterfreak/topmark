@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.status import FsStatus
 
 if TYPE_CHECKING:
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
 
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.outcomes import ResultBucket
     from topmark.pipeline.reporting import ReportScope
     from topmark.pipeline.result import ProcessingResult
 
@@ -99,6 +101,32 @@ class PipelineCommandHumanReport:
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
+class PipelineFileSummary:
+    """Format-neutral one-line pipeline summary data.
+
+    The summary captures the common semantic fields used by TEXT and Markdown
+    per-file renderers. Format-specific renderers remain responsible for path
+    decoration, Markdown escaping, terminal styling, and verbosity-specific
+    nudges.
+
+    Attributes:
+        file_type_label: Human-facing file-type label, or `None` when omitted.
+        bucket: Public result bucket for the result execution mode.
+        key: Bucket outcome value for compact human display.
+        label: Bucket reason for compact human display.
+        secondary_parts: Additional compact suffix entries, in priority order.
+        diagnostic_total: Number of diagnostics attached to the result.
+    """
+
+    file_type_label: str | None
+    bucket: ResultBucket
+    key: str
+    label: str
+    secondary_parts: tuple[str, ...]
+    diagnostic_total: int
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PipelineCommandHumanOutput:
     """Rendered human pipeline command output split by output stream.
 
@@ -149,3 +177,45 @@ def get_file_type_label(
     if ctx.status.fs == FsStatus.NOT_FOUND:
         return None
     return "<unknown>"
+
+
+def summarize_pipeline_file(
+    result: ProcessingResult,
+) -> PipelineFileSummary:
+    """Build format-neutral compact summary data for one pipeline result.
+
+    TEXT and Markdown per-file renderers intentionally differ in styling,
+    escaping, and progressive disclosure. This helper centralizes the shared
+    semantic selection so both renderers describe write status, diffs, and
+    diagnostics consistently without sharing terminal or Markdown concerns.
+
+    Args:
+        result: Durable processing result to summarize.
+
+    Returns:
+        Presentation-ready summary data for human renderers.
+    """
+    apply_changes: bool = result.execution_mode.apply_changes is True
+    bucket: ResultBucket = map_bucket(result, apply=apply_changes)
+
+    secondary_parts: list[str] = []
+    if result.status.has_write_outcome():
+        secondary_parts.append(result.status.write.value)
+    elif result.detail.diff_text:
+        secondary_parts.append("diff")
+
+    diagnostic_total: int = 0
+    if result.diagnostics:
+        diagnostic_total = result.diagnostics.stats().total
+        triage_summary: str = result.diagnostics.stats().triage_summary()
+        # Triage summary is nonempty if there are diagnostics:
+        secondary_parts.append(triage_summary)
+
+    return PipelineFileSummary(
+        file_type_label=get_file_type_label(result),
+        bucket=bucket,
+        key=bucket.outcome.value,
+        label=bucket.reason or "(no reason provided)",
+        secondary_parts=tuple(secondary_parts),
+        diagnostic_total=diagnostic_total,
+    )
