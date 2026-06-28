@@ -24,13 +24,12 @@ from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
 from topmark.presentation.shared.paths import get_display_path
+from topmark.presentation.shared.probe import format_probe_match_signals
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from topmark.pipeline.result import ProbeCandidateSnapshot
-    from topmark.pipeline.result import ProbeMatchSnapshot
     from topmark.pipeline.result import ProbeSnapshot
     from topmark.pipeline.result import ProcessingResult
     from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
@@ -186,30 +185,6 @@ def _render_probe_selected_details_text(
     return lines
 
 
-def _format_probe_match_signals_text(
-    candidate: ProbeCandidateSnapshot,
-) -> str:
-    """Format candidate match signals as compact TEXT.
-
-    Args:
-        candidate: Probe candidate whose match signals should be rendered.
-
-    Returns:
-        Compact match-signal summary.
-    """
-    match: ProbeMatchSnapshot = candidate.match
-    parts: list[str] = [
-        f"extension={str(match.extension).lower()}",
-        f"filename={str(match.filename).lower()}",
-        f"pattern={str(match.pattern).lower()}",
-        f"content_probe={str(match.content_probe_allowed).lower()}",
-        f"content_match={str(match.content_match).lower()}",
-    ]
-    if match.content_error is not None:
-        parts.append(f"content_error={match.content_error}")
-    return " ".join(parts)
-
-
 def _render_probe_candidates_text(
     *,
     probe: ProbeSnapshot,
@@ -243,7 +218,7 @@ def _render_probe_candidates_text(
             if candidate.selected
             else emphasis_styler(candidate_label)
         )
-        lines.append(muted_styler(f"       match: {_format_probe_match_signals_text(candidate)}"))
+        lines.append(muted_styler(f"       match: {format_probe_match_signals(candidate)}"))
     return lines
 
 

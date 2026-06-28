@@ -516,6 +516,11 @@ ______________________________________________________________________
 - Added focused regression coverage for Rich-aware CLI output assertion helpers, including
   layout-independent verification of strict file-type overlap diagnostics across ANSI styling, panel
   rendering, and wrapped terminal output.
+- Expanded presentation-layer regression coverage for TEXT, Markdown, and shared presentation
+  helpers, including pipeline guidance rendering, probe rendering, version formatting, configuration
+  presentation, diagnostic presentation, and shared presentation utilities. Added focused contract
+  tests for durable `ProcessingResult` and diagnostic models while reducing duplicated
+  probe-rendering logic through shared presentation helpers.
 - Hardened CLI human-output regression tests against Rich styling, panel borders, terminal-width
   wrapping, and other layout differences by replacing brittle raw output assertions with semantic
   Rich-aware assertion helpers.
