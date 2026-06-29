@@ -68,10 +68,12 @@ processing, and presentation layers:
   step execution. If multiple selected processing paths are hard links to the same filesystem
   object, each affected path receives a terminal policy-blocked result; no source, target, winner,
   or loser path is selected.
-- `PatcherStep` generates retained unified diffs for downstream presentation. Human TEXT and
-  Markdown frontends render those diffs using human-facing display paths rather than
-  machine-readable path serialization. Machine-readable presentation derives structured diff
-  payloads from the retained diff data instead of rendering terminal-oriented unified diff blocks.
+- `PatcherStep` generates retained unified diffs for downstream presentation. During reduction,
+  `ProcessingResult` snapshots the unified diff text as durable result detail without retaining the
+  transient `DiffView` or structured edit metadata. Human TEXT and Markdown frontends render those
+  retained diffs using human-facing display paths rather than machine-readable path serialization.
+  Machine-readable presentation derives structured diff payloads from the retained unified diff text
+  instead of rendering terminal-oriented unified diff blocks.
 - TEXT and Markdown frontends share display-path helpers so STDIN-backed processing consistently
   displays the logical `--stdin-filename` when available.
 

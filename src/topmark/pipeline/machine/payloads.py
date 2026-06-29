@@ -107,7 +107,7 @@ def build_processing_result_payload(
 
     Args:
         result: Durable per-file processing result.
-        include_diff: Whether to include thd unified diff in the payload.
+        include_diff: Whether to include the unified diff in the payload.
 
     Returns:
         JSON-compatible processing result payload without embedded

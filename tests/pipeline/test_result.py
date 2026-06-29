@@ -184,6 +184,22 @@ def test_processing_result_snapshots_diff_text_without_retaining_diff_view(
     assert result.detail.diff_text == "--- current\n+++ updated\n"
 
 
+def test_processing_result_preserves_empty_diff_text_as_durable_detail(
+    tmp_path: Path,
+) -> None:
+    """ProcessingResult should distinguish empty diff text from no diff view."""
+    ctx: ProcessingContext = _make_result_context(tmp_path)
+    ctx.views.diff = DiffView(text="")
+
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    assert result.detail.diff_text == ""
+
+    ctx.views.diff.release()
+
+    assert result.detail.diff_text == ""
+
+
 def test_processing_result_to_dict_includes_detail_snapshot(
     tmp_path: Path,
 ) -> None:
