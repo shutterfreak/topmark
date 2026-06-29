@@ -27,12 +27,15 @@ memray or pympler are warranted.
 
 from __future__ import annotations
 
+# The source-checkout bootstrap below intentionally precedes TopMark imports.
+# ruff: noqa: E402
 import argparse
 import contextlib
 import gc
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -45,6 +48,13 @@ from typing import TYPE_CHECKING
 from typing import Final
 from typing import Literal
 
+# Allow running this tool directly from a source checkout without requiring an
+# editable install. The bootstrap must occur before any TopMark imports.
+REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
+SRC_ROOT: Final[Path] = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.policy import make_policy_registry
 from topmark.config.types import FileWriteStrategy
@@ -53,12 +63,16 @@ from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.engine import PipelineExecutionState
+from topmark.pipeline.engine import iter_steps_for_files
 from topmark.pipeline.pipelines import select_pipeline
+from topmark.pipeline.reduction import iter_processing_results
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Sequence
+    from resource import struct_rusage
 
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
@@ -66,18 +80,12 @@ if TYPE_CHECKING:
     from topmark.core.exit_codes import ExitCode
     from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.protocols import Step
+    from topmark.pipeline.result import ProcessingResult
     from topmark.pipeline.views import ViewSlot
 
 
-# Allow running this tool directly from a source checkout without requiring an editable install.
-REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
-SRC_ROOT: Final[Path] = REPO_ROOT / "src"
-if str(SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(SRC_ROOT))
-
-
 PipelineKind = Literal["check", "strip"]
-SuiteName = Literal["smoke", "baseline", "pathological"]
+SuiteName = Literal["smoke", "baseline", "pathological", "repository"]
 ScenarioName = Literal[
     "small_1kb_missing_header",
     "small_10kb_existing_header",
@@ -90,9 +98,10 @@ ScenarioName = Literal[
     "strip_large_header",
     "mixed_newlines",
     "bom_file",
+    "repo_many_small_mixed",
 ]
 
-# ---- Benchmark scenario definitions ----
+# ---- Benchmark scenario and suite definitions ----
 
 DEFAULT_SCENARIOS: Final[tuple[ScenarioName, ...]] = (
     "small_1kb_missing_header",
@@ -107,6 +116,10 @@ DEFAULT_SCENARIOS: Final[tuple[ScenarioName, ...]] = (
     "bom_file",
 )
 LARGE_SCENARIOS: Final[tuple[ScenarioName, ...]] = ("large_10mb_missing_header",)
+
+# Repository scenarios are opt-in so the default ad-hoc run stays comparable with
+# the historical single-file baseline corpus.
+REPOSITORY_SCENARIOS: Final[tuple[ScenarioName, ...]] = ("repo_many_small_mixed",)
 
 # ---- Pipeline mode definitions ----
 DEFAULT_MODES: Final[tuple[str, ...]] = (
@@ -132,9 +145,9 @@ ALL_MODES: Final[tuple[str, ...]] = DEFAULT_MODES + PRUNED_MODES
 
 # ---- Predefined benchmark suites ----
 
-# Suites use historical mode names by default. This keeps repeated `--suite`
-# measurements comparable with the original #134 baseline unless callers opt in
-# to pruned modes explicitly via `--mode`.
+# Historical suites keep their original mode names to preserve #134 comparability.
+# The repository suite is deliberately pruned-only because it measures aggregate
+# durable result ownership after volatile view release, not legacy retained views.
 SUITE_SCENARIOS: Final[dict[SuiteName, tuple[ScenarioName, ...]]] = {
     "smoke": ("small_1kb_missing_header",),
     "baseline": (
@@ -150,12 +163,25 @@ SUITE_SCENARIOS: Final[dict[SuiteName, tuple[ScenarioName, ...]]] = {
         "bom_file",
     ),
     "pathological": ("huge_header", "huge_diff", "strip_large_header"),
+    "repository": REPOSITORY_SCENARIOS,
 }
 SUITE_MODES: Final[dict[SuiteName, tuple[str, ...]]] = {
     "smoke": ("check",),
     "baseline": DEFAULT_MODES,
-    "pathological": ("check", "check_diff", "strip", "strip_diff"),
+    "pathological": (
+        "check",
+        "check_diff",
+        "strip",
+        "strip_diff",
+    ),
+    "repository": (
+        "check_pruned",
+        "check_diff_pruned",
+        "strip_pruned",
+        "strip_diff_pruned",
+    ),
 }
+REPOSITORY_FILE_COUNT: Final[int] = 250
 HEADER_LINES: Final[tuple[str, ...]] = (
     "# topmark:header:start\n",
     "#\n",
@@ -179,12 +205,18 @@ class RunDestination:
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class Scenario:
-    """Generated benchmark file description."""
+    """Generated benchmark scenario description.
+
+    A scenario may point at one file or at a directory tree for repository-scale
+    measurements. `size_bytes` and `file_count` are aggregate values for the full
+    generated input.
+    """
 
     name: ScenarioName
     path: Path
     size_bytes: int
     description: str
+    file_count: int = 1
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -218,7 +250,12 @@ class StepSample:
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class RunMeasurement:
-    """Measurement result for one scenario/mode pair."""
+    """Measurement result for one scenario/mode pair.
+
+    Single-file measurements retain step samples and final view-size summaries.
+    Repository-scale measurements record aggregate result counts and durable diff
+    bytes after reduction, while omitting per-file step samples.
+    """
 
     scenario: str
     mode: str
@@ -230,7 +267,10 @@ class RunMeasurement:
     end_rss_bytes: int | None
     max_observed_rss_bytes: int | None
     stdout_bytes: int
-    exit_code: str | None
+    input_file_count: int
+    result_count: int
+    result_diff_bytes: int
+    exit_code: int | None
     status: dict[str, str]
     views_before_prune: dict[str, int | bool]
     views_after_prune: dict[str, int | bool]
@@ -252,11 +292,19 @@ def _rss_bytes() -> int | None:
     except ImportError:
         return None
 
-    usage = resource.getrusage(resource.RUSAGE_SELF)
+    usage: struct_rusage = resource.getrusage(resource.RUSAGE_SELF)
     value = int(usage.ru_maxrss)
     if sys.platform == "darwin":
         return value
     return value * 1024
+
+
+def _max_optional_rss(*values: int | None) -> int | None:
+    """Return the maximum RSS observation when the platform reports RSS."""
+    observed: list[int] = [value for value in values if value is not None]
+    if not observed:
+        return None
+    return max(observed)
 
 
 def _line_count(value: object) -> int:
@@ -355,19 +403,21 @@ def _write_summary(path: Path, measurements: Sequence[RunMeasurement]) -> None:
     lines: list[str] = [
         "# TopMark pipeline memory baseline",
         "",
-        "| Scenario | Mode | File size | Image lines | Updated lines | Diff size | Peak traced | "
-        "Max RSS | Elapsed ms |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Scenario | Mode | Files | File size | Image lines | Updated lines | Diff size | "
+        "Result diff | Peak traced | Max RSS | Elapsed ms |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for measurement in measurements:
         lines.append(
             "| "
             f"{measurement.scenario} | "
             f"{measurement.mode} | "
+            f"{measurement.input_file_count} | "
             f"{_format_bytes(measurement.file_size_bytes)} | "
             f"{measurement.views_before_prune['image_lines']} | "
             f"{measurement.views_before_prune['updated_lines']} | "
             f"{_format_bytes(int(measurement.views_before_prune['diff_bytes']))} | "
+            f"{_format_bytes(measurement.result_diff_bytes)} | "
             f"{_format_bytes(measurement.peak_tracemalloc_bytes)} | "
             f"{_format_bytes(measurement.max_observed_rss_bytes)} | "
             f"{_format_ms(measurement.elapsed_ns)} |"
@@ -461,9 +511,48 @@ def _write_huge_diff(path: Path, *, body_bytes: int) -> None:
     path.write_text("".join(header) + (body_line * body_count), encoding="utf-8")
 
 
-def _build_scenarios(root: Path, *, include_large: bool) -> list[Scenario]:
+def _write_repository_workload(
+    root: Path,
+    *,
+    file_count: int = REPOSITORY_FILE_COUNT,
+) -> None:
+    """Write the deterministic many-file repository-scale workload.
+
+    The mix intentionally includes missing, current, and outdated headers so the
+    repository suite exercises unchanged, insert, replace, and diff-retention paths
+    without depending on external fixture data.
+    """
+    for index in range(file_count):
+        package_dir: Path = root / f"package_{index // 25:02d}"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        path: Path = package_dir / f"module_{index:04d}.py"
+        if index % 10 == 0:
+            _write_huge_diff(path, body_bytes=24_000)
+        elif index % 3 == 0:
+            _write_with_header(path, body_bytes=8_000)
+        else:
+            _write_repeated_body(path, target_bytes=8_000)
+
+
+def _tree_size_bytes(root: Path) -> int:
+    """Return the total size of files below `root`."""
+    if root.is_file():
+        return root.stat().st_size
+    return sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+
+
+def _tree_file_count(root: Path) -> int:
+    """Return the number of files below `root`."""
+    if root.is_file():
+        return 1
+    return sum(1 for path in root.rglob("*") if path.is_file())
+
+
+def build_scenarios(root: Path, *, include_large: bool) -> list[Scenario]:
     """Generate benchmark files and return their scenario descriptors."""
-    names: tuple[ScenarioName, ...] = DEFAULT_SCENARIOS + (LARGE_SCENARIOS if include_large else ())
+    names: tuple[ScenarioName, ...] = (
+        DEFAULT_SCENARIOS + REPOSITORY_SCENARIOS + (LARGE_SCENARIOS if include_large else ())
+    )
     scenarios: list[Scenario] = []
 
     for name in names:
@@ -503,6 +592,17 @@ def _build_scenarios(root: Path, *, include_large: bool) -> list[Scenario]:
                 description = (
                     "Large strip workload; stresses removed-header and updated-image costs."
                 )
+            case "repo_many_small_mixed":
+                # Repository workloads are directory scenarios. Avoid the default
+                # `.py` suffix used by single-file scenarios so aggregate file counts
+                # and sizes describe the generated tree rather than a placeholder file.
+                path = root / name
+                path.mkdir(parents=True, exist_ok=True)
+                _write_repository_workload(path)
+                description = (
+                    "Repository-scale workload with many small Python files, mixing "
+                    "missing, current, and outdated headers."
+                )
             case "mixed_newlines":
                 path.write_bytes(b"print('a')\nprint('b')\r\nprint('c')\n")
                 description = "Mixed newline file; should stop before expensive update paths."
@@ -515,8 +615,9 @@ def _build_scenarios(root: Path, *, include_large: bool) -> list[Scenario]:
             Scenario(
                 name=name,
                 path=path,
-                size_bytes=path.stat().st_size,
+                size_bytes=_tree_size_bytes(path),
                 description=description,
+                file_count=_tree_file_count(path),
             )
         )
     return scenarios
@@ -721,6 +822,104 @@ def _run_steps_with_samples(
     return ctx, samples, stdout_capture.getvalue()
 
 
+def _measure_repository_one(
+    *,
+    scenario: Scenario,
+    mode: Mode,
+    config: FrozenConfig,
+) -> RunMeasurement:
+    """Measure one many-file repository scenario/mode pair.
+
+    Repository measurements exercise the production multi-file execution and
+    reduction boundary. They intentionally summarize aggregate durable result
+    state instead of capturing per-step samples for every file.
+    """
+    pipeline: PipelineSelection = select_pipeline(
+        mode.kind,
+        apply=mode.apply,
+        diff=mode.diff,
+    )
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        selection=pipeline,
+        output_target=mode.output_target,
+        file_write_strategy=FileWriteStrategy.ATOMIC,
+        prune_views=mode.prune_views,
+    )
+    file_list: list[Path] = sorted(scenario.path.rglob("*.py"))
+
+    gc.collect()
+    tracemalloc.start()
+    start_rss: int | None = _rss_bytes()
+    start_ns: int = time.perf_counter_ns()
+    state: PipelineExecutionState = PipelineExecutionState()
+    contexts: Iterable[ProcessingContext] = iter_steps_for_files(
+        run_options=run_options,
+        config=config,
+        path_configs=None,
+        pipeline=pipeline,
+        file_list=file_list,
+        state=state,
+    )
+    # Materialize only durable ProcessingResult snapshots. The reducer releases
+    # volatile context views as each file is consumed so this measures retained
+    # result ownership rather than full ProcessingContext retention.
+    results: tuple[ProcessingResult, ...] = tuple(
+        iter_processing_results(contexts, release_views=True)
+    )
+    elapsed_ns: int = time.perf_counter_ns() - start_ns
+    final_bytes, peak_bytes = tracemalloc.get_traced_memory()
+    end_rss: int | None = _rss_bytes()
+    tracemalloc.stop()
+
+    # Diff text is durable result detail, so aggregate its retained bytes separately
+    # from transient per-context diff views used by the single-file measurements.
+    result_diff_bytes: int = sum(
+        len(result.detail.diff_text.encode("utf-8"))
+        for result in results
+        if result.detail.diff_text is not None
+    )
+    max_observed_rss: int | None = _max_optional_rss(start_rss, end_rss)
+
+    return RunMeasurement(
+        scenario=scenario.name,
+        mode=mode.name,
+        file_size_bytes=scenario.size_bytes,
+        elapsed_ns=elapsed_ns,
+        peak_tracemalloc_bytes=peak_bytes,
+        final_tracemalloc_bytes=final_bytes,
+        start_rss_bytes=start_rss,
+        end_rss_bytes=end_rss,
+        max_observed_rss_bytes=max_observed_rss,
+        stdout_bytes=0,
+        input_file_count=len(file_list),
+        result_count=len(results),
+        result_diff_bytes=result_diff_bytes,
+        exit_code=state.exit_code.value if state.exit_code is not None else None,
+        status={},
+        views_before_prune={
+            "image_lines": 0,
+            "header_lines": 0,
+            "header_block_bytes": 0,
+            "render_lines": 0,
+            "render_block_bytes": 0,
+            "updated_lines": 0,
+            "diff_bytes": 0,
+            "has_build_view": False,
+        },
+        views_after_prune={
+            "image_lines": 0,
+            "header_lines": 0,
+            "header_block_bytes": 0,
+            "render_lines": 0,
+            "render_block_bytes": 0,
+            "updated_lines": 0,
+            "diff_bytes": 0,
+            "has_build_view": False,
+        },
+        steps=[],
+    )
+
+
 def _measure_one(
     *,
     scenario: Scenario,
@@ -729,6 +928,13 @@ def _measure_one(
     policy_registry: PolicyRegistry,
 ) -> RunMeasurement:
     """Measure one scenario/mode pair."""
+    if scenario.name == "repo_many_small_mixed":
+        return _measure_repository_one(
+            scenario=scenario,
+            mode=mode,
+            config=config,
+        )
+
     gc.collect()
     tracemalloc.start()
     start_rss: int | None = _rss_bytes()
@@ -752,10 +958,8 @@ def _measure_one(
     views_before_prune: dict[str, int | bool] = _view_sizes(ctx)
     ctx.views.release_all()
     views_after_prune: dict[str, int | bool] = _view_sizes(ctx)
-    max_sample_rss: int = max((sample.rss_bytes or 0 for sample in samples), default=0)
-    max_observed_rss: int = max(
-        value for value in (start_rss, end_rss, max_sample_rss or None) if value is not None
-    )
+    max_sample_rss: int | None = _max_optional_rss(*(sample.rss_bytes for sample in samples))
+    max_observed_rss: int | None = _max_optional_rss(start_rss, end_rss, max_sample_rss)
     tracemalloc.stop()
 
     return RunMeasurement(
@@ -769,6 +973,9 @@ def _measure_one(
         end_rss_bytes=end_rss,
         max_observed_rss_bytes=max_observed_rss,
         stdout_bytes=len(stdout_text.encode("utf-8")),
+        input_file_count=scenario.file_count,
+        result_count=1,
+        result_diff_bytes=int(views_before_prune["diff_bytes"]),
         exit_code=exit_code.value if exit_code is not None else None,
         status=_status_dict(ctx),
         views_before_prune=views_before_prune,
@@ -885,7 +1092,7 @@ def _int_bool_mapping(value: object, *, message: str) -> dict[str, int | bool]:
     return result
 
 
-def _measurement_from_mapping(payload: dict[str, object]) -> RunMeasurement:
+def measurement_from_mapping(payload: dict[str, object]) -> RunMeasurement:
     """Rebuild one [RunMeasurement](RunMeasurement) from JSON-compatible data.
 
     Args:
@@ -941,7 +1148,10 @@ def _measurement_from_mapping(payload: dict[str, object]) -> RunMeasurement:
         end_rss_bytes=_optional_int(payload, "end_rss_bytes"),
         max_observed_rss_bytes=_optional_int(payload, "max_observed_rss_bytes"),
         stdout_bytes=_required_int(payload, "stdout_bytes"),
-        exit_code=str(payload["exit_code"]) if payload.get("exit_code") is not None else None,
+        input_file_count=_required_int(payload, "input_file_count"),
+        result_count=_required_int(payload, "result_count"),
+        result_diff_bytes=_required_int(payload, "result_diff_bytes"),
+        exit_code=_optional_int(payload, "exit_code"),
         status={str(key): str(value) for key, value in status_payload.items()},
         views_before_prune=_int_bool_mapping(
             payload.get("views_before_prune"),
@@ -995,7 +1205,7 @@ def _measure_one_subprocess(
         measurements_payload[0],
         message="subprocess measurement payload must be an object",
     )
-    return _measurement_from_mapping(measurement_payload)
+    return measurement_from_mapping(measurement_payload)
 
 
 def _measure_all_subprocesses(
@@ -1082,7 +1292,7 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--scenario",
         action="append",
-        choices=DEFAULT_SCENARIOS + LARGE_SCENARIOS,
+        choices=DEFAULT_SCENARIOS + REPOSITORY_SCENARIOS + LARGE_SCENARIOS,
         help="Scenario to run. May be repeated. Defaults to the standard scenario set.",
     )
     parser.add_argument(
@@ -1109,10 +1319,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     args: argparse.Namespace = _parse_args(sys.argv[1:] if argv is None else argv)
     suite: SuiteName | None = args.suite
     if suite is not None:
+        # Suites own both scenario and mode selection so documented benchmark runs
+        # remain reproducible even if default ad-hoc selections evolve.
         scenario_names: Sequence[str] | None = SUITE_SCENARIOS[suite]
         mode_names: Sequence[str] = SUITE_MODES[suite]
     else:
-        scenario_names = args.scenario
+        # Keep repository-scale workloads opt-in for ad-hoc runs; the default remains
+        # the historical single-file corpus unless callers select the repository suite
+        # or the scenario explicitly.
+        scenario_names = args.scenario if args.scenario is not None else DEFAULT_SCENARIOS
         mode_names = args.mode if args.mode is not None else DEFAULT_MODES
     modes: list[Mode] = [_mode_from_name(name) for name in mode_names]
     destination: RunDestination = _resolve_destination(args, suite=suite)
@@ -1120,7 +1335,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="topmark-perf-") as tmp:
         root = Path(tmp)
         scenarios: list[Scenario] = _select_scenarios(
-            _build_scenarios(root, include_large=args.include_large),
+            build_scenarios(root, include_large=args.include_large),
             scenario_names,
         )
         if bool(args.single_process):
@@ -1132,13 +1347,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 for mode in modes:
                     # Each measurement gets a fresh copy so apply-mode runs do not contaminate
                     # subsequent dry-run or strip measurements for the same logical scenario.
-                    isolated: Path = root / f"isolated-{scenario.name}-{mode.name}.py"
-                    isolated.write_bytes(scenario.path.read_bytes())
+                    isolated: Path = root / f"isolated-{scenario.name}-{mode.name}"
+                    if scenario.path.is_dir():
+                        shutil.copytree(scenario.path, isolated)
+                    else:
+                        isolated = isolated.with_suffix(".py")
+                        isolated.write_bytes(scenario.path.read_bytes())
                     isolated_scenario = Scenario(
                         name=scenario.name,
                         path=isolated,
-                        size_bytes=isolated.stat().st_size,
+                        size_bytes=_tree_size_bytes(isolated),
                         description=scenario.description,
+                        file_count=_tree_file_count(isolated),
                     )
                     measurements.append(
                         _measure_one(

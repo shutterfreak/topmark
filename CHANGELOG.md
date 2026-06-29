@@ -51,6 +51,9 @@ ______________________________________________________________________
   measurement scope, benchmark output layout, and initial baseline results.
 - Added canonical benchmark suites (`smoke`, `pathological`, and `baseline`) together with preserved
   run metadata, JSON reports, and Markdown summaries under `artifacts/perf/`.
+- Added an exploratory repository-scale benchmark suite for measuring many-file pipeline execution,
+  durable `ProcessingResult` snapshot retention, aggregate diff-detail ownership, and run
+  throughput.
 - Added a local `perf_baseline` Nox session and `make perf-baseline` entry point for reproducible
   memory/allocation baseline generation.
 - Added structured planned-edit metadata (`EditView`, `PlannedEdit`, and `PlanEditKind`) together
