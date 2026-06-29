@@ -72,7 +72,6 @@ from topmark.runtime.model import RunOptions
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Sequence
-    from resource import struct_rusage
 
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
@@ -292,7 +291,9 @@ def _rss_bytes() -> int | None:
     except ImportError:
         return None
 
-    usage: struct_rusage = resource.getrusage(resource.RUSAGE_SELF)
+    # Avoid annotating with `resource.struct_rusage`; Pyright cannot resolve that
+    # symbol on Windows.
+    usage = resource.getrusage(resource.RUSAGE_SELF)
     value = int(usage.ru_maxrss)
     if sys.platform == "darwin":
         return value
