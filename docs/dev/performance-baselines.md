@@ -54,7 +54,7 @@ ______________________________________________________________________
 
 ## Benchmark suites
 
-Three suites are currently defined.
+Four suites are currently defined.
 
 ### Smoke
 
@@ -103,6 +103,24 @@ which executes:
 ```sh
 python tools/perf/pipeline_memory_baseline.py --suite baseline
 ```
+
+### Repository
+
+Many-file validation suite used to measure repository-scale pipeline ownership behavior. Unlike the
+historical suites, this suite processes a deterministic synthetic repository containing many Python
+files in one measured run. It exercises the streaming-capable execution and reduction boundaries,
+per-file durable `ProcessingResult` snapshot retention, aggregate diff-detail retention, and
+cumulative run throughput.
+
+```sh
+python tools/perf/pipeline_memory_baseline.py \
+    --suite repository \
+    --run-id issue187-repository
+```
+
+The repository suite is intended as an exploratory repository-scale baseline. It complements, rather
+than replaces, the canonical single-file `baseline` and `pathological` suites because it measures
+whole-run cumulative behavior instead of isolated per-file materialization costs.
 
 ______________________________________________________________________
 
@@ -228,7 +246,8 @@ identified during the pipeline ownership audit.
 
 ### Scope of current measurements
 
-The current benchmark corpus consists exclusively of single-file workloads.
+The historical `smoke`, `baseline`, and `pathological` benchmark suites consist exclusively of
+single-file workloads.
 
 Each measurement represents:
 
@@ -240,7 +259,7 @@ one generated file
 
 The baseline results therefore characterize per-file pipeline behavior and materialization costs.
 
-The current benchmark suite does not attempt to measure:
+Those historical suites do not attempt to measure:
 
 - repository-scale traversal;
 - many-file batch execution;
@@ -249,8 +268,14 @@ The current benchmark suite does not attempt to measure:
 - repeated small-file scaling behavior;
 - whole-run memory growth across large file sets.
 
-Those concerns may warrant additional benchmark suites in future performance work if optimization
-efforts extend beyond per-file pipeline processing.
+The `repository` suite introduced for GitHub issue 187 covers the many-file pipeline processing
+portion of that gap. It generates one deterministic synthetic repository, processes the selected
+file list in a single measured run, reduces each mutable `ProcessingContext` to a durable
+`ProcessingResult` snapshot with volatile-view release enabled, and records aggregate run metrics.
+
+The repository suite intentionally does not measure CLI presentation, JSON/NDJSON serialization, or
+public streaming API alternatives. Those contracts were reviewed separately and remain out of scope
+for this benchmark.
 
 ______________________________________________________________________
 
@@ -665,6 +690,43 @@ work that attempts to reduce the remaining diff-heavy memory profile should focu
 fallback rendering, lazy patch-preview ownership, or broader many-file/repository-scale benchmarks
 rather than further comparer-local eager-list removal.
 
+### Repository-scale baseline (GitHub issue 187)
+
+GitHub issue 187 added an exploratory repository-scale suite to complement the existing
+single-file-oriented benchmark corpus. The new `repository` suite currently contains the
+`repo_many_small_mixed` workload: a deterministic synthetic repository of 250 Python files spread
+across package directories, mixing files with missing headers, current headers, and outdated
+headers.
+
+The suite runs pruned check and strip modes with and without diff generation:
+
+```text
+check_pruned
+check_diff_pruned
+strip_pruned
+strip_diff_pruned
+```
+
+The repository-scale metrics are intentionally aggregate run metrics rather than per-file step
+samples. They include input file count, reduced result count, total input bytes, elapsed time, peak
+traced allocations, RSS observations where available, and retained durable diff bytes copied into
+`ProcessingResult` detail snapshots. This makes the streaming execution and reduction architecture
+measurable without changing CLI, API, presentation, or machine-output contracts.
+
+Representative measurements from an issue 187 repository-suite run were:
+
+| Scenario                | Mode                | Files | Input size | Result diff | Peak traced |   Max RSS |
+| ----------------------- | ------------------- | ----: | ---------: | ----------: | ----------: | --------: |
+| `repo_many_small_mixed` | `check_pruned`      |   250 |    2.3 MiB |         0 B |     1.1 MiB | 310.8 MiB |
+| `repo_many_small_mixed` | `check_diff_pruned` |   250 |    2.3 MiB |   150.7 KiB |     1.4 MiB | 298.0 MiB |
+| `repo_many_small_mixed` | `strip_pruned`      |   250 |    2.3 MiB |         0 B |     1.1 MiB | 298.0 MiB |
+| `repo_many_small_mixed` | `strip_diff_pruned` |   250 |    2.3 MiB |    59.4 KiB |     1.3 MiB | 305.3 MiB |
+
+These figures should be treated as exploratory snapshots rather than hard thresholds. They are most
+useful for comparing future many-file pipeline changes on the same platform and Python version. They
+should not be used to replace the historical single-file baselines, which remain better suited for
+isolating file-image, comparison, patch-generation, and scanner/header materialization costs.
+
 ______________________________________________________________________
 
 ## Known caveats
@@ -696,3 +758,4 @@ ______________________________________________________________________
 - GitHub issue 147: Design end-to-end streaming output architecture for CLI and machine formats
 - GitHub issue 165: Evaluate streaming-oriented reduction and incremental reporting architecture
 - GitHub issue 183: Audit and reduce comparison-time materialization in pipeline execution
+- GitHub issue 187: Establish repository-scale pipeline memory and ownership benchmarks
