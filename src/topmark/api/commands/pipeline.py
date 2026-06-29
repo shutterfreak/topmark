@@ -28,11 +28,17 @@ Notes:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Final
+from typing import Literal
 
 from topmark.api.runtime import run_pipeline_results
 from topmark.api.runtime import run_probe_pipeline_results
+from topmark.api.types import FileResultEvent
+from topmark.api.types import ProbeFileResultEvent
+from topmark.api.types import RunCompletedEvent
+from topmark.api.types import RunStartedEvent
 from topmark.api.view import finalize_probe_result
 from topmark.api.view import finalize_run_result
 from topmark.core.errors import InvalidReportScopeError
@@ -47,12 +53,15 @@ from topmark.runtime.model import RunOptions
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
+    from collections.abc import Iterator
     from collections.abc import Mapping
     from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.api.runtime import ApiPipelineResultRun
+    from topmark.api.types import ContentStreamEvent
     from topmark.api.types import ProbeRunResult
+    from topmark.api.types import ProbeStreamEvent
     from topmark.api.types import PublicPolicy
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
@@ -62,6 +71,9 @@ if TYPE_CHECKING:
 __all__ = (
     "check",
     "probe",
+    "stream_check",
+    "stream_probe",
+    "stream_strip",
     "strip",
 )
 
@@ -78,6 +90,38 @@ _STRIP_UPDATE_STATUSES: Final[frozenset[PlanStatus]] = frozenset(
         PlanStatus.REMOVED,
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _ContentPipelineRun:
+    """Internal result of a content-processing pipeline execution.
+
+    This value groups the finalized public run result together with the ordered
+    selected file list used to construct streaming run-start events.
+
+    Attributes:
+        result: Finalized public batch API result.
+        selected_paths: Ordered real file paths selected for pipeline execution.
+    """
+
+    result: RunResult
+    selected_paths: tuple[Path, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ProbePipelineRun:
+    """Internal result of a probe pipeline execution.
+
+    This value groups the finalized public probe result together with the ordered
+    selected file list used to construct streaming run-start events.
+
+    Attributes:
+        result: Finalized public probe API result.
+        selected_paths: Ordered real file paths selected for probe execution.
+    """
+
+    result: ProbeRunResult
+    selected_paths: tuple[Path, ...]
 
 
 def _resolve_public_report_scope(
@@ -103,6 +147,140 @@ def _resolve_public_report_scope(
         ) from exc
 
 
+def _iter_content_events(
+    *,
+    command: Literal["check", "strip"],
+    run: _ContentPipelineRun,
+) -> Iterator[ContentStreamEvent]:
+    """Yield public content stream events for a finalized run result.
+
+    Args:
+        command: Public command that produced the stream.
+        run: Finalized content pipeline run for the same invocation.
+
+    Yields:
+        Public streaming events in deterministic run order.
+    """
+    yield RunStartedEvent(
+        kind="run_started",
+        command=command,
+        selected_count=len(run.selected_paths),
+        paths=tuple(run.selected_paths),
+    )
+    for index, file_result in enumerate(run.result.files):
+        yield FileResultEvent(
+            kind="file_result",
+            command=command,
+            index=index,
+            result=file_result,
+        )
+    yield RunCompletedEvent(
+        kind="run_completed",
+        command=command,
+        summary=run.result.summary,
+        had_errors=run.result.had_errors,
+        skipped=run.result.skipped,
+        written=run.result.written,
+        failed=run.result.failed,
+        diagnostic_totals=run.result.diagnostic_totals,
+        diagnostic_totals_all=run.result.diagnostic_totals_all,
+    )
+
+
+def _iter_probe_events(
+    *,
+    run: _ProbePipelineRun,
+) -> Iterator[ProbeStreamEvent]:
+    """Yield public probe stream events for a finalized probe result.
+
+    Args:
+        run: Finalized probe pipeline run for the same invocation.
+
+    Yields:
+        Public probe streaming events in deterministic run order.
+    """
+    yield RunStartedEvent(
+        kind="run_started",
+        command="probe",
+        selected_count=len(run.selected_paths),
+        paths=tuple(run.selected_paths),
+    )
+    for index, file_result in enumerate(run.result.files):
+        yield ProbeFileResultEvent(
+            kind="file_result",
+            command="probe",
+            index=index,
+            result=file_result,
+        )
+    yield RunCompletedEvent(
+        kind="run_completed",
+        command="probe",
+        summary=run.result.summary,
+        had_errors=run.result.had_errors,
+        diagnostic_totals=run.result.diagnostic_totals,
+    )
+
+
+def _run_probe_pipeline(
+    paths: Iterable[Path | str],
+    *,
+    config: Mapping[str, object] | None,
+    policy: PublicPolicy | None,
+    policy_by_type: Mapping[str, PublicPolicy] | None,
+    include_file_types: Sequence[str] | None,
+    exclude_file_types: Sequence[str] | None,
+    prune_views: bool,
+) -> _ProbePipelineRun:
+    """Run the probe pipeline and assemble the public result DTO.
+
+    Args:
+        paths: Files and/or directories to probe.
+        config: Optional plain mapping or immutable configuration object used as
+            the runtime configuration seed.
+        policy: Optional global policy overrides in the public API shape.
+        policy_by_type: Optional per-type policy overrides in the public API shape.
+        include_file_types: Optional whitelist of file type identifiers.
+        exclude_file_types: Optional blacklist of file type identifiers.
+        prune_views: If True, release consumed volatile views between pipeline steps.
+
+    Returns:
+        Finalized public probe result and the ordered selected real file paths.
+    """
+    # Probe has a single read-only diagnostic pipeline. Runtime helpers also
+    # attach synthetic durable results for missing literals and explicit inputs
+    # filtered before real probe execution.
+    pipeline: PipelineSelection = select_pipeline(
+        "probe",
+        apply=False,
+        diff=False,
+    )
+
+    run_options: RunOptions = RunOptions.from_pipeline_selection(
+        selection=pipeline,
+        prune_views=prune_views,
+    )
+
+    api_run: ApiPipelineResultRun = run_probe_pipeline_results(
+        pipeline=pipeline,
+        paths=paths,
+        run_options=run_options,
+        base_config=config,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+        policy=policy,
+        policy_by_type=policy_by_type,
+    )
+
+    return _ProbePipelineRun(
+        result=finalize_probe_result(
+            results=api_run.results,
+            file_list=api_run.file_list,
+            encountered_exit_code=api_run.exit_code,
+        ),
+        selected_paths=tuple(api_run.file_list),
+    )
+
+
 def _run_content_pipeline(
     paths: Iterable[Path | str],
     *,
@@ -118,7 +296,7 @@ def _run_content_pipeline(
     would_change: Callable[[ProcessingResult], bool],
     prune_views: bool,
     update_statuses: frozenset[PlanStatus],
-) -> RunResult:
+) -> _ContentPipelineRun:
     """Run a content-processing pipeline and assemble the public result DTO.
 
     Args:
@@ -143,7 +321,8 @@ def _run_content_pipeline(
             public result finalizer.
 
     Returns:
-        Filtered per-file outcomes, counts, diagnostics, and write stats.
+        Filtered per-file outcomes, counts, diagnostics, write stats, and the
+        ordered selected real file paths.
     """
     # Choose the concrete content-processing pipeline variant.
     pipeline: PipelineSelection = select_pipeline(
@@ -173,14 +352,17 @@ def _run_content_pipeline(
 
     report_scope: ReportScope = _resolve_public_report_scope(report)
 
-    return finalize_run_result(
-        results=api_run.results,
-        file_list=api_run.file_list,
-        apply=apply,
-        report_scope=report_scope,
-        would_change=would_change,
-        update_statuses=update_statuses,
-        encountered_exit_code=api_run.exit_code,
+    return _ContentPipelineRun(
+        result=finalize_run_result(
+            results=api_run.results,
+            file_list=api_run.file_list,
+            apply=apply,
+            report_scope=report_scope,
+            would_change=would_change,
+            update_statuses=update_statuses,
+            encountered_exit_code=api_run.exit_code,
+        ),
+        selected_paths=tuple(api_run.file_list),
     )
 
 
@@ -228,7 +410,7 @@ def check(
         Reporting/view filtering is handled by the public view layer. It does not
         change which files are eligible to be written when `apply=True`.
     """
-    return _run_content_pipeline(
+    result: _ContentPipelineRun = _run_content_pipeline(
         paths,
         pipeline_kind="check",
         apply=apply,
@@ -242,6 +424,48 @@ def check(
         would_change=would_add_or_update_result,
         prune_views=prune_views,
         update_statuses=_CHECK_UPDATE_STATUSES,
+    )
+    return result.result
+
+
+def stream_check(
+    paths: Iterable[Path | str],
+    *,
+    apply: bool = False,
+    diff: bool = False,
+    config: Mapping[str, object] | None = None,
+    policy: PublicPolicy | None = None,
+    policy_by_type: Mapping[str, PublicPolicy] | None = None,
+    include_file_types: Sequence[str] | None = None,
+    exclude_file_types: Sequence[str] | None = None,
+    report: PublicReportScopeLiteral = "actionable",
+    prune_views: bool = False,
+) -> Iterator[ContentStreamEvent]:
+    """Stream public events for a `check()` invocation.
+
+    The emitted file-result events use the same public `FileResult` DTOs and
+    report-scope filtering semantics as `check()`. Ordering is deterministic:
+    one run-start event, zero or more file-result events, then one run-completed
+    event.
+    """
+    result: _ContentPipelineRun = _run_content_pipeline(
+        paths,
+        pipeline_kind="check",
+        apply=apply,
+        diff=diff,
+        config=config,
+        policy=policy,
+        policy_by_type=policy_by_type,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+        report=report,
+        would_change=would_add_or_update_result,
+        prune_views=prune_views,
+        update_statuses=_CHECK_UPDATE_STATUSES,
+    )
+    yield from _iter_content_events(
+        command="check",
+        run=result,
     )
 
 
@@ -288,7 +512,7 @@ def strip(
         Reporting/view filtering is handled by the public view layer and does not
         modify pipeline write decisions.
     """
-    return _run_content_pipeline(
+    result: _ContentPipelineRun = _run_content_pipeline(
         paths,
         pipeline_kind="strip",
         apply=apply,
@@ -302,6 +526,48 @@ def strip(
         would_change=would_strip_result,
         prune_views=prune_views,
         update_statuses=_STRIP_UPDATE_STATUSES,
+    )
+    return result.result
+
+
+def stream_strip(
+    paths: Iterable[Path | str],
+    *,
+    apply: bool = False,
+    diff: bool = False,
+    config: Mapping[str, object] | None = None,
+    policy: PublicPolicy | None = None,
+    policy_by_type: Mapping[str, PublicPolicy] | None = None,
+    include_file_types: Sequence[str] | None = None,
+    exclude_file_types: Sequence[str] | None = None,
+    report: PublicReportScopeLiteral = "actionable",
+    prune_views: bool = False,
+) -> Iterator[ContentStreamEvent]:
+    """Stream public events for a `strip()` invocation.
+
+    The emitted file-result events use the same public `FileResult` DTOs and
+    report-scope filtering semantics as `strip()`. Ordering is deterministic:
+    one run-start event, zero or more file-result events, then one run-completed
+    event.
+    """
+    result: _ContentPipelineRun = _run_content_pipeline(
+        paths,
+        pipeline_kind="strip",
+        apply=apply,
+        diff=diff,
+        config=config,
+        policy=policy,
+        policy_by_type=policy_by_type,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+        report=report,
+        would_change=would_strip_result,
+        prune_views=prune_views,
+        update_statuses=_STRIP_UPDATE_STATUSES,
+    )
+    yield from _iter_content_events(
+        command="strip",
+        run=result,
     )
 
 
@@ -347,35 +613,44 @@ def probe(
         `probe()` is always read-only. It has no `apply` or `diff` mode because it
         explains resolution rather than planning or applying header mutations.
     """
-    # Probe has a single read-only diagnostic pipeline. Runtime helpers also
-    # attach synthetic durable results for missing literals and explicit inputs
-    # filtered before real probe execution.
-    pipeline: PipelineSelection = select_pipeline(
-        "probe",
-        apply=False,
-        diff=False,
-    )
-
-    run_options: RunOptions = RunOptions.from_pipeline_selection(
-        selection=pipeline,
-        prune_views=prune_views,
-    )
-
-    api_run: ApiPipelineResultRun = run_probe_pipeline_results(
-        pipeline=pipeline,
-        paths=paths,
-        run_options=run_options,
-        base_config=config,
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
+    result: _ProbePipelineRun = _run_probe_pipeline(
+        paths,
+        config=config,
         policy=policy,
         policy_by_type=policy_by_type,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+        prune_views=prune_views,
     )
+    return result.result
 
-    # Probe has a dedicated public result shape; do not route it through the
-    # check/strip finalizer.
-    return finalize_probe_result(
-        results=api_run.results,
-        file_list=api_run.file_list,
-        encountered_exit_code=api_run.exit_code,
+
+# NOTE: keep `stream_probe()` near `probe()` in generated docs even though it
+# delegates through the same runtime and finalizer.
+def stream_probe(
+    paths: Iterable[Path | str],
+    *,
+    config: Mapping[str, object] | None = None,
+    policy: PublicPolicy | None = None,
+    policy_by_type: Mapping[str, PublicPolicy] | None = None,
+    include_file_types: Sequence[str] | None = None,
+    exclude_file_types: Sequence[str] | None = None,
+    prune_views: bool = False,
+) -> Iterator[ProbeStreamEvent]:
+    """Stream public events for a `probe()` invocation.
+
+    Probe joined the initial public streaming entry-point PR because the probe
+    event DTO was already part of the public compatibility contract. The emitted
+    file-result events use the same public `ProbeFileResult` DTOs and ordering
+    semantics as `probe()`.
+    """
+    result: _ProbePipelineRun = _run_probe_pipeline(
+        paths,
+        config=config,
+        policy=policy,
+        policy_by_type=policy_by_type,
+        include_file_types=include_file_types,
+        exclude_file_types=exclude_file_types,
+        prune_views=prune_views,
     )
+    yield from _iter_probe_events(run=result)

@@ -33,16 +33,16 @@ High-level concepts:
   ``"info"``, ``"warning"``, ``"error"``.
 - Pipeline outcome values are shared core primitives re-exported here as
   [`Outcome`][topmark.core.outcomes.Outcome] for public API convenience.
-- High-level commands return stable result DTOs such as
+- High-level batch commands return stable result DTOs such as
   [`RunResult`][topmark.api.types.RunResult] and
-  [`ProbeRunResult`][topmark.api.types.ProbeRunResult]. Public streaming event
+  [`ProbeRunResult`][topmark.api.types.ProbeRunResult]. Streaming commands
+  (`stream_check()`, `stream_strip()`, and `stream_probe()`) emit public event
   DTOs such as [`ContentStreamEvent`][topmark.api.types.ContentStreamEvent],
   [`ProbeStreamEvent`][topmark.api.types.ProbeStreamEvent], and
-  [`PublicStreamEvent`][topmark.api.types.PublicStreamEvent] define the
-  compatibility surface for future incremental entry points without changing
-  the current batch-oriented command behavior. Lower-level runtime
-  orchestration returns [`ApiPipelineRun`][topmark.api.types.ApiPipelineRun]
-  for integrations that intentionally work with processing contexts.
+  [`PublicStreamEvent`][topmark.api.types.PublicStreamEvent] without changing
+  batch command behavior. Lower-level runtime orchestration returns
+  [`ApiPipelineRun`][topmark.api.types.ApiPipelineRun] for integrations that
+  intentionally work with processing contexts.
 
 Configuration contract:
 - Public pipeline functions (``probe()``, ``check()``, ``strip()``) accept an optional plain mapping
@@ -99,6 +99,9 @@ from __future__ import annotations
 
 from topmark.api.commands.pipeline import check
 from topmark.api.commands.pipeline import probe
+from topmark.api.commands.pipeline import stream_check
+from topmark.api.commands.pipeline import stream_probe
+from topmark.api.commands.pipeline import stream_strip
 from topmark.api.commands.pipeline import strip
 from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
@@ -148,5 +151,8 @@ __all__ = (
     "list_filetypes",
     "list_processors",
     "probe",
+    "stream_check",
+    "stream_probe",
+    "stream_strip",
     "strip",
 )

@@ -643,8 +643,6 @@ code path is probe orchestration, while the current benchmark corpus exercises c
 processing paths. Any future streaming-output or public iterator API work should be benchmarked
 separately so memory changes remain attributable to a specific architectural layer.
 
-______________________________________________________________________
-
 ### Comparison and patch materialization follow-up (GitHub issue 183)
 
 GitHub issue 183 audited the remaining comparison-time and patch-generation materialization points
@@ -726,6 +724,26 @@ These figures should be treated as exploratory snapshots rather than hard thresh
 useful for comparing future many-file pipeline changes on the same platform and Python version. They
 should not be used to replace the historical single-file baselines, which remain better suited for
 isolating file-image, comparison, patch-generation, and scanner/header materialization costs.
+
+### Public streaming API follow-up (GitHub issue 174)
+
+GitHub issue 174 builds on the streaming-oriented reduction architecture from GitHub issue 165 by
+exposing the previously internal execution model through a stable public event API. The first
+implementation phase established the compatibility contract by introducing public event DTOs. The
+second phase added `stream_check()`, `stream_strip()`, and `stream_probe()` while intentionally
+preserving the existing batch APIs, CLI behavior, presentation layer, and machine-output contracts.
+
+This work does not alter the benchmark methodology because the benchmark tool measures pipeline
+execution, reduction, durable-result ownership, and CLI-compatible processing rather than public API
+consumption. The new streaming entry points reuse the same durable public result DTOs as the batch
+APIs and therefore introduce an alternative consumption surface instead of a different execution
+model.
+
+Future phases that migrate NDJSON serialization, human presentation, or CLI orchestration onto the
+streaming execution surface should be evaluated independently. If those changes alter retained
+output ownership or cumulative repository-scale memory behavior, they should be accompanied by
+additional repository-suite observations so any benchmark changes remain attributable to a specific
+architectural layer.
 
 ______________________________________________________________________
 
