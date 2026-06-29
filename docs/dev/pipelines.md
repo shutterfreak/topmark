@@ -334,10 +334,13 @@ Pipeline steps mutate processing context state. CLI views, API DTOs, and machine
 classify final outcomes from accumulated statuses and hints.
 
 Some intermediate data is stored in phase-scoped pipeline views, such as the original file image,
-detected header data, generated fields, rendered headers, updated content, and unified diffs. Steps
-that read these views declare their dependencies via `consumes_views`. When runtime view pruning is
-enabled, the runner uses those declarations to release consumed view payloads after the last
-remaining consumer has run, while preserving requested output such as retained diffs.
+detected header data, generated fields, rendered headers, updated content, structured edit metadata,
+and unified diffs. Steps that read these views declare their dependencies via `consumes_views`. When
+runtime view pruning is enabled, the runner uses those declarations to release consumed view
+payloads after the last remaining consumer has run, while preserving requested output such as
+retained unified diff text snapshotted into
+\[`ProcessingResult.detail.diff_text`\][topmark.pipeline.result.ProcessingResult]. Structured edit
+metadata remains transient execution state and does not cross the durable result boundary.
 
 Updated-file views may be represented either as materialized line sequences or as repeatable
 updated-content abstractions. This allows replacement planning to compose updated content lazily.

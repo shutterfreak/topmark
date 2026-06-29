@@ -96,10 +96,12 @@ in an actionable, noncompliant, or all-results report view. Durable results now 
 that are safe to retain after volatile context views are released. Its retained `diff_text` value is
 copied from the diff view by
 \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] without
-retaining the view object, original file image, or updated file image. Presentation and
-machine-readable layers then decide how to expose that retained diff text: human TEXT/Markdown
-render unified diffs, JSON detail embeds per-result `diff` payloads, and NDJSON detail emits
-adjacent standalone `diff` records.
+retaining the view object, original file image, updated file image, or structured edit metadata.
+This keeps the durable owner aligned with the contracts that currently expose unified diff text:
+public API DTOs expose a plain diff string, human TEXT/Markdown render unified diffs, JSON detail
+embeds per-result `diff` payloads, and NDJSON detail emits adjacent standalone `diff` records.
+Future structured-diff optimizations should stay behind this reduction seam unless those public
+contracts intentionally change.
 
 The public Python API `check()` and `strip()` result packaging now consume durable
 `ProcessingResult` snapshots through the result-oriented runtime path. This keeps API DTO assembly,

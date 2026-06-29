@@ -382,6 +382,9 @@ ______________________________________________________________________
   durable `ProcessingResult` snapshots, including execution-context ownership, reduction-driven
   volatile-view release, outcome classification, report filtering, reduced detail snapshots,
   check/strip machine output, and check/strip human rendering.
+- Clarified durable diff ownership across the `ProcessingResult` reduction boundary, documenting
+  that retained unified-diff text is durable result state while `DiffView` instances and structured
+  edit metadata remain transient pipeline execution state.
 - Added an internal batch reduction boundary from mutable processing contexts to durable processing
   results, including durable detail-state capture that prepares reporting logic for future streaming
   consolidation without changing current runner behavior.
@@ -496,6 +499,9 @@ ______________________________________________________________________
 - Renamed internal pipeline execution collections from `results` to `contexts` where they still
   carry mutable `ProcessingContext` instances, preserving a clearer distinction from durable
   `ProcessingResult` snapshots.
+- Clarified internal reduction-boundary ownership by documenting `ProcessingResult` as the durable
+  owner of retained unified-diff text while keeping `DiffView` instances and structured edit
+  metadata confined to transient pipeline execution.
 - Added immutable `StatusSnapshot` and `ProcessingResult` result-reduction primitives as the first
   stage of separating volatile pipeline execution state from durable processing outcomes (GitHub
   issue #148).
