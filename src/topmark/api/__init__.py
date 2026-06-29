@@ -35,7 +35,12 @@ High-level concepts:
   [`Outcome`][topmark.core.outcomes.Outcome] for public API convenience.
 - High-level commands return stable result DTOs such as
   [`RunResult`][topmark.api.types.RunResult] and
-  [`ProbeRunResult`][topmark.api.types.ProbeRunResult]. Lower-level runtime
+  [`ProbeRunResult`][topmark.api.types.ProbeRunResult]. Public streaming event
+  DTOs such as [`ContentStreamEvent`][topmark.api.types.ContentStreamEvent],
+  [`ProbeStreamEvent`][topmark.api.types.ProbeStreamEvent], and
+  [`PublicStreamEvent`][topmark.api.types.PublicStreamEvent] define the
+  compatibility surface for future incremental entry points without changing
+  the current batch-oriented command behavior. Lower-level runtime
   orchestration returns [`ApiPipelineRun`][topmark.api.types.ApiPipelineRun]
   for integrations that intentionally work with processing contexts.
 
@@ -100,28 +105,42 @@ from topmark.api.commands.registry import list_processors
 from topmark.api.commands.version import get_version_info
 from topmark.api.commands.version import get_version_text
 from topmark.api.types import ApiPipelineRun
+from topmark.api.types import ContentStreamEvent
 from topmark.api.types import DiagnosticEntry
 from topmark.api.types import FileResult
+from topmark.api.types import FileResultEvent
 from topmark.api.types import FileTypeInfo
 from topmark.api.types import ProbeCandidateInfo
 from topmark.api.types import ProbeFileResult
+from topmark.api.types import ProbeFileResultEvent
 from topmark.api.types import ProbeRunResult
+from topmark.api.types import ProbeStreamEvent
 from topmark.api.types import ProcessorInfo
+from topmark.api.types import PublicStreamEvent
+from topmark.api.types import RunCompletedEvent
 from topmark.api.types import RunResult
+from topmark.api.types import RunStartedEvent
 from topmark.core.outcomes import Outcome
 from topmark.version.types import VersionInfo
 
 __all__ = (
     "ApiPipelineRun",
+    "ContentStreamEvent",
     "DiagnosticEntry",
     "FileResult",
+    "FileResultEvent",
     "FileTypeInfo",
     "Outcome",
     "ProbeCandidateInfo",
     "ProbeFileResult",
+    "ProbeFileResultEvent",
     "ProbeRunResult",
+    "ProbeStreamEvent",
     "ProcessorInfo",
+    "PublicStreamEvent",
+    "RunCompletedEvent",
     "RunResult",
+    "RunStartedEvent",
     "VersionInfo",
     "check",
     "get_version_info",

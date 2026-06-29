@@ -17,6 +17,8 @@ This module centralizes the public, non-protocol type surface used by
 - literal token types used in public function signatures
 - JSON-friendly TypedDict shapes for diagnostics, policy, and registry metadata
 - frozen dataclasses returned by public API helpers, including probe and run DTOs
+- public streaming event DTOs that define the compatibility contract for
+  future incremental API entry points
 
 These shapes follow the project's semver policy. Internal domain objects may be
 richer and are allowed to evolve independently (for example, internal
@@ -48,6 +50,7 @@ if TYPE_CHECKING:
     from topmark.core.exit_codes import ExitCode
     from topmark.core.outcomes import Outcome
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
 
 
 # ---- Public config input and token literals ----
@@ -492,6 +495,133 @@ PublicReportScopeLiteral: TypeAlias = Literal[
 These values intentionally mirror the internal `ReportScope.value` strings
 without exposing the internal enum class as part of the public API.
 """
+
+
+PublicStreamEventKindLiteral: TypeAlias = Literal[
+    "run_started",
+    "file_result",
+    "run_completed",
+]
+"""Discriminator values for public streaming API events."""
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class RunStartedEvent:
+    """Public event emitted before processing selected files.
+
+    Attributes:
+        kind: Stable event discriminator. Always `"run_started"`.
+        command: Public pipeline command that produced the event.
+        selected_count: Number of selected real files known at run start. Probe
+            streams may later emit synthetic file-result events for missing or
+            explicitly filtered inputs.
+        paths: Ordered selected file paths when the producer can expose them
+            without materializing additional state.
+
+    Notes:
+        This event is intentionally small. It establishes the ordered stream and
+        command identity without exposing internal runtime configuration or
+        mutable pipeline contexts.
+    """
+
+    kind: Literal["run_started"]
+    command: PipelineKindLiteral
+    selected_count: int
+    paths: Sequence[Path] = ()
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class FileResultEvent:
+    """Public event carrying one content-processing file result.
+
+    Attributes:
+        kind: Stable event discriminator. Always `"file_result"`.
+        command: Public command that produced the event. For this event shape,
+            the command is `"check"` or `"strip"`.
+        index: Zero-based event order among emitted file-result events.
+        result: Stable public file-result DTO.
+
+    Notes:
+        The event carries a public [`FileResult`][topmark.api.types.FileResult]
+        rather than internal [`ProcessingResult`][topmark.pipeline.result.ProcessingResult]
+        state. This keeps future streaming APIs aligned with the existing stable
+        public API surface.
+    """
+
+    kind: Literal["file_result"]
+    command: Literal["check", "strip"]
+    index: int
+    result: FileResult
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ProbeFileResultEvent:
+    """Public event carrying one probe file result.
+
+    Attributes:
+        kind: Stable event discriminator. Always `"file_result"`.
+        command: Public command that produced the event. Always `"probe"`.
+        index: Zero-based event order among emitted probe-result events.
+        result: Stable public probe-file-result DTO.
+
+    Notes:
+        Probe uses a dedicated event type because probe results describe
+        file-type resolution rather than header compliance or write outcomes.
+    """
+
+    kind: Literal["file_result"]
+    command: Literal["probe"]
+    index: int
+    result: ProbeFileResult
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class RunCompletedEvent:
+    """Public event emitted after all file-result events have been produced.
+
+    Attributes:
+        kind: Stable event discriminator. Always `"run_completed"`.
+        command: Public pipeline command that produced the event.
+        summary: Public summary mapping for the emitted result view. For
+            `check` and `strip`, keys are public outcome values. For `probe`,
+            keys are public probe status strings.
+        had_errors: Whether the full run encountered errors, including errors
+            hidden from the emitted view by report filtering when applicable.
+        skipped: Number of results excluded by report-scope filtering. Probe
+            streams currently report `0`.
+        written: Number of files successfully written for apply-mode content
+            processing streams. Probe streams report `0`.
+        failed: Number of files that failed to write for apply-mode content
+            processing streams. Probe streams report `0`.
+        diagnostic_totals: Aggregate diagnostics for the emitted view.
+        diagnostic_totals_all: Aggregate diagnostics for the full run before
+            report-scope filtering when available.
+
+    Notes:
+        End-of-run aggregation stays explicit so callers that consume file
+        events incrementally can still make final decisions using the same
+        summary and error semantics as the batch API.
+    """
+
+    kind: Literal["run_completed"]
+    command: PipelineKindLiteral
+    summary: Mapping[str, int]
+    had_errors: bool
+    skipped: int = 0
+    written: int = 0
+    failed: int = 0
+    diagnostic_totals: DiagnosticTotals | None = None
+    diagnostic_totals_all: DiagnosticTotals | None = None
+
+
+ContentStreamEvent: TypeAlias = RunStartedEvent | FileResultEvent | RunCompletedEvent
+"""Event union for future `check` and `strip` streaming APIs."""
+
+ProbeStreamEvent: TypeAlias = RunStartedEvent | ProbeFileResultEvent | RunCompletedEvent
+"""Event union for future `probe` streaming APIs."""
+
+PublicStreamEvent: TypeAlias = ContentStreamEvent | ProbeStreamEvent
+"""Union of all public streaming API event shapes."""
 
 
 # ---- Public policy shapes ----

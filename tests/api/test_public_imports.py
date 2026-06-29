@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import inspect
+import types
 
 
 def test_api_all_contains_expected_symbols() -> None:
@@ -42,8 +43,8 @@ def test_api_all_contains_expected_symbols() -> None:
     assert not missing, f"Missing from api.__all__: {sorted(missing)}; have: {sorted(exported)}"
 
 
-def test_api_symbols_are_callable_or_types() -> None:
-    """Every exported symbol is either callable or a type/class."""
+def test_api_symbols_are_callable_types_or_type_aliases() -> None:
+    """Every exported symbol is callable, a type/class, or a runtime type alias value."""
     from topmark import api
 
     # Ensure __all__ exists and is an iterable of strings
@@ -52,5 +53,6 @@ def test_api_symbols_are_callable_or_types() -> None:
 
     for name in api.__all__:
         obj = getattr(api, name)
-        # functions are callable; types may not be
-        assert callable(obj) or inspect.isclass(obj)
+        # Functions are callable, DTOs are classes, and exported PEP 604 union
+        # aliases are runtime types.UnionType values.
+        assert callable(obj) or inspect.isclass(obj) or isinstance(obj, types.UnionType)

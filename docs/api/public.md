@@ -36,6 +36,24 @@ Use this section if you need details on functions, classes, or constants availab
 
 ## Stable public API
 
+### Streaming event contracts
+
+TopMark exposes public event DTOs that establish the public compatibility contract for the planned
+streaming API transition. The first step defines stable event shapes without changing the existing
+`check()`, `strip()`, or `probe()` batch functions. Future streaming entry points can therefore
+reuse the same public `FileResult` and `ProbeFileResult` DTOs while existing integrations continue
+to consume `RunResult` and `ProbeRunResult`.
+
+The public stream model has three event phases:
+
+1. `RunStartedEvent` announces the command and selected-file count.
+1. `FileResultEvent` or `ProbeFileResultEvent` carries the public DTO for one processed file.
+1. `RunCompletedEvent` carries final summary, error, write, skip, and diagnostic aggregates.
+
+The stream events intentionally do not expose internal `ProcessingContext` or `ProcessingResult`
+objects. This keeps the streaming surface aligned with the existing public API compatibility policy
+and leaves CLI, presentation, and machine-output contracts unchanged until their own migration PRs.
+
 ### Configuration via mappings
 
 Public API functions accept either a plain mapping (mirroring the TOML structure) or an immutable

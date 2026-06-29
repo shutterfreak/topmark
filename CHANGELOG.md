@@ -39,6 +39,9 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added public streaming event contract DTOs establishing the compatibility surface for future
+  streaming `check()`, `strip()`, and `probe()` APIs without changing existing batch API or CLI
+  behavior.
 - Added a durable `ProcessingDetailSnapshot` on `ProcessingResult` that captures generated
   unified-diff text without retaining volatile pipeline views and exposes reduced detail state
   through `ProcessingResult` serialization.
@@ -397,6 +400,9 @@ ______________________________________________________________________
   165, including iterator-based engine/reduction seams, check/strip and probe durable-result runtime
   adapters, synthetic probe-result ownership, and the rationale for preserving batch-oriented public
   contracts.
+- Documented the planned public streaming event compatibility contract, including stable event
+  phases, public DTO ownership, and the compatibility boundary between future streaming APIs and
+  existing batch-oriented `check()`, `strip()`, and `probe()` entry points.
 - Documented the ownership boundary between `PipelineSelection` and `RunOptions`, clarifying
   executable pipeline selection versus invocation-specific runtime state, the
   `RunOptions.from_pipeline_selection(...)` derivation boundary, and the durable ownership chain
