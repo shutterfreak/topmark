@@ -38,11 +38,12 @@ Use this section if you need details on functions, classes, or constants availab
 
 ### Streaming event contracts
 
-TopMark exposes public event DTOs that establish the public compatibility contract for the planned
-streaming API transition. The first step defines stable event shapes without changing the existing
-`check()`, `strip()`, or `probe()` batch functions. Future streaming entry points can therefore
-reuse the same public `FileResult` and `ProbeFileResult` DTOs while existing integrations continue
-to consume `RunResult` and `ProbeRunResult`.
+TopMark exposes public event DTOs and streaming entry points for integrations that want to consume
+ordered processing results incrementally while preserving the existing batch APIs. The streaming
+entry points are additive compatibility extensions rather than replacements for the batch-oriented
+API. `stream_check()` and `stream_strip()` emit `ContentStreamEvent` values, while `stream_probe()`
+emits `ProbeStreamEvent` values. The batch `check()`, `strip()`, and `probe()` functions continue to
+return `RunResult` and `ProbeRunResult`.
 
 The public stream model has three event phases:
 
@@ -51,8 +52,17 @@ The public stream model has three event phases:
 1. `RunCompletedEvent` carries final summary, error, write, skip, and diagnostic aggregates.
 
 The stream events intentionally do not expose internal `ProcessingContext` or `ProcessingResult`
-objects. This keeps the streaming surface aligned with the existing public API compatibility policy
-and leaves CLI, presentation, and machine-output contracts unchanged until their own migration PRs.
+objects. File-result events carry the same public DTOs used by the batch APIs, and run-completed
+events carry the same public summary, error, skip, write, and diagnostic aggregate semantics. This
+keeps the streaming surface aligned with the existing public compatibility policy while allowing
+future internal execution, presentation, and CLI orchestration to migrate incrementally onto the
+same event model without changing the documented API contracts.
+
+The streaming APIs preserve deterministic event ordering: one `RunStartedEvent`, then zero or more
+file-result events in the same order as the corresponding batch result view, then one
+`RunCompletedEvent`. Report-scope filtering for `stream_check()` and `stream_strip()` matches the
+corresponding batch API call, so filtered-out files are reflected in the final `skipped` count
+rather than emitted as file-result events.
 
 ### Configuration via mappings
 

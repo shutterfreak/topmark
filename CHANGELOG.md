@@ -42,6 +42,9 @@ ______________________________________________________________________
 - Added public streaming event contract DTOs establishing the compatibility surface for future
   streaming `check()`, `strip()`, and `probe()` APIs without changing existing batch API or CLI
   behavior.
+- Added public `stream_check()`, `stream_strip()`, and `stream_probe()` API entry points that emit
+  ordered public stream events while preserving existing batch API results, CLI behavior,
+  presentation, and machine-output contracts.
 - Added a durable `ProcessingDetailSnapshot` on `ProcessingResult` that captures generated
   unified-diff text without retaining volatile pipeline views and exposes reduced detail state
   through `ProcessingResult` serialization.
