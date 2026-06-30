@@ -45,6 +45,9 @@ ______________________________________________________________________
 - Added public `stream_check()`, `stream_strip()`, and `stream_probe()` API entry points that emit
   ordered public stream events while preserving existing batch API results, CLI behavior,
   presentation, and machine-output contracts.
+- Added internal stream collectors that consume ordered public stream events and rebuild
+  batch-compatible API results for future NDJSON, presentation, and CLI migrations without changing
+  public API, CLI, or machine-output behavior.
 - Added a durable `ProcessingDetailSnapshot` on `ProcessingResult` that captures generated
   unified-diff text without retaining volatile pipeline views and exposes reduced detail state
   through `ProcessingResult` serialization.

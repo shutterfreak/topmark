@@ -739,6 +739,13 @@ consumption. The new streaming entry points reuse the same durable public result
 APIs and therefore introduce an alternative consumption surface instead of a different execution
 model.
 
+The third phase added reusable internal stream collectors that consume the public event sequence and
+rebuild batch-style result objects and selected-path metadata. This collector layer is an API-layer
+architecture change: it does not change pipeline execution, CLI output, presentation rendering,
+machine-output serialization, or benchmark methodology. Existing per-file diagnostics remain owned
+by the API producer because current public file-result events intentionally do not carry diagnostic
+entries.
+
 Future phases that migrate NDJSON serialization, human presentation, or CLI orchestration onto the
 streaming execution surface should be evaluated independently. If those changes alter retained
 output ownership or cumulative repository-scale memory behavior, they should be accompanied by
