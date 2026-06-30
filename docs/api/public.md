@@ -64,6 +64,11 @@ file-result events in the same order as the corresponding batch result view, the
 corresponding batch API call, so filtered-out files are reflected in the final `skipped` count
 rather than emitted as file-result events.
 
+TopMark also uses internal stream collectors to rebuild batch-style result objects from the ordered
+public event sequence. These collectors are not part of the public API; they exist to keep batch
+APIs, future machine-output emitters, and later presentation/CLI migrations aligned on the same
+event semantics without expanding the public compatibility surface.
+
 ### Configuration via mappings
 
 Public API functions accept either a plain mapping (mirroring the TOML structure) or an immutable

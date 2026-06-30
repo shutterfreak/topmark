@@ -33,6 +33,8 @@ from typing import TYPE_CHECKING
 from typing import Final
 from typing import Literal
 
+from topmark.api.collectors import collect_content_stream
+from topmark.api.collectors import collect_probe_stream
 from topmark.api.runtime import run_pipeline_results
 from topmark.api.runtime import run_probe_pipeline_results
 from topmark.api.types import FileResultEvent
@@ -42,7 +44,6 @@ from topmark.api.types import RunStartedEvent
 from topmark.api.view import finalize_probe_result
 from topmark.api.view import finalize_run_result
 from topmark.core.errors import InvalidReportScopeError
-from topmark.pipeline.pipelines import PipelineSelection
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import would_add_or_update_result
@@ -58,6 +59,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.api.collectors import CollectedContentRun
+    from topmark.api.collectors import CollectedProbeRun
     from topmark.api.runtime import ApiPipelineResultRun
     from topmark.api.types import ContentStreamEvent
     from topmark.api.types import ProbeRunResult
@@ -66,6 +69,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.result import ProcessingResult
 
 __all__ = (
@@ -425,7 +429,21 @@ def check(
         prune_views=prune_views,
         update_statuses=_CHECK_UPDATE_STATUSES,
     )
-    return result.result
+    events: tuple[ContentStreamEvent, ...] = tuple(
+        _iter_content_events(
+            command="check",
+            run=result,
+        )
+    )
+    collected: CollectedContentRun = collect_content_stream(
+        events,
+        command="check",
+        diagnostics=result.result.diagnostics,
+        bucket_summary=(
+            dict(result.result.bucket_summary) if result.result.bucket_summary is not None else None
+        ),
+    )
+    return collected.result
 
 
 def stream_check(
@@ -527,7 +545,21 @@ def strip(
         prune_views=prune_views,
         update_statuses=_STRIP_UPDATE_STATUSES,
     )
-    return result.result
+    events: tuple[ContentStreamEvent, ...] = tuple(
+        _iter_content_events(
+            command="strip",
+            run=result,
+        )
+    )
+    collected: CollectedContentRun = collect_content_stream(
+        events,
+        command="strip",
+        diagnostics=result.result.diagnostics,
+        bucket_summary=(
+            dict(result.result.bucket_summary) if result.result.bucket_summary is not None else None
+        ),
+    )
+    return collected.result
 
 
 def stream_strip(
@@ -622,7 +654,12 @@ def probe(
         exclude_file_types=exclude_file_types,
         prune_views=prune_views,
     )
-    return result.result
+    events: tuple[ProbeStreamEvent, ...] = tuple(_iter_probe_events(run=result))
+    collected: CollectedProbeRun = collect_probe_stream(
+        events,
+        diagnostics=result.result.diagnostics,
+    )
+    return collected.result
 
 
 # NOTE: keep `stream_probe()` near `probe()` in generated docs even though it
