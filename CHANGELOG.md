@@ -48,6 +48,9 @@ ______________________________________________________________________
 - Added internal stream collectors that consume ordered public stream events and rebuild
   batch-compatible API results for future NDJSON, presentation, and CLI migrations without changing
   public API, CLI, or machine-output behavior.
+- Added an internal machine-stream adapter for `check`, `strip`, and `probe` NDJSON emission so
+  record-oriented machine output can consume an ordered stream sequence while preserving existing
+  JSON/NDJSON schemas and public API contracts.
 - Added a durable `ProcessingDetailSnapshot` on `ProcessingResult` that captures generated
   unified-diff text without retaining volatile pipeline views and exposes reduced detail state
   through `ProcessingResult` serialization.

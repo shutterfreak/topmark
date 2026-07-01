@@ -746,10 +746,18 @@ machine-output serialization, or benchmark methodology. Existing per-file diagno
 by the API producer because current public file-result events intentionally do not carry diagnostic
 entries.
 
-Future phases that migrate NDJSON serialization, human presentation, or CLI orchestration onto the
-streaming execution surface should be evaluated independently. If those changes alter retained
-output ownership or cumulative repository-scale memory behavior, they should be accompanied by
-additional repository-suite observations so any benchmark changes remain attributable to a specific
+The fourth phase migrated the NDJSON machine-output path onto a small internal machine-stream
+adapter. The adapter preserves the existing JSON and NDJSON payload schemas by keeping the richer
+durable `ProcessingResult` payload source behind the stream boundary; public stream DTOs remain
+unchanged and intentionally do not expose internal result state. This is an output-architecture
+change rather than a benchmark-methodology change: detail-mode NDJSON can emit per-file records as
+stream result events are consumed, while summary-mode NDJSON still rebuilds summary rows from
+retained durable results to preserve the existing schema and ordering contract.
+
+Future phases that migrate human presentation or CLI orchestration onto the streaming execution
+surface should be evaluated independently. If those changes alter retained output ownership or
+cumulative repository-scale memory behavior, they should be accompanied by additional
+repository-suite observations so any benchmark changes remain attributable to a specific
 architectural layer.
 
 ______________________________________________________________________
