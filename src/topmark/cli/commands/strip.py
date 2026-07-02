@@ -97,21 +97,20 @@ from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.engine import PipelineExecution
 from topmark.pipeline.engine import exit_code_from_pipeline_results
 from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.machine.streaming import iter_machine_processing_stream
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reduction import ProcessingReduction
 from topmark.pipeline.reduction import reduce_processing_contexts
-from topmark.pipeline.reporting import ReportFilterResult
 from topmark.pipeline.reporting import ReportScope
-from topmark.pipeline.reporting import filter_results_for_report
 from topmark.pipeline.reporting import would_strip_result
 from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
 from topmark.presentation.markdown.version import render_version_footer_markdown
-from topmark.presentation.output.pipeline import render_pipeline_command_human_output
+from topmark.presentation.output.pipeline import render_pipeline_command_human_stream_output
 from topmark.presentation.shared.pipeline import PipelineCommandHumanOutput
-from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
+from topmark.presentation.shared.pipeline import PipelineHumanPresentationOptions
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
 from topmark.utils.file import safe_unlink
@@ -488,14 +487,6 @@ def strip_command(
     )
     results: Sequence[ProcessingResult] = reduction.results
 
-    filtered: ReportFilterResult[ProcessingResult] = filter_results_for_report(
-        results,
-        report_scope=report_scope,
-        would_change=would_strip_result,
-    )
-
-    human_results: Sequence[ProcessingResult] = results if summary_mode else filtered.view_results
-
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processing_results_machine(
             console=machine_console,
@@ -507,22 +498,20 @@ def strip_command(
             summary_mode=summary_mode,
         )
     else:
-        report = PipelineCommandHumanReport(
+        options = PipelineHumanPresentationOptions(
             pipeline_kind=PIPELINE_KIND,
-            file_list_total=len(results),
-            view_results=human_results,
             report_scope=report_scope,
-            unsupported_count=filtered.unsupported_count_all,
             verbosity_level=verbosity_level,
             summary_mode=summary_mode,
             show_diffs=diff,
             apply_changes=apply_changes,
             styled=enable_color,
         )
-        output: PipelineCommandHumanOutput = render_pipeline_command_human_output(
-            report=report,
-            results=results,
+        output: PipelineCommandHumanOutput = render_pipeline_command_human_stream_output(
+            options=options,
+            events=iter_machine_processing_stream(results, command=PIPELINE_KIND),
             fmt=fmt,
+            would_change=would_strip_result,
         )
 
         emit_stdout_payload(output.stdout)
