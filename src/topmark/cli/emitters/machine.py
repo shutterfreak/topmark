@@ -26,6 +26,7 @@ from topmark.config.machine.serializers import serialize_config_diagnostics
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.machine.serializers import iter_ndjson_strings
+from topmark.pipeline.machine.envelopes import iter_probe_results_stream_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_stream_ndjson_records
 from topmark.pipeline.machine.serializers import serialize_probe_results
 from topmark.pipeline.machine.serializers import serialize_processing_results
@@ -104,6 +105,32 @@ def emit_probe_results_machine(
 
     nl: bool = fmt != OutputFormat.JSON
     emit_machine(serialized, console=console, nl=nl)
+
+
+def emit_probe_stream_machine(
+    *,
+    console: ConsoleProtocol,
+    meta: MetaPayload,
+    config: FrozenConfig,
+    resolved_toml: ResolvedTopmarkTomlSources,
+    events: Iterable[MachineProcessingStreamEvent],
+) -> None:
+    """Emit probe NDJSON from an internal durable-result stream.
+
+    Args:
+        console: Console used to emit serialized machine-readable output.
+        meta: The machine metadata payload.
+        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
+        resolved_toml: ResolvedTopmarkTomlSources.
+        events: Internal machine processing stream events in deterministic order.
+    """
+    records: Iterator[dict[str, object]] = iter_probe_results_stream_ndjson_records(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml,
+        events=events,
+    )
+    emit_machine(iter_ndjson_strings(records), console=console)
 
 
 def emit_processing_results_machine(

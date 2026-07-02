@@ -32,15 +32,16 @@ Internally, pipeline execution is streaming-capable. The engine can yield per-fi
 can snapshot those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
 \[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Stream adapters
-can expose those durable results as ordered run-start, per-file, and run-completed events. Normal
-check/strip batch orchestration uses the result-oriented
-\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter, while CLI `check`
-and `strip` TEXT, Markdown, and NDJSON orchestration can consume ordered durable-result event
-streams directly. Probe orchestration continues to use
-\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results] to reduce real
-probe contexts and synthetic probe results across the same durable-result boundary. JSON output and
-public batch APIs intentionally retain complete-result collection to preserve existing output and
-API contracts.
+can expose those durable results as ordered run-start, per-file, and run-completed events.
+
+Normal check/strip batch orchestration uses the result-oriented
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter, while CLI `check`,
+`strip`, and `probe`, human TEXT/Markdown presentation, and NDJSON orchestration consume ordered
+stream events carrying durable `ProcessingResult` snapshots. Probe execution continues to reduce
+real probe contexts and synthetic probe results across the same durable-result boundary through
+\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results]. JSON output and
+public batch APIs intentionally retain complete-result collection to preserve the existing output
+and API contracts while public streaming APIs expose the same durable events directly.
 
 Pipelines also operate on selected processing paths. Filesystem-identity evaluation occurs before
 ordinary pipeline execution begins and includes both processing-path normalization and

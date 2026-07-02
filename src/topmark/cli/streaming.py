@@ -91,6 +91,61 @@ class ProcessingStreamStats:
             self.would_change = True
 
 
+@dataclass(kw_only=True, slots=True)
+class ProbeStreamStats:
+    """Mutable CLI statistics observed while consuming probe stream events.
+
+    Attributes:
+        exit_code: Highest-priority hard-error exit code implied by observed
+            durable probe results, or `None` when no result implies a hard error.
+        missing_probe: Whether any observed durable result did not carry a probe
+            snapshot. This indicates an internal probe pipeline error after hard
+            errors have been handled.
+        unresolved_probe: Whether any observed probe snapshot has a non-resolved
+            status. Filtered explicit inputs are represented this way and map to
+            `UNSUPPORTED_FILE_TYPE`.
+    """
+
+    exit_code: ExitCode | None = None
+    missing_probe: bool = False
+    unresolved_probe: bool = False
+
+    def observe(self, result: ProcessingResult) -> None:
+        """Update stream statistics from one durable probe result.
+
+        Args:
+            result: Durable probe result observed from the stream.
+        """
+        result_exit_code: ExitCode | None = exit_code_from_pipeline_results([result])
+        if result_exit_code is not None:
+            self.exit_code = select_exit_code(self.exit_code, result_exit_code)
+
+        if result.probe is None:
+            self.missing_probe = True
+        elif result.probe.status != "resolved":
+            self.unresolved_probe = True
+
+
+def observe_probe_stream(
+    events: Iterable[MachineProcessingStreamEvent],
+    *,
+    stats: ProbeStreamStats,
+) -> Iterator[MachineProcessingStreamEvent]:
+    """Yield probe stream events while recording CLI exit-status statistics.
+
+    Args:
+        events: Internal machine processing stream events.
+        stats: Mutable probe statistics updated for each file-result event.
+
+    Yields:
+        The original events, preserving order and object identity.
+    """
+    for event in events:
+        if isinstance(event, MachineProcessingResultEvent):
+            stats.observe(event.result)
+        yield event
+
+
 def select_exit_code(current: ExitCode | None, candidate: ExitCode) -> ExitCode:
     """Return the higher-priority pipeline exit code.
 

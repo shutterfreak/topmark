@@ -31,23 +31,28 @@ from topmark.core.formats import OutputFormat
 from topmark.pipeline.machine.streaming import MachineProcessingResultEvent
 from topmark.pipeline.machine.streaming import MachineRunCompletedEvent
 from topmark.pipeline.machine.streaming import MachineRunStartedEvent
+from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import filter_results_for_report
 from topmark.presentation.markdown.pipeline import render_pipeline_diffs_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
+from topmark.presentation.markdown.probe import render_probe_output_markdown
 from topmark.presentation.shared.pipeline import PipelineCommandHumanOutput
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
+from topmark.presentation.shared.pipeline import PipelineHumanPresentationOptions
+from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
 from topmark.presentation.text.pipeline import render_pipeline_diffs_text
 from topmark.presentation.text.pipeline import render_pipeline_output_text
+from topmark.presentation.text.probe import render_probe_output_text
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Iterable
     from collections.abc import Sequence
 
+    from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.reporting import ReportFilterResult
     from topmark.pipeline.result import ProcessingResult
-    from topmark.presentation.shared.pipeline import PipelineHumanPresentationOptions
 
 
 def _collect_stream_results(
@@ -128,6 +133,58 @@ def _collect_stream_results(
         raise ValueError("Human presentation stream is missing a run-completed event.")
 
     return tuple(results)
+
+
+def render_probe_command_human_stream_output(
+    *,
+    pipeline_kind: PipelineKindLiteral,
+    events: Iterable[MachineProcessingStreamEvent],
+    fmt: OutputFormat,
+    verbosity_level: int,
+    styled: bool,
+) -> str:
+    """Render human probe output from an internal durable-result stream.
+
+    Args:
+        pipeline_kind: Probe command kind expected in stream lifecycle events.
+        events: Internal durable-result stream in deterministic processing order.
+        fmt: Selected human output format.
+        verbosity_level: Effective TEXT verbosity; Markdown ignores it.
+        styled: Whether TEXT renderers should apply styling; Markdown ignores it.
+
+    Returns:
+        Rendered probe output.
+
+    Raises:
+        RuntimeError: If an unsupported human output format is selected.
+    """
+    options = PipelineHumanPresentationOptions(
+        pipeline_kind=pipeline_kind,
+        report_scope=ReportScope.ALL,
+        verbosity_level=verbosity_level,
+        summary_mode=False,
+        show_diffs=False,
+        apply_changes=False,
+        styled=styled,
+    )
+    results: tuple[ProcessingResult, ...] = _collect_stream_results(
+        events,
+        options=options,
+    )
+    report = ProbeCommandHumanReport(
+        pipeline_kind=pipeline_kind,
+        file_list_total=len(results),
+        view_results=results,
+        verbosity_level=verbosity_level,
+        styled=styled,
+    )
+    if fmt == OutputFormat.TEXT:
+        return render_probe_output_text(report)
+    if fmt == OutputFormat.MARKDOWN:
+        return render_probe_output_markdown(report)
+
+    msg: str = f"Unsupported human output format: {fmt.value}"
+    raise RuntimeError(msg)
 
 
 def _report_for_stream_results(

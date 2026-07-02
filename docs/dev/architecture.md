@@ -79,8 +79,8 @@ This boundary is intentionally conservative:
 - it introduces per-file execution, reduction, and event adaptation inside the runtime architecture;
 - it preserves existing batch API result objects, JSON envelope assembly, summary semantics,
   report-scope filtering, output ordering, and exit-code selection;
-- it lets public stream APIs, CLI `check`/`strip` TEXT and Markdown output, and NDJSON consume
-  ordered durable-result events directly where a complete result collection is not required;
+- it lets public stream APIs, CLI TEXT and Markdown output, CLI probe presentation, and NDJSON
+  consume ordered durable-result events directly where a complete result collection is not required;
 - it keeps JSON output as a complete-envelope format that is materialized before emission to
   preserve the existing machine-output contract;
 - it keeps runner-owned pruning limited to between-step release of consumed volatile views, while
@@ -111,10 +111,11 @@ public streaming APIs consume ordered durable-result events over the same reduct
 keeps API DTO assembly, report filtering, write counting, diagnostics aggregation, outcome
 bucketing, and public diff exposure on reduced result state rather than on live context views.
 
-Check/strip human rendering, NDJSON machine output, and CLI `check`/`strip` orchestration now
-consume ordered durable-result event streams. JSON output remains batch-compatible and materializes
-the complete machine-readable envelope before emission. Probe rendering, probe machine output, and
-probe public API DTO assembly consume durable `ProcessingResult` snapshots carrying reduced
+Check/strip human rendering, probe human rendering, NDJSON machine output, and CLI `check`, `strip`,
+and `probe` orchestration now consume ordered durable-result event streams. JSON output remains
+batch-compatible and materializes the complete machine-readable envelope before emission. Probe
+rendering, probe machine output, and probe public API DTO assembly consume durable
+`ProcessingResult` snapshots carrying reduced
 \[`ProbeSnapshot`\][topmark.pipeline.result.ProbeSnapshot] state. TEXT, Markdown, JSON, NDJSON, and
 public API result output therefore no longer project from live
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances once the
