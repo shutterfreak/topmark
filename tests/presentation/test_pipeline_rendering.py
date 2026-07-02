@@ -52,6 +52,7 @@ from topmark.presentation.markdown.pipeline import render_pipeline_diffs_markdow
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
 from topmark.presentation.output.pipeline import render_pipeline_command_human_output
 from topmark.presentation.output.pipeline import render_pipeline_command_human_stream_output
+from topmark.presentation.output.pipeline import render_probe_command_human_stream_output
 from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.paths import render_path_display_text
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
@@ -1242,6 +1243,32 @@ def test_render_pipeline_command_human_output_accepts_only_human_formats(
             report=report,
             results=[],
             fmt=effective_fmt,
+        )
+
+
+def test_render_probe_command_human_stream_output_rejects_machine_formats(
+    tmp_path: Path,
+) -> None:
+    """Probe human stream facade should reject non-human output formats."""
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "probe-machine-format.py",
+        pipeline_kind="probe",
+    )
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    with pytest.raises(
+        RuntimeError,
+        match="Unsupported human output format: json",
+    ):
+        render_probe_command_human_stream_output(
+            pipeline_kind="probe",
+            events=iter_machine_processing_stream(
+                reduction.results,
+                command="probe",
+            ),
+            fmt=OutputFormat.JSON,
+            verbosity_level=0,
+            styled=False,
         )
 
 

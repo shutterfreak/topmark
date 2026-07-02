@@ -291,7 +291,9 @@ ______________________________________________________________________
 ## JSON envelope conventions
 
 Unlike NDJSON, JSON output is **domain-specific and aggregated**. Each command defines its own
-stable top-level collection keys.
+stable top-level collection keys. Processing and probe JSON output intentionally retain complete
+collection before emission so the existing envelope, summary, and diagnostic contracts remain
+stable.
 
 Examples:
 
@@ -484,6 +486,11 @@ share conventions:
 These diagnostics correspond to the flattened compatibility view derived from staged config-loading
 validation logs.
 
+Internally, processing NDJSON is emitted from ordered durable-result stream events. This preserves
+record ordering and diff adjacency while avoiding a complete processing-result collection for the
+NDJSON path. JSON output remains an aggregated envelope and therefore still collects complete
+results before emission.
+
 The `--diff` option affects payload shape only in detail mode. It does not affect summary
 aggregation, exit-code selection, or whether processing runs. Summary output is still aggregated by
 outcome and reason, and therefore intentionally omits per-file diff payloads.
@@ -577,6 +584,10 @@ machine-readable diagnostic surface.
   - `config_diagnostics` (counts-only)
   - zero or more `diagnostic` records (domain=`"config"`)
   - then one `probe` record per probe result
+
+Internally, probe NDJSON is emitted from ordered durable-result stream events, including durable
+synthetic probe results for filtered or missing explicit inputs. JSON output remains an aggregated
+`probes` envelope and therefore still collects complete probe results before emission.
 
 Unlike processing commands, [`probe`](../usage/commands/probe.md):
 

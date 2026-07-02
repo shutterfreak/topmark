@@ -79,6 +79,9 @@ ______________________________________________________________________
 - Migrated CLI `check` and `strip` orchestration to consume the streaming-capable pipeline engine
   boundary directly for TEXT, Markdown, and NDJSON output while preserving JSON as a
   complete-envelope collector path.
+- Migrated CLI `probe` orchestration to the same streaming-capable pipeline engine boundary for
+  TEXT, Markdown, and NDJSON output while preserving probe semantics, synthetic probe results,
+  exit-code behavior, and JSON as a complete-envelope collector path.
 - Migrated `check`/`strip` machine-readable result serialization to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced detail snapshots for JSON and
   NDJSON detail output while deriving summary classification from each result's execution-mode
@@ -427,6 +430,10 @@ ______________________________________________________________________
   streaming orchestration, durable-result event ownership, JSON versus NDJSON ownership differences,
   removal of obsolete apply-and-diff pipeline variants, and the remaining benchmark-refresh
   rationale after the planned probe streaming migration.
+- Documented GitHub issue 174 phase 7, including CLI probe streaming orchestration, durable
+  synthetic probe-result ownership, JSON versus NDJSON ownership differences, machine-readable
+  output behavior, and the rationale for deferring a new canonical benchmark baseline until broader
+  collector and transient-ownership follow-ups are evaluated.
 - Documented the ownership boundary between `PipelineSelection` and `RunOptions`, clarifying
   executable pipeline selection versus invocation-specific runtime state, the
   `RunOptions.from_pipeline_selection(...)` derivation boundary, and the durable ownership chain
@@ -592,6 +599,11 @@ ______________________________________________________________________
 - Migrated CLI check/strip orchestration onto the streaming-capable engine boundary, added shared
   command-layer stream routing helpers, introduced typed internal stream-event kinds, and removed
   the obsolete unreachable apply-and-diff pipeline catalogue variants.
+- Migrated CLI probe orchestration onto the streaming-capable engine boundary for TEXT, Markdown,
+  and NDJSON output, added probe-specific stream statistics and emission helpers, preserved JSON as
+  the intentional complete-envelope collector, and added focused regression coverage for probe
+  stream routing, NDJSON metadata, quiet TEXT stream consumption, and presentation stream-format
+  validation.
 - Added focused regression coverage for CLI stream routing, stream-event lifecycle, exit-code
   prioritization, and streaming orchestration parity while preserving existing public CLI, API,
   JSON, NDJSON, and presentation behavior.

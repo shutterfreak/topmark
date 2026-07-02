@@ -43,6 +43,7 @@ Examples:
 
 from __future__ import annotations
 
+from itertools import chain
 from typing import TYPE_CHECKING
 
 import click
@@ -59,6 +60,7 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import resolve_human_console
 from topmark.cli.emitters.machine import emit_probe_results_machine
+from topmark.cli.emitters.machine import emit_probe_stream_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.io import plan_cli_inputs
@@ -77,6 +79,9 @@ from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_strict_options
 from topmark.cli.options import shared_policy_options
 from topmark.cli.state import bootstrap_cli_state
+from topmark.cli.streaming import ProbeStreamStats
+from topmark.cli.streaming import iter_cli_processing_stream
+from topmark.cli.streaming import observe_probe_stream
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.config.policy import MutablePolicy
@@ -85,22 +90,21 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
-from topmark.pipeline.engine import exit_code_from_pipeline_results
-from topmark.pipeline.engine import run_steps_for_files
+from topmark.pipeline.engine import PipelineExecutionState
+from topmark.pipeline.engine import iter_steps_for_files
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
-from topmark.presentation.markdown.probe import render_probe_output_markdown
 from topmark.presentation.markdown.version import render_version_footer_markdown
-from topmark.presentation.shared.pipeline import ProbeCommandHumanReport
+from topmark.presentation.output.pipeline import render_probe_command_human_stream_output
 from topmark.presentation.text.diagnostic import render_diagnostics_text
-from topmark.presentation.text.probe import render_probe_output_text
 from topmark.resolution.files import probe_explicit_file_selection
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from topmark.cli.console.color import ColorMode
@@ -112,8 +116,8 @@ if TYPE_CHECKING:
     from topmark.core.machine.schemas import MetaPayload
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.engine import PipelineExecution
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.discovery import FileSelectionProbeResult
@@ -403,16 +407,11 @@ def probe_command(
         # Nothing to do
         return
 
-    # Run the concrete pipeline variant.
-    pipeline_run: PipelineExecution = run_steps_for_files(
-        run_options=run_options,
-        config=config,
-        path_configs=None,
-        pipeline=pipeline,
-        file_list=file_list,
-    )
-    context_results: list[ProcessingContext] = pipeline_run.contexts
-    encountered_exit_code: ExitCode | None = pipeline_run.exit_code
+    # Run the concrete pipeline variant through the shared streaming-capable
+    # execution path. JSON intentionally remains the complete-envelope collector
+    # path; NDJSON and human output consume the same durable-result stream used
+    # by check/strip.
+    execution_state: PipelineExecutionState = PipelineExecutionState()
 
     # Add resolver-level hard failures before deriving the process exit code.
     # Missing explicit inputs should beat probe-specific semantic statuses such
@@ -422,30 +421,42 @@ def probe_command(
         config=config,
         run_options=run_options,
     )
-    context_results.extend(missing_results)
-
-    # Compute hard-error precedence before adding synthetic filtered contexts;
-    # filtered explicit inputs remain probe-semantic outcomes and map to 69.
-    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(context_results)
-    encountered_exit_code = encountered_exit_code or pipeline_error_code
 
     # Add synthetic probe results for explicit inputs that were filtered before
     # the probe pipeline could run.
-    context_results.extend(
-        build_filtered_probe_contexts(
-            selection_results=filtered_selection_results,
-            config=config,
-            run_options=run_options,
-        )
+    filtered_results: list[ProcessingContext] = build_filtered_probe_contexts(
+        selection_results=filtered_selection_results,
+        config=config,
+        run_options=run_options,
     )
+    stream_paths: tuple[Path, ...] = (
+        *file_list,
+        *file_resolution.missing_literals,
+        *(result.path for result in filtered_selection_results),
+    )
+    context_results: chain[ProcessingContext] = chain(
+        iter_steps_for_files(
+            run_options=run_options,
+            config=config,
+            path_configs=None,
+            pipeline=pipeline,
+            file_list=file_list,
+            state=execution_state,
+        ),
+        missing_results,
+        filtered_results,
+    )
+    stats: ProbeStreamStats = ProbeStreamStats()
 
-    durable_results: tuple[ProcessingResult, ...] = reduce_processing_contexts(
-        context_results,
-        retain_contexts=False,
-        release_views=True,
-    ).results
+    if fmt == OutputFormat.JSON:
+        durable_results: tuple[ProcessingResult, ...] = reduce_processing_contexts(
+            context_results,
+            retain_contexts=False,
+            release_views=True,
+        ).results
+        for result in durable_results:
+            stats.observe(result)
 
-    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_probe_results_machine(
             console=console,
             meta=meta,
@@ -455,23 +466,52 @@ def probe_command(
             fmt=fmt,
         )
     else:
-        report = ProbeCommandHumanReport(
-            pipeline_kind=PIPELINE_KIND,
-            file_list_total=len(durable_results),
-            view_results=durable_results,
-            verbosity_level=verbosity_level,
-            styled=enable_color,
+        events: Iterator[MachineProcessingStreamEvent] = observe_probe_stream(
+            iter_cli_processing_stream(
+                context_results,
+                command=PIPELINE_KIND,
+                paths=stream_paths,
+                release_views=True,
+            ),
+            stats=stats,
         )
 
-        if fmt == OutputFormat.TEXT and not state.quiet:
-            console.print(render_probe_output_text(report))
-        elif fmt == OutputFormat.MARKDOWN:
-            console.print(render_probe_output_markdown(report))
+        if fmt == OutputFormat.NDJSON:
+            emit_probe_stream_machine(
+                console=console,
+                meta=meta,
+                config=config,
+                resolved_toml=prepared_cli_config.resolved_toml,
+                events=events,
+            )
+        elif (fmt == OutputFormat.TEXT and not state.quiet) or fmt == OutputFormat.MARKDOWN:
+            console.print(
+                render_probe_command_human_stream_output(
+                    pipeline_kind=PIPELINE_KIND,
+                    events=events,
+                    fmt=fmt,
+                    verbosity_level=verbosity_level,
+                    styled=enable_color,
+                )
+            )
+        else:
+            # Quiet TEXT still consumes the stream so exit-status observations are complete.
+            for _event in events:
+                pass
 
     if fmt == OutputFormat.MARKDOWN:
         console.print(render_version_footer_markdown())
 
-    # Exit on any hard error encountered while running the selected pipeline.
+    # Combine engine-derived failures with stream-observed failures.
+    #
+    # `PipelineExecutionState.exit_code` records hard failures encountered while
+    # executing the real pipeline. Stream statistics contribute additional exit
+    # conditions observed while consuming durable-result events (for example,
+    # synthetic missing-input results in `probe`). Engine failures intentionally
+    # take precedence here; command-specific semantic exit statuses are evaluated
+    # separately below.
+    encountered_exit_code: ExitCode | None = execution_state.exit_code or stats.exit_code
+
     maybe_exit_on_error(
         code=encountered_exit_code,
         temp_path=temp_path,
@@ -479,12 +519,10 @@ def probe_command(
 
     # Probe-specific semantic exit status. Filtered explicit inputs are reported
     # as probe results and therefore map to UNSUPPORTED_FILE_TYPE.
-    if any(result.probe is None for result in durable_results):
+    if stats.missing_probe:
         ctx.exit(ExitCode.PIPELINE_ERROR)
 
-    if any(
-        result.probe is not None and result.probe.status != "resolved" for result in durable_results
-    ):
+    if stats.unresolved_probe:
         ctx.exit(ExitCode.UNSUPPORTED_FILE_TYPE)
 
     # Cleanup temp file if any (shouldn't be needed except on errors)

@@ -198,11 +198,11 @@ snapshots those mutable contexts into durable
 can expose those durable results as ordered run-start, per-file, and run-completed events.
 
 Normal check and strip API batch orchestration can still use the result-oriented runtime adapter
-\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results]. CLI `check`/`strip` TEXT,
-Markdown, and NDJSON orchestration can consume ordered durable-result event streams directly. JSON
-output and public batch APIs still collect ordered durable results where stable summaries, exit
-codes, complete machine-output envelopes, and other batch-compatible schemas require complete state.
-Probe orchestration uses
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results]. CLI `check`, `strip`, and
+`probe` orchestration can consume ordered durable-result event streams directly for TEXT, Markdown,
+and NDJSON output. JSON output and public batch APIs still collect ordered durable results where
+stable summaries, exit codes, complete machine-output envelopes, and other batch-compatible schemas
+require complete state. Probe reduction uses
 \[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results], including
 durable synthetic results for missing or filtered explicit probe inputs.
 

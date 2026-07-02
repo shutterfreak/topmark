@@ -783,9 +783,23 @@ output, but it does not require a benchmark-methodology change. Summary-mode NDJ
 summary rendering still retain the durable results needed for existing aggregate output contracts,
 and JSON remains intentionally batch-shaped until a future JSON collector exists. The expected
 benchmark impact is therefore architectural and lifecycle-oriented rather than a new canonical
-memory baseline. A full repository-scale benchmark refresh remains more useful after CLI `probe`
-orchestration is also wired directly to the streaming core and remaining collector ownership has
-been reviewed.
+memory baseline.
+
+The seventh phase migrated CLI `probe` orchestration onto the same streaming-capable engine boundary
+already used by CLI `check` and `strip`. For TEXT, Markdown, and NDJSON output, `probe` now consumes
+`iter_steps_for_files()` directly, reduces real probe contexts into ordered durable result events,
+appends durable synthetic results for missing and filtered explicit inputs, and observes
+probe-specific exit status from the consumed stream. JSON remains the intentional complete-envelope
+collector path for compatibility with the existing machine-output contract.
+
+This completes the planned command-layer streaming migration for issue 174 without changing the
+benchmark methodology. The likely memory effect is concentrated in large probe runs using TEXT,
+Markdown, or NDJSON output, where command orchestration no longer constructs a separate complete
+`ProcessingReduction` before emitting output. Current benchmark suites are still primarily designed
+around check/strip pipeline ownership and repository-scale durable-result retention, so a new
+canonical memory baseline is not warranted for this phase alone. Full repository-scale benchmark
+refreshes remain more useful after future JSON collector and remaining transient-ownership
+follow-ups are evaluated.
 
 ______________________________________________________________________
 

@@ -28,6 +28,7 @@ from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
 from tests.helpers.config_diagnostics import assert_config_diagnostics_warning_payload
 from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from tests.helpers.json import parse_json_object
+from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.ndjson import record_payload
@@ -377,6 +378,34 @@ def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
     assert "probe" not in payload
 
 
+# NDJSON probe records should expose the standard brief metadata contract.
+def test_probe_ndjson_output_includes_brief_meta_on_each_record(
+    tmp_path: Path,
+) -> None:
+    """Probe NDJSON records should expose the standard brief metadata contract."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(file),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+        ],
+    )
+
+    assert_SUCCESS(result)
+
+    records: list[dict[str, object]] = parse_ndjson_records(result.output)
+    assert records
+
+    for record in records:
+        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+
+
 def test_probe_ndjson_symlink_input_serializes_canonical_target_path(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
@@ -510,6 +539,28 @@ def test_probe_ndjson_multiple_files(tmp_path: Path) -> None:
 
     probe_records: list[dict[str, object]] = [r for r in records if r["kind"] == "probe"]
     assert len(probe_records) == 2
+
+
+# Quiet TEXT probe should consume the stream before computing semantic exit status.
+def test_probe_text_quiet_consumes_stream_before_unresolved_exit(
+    tmp_path: Path,
+) -> None:
+    """Quiet TEXT probe should consume the stream before computing semantic exit status."""
+    file: Path = tmp_path / "example.unknown"
+    file.write_text("plain text\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.QUIET,
+            str(file),
+        ],
+    )
+
+    assert_UNSUPPORTED_FILE_TYPE(result)
+    assert result.output == ""
 
 
 # Regression test: strict config warnings yield machine-readable diagnostics in NDJSON mode

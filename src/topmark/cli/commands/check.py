@@ -599,6 +599,14 @@ def check_command(
             ):
                 console.print(output.stderr)
 
+    # Combine engine-derived failures with stream-observed failures.
+    #
+    # `PipelineExecutionState.exit_code` records hard failures encountered while
+    # executing the real pipeline. Stream statistics contribute additional exit
+    # conditions observed while consuming durable-result events (for example,
+    # synthetic missing-input results in `probe`). Engine failures intentionally
+    # take precedence here; command-specific semantic exit statuses are evaluated
+    # separately below.
     encountered_exit_code: ExitCode | None = execution_state.exit_code or stats.exit_code
 
     if apply_changes:
