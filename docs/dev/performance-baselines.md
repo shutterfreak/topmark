@@ -769,12 +769,23 @@ to preserve existing compatibility contracts. The change therefore clarifies own
 human presentation with the stream adapter architecture, but it does not remove the current retained
 output state or change the benchmarked pipeline execution model.
 
-Future phases that migrate CLI orchestration onto the streaming execution surface should be
-evaluated independently. A full repository-scale benchmark refresh remains more useful after CLI
-check/strip/probe orchestration is wired directly to the streaming core. If those changes alter
-retained output ownership or cumulative repository-scale memory behavior, they should be accompanied
-by additional repository-suite observations so any benchmark changes remain attributable to a
-specific architectural layer.
+The sixth phase migrated CLI `check` and `strip` orchestration onto the streaming-capable engine
+boundary. For TEXT, Markdown, and NDJSON output, the commands now consume `iter_steps_for_files()`
+directly and reduce each completed context into an ordered durable-result event before forwarding it
+to downstream consumers. JSON output intentionally remains a collected path because the existing
+JSON contract requires a complete machine-output envelope. Apply summaries, dry-run would-change
+exits, and prioritized processing error exits are observed from the same durable-result event stream
+instead of requiring a separate command-layer `ProcessingReduction` handover for these streaming
+output paths.
+
+This phase reduces one remaining command-layer batch ownership point for TEXT, Markdown, and NDJSON
+output, but it does not require a benchmark-methodology change. Summary-mode NDJSON and human
+summary rendering still retain the durable results needed for existing aggregate output contracts,
+and JSON remains intentionally batch-shaped until a future JSON collector exists. The expected
+benchmark impact is therefore architectural and lifecycle-oriented rather than a new canonical
+memory baseline. A full repository-scale benchmark refresh remains more useful after CLI `probe`
+orchestration is also wired directly to the streaming core and remaining collector ownership has
+been reviewed.
 
 ______________________________________________________________________
 
@@ -806,5 +817,6 @@ ______________________________________________________________________
 - GitHub issue 141: Evaluate alternative FileImageView implementations
 - GitHub issue 147: Design end-to-end streaming output architecture for CLI and machine formats
 - GitHub issue 165: Evaluate streaming-oriented reduction and incremental reporting architecture
+- GitHub issue 174: Evaluate public streaming/event API for durable processing results
 - GitHub issue 183: Audit and reduce comparison-time materialization in pipeline execution
 - GitHub issue 187: Establish repository-scale pipeline memory and ownership benchmarks

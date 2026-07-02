@@ -44,6 +44,7 @@ from topmark.api.types import RunStartedEvent
 from topmark.api.view import finalize_probe_result
 from topmark.api.view import finalize_run_result
 from topmark.core.errors import InvalidReportScopeError
+from topmark.pipeline.events import StreamEventKind
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import would_add_or_update_result
@@ -166,20 +167,20 @@ def _iter_content_events(
         Public streaming events in deterministic run order.
     """
     yield RunStartedEvent(
-        kind="run_started",
+        kind=StreamEventKind.RUN_STARTED.value,
         command=command,
         selected_count=len(run.selected_paths),
         paths=tuple(run.selected_paths),
     )
     for index, file_result in enumerate(run.result.files):
         yield FileResultEvent(
-            kind="file_result",
+            kind=StreamEventKind.FILE_RESULT.value,
             command=command,
             index=index,
             result=file_result,
         )
     yield RunCompletedEvent(
-        kind="run_completed",
+        kind=StreamEventKind.RUN_COMPLETED.value,
         command=command,
         summary=run.result.summary,
         had_errors=run.result.had_errors,
@@ -204,20 +205,20 @@ def _iter_probe_events(
         Public probe streaming events in deterministic run order.
     """
     yield RunStartedEvent(
-        kind="run_started",
+        kind=StreamEventKind.RUN_STARTED.value,
         command="probe",
         selected_count=len(run.selected_paths),
         paths=tuple(run.selected_paths),
     )
     for index, file_result in enumerate(run.result.files):
         yield ProbeFileResultEvent(
-            kind="file_result",
+            kind=StreamEventKind.FILE_RESULT.value,
             command="probe",
             index=index,
             result=file_result,
         )
     yield RunCompletedEvent(
-        kind="run_completed",
+        kind=StreamEventKind.RUN_COMPLETED.value,
         command="probe",
         summary=run.result.summary,
         had_errors=run.result.had_errors,

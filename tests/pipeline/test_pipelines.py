@@ -14,13 +14,11 @@ from __future__ import annotations
 
 import pytest
 
-from topmark.pipeline.pipelines import CHECK_APPLY_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_APPLY_PIPELINE
 from topmark.pipeline.pipelines import CHECK_PATCH_PIPELINE
 from topmark.pipeline.pipelines import CHECK_SUMMMARY_PIPELINE
 from topmark.pipeline.pipelines import PIPELINE_DEFINITIONS
 from topmark.pipeline.pipelines import PROBE_PIPELINE
-from topmark.pipeline.pipelines import STRIP_APPLY_PATCH_PIPELINE
 from topmark.pipeline.pipelines import STRIP_APPLY_PIPELINE
 from topmark.pipeline.pipelines import STRIP_PATCH_PIPELINE
 from topmark.pipeline.pipelines import STRIP_PIPELINE
@@ -37,21 +35,9 @@ from topmark.pipeline.pipelines import select_pipeline
         (Pipeline.CHECK, "check", "check", CHECK_SUMMMARY_PIPELINE),
         (Pipeline.CHECK_PATCH, "check-patch", "check", CHECK_PATCH_PIPELINE),
         (Pipeline.CHECK_APPLY, "check-apply", "check", CHECK_APPLY_PIPELINE),
-        (
-            Pipeline.CHECK_APPLY_PATCH,
-            "check-apply-patch",
-            "check",
-            CHECK_APPLY_PATCH_PIPELINE,
-        ),
         (Pipeline.STRIP, "strip", "strip", STRIP_PIPELINE),
         (Pipeline.STRIP_PATCH, "strip-patch", "strip", STRIP_PATCH_PIPELINE),
         (Pipeline.STRIP_APPLY, "strip-apply", "strip", STRIP_APPLY_PIPELINE),
-        (
-            Pipeline.STRIP_APPLY_PATCH,
-            "strip-apply-patch",
-            "strip",
-            STRIP_APPLY_PATCH_PIPELINE,
-        ),
     ],
 )
 def test_pipeline_definition_metadata(
@@ -78,11 +64,9 @@ def test_pipeline_definition_metadata(
         (Pipeline.CHECK, False, False),
         (Pipeline.CHECK_PATCH, False, True),
         (Pipeline.CHECK_APPLY, True, False),
-        (Pipeline.CHECK_APPLY_PATCH, True, True),
         (Pipeline.STRIP, False, False),
         (Pipeline.STRIP_PATCH, False, True),
         (Pipeline.STRIP_APPLY, True, False),
-        (Pipeline.STRIP_APPLY_PATCH, True, True),
     ],
 )
 def test_pipeline_capability_flags(
@@ -104,7 +88,6 @@ def test_pipeline_capability_flags(
         (False, False, Pipeline.CHECK),
         (False, True, Pipeline.CHECK_PATCH),
         (True, False, Pipeline.CHECK_APPLY),
-        (True, True, Pipeline.CHECK_APPLY_PATCH),
     ],
 )
 def test_select_pipeline_for_check_variants(
@@ -133,7 +116,6 @@ def test_select_pipeline_for_check_variants(
         (False, False, Pipeline.STRIP),
         (False, True, Pipeline.STRIP_PATCH),
         (True, False, Pipeline.STRIP_APPLY),
-        (True, True, Pipeline.STRIP_APPLY_PATCH),
     ],
 )
 def test_select_pipeline_for_strip_variants(

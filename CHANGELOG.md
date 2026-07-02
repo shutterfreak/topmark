@@ -76,6 +76,9 @@ ______________________________________________________________________
 - Migrated public API `check()` and `strip()` result packaging to consume durable `ProcessingResult`
   snapshots after context reduction, using reduced detail snapshots for public diff exposure while
   preserving existing API DTO behavior.
+- Migrated CLI `check` and `strip` orchestration to consume the streaming-capable pipeline engine
+  boundary directly for TEXT, Markdown, and NDJSON output while preserving JSON as a
+  complete-envelope collector path.
 - Migrated `check`/`strip` machine-readable result serialization to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced detail snapshots for JSON and
   NDJSON detail output while deriving summary classification from each result's execution-mode
@@ -420,6 +423,10 @@ ______________________________________________________________________
   the separation between presentation options and realized report state, preserved TEXT/Markdown
   compatibility contracts, retained result ownership, and benchmark-refresh deferral until CLI
   execution is wired directly to the streaming core.
+- Documented GitHub issue 174 phase 6, including the public streaming API boundary, CLI check/strip
+  streaming orchestration, durable-result event ownership, JSON versus NDJSON ownership differences,
+  removal of obsolete apply-and-diff pipeline variants, and the remaining benchmark-refresh
+  rationale after the planned probe streaming migration.
 - Documented the ownership boundary between `PipelineSelection` and `RunOptions`, clarifying
   executable pipeline selection versus invocation-specific runtime state, the
   `RunOptions.from_pipeline_selection(...)` derivation boundary, and the durable ownership chain
@@ -582,6 +589,12 @@ ______________________________________________________________________
 - Added a human presentation stream bridge and defensive lifecycle contract coverage for malformed
   internal stream sequences, keeping CLI command orchestration separate from realized TEXT/Markdown
   report construction.
+- Migrated CLI check/strip orchestration onto the streaming-capable engine boundary, added shared
+  command-layer stream routing helpers, introduced typed internal stream-event kinds, and removed
+  the obsolete unreachable apply-and-diff pipeline catalogue variants.
+- Added focused regression coverage for CLI stream routing, stream-event lifecycle, exit-code
+  prioritization, and streaming orchestration parity while preserving existing public CLI, API,
+  JSON, NDJSON, and presentation behavior.
 
 ### Notes - Unreleased
 

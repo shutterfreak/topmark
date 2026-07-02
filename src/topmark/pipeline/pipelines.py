@@ -144,11 +144,6 @@ CHECK_APPLY_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = CHECK_SUMMMAR
     writer.WriterStep(),  # Write changes to file/stdout
 )
 
-CHECK_APPLY_PATCH_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = CHECK_SUMMMARY_PIPELINE + (
-    planner.PlannerStep(),  # Update the file
-    patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
-    writer.WriterStep(),  # Write changes to file/stdout
-)
 
 STRIP_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = SCAN_PIPELINE + (
     stripper.StripperStep(),  # Strip the header from the file
@@ -164,13 +159,6 @@ STRIP_PATCH_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = STRIP_PIPELIN
 
 STRIP_APPLY_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = STRIP_PIPELINE + (
     planner.PlannerStep(),  # Update the file
-    writer.WriterStep(),  # Write changes to file/stdout
-)
-
-STRIP_APPLY_PATCH_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = STRIP_PIPELINE + (
-    comparer.ComparerStep(),  # Compare existing header with rendered stripped header
-    planner.PlannerStep(),  # Update the file
-    patcher.PatcherStep(),  # Generate unified diff (needs comparer.compare)
     writer.WriterStep(),  # Write changes to file/stdout
 )
 
@@ -209,11 +197,9 @@ class Pipeline(str, Enum):
     CHECK_RENDER = "check-render"
     CHECK = "check"
     CHECK_APPLY = "check-apply"
-    CHECK_APPLY_PATCH = "check-apply-patch"
     CHECK_PATCH = "check-patch"
     STRIP = "strip"
     STRIP_APPLY = "strip-apply"
-    STRIP_APPLY_PATCH = "strip-apply-patch"
     STRIP_PATCH = "strip-patch"
 
     @property
@@ -291,13 +277,6 @@ PIPELINE_DEFINITIONS: Final[dict[Pipeline, PipelineDefinition]] = {
         steps=CHECK_APPLY_PIPELINE,
         mutates=True,
     ),
-    Pipeline.CHECK_APPLY_PATCH: PipelineDefinition(
-        name=Pipeline.CHECK_APPLY_PATCH.value,
-        family="check",
-        steps=CHECK_APPLY_PATCH_PIPELINE,
-        mutates=True,
-        emits_patch=True,
-    ),
     Pipeline.CHECK_PATCH: PipelineDefinition(
         name=Pipeline.CHECK_PATCH.value,
         family="check",
@@ -314,13 +293,6 @@ PIPELINE_DEFINITIONS: Final[dict[Pipeline, PipelineDefinition]] = {
         family="strip",
         steps=STRIP_APPLY_PIPELINE,
         mutates=True,
-    ),
-    Pipeline.STRIP_APPLY_PATCH: PipelineDefinition(
-        name=Pipeline.STRIP_APPLY_PATCH.value,
-        family="strip",
-        steps=STRIP_APPLY_PATCH_PIPELINE,
-        mutates=True,
-        emits_patch=True,
     ),
     Pipeline.STRIP_PATCH: PipelineDefinition(
         name=Pipeline.STRIP_PATCH.value,
@@ -405,13 +377,13 @@ def select_pipeline(
     match kind:
         case "check":
             if apply:  # Mutate files
-                pipeline = Pipeline.CHECK_APPLY_PATCH if diff else Pipeline.CHECK_APPLY
+                pipeline = Pipeline.CHECK_APPLY
             else:  # Dry-run
                 pipeline = Pipeline.CHECK_PATCH if diff else Pipeline.CHECK
 
         case "strip":
             if apply:  # Mutate files
-                pipeline = Pipeline.STRIP_APPLY_PATCH if diff else Pipeline.STRIP_APPLY
+                pipeline = Pipeline.STRIP_APPLY
             else:  # Dry-run
                 pipeline = Pipeline.STRIP_PATCH if diff else Pipeline.STRIP
 

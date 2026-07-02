@@ -50,15 +50,16 @@ ______________________________________________________________________
 
 ## Mutable-context to durable-result handover
 
-TopMark uses a streaming-capable execution and reduction handover internally while preserving
-batch-oriented CLI, API, presentation, and machine-output behavior. The execution layer can yield
-per-file \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
+TopMark uses a streaming-capable execution and reduction handover internally while preserving stable
+batch APIs and existing output contracts. The execution layer can yield per-file
+\[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
 \[`iter_steps_for_files()`\][topmark.pipeline.engine.iter_steps_for_files]. The reduction layer can
 then snapshot those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
 \[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results], releasing
 context-owned volatile view payloads immediately after snapshotting when callers do not retain
-source contexts.
+source contexts. Stream adapters can expose those durable results as ordered run-start, per-file,
+and run-completed events for consumers that do not need to own a complete result collection.
 
 The batch-facing adapters remain explicit.
 \[`run_steps_for_files()`\][topmark.pipeline.engine.run_steps_for_files] materializes a
@@ -75,12 +76,13 @@ explicit probe inputs.
 
 This boundary is intentionally conservative:
 
-- it introduces per-file execution and reduction iterators inside the runtime architecture;
-- it does **not** make public API calls, CLI commands, JSON output, Markdown output, or summary
-  generation incremental;
-- it keeps output ordering, exit-code selection, report-scope filtering, public API DTO assembly,
-  human rendering, JSON envelope assembly, and summary-oriented machine output on batch-compatible
-  durable result collections;
+- it introduces per-file execution, reduction, and event adaptation inside the runtime architecture;
+- it preserves existing batch API result objects, JSON envelope assembly, summary semantics,
+  report-scope filtering, output ordering, and exit-code selection;
+- it lets public stream APIs, CLI `check`/`strip` TEXT and Markdown output, and NDJSON consume
+  ordered durable-result events directly where a complete result collection is not required;
+- it keeps JSON output as a complete-envelope format that is materialized before emission to
+  preserve the existing machine-output contract;
 - it keeps runner-owned pruning limited to between-step release of consumed volatile views, while
   final view release happens only after
   \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] has
@@ -103,15 +105,16 @@ embeds per-result `diff` payloads, and NDJSON detail emits adjacent standalone `
 Future structured-diff optimizations should stay behind this reduction seam unless those public
 contracts intentionally change.
 
-The public Python API `check()` and `strip()` result packaging now consume durable
-`ProcessingResult` snapshots through the result-oriented runtime path. This keeps API DTO assembly,
-report filtering, write counting, diagnostics aggregation, outcome bucketing, and public diff
-exposure on reduced result state rather than on live context views.
+The public Python API `check()` and `strip()` batch result packaging now consume durable
+`ProcessingResult` snapshots through the result-oriented runtime path, while the corresponding
+public streaming APIs consume ordered durable-result events over the same reduction boundary. This
+keeps API DTO assembly, report filtering, write counting, diagnostics aggregation, outcome
+bucketing, and public diff exposure on reduced result state rather than on live context views.
 
-Check/strip human rendering and machine-readable payload assembly now consume durable
-`ProcessingResult` snapshots, including reduced display-path state and retained diff text. Probe
-rendering, probe machine output, and probe public API DTO assembly now consume durable
-`ProcessingResult` snapshots carrying reduced
+Check/strip human rendering, NDJSON machine output, and CLI `check`/`strip` orchestration now
+consume ordered durable-result event streams. JSON output remains batch-compatible and materializes
+the complete machine-readable envelope before emission. Probe rendering, probe machine output, and
+probe public API DTO assembly consume durable `ProcessingResult` snapshots carrying reduced
 \[`ProbeSnapshot`\][topmark.pipeline.result.ProbeSnapshot] state. TEXT, Markdown, JSON, NDJSON, and
 public API result output therefore no longer project from live
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances once the
@@ -127,7 +130,8 @@ complete original and updated file images solely for equality checks. The patche
 structured unified diff for the same single-edit path directly from the planned edit and original
 image view, while retaining the existing `difflib` fallback for missing, invalid, or unsupported
 edit metadata. This keeps the current single-edit insertion, replacement, and removal semantics
-explicit without introducing a public streaming contract or a custom multi-edit diff engine.
+explicit without introducing a custom multi-edit diff engine. Public streaming contracts remain
+isolated at the durable-result event boundary rather than at the patch-generation layer.
 
 Pipeline halt ownership is centralized in the step lifecycle. Concrete steps set their owned status
 axes and may request terminal flow control from `run()` when they detect a policy block or execution
@@ -137,14 +141,15 @@ lifecycle contract after `run()` by halting contexts whose primary status axis r
 "step did not set state" protection is handled consistently instead of being repeated in individual
 hint helpers.
 
-This design deliberately stops short of a streaming public API. Public and CLI consumers still see
-complete result collections, and final summaries remain batch-derived. Future work can build on the
-same iterator seam for truly incremental output formats, but those would be separate contract
-decisions. NDJSON detail output already preserves per-result ordering by emitting result records and
-adjacent diff records from durable results, while JSON envelopes and summaries remain
-batch-compatible. Diff generation remains isolated behind the durable boundary and the
-structured-edit metadata seam, so later performance work can evaluate reduced-window fallback
-rendering or other lower-memory diff strategies without changing output-facing result contracts.
+This design now includes a public streaming API for durable processing events while preserving the
+existing batch API and CLI behavior. Public stream events provide ordered run-start, per-file, and
+run-completed DTOs for callers that want to consume results incrementally. Batch APIs remain
+collectors over the same durable-result event semantics, and final summaries remain
+batch-compatible. NDJSON detail output preserves per-result ordering by emitting result records and
+adjacent diff records from durable result events, while JSON envelopes remain complete snapshots.
+Diff generation remains isolated behind the durable boundary and the structured-edit metadata seam,
+so later performance work can evaluate reduced-window fallback rendering or other lower-memory diff
+strategies without changing output-facing result contracts.
 
 ______________________________________________________________________
 
@@ -468,6 +473,12 @@ Machine-readable formats (`json`, `ndjson`) are separate from both human formats
 schema-driven, never include ANSI styling, and are unaffected by TEXT-only verbosity controls.
 Machine-readable projection depth is controlled by explicit machine-facing options such as `--long`,
 not by `-v` / `--verbose` or `-q` / `--quiet`.
+
+Within that boundary, JSON and NDJSON have different ownership shapes. JSON remains a complete
+snapshot format: TopMark materializes the existing envelope before emitting it. NDJSON is the
+streaming machine-readable format and can emit ordered records as durable result events are
+consumed. This distinction is an implementation and output-format contract; it does not change the
+CLI command semantics or public batch API DTOs.
 
 Machine-readable output is also intentionally decoupled from process exit codes. JSON and NDJSON
 payloads serialize structured results, diagnostics, and resolution state; they do not embed the CLI

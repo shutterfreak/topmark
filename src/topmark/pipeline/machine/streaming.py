@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING
 from typing import Literal
 from typing import TypeAlias
 
+from topmark.pipeline.events import StreamEventKind
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Iterator
@@ -34,7 +36,7 @@ if TYPE_CHECKING:
     from topmark.pipeline.result import ProcessingResult
 
 
-@dataclass(frozen=True, kw_only=True, slots=True)
+@dataclass(frozen=True, kw_only=True, slots=True, init=False)
 class MachineRunStartedEvent:
     """Internal run-start event for pipeline machine-output streams.
 
@@ -43,15 +45,34 @@ class MachineRunStartedEvent:
         command: Command family represented by this stream.
         selected_count: Number of selected file paths.
         paths: Ordered selected paths associated with the run.
+
+    Args:
+        command: Command family represented by this stream.
+        selected_count: Number of selected file paths.
+        paths: Ordered selected paths associated with the run.
     """
 
-    kind: Literal["run_started"]
+    kind: Literal[StreamEventKind.RUN_STARTED]
     command: PipelineKindLiteral
     selected_count: int
     paths: tuple[Path, ...]
 
+    def __init__(
+        self,
+        *,
+        command: PipelineKindLiteral,
+        selected_count: int,
+        paths: tuple[Path, ...],
+    ) -> None:
+        # Fixed attributes:
+        object.__setattr__(self, "kind", StreamEventKind.RUN_STARTED)
+        # Initializable attributes:
+        object.__setattr__(self, "command", command)
+        object.__setattr__(self, "selected_count", selected_count)
+        object.__setattr__(self, "paths", paths)
 
-@dataclass(frozen=True, kw_only=True, slots=True)
+
+@dataclass(frozen=True, kw_only=True, slots=True, init=False)
 class MachineProcessingResultEvent:
     """Internal per-file event carrying a durable processing result.
 
@@ -60,25 +81,57 @@ class MachineProcessingResultEvent:
         command: Command family represented by this stream.
         index: Zero-based result index in deterministic processing order.
         result: Durable processing result used for existing machine payloads.
+
+    Args:
+        command: Command family represented by this stream.
+        index: Zero-based result index in deterministic processing order.
+        result: Durable processing result used for existing machine payloads.
     """
 
-    kind: Literal["file_result"]
+    kind: Literal[StreamEventKind.FILE_RESULT]
     command: PipelineKindLiteral
     index: int
     result: ProcessingResult
 
+    def __init__(
+        self,
+        *,
+        command: PipelineKindLiteral,
+        index: int,
+        result: ProcessingResult,
+    ) -> None:
+        # Fixed attributes:
+        object.__setattr__(self, "kind", StreamEventKind.FILE_RESULT)
+        # Initializable attributes:
+        object.__setattr__(self, "command", command)
+        object.__setattr__(self, "index", index)
+        object.__setattr__(self, "result", result)
 
-@dataclass(frozen=True, kw_only=True, slots=True)
+
+@dataclass(frozen=True, kw_only=True, slots=True, init=False)
 class MachineRunCompletedEvent:
     """Internal run-completed event for pipeline machine-output streams.
 
     Attributes:
         kind: Stable internal event kind.
         command: Command family represented by this stream.
+
+    Args:
+        command: Command family represented by this stream.
     """
 
-    kind: Literal["run_completed"]
+    kind: Literal[StreamEventKind.RUN_COMPLETED]
     command: PipelineKindLiteral
+
+    def __init__(
+        self,
+        *,
+        command: PipelineKindLiteral,
+    ) -> None:
+        # Fixed attributes:
+        object.__setattr__(self, "kind", StreamEventKind.RUN_COMPLETED)
+        # Initializable attributes:
+        object.__setattr__(self, "command", command)
 
 
 MachineProcessingStreamEvent: TypeAlias = (
@@ -104,19 +157,16 @@ def iter_machine_processing_stream(
     """
     result_tuple: tuple[ProcessingResult, ...] = tuple(results)
     yield MachineRunStartedEvent(
-        kind="run_started",
         command=command,
         selected_count=len(result_tuple),
         paths=tuple(result.path for result in result_tuple),
     )
     for index, result in enumerate(result_tuple):
         yield MachineProcessingResultEvent(
-            kind="file_result",
             command=command,
             index=index,
             result=result,
         )
     yield MachineRunCompletedEvent(
-        kind="run_completed",
         command=command,
     )

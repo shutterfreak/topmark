@@ -1323,7 +1323,6 @@ def test_render_pipeline_command_human_stream_output_rejects_bad_order(
     ctx: ProcessingContext = _make_context(tmp_path / "bad-order.py")
     reduction: ProcessingReduction = reduce_processing_contexts([ctx])
     event = MachineProcessingResultEvent(
-        kind="file_result",
         command="check",
         index=0,
         result=reduction.results[0],
@@ -1473,7 +1472,6 @@ def test_render_pipeline_command_human_stream_output_rejects_unexpected_index(
         )
     )
     bad_result_event = MachineProcessingResultEvent(
-        kind="file_result",
         command="check",
         index=2,
         result=reduction.results[0],

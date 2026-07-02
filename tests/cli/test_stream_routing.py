@@ -29,7 +29,9 @@ from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import parse_ndjson_records
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.streaming import select_exit_code
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:
@@ -143,3 +145,35 @@ def test_probe_ndjson_payload_stays_on_stdout(tmp_path: Path) -> None:
     records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
     assert records
     assert result.stderr == ""
+
+
+@pytest.mark.parametrize(
+    ("current", "candidate", "expected"),
+    [
+        pytest.param(
+            None,
+            ExitCode.PIPELINE_ERROR,
+            ExitCode.PIPELINE_ERROR,
+            id="empty-selects-candidate",
+        ),
+        pytest.param(
+            ExitCode.IO_ERROR,
+            ExitCode.PERMISSION_DENIED,
+            ExitCode.PERMISSION_DENIED,
+            id="higher-priority-candidate-wins",
+        ),
+        pytest.param(
+            ExitCode.PERMISSION_DENIED,
+            ExitCode.IO_ERROR,
+            ExitCode.PERMISSION_DENIED,
+            id="current-wins-over-lower-priority-candidate",
+        ),
+    ],
+)
+def test_processing_stream_exit_code_priority(
+    current: ExitCode | None,
+    candidate: ExitCode,
+    expected: ExitCode,
+) -> None:
+    """CLI stream statistics should retain the highest-priority exit code."""
+    assert select_exit_code(current, candidate) is expected
