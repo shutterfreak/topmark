@@ -44,6 +44,7 @@ Examples:
 
 from __future__ import annotations
 
+from itertools import chain
 from typing import TYPE_CHECKING
 
 import click
@@ -59,6 +60,7 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import resolve_human_console
 from topmark.cli.emitters.machine import emit_processing_results_machine
+from topmark.cli.emitters.machine import emit_processing_stream_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.io import plan_cli_inputs
@@ -82,7 +84,10 @@ from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
+from topmark.cli.streaming import ProcessingStreamStats
 from topmark.cli.streaming import emit_stdout_payload
+from topmark.cli.streaming import iter_cli_processing_stream
+from topmark.cli.streaming import observe_processing_stream
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import validate_diff_apply_mutual_exclusion
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
@@ -94,16 +99,13 @@ from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import get_logger
 from topmark.core.machine.payloads import build_meta_payload
-from topmark.pipeline.engine import PipelineExecution
-from topmark.pipeline.engine import exit_code_from_pipeline_results
-from topmark.pipeline.engine import run_steps_for_files
-from topmark.pipeline.machine.streaming import iter_machine_processing_stream
+from topmark.pipeline.engine import PipelineExecutionState
+from topmark.pipeline.engine import iter_steps_for_files
 from topmark.pipeline.pipelines import select_pipeline
 from topmark.pipeline.reduction import ProcessingReduction
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import would_strip_result
-from topmark.pipeline.status import WriteStatus
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary_markdown
@@ -116,6 +118,7 @@ from topmark.presentation.text.pipeline import render_pipeline_apply_summary_tex
 from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from collections.abc import Sequence
     from pathlib import Path
 
@@ -129,6 +132,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.files import FileListResolution
@@ -451,43 +455,46 @@ def strip_command(
         # Nothing to do
         return
 
-    # Run the concrete pipeline variant.
-    pipeline_run: PipelineExecution = run_steps_for_files(
-        run_options=run_options,
-        config=config,
-        path_configs=None,
-        pipeline=pipeline,
-        file_list=file_list,
-    )
-    context_results: list[ProcessingContext] = pipeline_run.contexts
-    encountered_exit_code: ExitCode | None = pipeline_run.exit_code
-
-    # Add resolver-level hard failures before deriving the process exit code so
-    # explicit missing inputs participate in reports and priority selection.
+    # Run the concrete pipeline variant through the streaming-capable engine
+    # boundary. JSON intentionally collects durable results to preserve the
+    # existing complete-envelope contract; NDJSON and human output consume the
+    # same durable-result stream directly.
+    execution_state: PipelineExecutionState = PipelineExecutionState()
     missing_results: list[ProcessingContext] = build_missing_file_contexts(
         paths=file_resolution.missing_literals,
         config=config,
         run_options=run_options,
     )
-    context_results.extend(missing_results)
-
-    pipeline_error_code: ExitCode | None = exit_code_from_pipeline_results(context_results)
-    encountered_exit_code = encountered_exit_code or pipeline_error_code
-
-    # Report scope is a human per-file listing policy only.
-    #
-    # - Machine-readable output must always use the full raw result set.
-    # - Human summary mode must also use the full raw result set so aggregated
-    #   counts are not distorted by per-file report filtering.
-    # - Human non-summary output uses the filtered per-file view.
-    reduction: ProcessingReduction = reduce_processing_contexts(
-        context_results,
-        retain_contexts=False,
-        release_views=True,
+    stream_paths: tuple[Path, ...] = (
+        *file_list,
+        *file_resolution.missing_literals,
     )
-    results: Sequence[ProcessingResult] = reduction.results
+    context_results: chain[ProcessingContext] = chain(
+        iter_steps_for_files(
+            run_options=run_options,
+            config=config,
+            path_configs=None,
+            pipeline=pipeline,
+            file_list=file_list,
+            state=execution_state,
+        ),
+        missing_results,
+    )
+    stats: ProcessingStreamStats = ProcessingStreamStats()
 
-    if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
+    if fmt == OutputFormat.JSON:
+        reduction: ProcessingReduction = reduce_processing_contexts(
+            context_results,
+            retain_contexts=False,
+            release_views=True,
+        )
+        results: Sequence[ProcessingResult] = reduction.results
+        for result in results:
+            stats.observe(
+                result,
+                would_change=would_strip_result(result),
+            )
+
         emit_processing_results_machine(
             console=machine_console,
             meta=meta,
@@ -498,28 +505,57 @@ def strip_command(
             summary_mode=summary_mode,
         )
     else:
-        options = PipelineHumanPresentationOptions(
-            pipeline_kind=PIPELINE_KIND,
-            report_scope=report_scope,
-            verbosity_level=verbosity_level,
-            summary_mode=summary_mode,
-            show_diffs=diff,
-            apply_changes=apply_changes,
-            styled=enable_color,
-        )
-        output: PipelineCommandHumanOutput = render_pipeline_command_human_stream_output(
-            options=options,
-            events=iter_machine_processing_stream(results, command=PIPELINE_KIND),
-            fmt=fmt,
+        events: Iterator[MachineProcessingStreamEvent] = observe_processing_stream(
+            iter_cli_processing_stream(
+                context_results,
+                command=PIPELINE_KIND,
+                paths=stream_paths,
+                release_views=True,
+            ),
+            stats=stats,
             would_change=would_strip_result,
         )
 
-        emit_stdout_payload(output.stdout)
+        if fmt == OutputFormat.NDJSON:
+            emit_processing_stream_machine(
+                console=machine_console,
+                meta=meta,
+                config=config,
+                resolved_toml=prepared_cli_config.resolved_toml,
+                events=events,
+                summary_mode=summary_mode,
+            )
+        else:
+            # Report scope is a human per-file listing policy only.
+            #
+            # - Machine-readable output must always use the full raw result set.
+            # - Human summary mode must also use the full raw result set so aggregated
+            #   counts are not distorted by per-file report filtering.
+            # - Human non-summary output uses the filtered per-file view.
+            options = PipelineHumanPresentationOptions(
+                pipeline_kind=PIPELINE_KIND,
+                report_scope=report_scope,
+                verbosity_level=verbosity_level,
+                summary_mode=summary_mode,
+                show_diffs=diff,
+                apply_changes=apply_changes,
+                styled=enable_color,
+            )
+            output: PipelineCommandHumanOutput = render_pipeline_command_human_stream_output(
+                options=options,
+                events=events,
+                fmt=fmt,
+                would_change=would_strip_result,
+            )
 
-        if (fmt == OutputFormat.TEXT and not state.quiet and output.stderr) or (
-            fmt == OutputFormat.MARKDOWN and output.stderr
-        ):
-            console.print(output.stderr)
+            emit_stdout_payload(output.stdout)
+
+            if (fmt == OutputFormat.TEXT and not state.quiet and output.stderr) or (
+                fmt == OutputFormat.MARKDOWN and output.stderr
+            ):
+                console.print(output.stderr)
+
+    encountered_exit_code: ExitCode | None = execution_state.exit_code or stats.exit_code
 
     if apply_changes:
         # Writes (only when --apply is set)
@@ -531,11 +567,9 @@ def strip_command(
             safe_unlink(temp_path)
             return
         else:
-            # Count outcomes from durable results after writer statuses have been finalized.
-            written: int = sum(
-                1 for result in results if result.status.write == WriteStatus.WRITTEN
-            )
-            failed: int = sum(1 for result in results if result.status.write == WriteStatus.FAILED)
+            # Count outcomes observed from durable-result stream events.
+            written: int = stats.written
+            failed: int = stats.failed
 
             # Emit apply summary. TEXT honors --quiet; Markdown remains document-oriented.
             if fmt == OutputFormat.TEXT and not state.quiet:
@@ -579,7 +613,7 @@ def strip_command(
         temp_path=temp_path,
     )
 
-    if not apply_changes and any(result.outcome.effective_would_strip for result in results):
+    if not apply_changes and stats.would_change:
         ctx.exit(ExitCode.WOULD_CHANGE)
 
     # Cleanup temp file if any (shouldn't be needed except on errors)

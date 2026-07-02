@@ -25,6 +25,8 @@ from topmark.config.machine.serializers import serialize_config_check
 from topmark.config.machine.serializers import serialize_config_diagnostics
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
+from topmark.core.machine.serializers import iter_ndjson_strings
+from topmark.pipeline.machine.envelopes import iter_processing_results_stream_ndjson_records
 from topmark.pipeline.machine.serializers import serialize_probe_results
 from topmark.pipeline.machine.serializers import serialize_processing_results
 from topmark.registry.machine.serializers import serialize_bindings
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
+    from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
@@ -142,6 +145,35 @@ def emit_processing_results_machine(
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
     emit_machine(serialized, console=console, nl=nl)
+
+
+def emit_processing_stream_machine(
+    *,
+    console: ConsoleProtocol,
+    meta: MetaPayload,
+    config: FrozenConfig,
+    resolved_toml: ResolvedTopmarkTomlSources,
+    events: Iterable[MachineProcessingStreamEvent],
+    summary_mode: bool,
+) -> None:
+    """Emit processing NDJSON from an internal durable-result stream.
+
+    Args:
+        console: Console used to emit serialized machine-readable output.
+        meta: The machine metadata payload.
+        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
+        resolved_toml: ResolvedTopmarkTomlSources.
+        events: Internal machine processing stream events in deterministic order.
+        summary_mode: If True, emit aggregated counts instead of per-file entries.
+    """
+    records: Iterator[dict[str, object]] = iter_processing_results_stream_ndjson_records(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml,
+        events=events,
+        summary_mode=summary_mode,
+    )
+    emit_machine(iter_ndjson_strings(records), console=console)
 
 
 def emit_config_machine(

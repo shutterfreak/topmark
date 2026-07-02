@@ -223,8 +223,12 @@ def test_pipeline_steps_declare_expected_view_consumers() -> None:
     steps_by_name: dict[str, Step[ProcessingContext]] = {
         step.name: step
         for step in (
-            *Pipeline.CHECK_APPLY_PATCH.steps,
-            *Pipeline.STRIP_APPLY_PATCH.steps,
+            # Dry-run pipelines do not include WriterStep:
+            *Pipeline.CHECK_PATCH.steps,
+            *Pipeline.STRIP_PATCH.steps,
+            # Mutating pipelines include WriterStep:
+            *Pipeline.CHECK_APPLY.steps,
+            *Pipeline.STRIP_APPLY.steps,
         )
     }
 

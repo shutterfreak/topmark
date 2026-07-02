@@ -31,13 +31,16 @@ Internally, pipeline execution is streaming-capable. The engine can yield per-fi
 \[`iter_steps_for_files()`\][topmark.pipeline.engine.iter_steps_for_files], and the reduction layer
 can snapshot those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
-\[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Runtime/API
-orchestration for normal check and strip execution uses the result-oriented
-\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter. Probe orchestration
-uses \[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results] to reduce
-real probe contexts and synthetic probe results across the same durable result boundary. Public CLI,
-API, presentation, and machine-output contracts still preserve batch-compatible ordering, summaries,
-and output schemas.
+\[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Stream adapters
+can expose those durable results as ordered run-start, per-file, and run-completed events. Normal
+check/strip batch orchestration uses the result-oriented
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter, while CLI `check`
+and `strip` TEXT, Markdown, and NDJSON orchestration can consume ordered durable-result event
+streams directly. Probe orchestration continues to use
+\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results] to reduce real
+probe contexts and synthetic probe results across the same durable-result boundary. JSON output and
+public batch APIs intentionally retain complete-result collection to preserve existing output and
+API contracts.
 
 Pipelines also operate on selected processing paths. Filesystem-identity evaluation occurs before
 ordinary pipeline execution begins and includes both processing-path normalization and
@@ -98,8 +101,8 @@ replacement file image while still supporting repeated consumption by comparison
 and writing.
 
 `WriterStep` streams both file writes and STDOUT emission through the updated-line iterator.
-Presentation-layer diff rendering is intentionally separate from writing so human and
-machine-readable frontends can expose retained diffs using different output contracts.
+Presentation-layer diff rendering is intentionally separate from writing so human TEXT/Markdown,
+NDJSON, and JSON frontends can expose retained diffs according to their respective output contracts.
 
 `ComparerStep` and `PatcherStep` consume structured edit metadata when available. Single-edit
 comparison and structured diff rendering can operate directly from
@@ -111,9 +114,10 @@ The pipeline catalogue and selection model remain agnostic to the concrete updat
 representation.
 
 Likewise, pipeline execution is agnostic to the eventual presentation format. Human frontends render
-retained unified diffs as terminal output, while machine-readable frontends expose structured diff
-payloads (embedded in JSON detail output or emitted as adjacent NDJSON `diff` records). Summary
-output intentionally omits per-file diff payloads regardless of presentation format.
+retained unified diffs as terminal output. NDJSON emits adjacent result and diff records while
+consuming durable-result event streams. JSON embeds structured diff payloads in complete machine
+output envelopes. Summary output intentionally omits per-file diff payloads regardless of
+presentation format.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -169,6 +173,9 @@ API module.
   - [`topmark.pipeline.views`](../api/internals/topmark/pipeline/views.md)
 - Runtime orchestration helpers:
   - [`topmark.api.runtime`](../api/internals/topmark/api/runtime.md)
+- Internal stream events and adapters:
+  - [`topmark.pipeline.events`](../api/internals/topmark/pipeline/events.md)
+  - [`topmark.pipeline.machine.streaming`](../api/internals/topmark/pipeline/machine/streaming.md)
 - Conceptual overview:
   - [`Pipelines (Concepts)`](./pipelines.md)
 

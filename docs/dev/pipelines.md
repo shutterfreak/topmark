@@ -80,8 +80,8 @@ ProcessingResult
 `RunOptions.from_pipeline_selection(...)` is therefore an explicit derivation boundary, not a sign
 that callers should configure pipeline intent twice. Overlapping values such as pipeline family,
 apply mode, and diff emission are selected once through the pipeline catalogue, then copied into
-durable runtime options so downstream context, result, reporting, and future streaming/event layers
-do not depend on executable catalogue objects.
+durable runtime options so downstream context, result, reporting, and stream/event layers do not
+depend on executable catalogue objects.
 
 This split keeps catalogue evolution separate from runtime execution evolution: new pipeline
 variants and selection metadata belong with `PipelineDefinition` and `PipelineSelection`, while
@@ -93,8 +93,8 @@ ______________________________________________________________________
 
 The pipeline catalogue is TopMark's executable pipeline registry. It is intentionally narrower than
 runtime configuration and reporting: catalogue entries describe available execution variants, while
-runtime options, processing contexts, durable results, CLI views, API DTOs, and future
-event-oriented reporting layers decide how selected executions are invoked, reduced, and presented.
+runtime options, processing contexts, durable results, CLI views, API DTOs, and stream/event
+reporting layers decide how selected executions are invoked, reduced, and presented.
 
 The catalogue ownership model is:
 
@@ -183,25 +183,28 @@ New pipeline behavior should follow these rules:
 1. Document new families in this concepts page, the generated reference hub, relevant CLI/API usage
    pages, and machine-output documentation when applicable.
 
-Future reporting or event APIs should consume durable results or purpose-built event DTOs derived
-from durable results. They should not depend directly on executable catalogue objects or mutable
-processing contexts. This keeps future streaming/event work compatible with the existing selection,
+Reporting and event APIs should consume durable results or purpose-built event DTOs derived from
+durable results. They should not depend directly on executable catalogue objects or mutable
+processing contexts. This keeps streaming/event work compatible with the existing selection,
 runtime, and reduction seams.
 
-Pipeline execution is streaming-capable internally, even though public CLI, API, presentation, and
-machine-output surfaces remain batch-oriented. The engine can yield per-file
+Pipeline execution is streaming-capable internally and now supports both durable stream consumption
+and batch-compatible collection. The engine can yield per-file
 \[`ProcessingContext`\][topmark.pipeline.context.model.ProcessingContext] instances through
 \[`iter_steps_for_files()`\][topmark.pipeline.engine.iter_steps_for_files]. The reduction layer then
 snapshots those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
-\[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Normal check
-and strip orchestration use the result-oriented runtime adapter
-\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results]. Probe orchestration uses
+\[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Stream adapters
+can expose those durable results as ordered run-start, per-file, and run-completed events.
+
+Normal check and strip API batch orchestration can still use the result-oriented runtime adapter
+\[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results]. CLI `check`/`strip` TEXT,
+Markdown, and NDJSON orchestration can consume ordered durable-result event streams directly. JSON
+output and public batch APIs still collect ordered durable results where stable summaries, exit
+codes, complete machine-output envelopes, and other batch-compatible schemas require complete state.
+Probe orchestration uses
 \[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results], including
-durable synthetic results for missing or filtered explicit probe inputs. Public surfaces still
-collect the ordered durable results where stable summaries, exit codes, JSON machine-output
-envelopes, and other batch-compatible schemas require batch-compatible state. NDJSON detail output
-can still preserve per-result ordering by emitting adjacent result and diff records.
+durable synthetic results for missing or filtered explicit probe inputs.
 
 Pipeline execution also consumes a selected **processing path**. File-list resolution performs
 filesystem-identity evaluation before ordinary pipeline execution begins.
@@ -327,7 +330,7 @@ TopMark pipelines are:
 - side-effect constrained
 - idempotent
 - processing-path based
-- streaming-capable internally
+- streaming-capable across execution, reduction, and event adaptation
 - presentation-independent
 
 Pipeline steps mutate processing context state. CLI views, API DTOs, and machine-readable output
@@ -567,33 +570,6 @@ Requires `--apply`.
 
 ______________________________________________________________________
 
-### CHECK_APPLY_PATCH
-
-**Purpose:** Apply changes *and* emit a patch
-
-**Mutation:** ✅ writes enabled
-
-**Steps:**
-
-```mermaid
-flowchart TD
-
-CP(<b>CHECK</b>)
-P[<tt>PlannerStep</tt>]
-H[<tt>PatcherStep</tt>]
-W[<tt>WriterStep</tt>]
-
-CP --> P --> H --> W
-```
-
-This catalogue variant is not selected by the current CLI because user-facing `--apply` and `--diff`
-are mutually exclusive. Keep compatibility review in mind before exposing any apply-and-diff
-behavior through a public interface. This catalogue variant is not selected by the current CLI
-because user-facing `--apply` and `--diff` are mutually exclusive. Keep compatibility review in mind
-before exposing any apply-and-diff behavior through a public interface.
-
-______________________________________________________________________
-
 ### STRIP (Summary)
 
 **Purpose:** Remove an existing TopMark header
@@ -656,28 +632,6 @@ P[<tt>PlannerStep</tt>]
 W[<tt>WriterStep</tt>]
 
 XP --> P --> W
-```
-
-______________________________________________________________________
-
-### STRIP_APPLY_PATCH
-
-**Purpose:** Remove headers and emit patch
-
-**Mutation:** ✅ writes enabled
-
-**Steps:**
-
-```mermaid
-flowchart TD
-
-XP(<b>STRIP</b>)
-C[<tt>ComparerStep</tt>]
-P[<tt>PlannerStep</tt>]
-H[<tt>PatcherStep</tt>]
-W[<tt>WriterStep</tt>]
-
-XP --> C --> P --> H --> W
 ```
 
 ______________________________________________________________________
@@ -787,11 +741,12 @@ ______________________________________________________________________
   pipeline variant, while \[`RunOptions`\][topmark.runtime.model.RunOptions] carries durable
   invocation state onto processing contexts and results
 - **Catalogue compatibility boundary:** `Pipeline` and `PipelineDefinition` identify executable
-  catalogue variants; public reporting, machine-readable output, and future event APIs consume
+  catalogue variants; public reporting, machine-readable output, and stream/event APIs consume
   durable `ProcessingResult` data rather than mutable execution contexts or catalogue internals
 - **Streaming-capable reduction seam:** the engine can yield per-file mutable processing contexts,
-  the reduction layer can snapshot them into durable processing results, and public CLI/API surfaces
-  can continue to collect those results for stable ordering, summaries, and machine-output schemas
+  the reduction layer can snapshot them into durable processing results, stream adapters can expose
+  ordered durable-result events, and batch-compatible consumers can still collect those results for
+  stable ordering, summaries, JSON envelopes, and public batch DTOs
 - **Separation of concerns:** Steps mutate context, views classify outcomes
 - **Runtime/configuration separation:** pipeline execution consumes resolved runtime configuration
   and runtime options rather than re-running TOML discovery during step execution

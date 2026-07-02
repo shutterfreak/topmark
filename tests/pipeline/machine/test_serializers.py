@@ -284,7 +284,6 @@ def test_processing_ndjson_stream_adapter_rejects_missing_start() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="check",
                     ),
                 ),
@@ -308,13 +307,11 @@ def test_processing_ndjson_stream_adapter_rejects_duplicate_start() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="check",
                         selected_count=0,
                         paths=(),
                     ),
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="check",
                         selected_count=0,
                         paths=(),
@@ -340,7 +337,6 @@ def test_processing_ndjson_stream_adapter_rejects_wrong_command() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="probe",
                         selected_count=0,
                         paths=(),
@@ -366,7 +362,6 @@ def test_processing_ndjson_stream_adapter_rejects_missing_completion() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="check",
                         selected_count=0,
                         paths=(),
@@ -395,7 +390,6 @@ def test_processing_ndjson_stream_adapter_rejects_file_before_start(
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineProcessingResultEvent(
-                        kind="file_result",
                         command="check",
                         index=0,
                         result=result,
@@ -424,17 +418,14 @@ def test_processing_ndjson_stream_adapter_rejects_file_after_completion(
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="check",
                         selected_count=1,
                         paths=(result.path,),
                     ),
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="check",
                     ),
                     MachineProcessingResultEvent(
-                        kind="file_result",
                         command="check",
                         index=0,
                         result=result,
@@ -463,13 +454,11 @@ def test_processing_ndjson_stream_adapter_rejects_out_of_order_file_index(
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="check",
                         selected_count=1,
                         paths=(result.path,),
                     ),
                     MachineProcessingResultEvent(
-                        kind="file_result",
                         command="check",
                         index=1,
                         result=result,
@@ -495,17 +484,14 @@ def test_processing_ndjson_stream_adapter_rejects_duplicate_completion() -> None
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="check",
                         selected_count=0,
                         paths=(),
                     ),
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="check",
                     ),
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="check",
                     ),
                 ),
@@ -548,7 +534,6 @@ def test_probe_ndjson_stream_adapter_rejects_missing_start() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="probe",
                     ),
                 ),
@@ -571,7 +556,6 @@ def test_probe_ndjson_stream_adapter_rejects_wrong_command() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="check",
                         selected_count=0,
                         paths=(),
@@ -596,7 +580,6 @@ def test_probe_ndjson_stream_adapter_rejects_missing_completion() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="probe",
                         selected_count=0,
                         paths=(),
@@ -621,13 +604,11 @@ def test_probe_ndjson_stream_adapter_rejects_duplicate_start() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="probe",
                         selected_count=0,
                         paths=(),
                     ),
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="probe",
                         selected_count=0,
                         paths=(),
@@ -655,7 +636,6 @@ def test_probe_ndjson_stream_adapter_rejects_file_before_start(
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineProcessingResultEvent(
-                        kind="file_result",
                         command="probe",
                         index=0,
                         result=result,
@@ -683,17 +663,14 @@ def test_probe_ndjson_stream_adapter_rejects_file_after_completion(
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="probe",
                         selected_count=1,
                         paths=(result.path,),
                     ),
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="probe",
                     ),
                     MachineProcessingResultEvent(
-                        kind="file_result",
                         command="probe",
                         index=0,
                         result=result,
@@ -721,13 +698,11 @@ def test_probe_ndjson_stream_adapter_rejects_out_of_order_file_index(
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="probe",
                         selected_count=1,
                         paths=(result.path,),
                     ),
                     MachineProcessingResultEvent(
-                        kind="file_result",
                         command="probe",
                         index=1,
                         result=result,
@@ -752,17 +727,14 @@ def test_probe_ndjson_stream_adapter_rejects_duplicate_completion() -> None:
                 resolved_toml=resolved_toml_sources,
                 events=(
                     MachineRunStartedEvent(
-                        kind="run_started",
                         command="probe",
                         selected_count=0,
                         paths=(),
                     ),
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="probe",
                     ),
                     MachineRunCompletedEvent(
-                        kind="run_completed",
                         command="probe",
                     ),
                 ),
