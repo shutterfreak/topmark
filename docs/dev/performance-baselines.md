@@ -754,11 +754,27 @@ change rather than a benchmark-methodology change: detail-mode NDJSON can emit p
 stream result events are consumed, while summary-mode NDJSON still rebuilds summary rows from
 retained durable results to preserve the existing schema and ordering contract.
 
-Future phases that migrate human presentation or CLI orchestration onto the streaming execution
-surface should be evaluated independently. If those changes alter retained output ownership or
-cumulative repository-scale memory behavior, they should be accompanied by additional
-repository-suite observations so any benchmark changes remain attributable to a specific
-architectural layer.
+The fifth phase migrated check/strip TEXT and Markdown human-output orchestration onto the same
+internal durable-result stream adapter used by the NDJSON migration. The CLI commands now pass human
+presentation options to a stream bridge instead of constructing presentation reports directly. The
+bridge defensively validates the stream lifecycle, consumes ordered durable-result events,
+reconstructs the realized report state needed by the existing renderers, and then delegates to the
+unchanged TEXT and Markdown renderers. This preserves human output compatibility while moving the
+presentation boundary toward stream-event input and keeping presentation configuration separate from
+retained report state.
+
+This phase does not require a benchmark-methodology change. Human report-scope filtering, grouped
+summary rendering, and standalone diff payload rendering still rely on an ordered durable result set
+to preserve existing compatibility contracts. The change therefore clarifies ownership and aligns
+human presentation with the stream adapter architecture, but it does not remove the current retained
+output state or change the benchmarked pipeline execution model.
+
+Future phases that migrate CLI orchestration onto the streaming execution surface should be
+evaluated independently. A full repository-scale benchmark refresh remains more useful after CLI
+check/strip/probe orchestration is wired directly to the streaming core. If those changes alter
+retained output ownership or cumulative repository-scale memory behavior, they should be accompanied
+by additional repository-suite observations so any benchmark changes remain attributable to a
+specific architectural layer.
 
 ______________________________________________________________________
 

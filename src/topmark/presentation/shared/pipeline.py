@@ -67,12 +67,42 @@ class ProbeCommandHumanReport:
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
+class PipelineHumanPresentationOptions:
+    """Configuration for human-facing pipeline command presentation.
+
+    The options are shared by TEXT and Markdown presentation paths for
+    `topmark check` and `topmark strip`. They describe how stream-derived
+    processing results should be rendered, but intentionally do not carry
+    realized result state such as file totals, filtered views, or unsupported
+    counts.
+
+    Attributes:
+        verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
+        styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
+        pipeline_kind: Pipeline kind used to select command-specific guidance.
+        report_scope: Active report scope for the current view.
+        summary_mode: Whether to render grouped outcome counts instead of per-file sections.
+        show_diffs: Whether to render unified diffs as separate payload output.
+        apply_changes: Whether the command runs in apply mode.
+    """
+
+    verbosity_level: int
+    styled: bool
+    pipeline_kind: PipelineKindLiteral
+    report_scope: ReportScope
+    summary_mode: bool
+    show_diffs: bool
+    apply_changes: bool
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PipelineCommandHumanReport:
     """Prepared payload for human-facing pipeline command renderers.
 
     The report is shared by TEXT and Markdown renderers for `topmark check` and
-    `topmark strip`. It contains only presentation-ready data and policy flags;
-    it does not perform rendering, Click interaction, or console output.
+    `topmark strip`. It contains realized presentation state derived from a
+    completed stream plus policy flags; it does not perform rendering, Click
+    interaction, or console output.
 
     Attributes:
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.

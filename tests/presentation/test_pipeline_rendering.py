@@ -31,8 +31,11 @@ from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.hints import make_hint
+from topmark.pipeline.machine.streaming import MachineProcessingResultEvent
+from topmark.pipeline.machine.streaming import iter_machine_processing_stream
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
+from topmark.pipeline.reporting import would_add_or_update_result
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
@@ -48,9 +51,11 @@ from topmark.presentation.markdown.pipeline import render_pipeline_apply_summary
 from topmark.presentation.markdown.pipeline import render_pipeline_diffs_markdown
 from topmark.presentation.markdown.pipeline import render_pipeline_output_markdown
 from topmark.presentation.output.pipeline import render_pipeline_command_human_output
+from topmark.presentation.output.pipeline import render_pipeline_command_human_stream_output
 from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.paths import render_path_display_text
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
+from topmark.presentation.shared.pipeline import PipelineHumanPresentationOptions
 from topmark.presentation.shared.pipeline import get_file_type_label
 from topmark.presentation.shared.pipeline import summarize_pipeline_file
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
@@ -65,8 +70,10 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
+    from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.reduction import ProcessingReduction
     from topmark.pipeline.result import ProcessingResult
+    from topmark.presentation.shared.pipeline import PipelineCommandHumanOutput
     from topmark.presentation.shared.pipeline import PipelineFileSummary
 
 
@@ -122,6 +129,27 @@ def _make_report(
         view_results=view_results,
         report_scope=report_scope,
         unsupported_count=unsupported_count,
+        summary_mode=summary_mode,
+        show_diffs=show_diffs,
+        apply_changes=apply_changes,
+    )
+
+
+def _make_presentation_options(
+    *,
+    pipeline_kind: PipelineKindLiteral = "check",
+    verbosity_level: int = 0,
+    report_scope: ReportScope = ReportScope.ACTIONABLE,
+    summary_mode: bool = False,
+    show_diffs: bool = False,
+    apply_changes: bool = False,
+) -> PipelineHumanPresentationOptions:
+    """Build shared human pipeline presentation options for stream renderers."""
+    return PipelineHumanPresentationOptions(
+        verbosity_level=verbosity_level,
+        styled=False,
+        pipeline_kind=pipeline_kind,
+        report_scope=report_scope,
         summary_mode=summary_mode,
         show_diffs=show_diffs,
         apply_changes=apply_changes,
@@ -1214,4 +1242,318 @@ def test_render_pipeline_command_human_output_accepts_only_human_formats(
             report=report,
             results=[],
             fmt=effective_fmt,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_matches_batch_text(
+    tmp_path: Path,
+) -> None:
+    """TEXT human output facade should preserve batch output when fed stream events."""
+    first_ctx: ProcessingContext = _make_context(tmp_path / "a.py")
+    second_ctx: ProcessingContext = _make_context(tmp_path / "b.py")
+    second_ctx.status.header = HeaderStatus.DETECTED
+    second_ctx.status.comparison = ComparisonStatus.UNCHANGED
+    second_ctx.status.plan = PlanStatus.SKIPPED
+
+    reduction: ProcessingReduction = reduce_processing_contexts([first_ctx, second_ctx])
+    options: PipelineHumanPresentationOptions = _make_presentation_options(
+        verbosity_level=1,
+    )
+    stream_output: PipelineCommandHumanOutput = render_pipeline_command_human_stream_output(
+        options=options,
+        events=iter_machine_processing_stream(reduction.results, command="check"),
+        fmt=OutputFormat.TEXT,
+        would_change=would_add_or_update_result,
+    )
+
+    batch_report: PipelineCommandHumanReport = _make_report(
+        view_results=(reduction.results[0],),
+        file_list_total=2,
+        verbosity_level=1,
+    )
+    batch_output: PipelineCommandHumanOutput = render_pipeline_command_human_output(
+        report=batch_report,
+        results=reduction.results,
+        fmt=OutputFormat.TEXT,
+    )
+
+    assert stream_output == batch_output
+
+
+def test_render_pipeline_command_human_stream_output_matches_batch_markdown_summary_diff(
+    tmp_path: Path,
+) -> None:
+    """Markdown stream output should preserve summary and full diff ordering."""
+    first_ctx: ProcessingContext = _make_context(tmp_path / "a.py")
+    second_ctx: ProcessingContext = _make_context(tmp_path / "b.py")
+    _add_diff(first_ctx)
+    _add_diff(second_ctx)
+
+    reduction: ProcessingReduction = reduce_processing_contexts([first_ctx, second_ctx])
+    options: PipelineHumanPresentationOptions = _make_presentation_options(
+        summary_mode=True,
+        show_diffs=True,
+    )
+    stream_output: PipelineCommandHumanOutput = render_pipeline_command_human_stream_output(
+        options=options,
+        events=iter_machine_processing_stream(reduction.results, command="check"),
+        fmt=OutputFormat.MARKDOWN,
+        would_change=would_add_or_update_result,
+    )
+
+    batch_report: PipelineCommandHumanReport = _make_report(
+        view_results=reduction.results,
+        summary_mode=True,
+        show_diffs=True,
+    )
+    batch_output: PipelineCommandHumanOutput = render_pipeline_command_human_output(
+        report=batch_report,
+        results=reduction.results,
+        fmt=OutputFormat.MARKDOWN,
+    )
+
+    assert stream_output == batch_output
+    assert stream_output.stdout.find("a.py") < stream_output.stdout.find("b.py")
+
+
+def test_render_pipeline_command_human_stream_output_rejects_bad_order(
+    tmp_path: Path,
+) -> None:
+    """Human stream facade should reject malformed result ordering."""
+    ctx: ProcessingContext = _make_context(tmp_path / "bad-order.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    event = MachineProcessingResultEvent(
+        kind="file_result",
+        command="check",
+        index=0,
+        result=reduction.results[0],
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="file-result event appeared before run-start",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(event,),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_wrong_command(
+    tmp_path: Path,
+) -> None:
+    """Human stream facade should reject streams for a different command."""
+    ctx: ProcessingContext = _make_context(tmp_path / "wrong-command.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+
+    with pytest.raises(
+        ValueError,
+        match="event for a different command",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(pipeline_kind="check"),
+            events=iter_machine_processing_stream(reduction.results, command="strip"),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_missing_completion(
+    tmp_path: Path,
+) -> None:
+    """Human stream facade should reject streams without a run-completed event."""
+    ctx: ProcessingContext = _make_context(tmp_path / "missing-completion.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    events: tuple[MachineProcessingStreamEvent, ...] = tuple(
+        iter_machine_processing_stream(
+            reduction.results,
+            command="check",
+        )
+    )[:-1]
+
+    with pytest.raises(
+        ValueError,
+        match="missing a run-completed event",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=events,
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_duplicate_start(
+    tmp_path: Path,
+) -> None:
+    """Defensively reject manually assembled streams with duplicate run starts."""
+    ctx: ProcessingContext = _make_context(tmp_path / "duplicate-start.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    events: tuple[MachineProcessingStreamEvent, ...] = tuple(
+        iter_machine_processing_stream(
+            reduction.results,
+            command="check",
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="more than one run-start event",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(events[0], events[0], *events[1:]),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_start_after_completion(
+    tmp_path: Path,
+) -> None:
+    """Defensively reject lifecycle corruption after a completed stream."""
+    ctx: ProcessingContext = _make_context(tmp_path / "start-after-completion.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    events: tuple[MachineProcessingStreamEvent, ...] = tuple(
+        iter_machine_processing_stream(
+            reduction.results,
+            command="check",
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="run-start event appeared after run-completed",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(*events, events[0]),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_result_after_completion(
+    tmp_path: Path,
+) -> None:
+    """Defensively reject file results emitted after completion."""
+    ctx: ProcessingContext = _make_context(tmp_path / "result-after-completion.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    events: tuple[MachineProcessingStreamEvent, ...] = tuple(
+        iter_machine_processing_stream(
+            reduction.results,
+            command="check",
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="file-result event appeared after run-completed",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(*events, events[1]),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_unexpected_index(
+    tmp_path: Path,
+) -> None:
+    """Defensively reject streams whose durable result indexes are not contiguous."""
+    ctx: ProcessingContext = _make_context(tmp_path / "bad-index.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    events: tuple[MachineProcessingStreamEvent, ...] = tuple(
+        iter_machine_processing_stream(
+            reduction.results,
+            command="check",
+        )
+    )
+    bad_result_event = MachineProcessingResultEvent(
+        kind="file_result",
+        command="check",
+        index=2,
+        result=reduction.results[0],
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Expected human presentation file-result index 0, got 2",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(events[0], bad_result_event, events[-1]),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_completion_before_start(
+    tmp_path: Path,
+) -> None:
+    """Defensively reject streams that complete before starting."""
+    ctx: ProcessingContext = _make_context(tmp_path / "completion-before-start.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    events: tuple[MachineProcessingStreamEvent, ...] = tuple(
+        iter_machine_processing_stream(
+            reduction.results,
+            command="check",
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="run-completed event appeared before run-start",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(events[-1],),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_duplicate_completion(
+    tmp_path: Path,
+) -> None:
+    """Defensively reject manually assembled streams with duplicate completions."""
+    ctx: ProcessingContext = _make_context(tmp_path / "duplicate-completion.py")
+    reduction: ProcessingReduction = reduce_processing_contexts([ctx])
+    events: tuple[MachineProcessingStreamEvent, ...] = tuple(
+        iter_machine_processing_stream(
+            reduction.results,
+            command="check",
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="more than one run-completed event",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(*events, events[-1]),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
+        )
+
+
+def test_render_pipeline_command_human_stream_output_rejects_missing_start(
+    tmp_path: Path,
+) -> None:
+    """Defensively reject empty streams before rendering human output."""
+    _make_context(tmp_path / "missing-start.py")
+
+    with pytest.raises(
+        ValueError,
+        match="missing a run-start event",
+    ):
+        render_pipeline_command_human_stream_output(
+            options=_make_presentation_options(),
+            events=(),
+            fmt=OutputFormat.TEXT,
+            would_change=would_add_or_update_result,
         )

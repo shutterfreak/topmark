@@ -89,6 +89,10 @@ ______________________________________________________________________
 - Migrated `check`/`strip` TEXT and Markdown human report rendering to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced display-path and diff-detail
   state while keeping probe rendering and patcher-generated diff headers context-based.
+- Migrated `check`/`strip` TEXT and Markdown human output orchestration to consume the internal
+  durable-result stream adapter through a presentation-options bridge, preserving report-scope
+  filtering, summary counts, diff payload ordering, and existing human output contracts while
+  preparing CLI execution for streaming-core wiring.
 - Migrated `probe` public API DTO assembly, machine-readable output, and TEXT/Markdown rendering to
   consume durable `ProcessingResult` snapshots carrying reduced `ProbeSnapshot` state, completing
   the current mutable-context to durable-result handover for output-facing consumers.
@@ -412,6 +416,10 @@ ______________________________________________________________________
 - Documented the planned public streaming event compatibility contract, including stable event
   phases, public DTO ownership, and the compatibility boundary between future streaming APIs and
   existing batch-oriented `check()`, `strip()`, and `probe()` entry points.
+- Documented the internal human presentation stream bridge for GitHub issue 174 phase 5, including
+  the separation between presentation options and realized report state, preserved TEXT/Markdown
+  compatibility contracts, retained result ownership, and benchmark-refresh deferral until CLI
+  execution is wired directly to the streaming core.
 - Documented the ownership boundary between `PipelineSelection` and `RunOptions`, clarifying
   executable pipeline selection versus invocation-specific runtime state, the
   `RunOptions.from_pipeline_selection(...)` derivation boundary, and the durable ownership chain
@@ -571,6 +579,9 @@ ______________________________________________________________________
 - Centralized shared pipeline summary preparation for TEXT and Markdown renderers, keeping compact
   file-type, outcome, write/diff, and diagnostic triage semantics consistent while leaving styling
   and Markdown escaping in the format-specific presentation layers.
+- Added a human presentation stream bridge and defensive lifecycle contract coverage for malformed
+  internal stream sequences, keeping CLI command orchestration separate from realized TEXT/Markdown
+  report construction.
 
 ### Notes - Unreleased
 
