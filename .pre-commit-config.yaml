@@ -34,7 +34,7 @@ repos:
           - mdformat-gfm-alerts
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.22.1
+    rev: v0.23.0
     hooks:
       - id: markdownlint-cli2
         # Use args to point to your config or ignore specific folders
@@ -87,7 +87,7 @@ repos:
 
   # Docstring semantics for source and tooling modules
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.7
+    rev: 0.9.1
     hooks:
       - id: pydoclint
         args: ["-q"]
