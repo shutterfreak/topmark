@@ -63,7 +63,7 @@ from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import resolve_human_console
-from topmark.cli.emitters.machine import emit_processing_results_machine
+from topmark.cli.emitters.machine import emit_processing_stream_json_machine
 from topmark.cli.emitters.machine import emit_processing_stream_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
@@ -110,8 +110,6 @@ from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.engine import PipelineExecutionState
 from topmark.pipeline.engine import iter_steps_for_files
 from topmark.pipeline.pipelines import select_pipeline
-from topmark.pipeline.reduction import ProcessingReduction
-from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import would_add_or_update_result
 from topmark.pipeline.synthetic import build_missing_file_contexts
@@ -127,7 +125,6 @@ from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from collections.abc import Sequence
     from pathlib import Path
 
     from topmark.cli.cmd_common import PreparedCliConfig
@@ -143,7 +140,6 @@ if TYPE_CHECKING:
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.pipelines import PipelineSelection
-    from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
 
@@ -497,9 +493,8 @@ def check_command(
         return
 
     # Run the concrete pipeline variant through the streaming-capable engine
-    # boundary. JSON intentionally collects durable results to preserve the
-    # existing complete-envelope contract; NDJSON and human output consume the
-    # same durable-result stream directly.
+    # boundary. Every output format now observes the same durable-result stream;
+    # JSON still materializes the complete compatibility envelope before emission.
     execution_state: PipelineExecutionState = PipelineExecutionState()
 
     # Add resolver-level hard failures before deriving the process exit code so
@@ -526,41 +521,29 @@ def check_command(
     )
     stats: ProcessingStreamStats = ProcessingStreamStats()
 
-    if fmt == OutputFormat.JSON:
-        reduction: ProcessingReduction = reduce_processing_contexts(
+    events: Iterator[MachineProcessingStreamEvent] = observe_processing_stream(
+        iter_cli_processing_stream(
             context_results,
-            retain_contexts=False,
+            command=PIPELINE_KIND,
+            paths=stream_paths,
             release_views=True,
-        )
-        results: Sequence[ProcessingResult] = reduction.results
-        for result in results:
-            stats.observe(
-                result,
-                would_change=would_add_or_update_result(result),
+        ),
+        stats=stats,
+        would_change=would_add_or_update_result,
+    )
+
+    match fmt:
+        case OutputFormat.JSON:
+            emit_processing_stream_json_machine(
+                console=machine_console,
+                meta=meta,
+                config=config,
+                resolved_toml=prepared_cli_config.resolved_toml,
+                events=events,
+                summary_mode=summary_mode,
             )
 
-        emit_processing_results_machine(
-            console=machine_console,
-            meta=meta,
-            config=config,
-            resolved_toml=prepared_cli_config.resolved_toml,
-            results=results,
-            fmt=fmt,
-            summary_mode=summary_mode,
-        )
-    else:
-        events: Iterator[MachineProcessingStreamEvent] = observe_processing_stream(
-            iter_cli_processing_stream(
-                context_results,
-                command=PIPELINE_KIND,
-                paths=stream_paths,
-                release_views=True,
-            ),
-            stats=stats,
-            would_change=would_add_or_update_result,
-        )
-
-        if fmt == OutputFormat.NDJSON:
+        case OutputFormat.NDJSON:
             emit_processing_stream_machine(
                 console=machine_console,
                 meta=meta,
@@ -569,7 +552,11 @@ def check_command(
                 events=events,
                 summary_mode=summary_mode,
             )
-        else:
+
+        case OutputFormat.TEXT | OutputFormat.MARKDOWN:  # pragma: no branch
+            # Exhaustive after JSON/NDJSON because CLI validation constrains fmt
+            # to a supported OutputFormat value.
+
             # Report scope is a human per-file listing policy only.
             #
             # - Machine-readable output must always use the full raw result set.

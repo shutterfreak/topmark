@@ -59,7 +59,8 @@ TopMark exposes four stable `--output-format` values:
   - `text`: default human-oriented text.
   - `markdown`: human-oriented Markdown.
 - machine-readable formats (schema described in this document):
-  - `json`: a single JSON document per invocation.
+  - `json`: a single complete JSON document per invocation. Internally, the compatibility envelope
+    is reconstructed from ordered durable-result stream events before emission.
   - `ndjson`: a newline-delimited JSON stream.
 
 The schemas below apply only to **`json`** and **`ndjson`**.
@@ -337,6 +338,11 @@ Internally, `probe` executes a dedicated read-only pipeline family that is separ
 pipelines. This distinction is informational only: the machine-readable output contract remains the
 probe payloads documented below.
 
+Internally, both JSON and NDJSON probe output consume the same ordered durable-result stream events.
+NDJSON emits one record at a time as those events are consumed, while JSON reconstructs the
+documented compatibility envelope from the same event stream before emitting the complete document.
+This implementation detail does not change the published JSON or NDJSON schemas.
+
 Probe output reports canonical file type identities after identifier normalization and file-type
 filtering.
 
@@ -580,6 +586,12 @@ than pipeline-selection metadata.
 Processing machine-readable output is unaffected by TEXT verbosity or quiet mode; those flags affect
 only human TEXT output.
 
+Internally, both JSON and NDJSON processing output consume the same ordered durable-result stream
+events. NDJSON emits record-oriented output directly from those events, while JSON reconstructs the
+documented compatibility envelope before emitting the complete document. This shared streaming
+implementation preserves the existing machine-readable compatibility contract while aligning JSON
+and NDJSON on the same execution pipeline.
+
 ### JSON schema (detail mode)
 
 Detail mode corresponds to `summary_mode = false`.
@@ -674,6 +686,10 @@ The `diff` record is emitted only in detail mode when `--diff` is requested and 
 diff is available for the preceding result. JSON detail mode embeds diff payloads under the
 corresponding result object, while NDJSON detail mode emits adjacent standalone `diff` records so
 stream consumers can process one result at a time.
+
+Although JSON and NDJSON differ in their published output shapes, both formats are now produced from
+the same ordered durable-result stream. JSON materializes the complete compatibility envelope at the
+end of stream consumption, whereas NDJSON exposes each record as it becomes available.
 
 In summary mode, per-file `result` records are replaced by one `summary` record per
 `(outcome, reason)` bucket:

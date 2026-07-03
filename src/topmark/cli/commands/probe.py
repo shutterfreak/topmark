@@ -59,7 +59,7 @@ from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import resolve_human_console
-from topmark.cli.emitters.machine import emit_probe_results_machine
+from topmark.cli.emitters.machine import emit_probe_stream_json_machine
 from topmark.cli.emitters.machine import emit_probe_stream_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
@@ -93,7 +93,6 @@ from topmark.core.machine.payloads import build_meta_payload
 from topmark.pipeline.engine import PipelineExecutionState
 from topmark.pipeline.engine import iter_steps_for_files
 from topmark.pipeline.pipelines import select_pipeline
-from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.synthetic import build_filtered_probe_contexts
 from topmark.pipeline.synthetic import build_missing_file_contexts
 from topmark.presentation.markdown.diagnostic import render_diagnostics_markdown
@@ -119,7 +118,6 @@ if TYPE_CHECKING:
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.pipelines import PipelineSelection
-    from topmark.pipeline.result import ProcessingResult
     from topmark.resolution.discovery import FileSelectionProbeResult
     from topmark.resolution.files import FileListResolution
     from topmark.runtime.model import RunOptions
@@ -408,9 +406,9 @@ def probe_command(
         return
 
     # Run the concrete pipeline variant through the shared streaming-capable
-    # execution path. JSON intentionally remains the complete-envelope collector
-    # path; NDJSON and human output consume the same durable-result stream used
-    # by check/strip.
+    # execution path. Every output format now observes the same durable-result
+    # stream; JSON still materializes the complete compatibility envelope before
+    # emission.
     execution_state: PipelineExecutionState = PipelineExecutionState()
 
     # Add resolver-level hard failures before deriving the process exit code.
@@ -448,35 +446,27 @@ def probe_command(
     )
     stats: ProbeStreamStats = ProbeStreamStats()
 
-    if fmt == OutputFormat.JSON:
-        durable_results: tuple[ProcessingResult, ...] = reduce_processing_contexts(
+    events: Iterator[MachineProcessingStreamEvent] = observe_probe_stream(
+        iter_cli_processing_stream(
             context_results,
-            retain_contexts=False,
+            command=PIPELINE_KIND,
+            paths=stream_paths,
             release_views=True,
-        ).results
-        for result in durable_results:
-            stats.observe(result)
+        ),
+        stats=stats,
+    )
 
-        emit_probe_results_machine(
-            console=console,
-            meta=meta,
-            config=config,
-            resolved_toml=prepared_cli_config.resolved_toml,
-            results=durable_results,
-            fmt=fmt,
-        )
-    else:
-        events: Iterator[MachineProcessingStreamEvent] = observe_probe_stream(
-            iter_cli_processing_stream(
-                context_results,
-                command=PIPELINE_KIND,
-                paths=stream_paths,
-                release_views=True,
-            ),
-            stats=stats,
-        )
+    match fmt:
+        case OutputFormat.JSON:
+            emit_probe_stream_json_machine(
+                console=console,
+                meta=meta,
+                config=config,
+                resolved_toml=prepared_cli_config.resolved_toml,
+                events=events,
+            )
 
-        if fmt == OutputFormat.NDJSON:
+        case OutputFormat.NDJSON:
             emit_probe_stream_machine(
                 console=console,
                 meta=meta,
@@ -484,20 +474,24 @@ def probe_command(
                 resolved_toml=prepared_cli_config.resolved_toml,
                 events=events,
             )
-        elif (fmt == OutputFormat.TEXT and not state.quiet) or fmt == OutputFormat.MARKDOWN:
-            console.print(
-                render_probe_command_human_stream_output(
-                    pipeline_kind=PIPELINE_KIND,
-                    events=events,
-                    fmt=fmt,
-                    verbosity_level=verbosity_level,
-                    styled=enable_color,
+
+        case OutputFormat.TEXT | OutputFormat.MARKDOWN:  # pragma: no branch
+            # Exhaustive after JSON/NDJSON because CLI validation constrains fmt
+            # to a supported OutputFormat value.
+            if (fmt == OutputFormat.TEXT and not state.quiet) or fmt == OutputFormat.MARKDOWN:
+                console.print(
+                    render_probe_command_human_stream_output(
+                        pipeline_kind=PIPELINE_KIND,
+                        events=events,
+                        fmt=fmt,
+                        verbosity_level=verbosity_level,
+                        styled=enable_color,
+                    )
                 )
-            )
-        else:
-            # Quiet TEXT still consumes the stream so exit-status observations are complete.
-            for _event in events:
-                pass
+            else:
+                # Quiet TEXT still consumes the stream so exit-status observations are complete.
+                for _event in events:
+                    pass
 
     if fmt == OutputFormat.MARKDOWN:
         console.print(render_version_footer_markdown())

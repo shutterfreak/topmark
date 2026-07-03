@@ -292,8 +292,10 @@ ______________________________________________________________________
 
 Unlike NDJSON, JSON output is **domain-specific and aggregated**. Each command defines its own
 stable top-level collection keys. Processing and probe JSON output intentionally retain complete
-collection before emission so the existing envelope, summary, and diagnostic contracts remain
-stable.
+envelopes before emission so the existing envelope, summary, and diagnostic contracts remain stable.
+For `check`, `strip`, and `probe`, those compatibility envelopes are reconstructed from ordered
+durable-result stream events before emission; the stream-backed implementation does not change the
+published JSON schema.
 
 Examples:
 
@@ -486,10 +488,10 @@ share conventions:
 These diagnostics correspond to the flattened compatibility view derived from staged config-loading
 validation logs.
 
-Internally, processing NDJSON is emitted from ordered durable-result stream events. This preserves
-record ordering and diff adjacency while avoiding a complete processing-result collection for the
-NDJSON path. JSON output remains an aggregated envelope and therefore still collects complete
-results before emission.
+Internally, processing JSON and NDJSON are emitted from ordered durable-result stream events. NDJSON
+can emit record-oriented output as those events are consumed, preserving record ordering and diff
+adjacency. JSON preserves the existing aggregated envelope contract by reconstructing the complete
+compatibility envelope from the ordered stream before emission.
 
 The `--diff` option affects payload shape only in detail mode. It does not affect summary
 aggregation, exit-code selection, or whether processing runs. Summary output is still aggregated by
@@ -585,9 +587,10 @@ machine-readable diagnostic surface.
   - zero or more `diagnostic` records (domain=`"config"`)
   - then one `probe` record per probe result
 
-Internally, probe NDJSON is emitted from ordered durable-result stream events, including durable
-synthetic probe results for filtered or missing explicit inputs. JSON output remains an aggregated
-`probes` envelope and therefore still collects complete probe results before emission.
+Internally, probe JSON and NDJSON are emitted from ordered durable-result stream events, including
+durable synthetic probe results for filtered or missing explicit inputs. NDJSON can emit one `probe`
+record per consumed event. JSON preserves the existing aggregated `probes` envelope contract by
+reconstructing the complete compatibility envelope from the ordered stream before emission.
 
 Unlike processing commands, [`probe`](../usage/commands/probe.md):
 

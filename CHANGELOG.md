@@ -77,11 +77,13 @@ ______________________________________________________________________
   snapshots after context reduction, using reduced detail snapshots for public diff exposure while
   preserving existing API DTO behavior.
 - Migrated CLI `check` and `strip` orchestration to consume the streaming-capable pipeline engine
-  boundary directly for TEXT, Markdown, and NDJSON output while preserving JSON as a
-  complete-envelope collector path.
+  boundary directly for TEXT, Markdown, NDJSON, and JSON output while preserving the complete JSON
+  envelope contract.
 - Migrated CLI `probe` orchestration to the same streaming-capable pipeline engine boundary for
-  TEXT, Markdown, and NDJSON output while preserving probe semantics, synthetic probe results,
-  exit-code behavior, and JSON as a complete-envelope collector path.
+  TEXT, Markdown, NDJSON, and JSON output while preserving probe semantics, synthetic probe results,
+  and exit-code behavior.
+- Added reusable durable-result stream JSON collectors for processing and probe machine output so
+  JSON envelopes are reconstructed from the same stream boundary as other CLI output formats.
 - Migrated `check`/`strip` machine-readable result serialization to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced detail snapshots for JSON and
   NDJSON detail output while deriving summary classification from each result's execution-mode
@@ -457,6 +459,9 @@ ______________________________________________________________________
 - Documented CLI stream-routing ownership, including STDOUT payload ownership, STDERR
   diagnostics/signaling, machine-readable parseability, and human diff/content-to-STDOUT routing
   behavior.
+- Documented GitHub issue 174 phase 8, clarifying that JSON remains a complete-envelope
+  compatibility format while its envelope is reconstructed from ordered durable-result stream events
+  shared with TEXT, Markdown, NDJSON, public stream APIs, and batch collectors.
 
 ### Internal - Unreleased
 
@@ -607,6 +612,11 @@ ______________________________________________________________________
 - Added focused regression coverage for CLI stream routing, stream-event lifecycle, exit-code
   prioritization, and streaming orchestration parity while preserving existing public CLI, API,
   JSON, NDJSON, and presentation behavior.
+- Added focused regression coverage for reusable JSON stream collectors, malformed JSON stream
+  lifecycle handling, stream-backed JSON/NDJSON machine emitters, STDOUT/STDERR payload routing, and
+  command-layer JSON collector parity.
+- Added shared captured-console test helpers for exercising console-backed machine emitters with the
+  standard console implementation instead of custom protocol doubles.
 
 ### Notes - Unreleased
 

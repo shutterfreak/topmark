@@ -119,6 +119,85 @@ def build_probe_results_json_envelope(
     )
 
 
+def build_probe_results_stream_json_envelope(
+    *,
+    meta: MetaPayload,
+    config: FrozenConfig,
+    resolved_toml: ResolvedTopmarkTomlSources,
+    events: Iterable[MachineProcessingStreamEvent],
+) -> dict[str, object]:
+    """Build the probe JSON envelope from durable-result stream events.
+
+    Args:
+        meta: Shared metadata payload (`tool`/`version`).
+        config: Effective configuration instance.
+        resolved_toml: ResolvedTopmarkTomlSources.
+        events: Internal machine stream events in deterministic producer order.
+
+    Returns:
+        JSON-serializable envelope mapping preserving the existing probe JSON schema.
+
+    Raises:
+        ValueError: If the stream lifecycle or command identity is invalid.
+    """
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
+    cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+
+    expected_index: int = 0
+    started: bool = False
+    completed: bool = False
+    probe_payloads: list[dict[str, object]] = []
+    for event in events:
+        match event:
+            case MachineRunStartedEvent(command="probe"):
+                if started:
+                    raise ValueError("Probe JSON stream contains more than one run-start event.")
+                if expected_index != 0 or completed:  # pragma: no cover
+                    # This branch is effectively unreachable with the current
+                    # validation order because duplicate-start is caught first.
+                    raise ValueError("Probe JSON run-start event must be first.")
+                started = True
+            case MachineProcessingResultEvent(command="probe"):
+                if not started:
+                    raise ValueError("Probe JSON file-result event appeared before run-start.")
+                if completed:
+                    raise ValueError("Probe JSON file-result event appeared after run-completed.")
+                if event.index != expected_index:
+                    raise ValueError(
+                        f"Expected probe JSON file-result index {expected_index}, "
+                        f"got {event.index}."
+                    )
+                expected_index += 1
+                probe_payloads.append(build_probe_result_payload(event.result))
+            case MachineRunCompletedEvent(command="probe"):
+                if not started:
+                    raise ValueError("Probe JSON run-completed event appeared before run-start.")
+                if completed:
+                    raise ValueError(
+                        "Probe JSON stream contains more than one run-completed event."
+                    )
+                completed = True
+            case _:
+                raise ValueError("Probe JSON stream contains an event for a different command.")
+
+    if not started:
+        raise ValueError("Probe JSON stream is missing a run-start event.")
+    if not completed:
+        raise ValueError("Probe JSON stream is missing a run-completed event.")
+
+    return build_json_envelope(
+        meta=meta,
+        **{
+            ConfigKey.CONFIG.value: cfg_payload,
+            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
+            PipelineKey.PROBES.value: probe_payloads,
+        },
+    )
+
+
 def iter_probe_results_ndjson_records(
     *,
     meta: MetaPayload,
@@ -200,7 +279,7 @@ def iter_probe_results_stream_ndjson_records(
             case MachineRunStartedEvent(command="probe"):
                 if started:
                     raise ValueError("Probe NDJSON stream contains more than one run-start event.")
-                if expected_index != 0 or completed:
+                if expected_index != 0 or completed:  # pragma: no cover
                     # This branch is effectively unreachable with the current validation order
                     # because duplicate-start is caught first.
                     raise ValueError("Probe NDJSON run-start event must be first.")
@@ -321,6 +400,110 @@ def build_processing_results_json_envelope(
     return envelope
 
 
+def build_processing_results_stream_json_envelope(
+    *,
+    meta: MetaPayload,
+    config: FrozenConfig,
+    resolved_toml: ResolvedTopmarkTomlSources,
+    events: Iterable[MachineProcessingStreamEvent],
+    summary_mode: bool,
+) -> dict[str, object]:
+    """Build the processing JSON envelope from durable-result stream events.
+
+    Args:
+        meta: Shared metadata payload (`tool`/`version`).
+        config: Effective configuration instance.
+        resolved_toml: ResolvedTopmarkTomlSources.
+        events: Internal machine stream events in deterministic producer order.
+        summary_mode: If True, emit flat summary rows instead of per-file results.
+
+    Returns:
+        JSON-serializable envelope mapping preserving the existing processing JSON schema.
+
+    Raises:
+        ValueError: If the stream lifecycle or command identity is invalid.
+    """
+    cfg_payload: ConfigPayload = build_config_payload(
+        config,
+        resolved_toml=resolved_toml,
+    )
+    cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
+
+    expected_index: int = 0
+    started: bool = False
+    completed: bool = False
+    result_payloads: list[dict[str, object]] = []
+    summary_results: list[ProcessingResult] = []
+    for event in events:
+        match event:
+            case MachineRunStartedEvent(command="check" | "strip"):
+                if started:
+                    raise ValueError(
+                        "Processing JSON stream contains more than one run-start event."
+                    )
+                if expected_index != 0 or completed:  # pragma: no cover
+                    # This branch is effectively unreachable with the current
+                    # validation order because duplicate-start is caught first.
+                    raise ValueError("Processing JSON run-start event must be first.")
+                started = True
+            case MachineProcessingResultEvent(command="check" | "strip"):
+                if not started:
+                    raise ValueError("Processing JSON file-result event appeared before run-start.")
+                if completed:
+                    raise ValueError(
+                        "Processing JSON file-result event appeared after run-completed."
+                    )
+                if event.index != expected_index:
+                    raise ValueError(
+                        f"Expected processing JSON file-result index {expected_index}, "
+                        f"got {event.index}."
+                    )
+                expected_index += 1
+                if summary_mode:
+                    summary_results.append(event.result)
+                else:
+                    result_payloads.append(build_processing_result_payload(event.result))
+            case MachineRunCompletedEvent(command="check" | "strip"):
+                if not started:
+                    raise ValueError(
+                        "Processing JSON run-completed event appeared before run-start."
+                    )
+                if completed:
+                    raise ValueError(
+                        "Processing JSON stream contains more than one run-completed event."
+                    )
+                completed = True
+            case _:
+                raise ValueError(
+                    "Processing JSON stream contains an event for a different command."
+                )
+
+    if not started:
+        raise ValueError("Processing JSON stream is missing a run-start event.")
+    if not completed:
+        raise ValueError("Processing JSON stream is missing a run-completed event.")
+
+    if summary_mode:
+        payload: dict[str, object] = {
+            ConfigKey.CONFIG.value: cfg_payload,
+            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
+            PipelineKey.SUMMARY.value: build_processing_results_summary_rows_payload(
+                summary_results,
+            ),
+        }
+    else:
+        payload = {
+            ConfigKey.CONFIG.value: cfg_payload,
+            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
+            PipelineKey.RESULTS.value: result_payloads,
+        }
+
+    return build_json_envelope(
+        meta=meta,
+        **payload,
+    )
+
+
 def iter_processing_results_ndjson_records(
     *,
     meta: MetaPayload,
@@ -419,7 +602,7 @@ def iter_processing_results_stream_ndjson_records(
                     raise ValueError(
                         "Processing NDJSON stream contains more than one run-start event."
                     )
-                if expected_index != 0 or completed:
+                if expected_index != 0 or completed:  # pragma: no cover
                     # This branch is effectively unreachable with the current validation order
                     # because duplicate-start is caught first.
                     raise ValueError("Processing NDJSON run-start event must be first.")

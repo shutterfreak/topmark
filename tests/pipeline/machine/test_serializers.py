@@ -27,6 +27,10 @@ from tests.helpers.pipeline import unsupported_output_format
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.payloads import build_meta_payload
+from topmark.pipeline.machine.envelopes import build_probe_results_json_envelope
+from topmark.pipeline.machine.envelopes import build_probe_results_stream_json_envelope
+from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
+from topmark.pipeline.machine.envelopes import build_processing_results_stream_json_envelope
 from topmark.pipeline.machine.envelopes import iter_probe_results_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_probe_results_stream_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
@@ -178,6 +182,538 @@ def test_serialize_processing_results_accepts_only_machine_formats(
             results=[],
             fmt=effective_fmt,
             summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_preserves_detail_envelope(tmp_path: Path) -> None:
+    """Processing JSON envelopes rebuilt from stream events should match legacy input."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
+
+    legacy_envelope: dict[str, object] = build_processing_results_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml_sources,
+        results=results,
+        summary_mode=False,
+    )
+    stream_envelope: dict[str, object] = build_processing_results_stream_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml_sources,
+        events=iter_machine_processing_stream(
+            results,
+            command="check",
+        ),
+        summary_mode=False,
+    )
+
+    assert stream_envelope == legacy_envelope
+
+
+def test_processing_json_stream_collector_preserves_summary_envelope(tmp_path: Path) -> None:
+    """Processing JSON summary envelopes should be rebuilt from stream events."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
+
+    legacy_envelope: dict[str, object] = build_processing_results_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml_sources,
+        results=results,
+        summary_mode=True,
+    )
+    stream_envelope: dict[str, object] = build_processing_results_stream_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml_sources,
+        events=iter_machine_processing_stream(
+            results,
+            command="strip",
+        ),
+        summary_mode=True,
+    )
+
+    assert stream_envelope == legacy_envelope
+
+
+def test_probe_json_stream_collector_preserves_probe_envelope(tmp_path: Path) -> None:
+    """Probe JSON envelopes rebuilt from stream events should match legacy input."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
+
+    legacy_envelope: dict[str, object] = build_probe_results_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml_sources,
+        results=results,
+    )
+    stream_envelope: dict[str, object] = build_probe_results_stream_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml_sources,
+        events=iter_machine_processing_stream(
+            results,
+            command="probe",
+        ),
+    )
+
+    assert stream_envelope == legacy_envelope
+
+
+# Additional defensive tests for JSON stream collectors
+def test_processing_json_stream_collector_rejects_missing_start() -> None:
+    """Processing JSON rejects completion before the run starts."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON run-completed event appeared before run-start",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunCompletedEvent(
+                    command="check",
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_duplicate_start() -> None:
+    """Processing JSON rejects duplicate run-start events."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON stream contains more than one run-start event",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="check",
+                    selected_count=0,
+                    paths=(),
+                ),
+                MachineRunStartedEvent(
+                    command="check",
+                    selected_count=0,
+                    paths=(),
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_wrong_command() -> None:
+    """Processing JSON rejects probe events."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON stream contains an event for a different command",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="probe",
+                    selected_count=0,
+                    paths=(),
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_missing_completion() -> None:
+    """Processing JSON requires a completion event."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON stream is missing a run-completed event",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="check",
+                    selected_count=0,
+                    paths=(),
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_file_before_start(
+    tmp_path: Path,
+) -> None:
+    """Processing JSON rejects file-result events before run-start."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    result: ProcessingResult = _processing_result(tmp_path, config)
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON file-result event appeared before run-start",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineProcessingResultEvent(
+                    command="check",
+                    index=0,
+                    result=result,
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_file_after_completion(
+    tmp_path: Path,
+) -> None:
+    """Processing JSON rejects file-result events after completion."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    result: ProcessingResult = _processing_result(tmp_path, config)
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON file-result event appeared after run-completed",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="check",
+                    selected_count=1,
+                    paths=(result.path,),
+                ),
+                MachineRunCompletedEvent(
+                    command="check",
+                ),
+                MachineProcessingResultEvent(
+                    command="check",
+                    index=0,
+                    result=result,
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_out_of_order_file_index(
+    tmp_path: Path,
+) -> None:
+    """Processing JSON rejects non-contiguous file-result indexes."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    result: ProcessingResult = _processing_result(tmp_path, config)
+
+    with pytest.raises(
+        ValueError,
+        match="Expected processing JSON file-result index 0, got 1",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="check",
+                    selected_count=1,
+                    paths=(result.path,),
+                ),
+                MachineProcessingResultEvent(
+                    command="check",
+                    index=1,
+                    result=result,
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_duplicate_completion() -> None:
+    """Processing JSON rejects duplicate run-completed events."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON stream contains more than one run-completed event",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="check",
+                    selected_count=0,
+                    paths=(),
+                ),
+                MachineRunCompletedEvent(
+                    command="check",
+                ),
+                MachineRunCompletedEvent(
+                    command="check",
+                ),
+            ),
+            summary_mode=False,
+        )
+
+
+def test_processing_json_stream_collector_rejects_empty_stream() -> None:
+    """Processing JSON requires a run-start event."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Processing JSON stream is missing a run-start event",
+    ):
+        build_processing_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(),
+            summary_mode=False,
+        )
+
+
+def test_probe_json_stream_collector_rejects_missing_start() -> None:
+    """Probe JSON rejects completion before the run starts."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON run-completed event appeared before run-start",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunCompletedEvent(
+                    command="probe",
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_wrong_command() -> None:
+    """Probe JSON rejects check/strip events."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON stream contains an event for a different command",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="check",
+                    selected_count=0,
+                    paths=(),
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_missing_completion() -> None:
+    """Probe JSON requires a completion event."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON stream is missing a run-completed event",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="probe",
+                    selected_count=0,
+                    paths=(),
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_duplicate_start() -> None:
+    """Probe JSON rejects duplicate run-start events."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON stream contains more than one run-start event",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="probe",
+                    selected_count=0,
+                    paths=(),
+                ),
+                MachineRunStartedEvent(
+                    command="probe",
+                    selected_count=0,
+                    paths=(),
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_file_before_start(
+    tmp_path: Path,
+) -> None:
+    """Probe JSON rejects file-result events before run-start."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    result: ProcessingResult = _processing_result(tmp_path, config)
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON file-result event appeared before run-start",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineProcessingResultEvent(
+                    command="probe",
+                    index=0,
+                    result=result,
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_file_after_completion(
+    tmp_path: Path,
+) -> None:
+    """Probe JSON rejects file-result events after completion."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    result: ProcessingResult = _processing_result(tmp_path, config)
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON file-result event appeared after run-completed",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="probe",
+                    selected_count=1,
+                    paths=(result.path,),
+                ),
+                MachineRunCompletedEvent(
+                    command="probe",
+                ),
+                MachineProcessingResultEvent(
+                    command="probe",
+                    index=0,
+                    result=result,
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_out_of_order_file_index(
+    tmp_path: Path,
+) -> None:
+    """Probe JSON rejects non-contiguous file-result indexes."""
+    meta, config, resolved_toml_sources = _serializer_context()
+    result: ProcessingResult = _processing_result(tmp_path, config)
+
+    with pytest.raises(
+        ValueError,
+        match="Expected probe JSON file-result index 0, got 1",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="probe",
+                    selected_count=1,
+                    paths=(result.path,),
+                ),
+                MachineProcessingResultEvent(
+                    command="probe",
+                    index=1,
+                    result=result,
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_duplicate_completion() -> None:
+    """Probe JSON rejects duplicate run-completed events."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON stream contains more than one run-completed event",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(
+                MachineRunStartedEvent(
+                    command="probe",
+                    selected_count=0,
+                    paths=(),
+                ),
+                MachineRunCompletedEvent(
+                    command="probe",
+                ),
+                MachineRunCompletedEvent(
+                    command="probe",
+                ),
+            ),
+        )
+
+
+def test_probe_json_stream_collector_rejects_empty_stream() -> None:
+    """Probe JSON requires a run-start event."""
+    meta, config, resolved_toml_sources = _serializer_context()
+
+    with pytest.raises(
+        ValueError,
+        match="Probe JSON stream is missing a run-start event",
+    ):
+        build_probe_results_stream_json_envelope(
+            meta=meta,
+            config=config,
+            resolved_toml=resolved_toml_sources,
+            events=(),
         )
 
 

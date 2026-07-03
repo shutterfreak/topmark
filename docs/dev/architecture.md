@@ -77,12 +77,12 @@ explicit probe inputs.
 This boundary is intentionally conservative:
 
 - it introduces per-file execution, reduction, and event adaptation inside the runtime architecture;
-- it preserves existing batch API result objects, JSON envelope assembly, summary semantics,
+- it preserves existing batch API result objects, JSON envelope shape, summary semantics,
   report-scope filtering, output ordering, and exit-code selection;
-- it lets public stream APIs, CLI TEXT and Markdown output, CLI probe presentation, and NDJSON
-  consume ordered durable-result events directly where a complete result collection is not required;
-- it keeps JSON output as a complete-envelope format that is materialized before emission to
-  preserve the existing machine-output contract;
+- it lets public stream APIs, CLI TEXT and Markdown output, CLI probe presentation, NDJSON, and JSON
+  collectors consume ordered durable-result events while preserving each output contract;
+- it keeps JSON output as a complete-envelope format for compatibility, with envelope assembly
+  reconstructed from the same durable-result stream boundary before emission;
 - it keeps runner-owned pruning limited to between-step release of consumed volatile views, while
   final view release happens only after
   \[`ProcessingResult.from_context()`\][topmark.pipeline.result.ProcessingResult.from_context] has
@@ -111,9 +111,10 @@ public streaming APIs consume ordered durable-result events over the same reduct
 keeps API DTO assembly, report filtering, write counting, diagnostics aggregation, outcome
 bucketing, and public diff exposure on reduced result state rather than on live context views.
 
-Check/strip human rendering, probe human rendering, NDJSON machine output, and CLI `check`, `strip`,
-and `probe` orchestration now consume ordered durable-result event streams. JSON output remains
-batch-compatible and materializes the complete machine-readable envelope before emission. Probe
+Check/strip human rendering, probe human rendering, NDJSON machine output, JSON machine output, and
+CLI `check`, `strip`, and `probe` orchestration now consume ordered durable-result event streams.
+JSON output remains batch-compatible and still emits the complete machine-readable envelope, but the
+envelope is reconstructed from ordered durable-result stream events before emission. Probe
 rendering, probe machine output, and probe public API DTO assembly consume durable
 `ProcessingResult` snapshots carrying reduced
 \[`ProbeSnapshot`\][topmark.pipeline.result.ProbeSnapshot] state. TEXT, Markdown, JSON, NDJSON, and
@@ -475,11 +476,11 @@ schema-driven, never include ANSI styling, and are unaffected by TEXT-only verbo
 Machine-readable projection depth is controlled by explicit machine-facing options such as `--long`,
 not by `-v` / `--verbose` or `-q` / `--quiet`.
 
-Within that boundary, JSON and NDJSON have different ownership shapes. JSON remains a complete
-snapshot format: TopMark materializes the existing envelope before emitting it. NDJSON is the
-streaming machine-readable format and can emit ordered records as durable result events are
-consumed. This distinction is an implementation and output-format contract; it does not change the
-CLI command semantics or public batch API DTOs.
+Within that boundary, JSON and NDJSON have different output shapes. JSON remains a complete snapshot
+format: TopMark reconstructs the existing envelope from durable-result stream events before emitting
+it. NDJSON is the record-oriented machine-readable format and can emit ordered records as durable
+result events are consumed. This distinction is an output-format contract; it does not change the
+CLI command semantics, public batch API DTOs, or public stream event DTOs.
 
 Machine-readable output is also intentionally decoupled from process exit codes. JSON and NDJSON
 payloads serialize structured results, diagnostics, and resolution state; they do not embed the CLI

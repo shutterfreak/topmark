@@ -36,12 +36,16 @@ can expose those durable results as ordered run-start, per-file, and run-complet
 
 Normal check/strip batch orchestration uses the result-oriented
 \[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter, while CLI `check`,
-`strip`, and `probe`, human TEXT/Markdown presentation, and NDJSON orchestration consume ordered
-stream events carrying durable `ProcessingResult` snapshots. Probe execution continues to reduce
-real probe contexts and synthetic probe results across the same durable-result boundary through
-\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results]. JSON output and
-public batch APIs intentionally retain complete-result collection to preserve the existing output
-and API contracts while public streaming APIs expose the same durable events directly.
+`strip`, `probe`, human TEXT/Markdown presentation, NDJSON, and JSON output consume ordered durable
+stream events carrying `ProcessingResult` snapshots. JSON remains the complete-envelope
+machine-readable compatibility format, but its envelope is reconstructed from those ordered
+durable-result stream events before emission rather than from a separate command-layer reduction.
+Probe execution continues to reduce real probe contexts and synthetic probe results across the same
+durable-result boundary through
+\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results]. Public batch
+APIs intentionally retain complete-result collection where stable DTOs, summaries, and exit-code
+aggregation require complete state, while public streaming APIs expose the same durable events
+without intermediate batch reconstruction.
 
 Pipelines also operate on selected processing paths. Filesystem-identity evaluation occurs before
 ordinary pipeline execution begins and includes both processing-path normalization and
@@ -116,9 +120,9 @@ representation.
 
 Likewise, pipeline execution is agnostic to the eventual presentation format. Human frontends render
 retained unified diffs as terminal output. NDJSON emits adjacent result and diff records while
-consuming durable-result event streams. JSON embeds structured diff payloads in complete machine
-output envelopes. Summary output intentionally omits per-file diff payloads regardless of
-presentation format.
+consuming durable-result event streams. JSON reconstructs complete compatibility envelopes from the
+same durable-result event streams before embedding structured diff payloads. Summary output
+intentionally omits per-file diff payloads regardless of presentation format.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 

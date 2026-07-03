@@ -33,10 +33,11 @@ from typing import TYPE_CHECKING
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
-from topmark.pipeline.machine.envelopes import build_probe_results_json_envelope
-from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
+from topmark.pipeline.machine.envelopes import build_probe_results_stream_json_envelope
+from topmark.pipeline.machine.envelopes import build_processing_results_stream_json_envelope
 from topmark.pipeline.machine.envelopes import iter_probe_results_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
+from topmark.pipeline.machine.streaming import iter_machine_processing_stream
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -76,11 +77,11 @@ def serialize_probe_results(
         ValueError: If `fmt` is not a supported machine-readable format.
     """
     if fmt == OutputFormat.JSON:
-        envelope: dict[str, object] = build_probe_results_json_envelope(
+        envelope: dict[str, object] = build_probe_results_stream_json_envelope(
             meta=meta,
             config=config,
             resolved_toml=resolved_toml,
-            results=results,
+            events=iter_machine_processing_stream(results, command="probe"),
         )
         return serialize_json_object(envelope)
 
@@ -167,11 +168,17 @@ def serialize_processing_results_json(
     Returns:
         Single pretty-printed JSON string (no trailing newline).
     """
-    envelope: dict[str, object] = build_processing_results_json_envelope(
+    # Legacy processing serializers predate command-aware durable streams.
+    # Their public/internal signature intentionally has no command parameter,
+    # and the JSON compatibility envelope is command-neutral. The primary
+    # CLI path uses command-aware stream emitters directly; if these legacy
+    # helpers remain after follow-up cleanup, add a `command` parameter
+    # consistently across JSON and NDJSON processing serializers/emitters.
+    envelope: dict[str, object] = build_processing_results_stream_json_envelope(
         meta=meta,
         config=config,
         resolved_toml=resolved_toml,
-        results=results,
+        events=iter_machine_processing_stream(results, command="check"),
         summary_mode=summary_mode,
     )
     return serialize_json_object(envelope)
@@ -199,6 +206,11 @@ def serialize_processing_results_ndjson(
         no trailing newline. The caller controls line joining and whether a final
         newline is printed.
     """
+    # Legacy processing serializers predate command-aware durable streams. This
+    # helper preserves the existing command-neutral signature; the primary CLI
+    # path uses command-aware stream emitters directly. If retained after
+    # follow-up cleanup, wire an explicit `command` parameter consistently with
+    # the JSON serializer and legacy processing emitters.
     iter_records: Iterator[dict[str, object]] = iter_processing_results_ndjson_records(
         meta=meta,
         config=config,

@@ -33,6 +33,7 @@ from tests.cli.conftest import assert_strict_file_type_overlap_warning
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
+from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.constants import TOPMARK_END_MARKER
@@ -170,6 +171,57 @@ def test_pipeline_markdown_output_reports_strict_file_type_overlap_warning(
     )
 
 
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_text_verbose_reports_non_strict_file_type_overlap_warning(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """Verbose TEXT output should render advisory config diagnostics."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.VERBOSE,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "python",
+            str(path),
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert_overlap_warning_text(result.output, ("topmark:python",))
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_markdown_reports_non_strict_file_type_overlap_warning(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """Markdown output should render advisory config diagnostics."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.EXCLUDE_FILE_TYPES,
+            "python",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            str(path),
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert_overlap_warning_text(result.output, ("topmark:python",))
+
+
 # --- TEXT quiet mode ---
 
 
@@ -186,6 +238,60 @@ def test_pipeline_text_quiet_suppresses_output_but_preserves_would_change_status
             cmd,
             CliOpt.NO_COLOR_MODE,
             CliOpt.QUIET,
+            str(path),
+        ]
+    )
+
+    assert_WOULD_CHANGE(result)
+    assert result.output == ""
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_text_quiet_suppresses_stream_stderr_but_preserves_success_status(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """TEXT quiet mode should suppress unchanged stream output too."""
+    path: Path = _write_supported_headerless_file(tmp_path)
+    if cmd == CliCmd.CHECK:
+        apply_result: Result = run_cli(
+            [
+                CliCmd.CHECK,
+                CliOpt.NO_COLOR_MODE,
+                CliOpt.APPLY_CHANGES,
+                str(path),
+            ]
+        )
+        assert_SUCCESS(apply_result)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+            str(path),
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert result.output == ""
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_text_quiet_suppresses_human_stream_output_but_preserves_would_change(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """TEXT quiet mode should suppress human stream output for actionable files."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.QUIET,
+            CliOpt.REPORT,
+            ReportScope.ALL.value,
             str(path),
         ]
     )
@@ -278,6 +384,122 @@ def test_pipeline_markdown_output_always_renders_document_banner(
     )
 
 
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_markdown_dry_run_renders_version_footer(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """Markdown dry-run output should include the generated-by footer."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            str(path),
+        ]
+    )
+
+    assert_WOULD_CHANGE(result)
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="Generated with TopMark",
+    )
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_markdown_apply_renders_version_footer(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """Markdown apply output should include the generated-with footer."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.APPLY_CHANGES,
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            str(path),
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.output,
+        expected="Generated with TopMark",
+    )
+
+
+# --- STDOUT write mode: human output routed to stderr ---
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_text_stdout_write_mode_routes_human_output_to_stderr(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """TEXT stdout write mode keeps rewritten content separate from human output."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.APPLY_CHANGES,
+            "--write-mode",
+            "stdout",
+            str(path),
+        ]
+    )
+
+    assert_SUCCESS(result)
+    if cmd == CliCmd.CHECK:
+        assert TOPMARK_START_MARKER in result.stdout
+    else:
+        assert TOPMARK_START_MARKER not in result.stdout
+    assert result.stderr.strip() != ""
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_markdown_stdout_write_mode_routes_human_output_to_stderr(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """Markdown stdout write mode keeps rewritten content separate from human output."""
+    path: Path = _write_file_requiring_pipeline_change(tmp_path, cmd)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.APPLY_CHANGES,
+            "--write-mode",
+            "stdout",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.MARKDOWN.value,
+            str(path),
+        ]
+    )
+
+    assert_SUCCESS(result)
+    if cmd == CliCmd.CHECK:
+        assert TOPMARK_START_MARKER in result.stdout
+    else:
+        assert TOPMARK_START_MARKER not in result.stdout
+    assert_human_output_contains(
+        output_format=OutputFormat.MARKDOWN,
+        output=result.stderr,
+        expected="TopMark",
+    )
+
+
 def test_check_markdown_output_shows_hints_without_text_verbosity(tmp_path: Path) -> None:
     """Markdown check output should render diagnostic hints without `-v`."""
     path: Path = _write_file_requiring_check_update(tmp_path)
@@ -365,6 +587,42 @@ def test_pipeline_markdown_output_omits_empty_files_section(
         output_format=OutputFormat.MARKDOWN,
         output=result.output,
         expected="## Files",
+    )
+
+
+@pytest.mark.parametrize("cmd", [CliCmd.CHECK, CliCmd.STRIP])
+def test_pipeline_text_report_all_renders_unchanged_stream_output(
+    tmp_path: Path,
+    cmd: str,
+) -> None:
+    """TEXT report-all mode should render unchanged stream results."""
+    path: Path = _write_supported_headerless_file(tmp_path)
+    if cmd == CliCmd.CHECK:
+        apply_result: Result = run_cli(
+            [
+                CliCmd.CHECK,
+                CliOpt.NO_COLOR_MODE,
+                CliOpt.APPLY_CHANGES,
+                str(path),
+            ]
+        )
+        assert_SUCCESS(apply_result)
+
+    result: Result = run_cli(
+        [
+            cmd,
+            CliOpt.NO_COLOR_MODE,
+            CliOpt.REPORT,
+            ReportScope.ALL.value,
+            str(path),
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected=str(path),
     )
 
 
