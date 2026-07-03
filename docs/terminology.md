@@ -362,6 +362,14 @@ An ordered sequence of processing steps implementing a specific runtime executio
 
 A single-responsibility processing unit within a pipeline.
 
+### Durable result
+
+An immutable processing snapshot derived from a completed mutable pipeline context.
+
+Durable results provide the stable ownership boundary between pipeline execution and downstream
+consumers such as public batch APIs, public stream APIs, human presentation, and machine-readable
+output.
+
 ### Preview mode
 
 A non-mutating runtime execution mode that reports intended changes without mutating filesystem

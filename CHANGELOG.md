@@ -39,18 +39,9 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
-- Added public streaming event contract DTOs establishing the compatibility surface for future
-  streaming `check()`, `strip()`, and `probe()` APIs without changing existing batch API or CLI
-  behavior.
-- Added public `stream_check()`, `stream_strip()`, and `stream_probe()` API entry points that emit
-  ordered public stream events while preserving existing batch API results, CLI behavior,
-  presentation, and machine-output contracts.
-- Added internal stream collectors that consume ordered public stream events and rebuild
-  batch-compatible API results for future NDJSON, presentation, and CLI migrations without changing
-  public API, CLI, or machine-output behavior.
-- Added an internal machine-stream adapter for `check`, `strip`, and `probe` NDJSON emission so
-  record-oriented machine output can consume an ordered stream sequence while preserving existing
-  JSON/NDJSON schemas and public API contracts.
+- Added stable public streaming APIs and event DTOs for `check`, `strip`, and `probe`, together with
+  reusable durable-result stream collectors and internal stream adapters that preserve the existing
+  batch API, CLI, presentation, and machine-readable compatibility contracts.
 - Added a durable `ProcessingDetailSnapshot` on `ProcessingResult` that captures generated
   unified-diff text without retaining volatile pipeline views and exposes reduced detail state
   through `ProcessingResult` serialization.
@@ -76,14 +67,6 @@ ______________________________________________________________________
 - Migrated public API `check()` and `strip()` result packaging to consume durable `ProcessingResult`
   snapshots after context reduction, using reduced detail snapshots for public diff exposure while
   preserving existing API DTO behavior.
-- Migrated CLI `check` and `strip` orchestration to consume the streaming-capable pipeline engine
-  boundary directly for TEXT, Markdown, NDJSON, and JSON output while preserving the complete JSON
-  envelope contract.
-- Migrated CLI `probe` orchestration to the same streaming-capable pipeline engine boundary for
-  TEXT, Markdown, NDJSON, and JSON output while preserving probe semantics, synthetic probe results,
-  and exit-code behavior.
-- Added reusable durable-result stream JSON collectors for processing and probe machine output so
-  JSON envelopes are reconstructed from the same stream boundary as other CLI output formats.
 - Migrated `check`/`strip` machine-readable result serialization to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced detail snapshots for JSON and
   NDJSON detail output while deriving summary classification from each result's execution-mode
@@ -97,10 +80,6 @@ ______________________________________________________________________
 - Migrated `check`/`strip` TEXT and Markdown human report rendering to consume durable
   `ProcessingResult` snapshots after context reduction, using reduced display-path and diff-detail
   state while keeping probe rendering and patcher-generated diff headers context-based.
-- Migrated `check`/`strip` TEXT and Markdown human output orchestration to consume the internal
-  durable-result stream adapter through a presentation-options bridge, preserving report-scope
-  filtering, summary counts, diff payload ordering, and existing human output contracts while
-  preparing CLI execution for streaming-core wiring.
 - Migrated `probe` public API DTO assembly, machine-readable output, and TEXT/Markdown rendering to
   consume durable `ProcessingResult` snapshots carrying reduced `ProbeSnapshot` state, completing
   the current mutable-context to durable-result handover for output-facing consumers.
@@ -189,6 +168,10 @@ ______________________________________________________________________
   `iter_processing_results()`, `run_pipeline_results()`, and `run_probe_pipeline_results()`, while
   preserving existing CLI, API, presentation, machine-output, ordering, summary, and exit-code
   behavior.
+- Unified CLI `check`, `strip`, and `probe` orchestration, human TEXT/Markdown presentation,
+  JSON/NDJSON machine-readable output, public stream APIs, and public batch collectors on the
+  durable-result streaming architecture while preserving ordering, summaries, exit codes, output
+  schemas, and compatibility envelopes.
 - Strengthened public API `FileResult` DTO invariants so `bucket_key` and `bucket_label` are always
   populated strings, matching the aggregation data produced by durable result finalization.
 - Extended planner and stripper mutation paths to record structured single-splice edit metadata
@@ -206,6 +189,11 @@ ______________________________________________________________________
 - Centralized pipeline lifecycle enforcement in `BaseStep`, making halt ownership a `run()`-phase
   responsibility and treating `hint()` as diagnostic-only. Steps whose primary status axis remains
   `PENDING` after execution are now halted consistently by the shared lifecycle wrapper.
+
+### Removed - Unreleased
+
+- Removed obsolete internal result-list machine serialization helpers and legacy CLI machine emitter
+  wrappers after JSON and NDJSON output converged on durable-result stream emitters.
 
 ### Breaking Changes - Unreleased
 
@@ -347,7 +335,7 @@ ______________________________________________________________________
 - Documented `config_provenance.discovery_anchor` and clarified its distinction from
   configuration-source identity, scope roots, processing targets, and filesystem identity across
   machine-output and configuration-command documentation.
-- Documented the TopMark 1.1.0 hard-link compatibility contract for processing and probe machine
+- Documented the TopMark 2.0.0 hard-link compatibility contract for processing and probe machine
   output.
 - Clarified TopMark's identity-domain terminology and compatibility boundaries for processing-target
   identity, configuration-source identity, registry identity, path serialization, and
@@ -421,21 +409,10 @@ ______________________________________________________________________
   165, including iterator-based engine/reduction seams, check/strip and probe durable-result runtime
   adapters, synthetic probe-result ownership, and the rationale for preserving batch-oriented public
   contracts.
-- Documented the planned public streaming event compatibility contract, including stable event
-  phases, public DTO ownership, and the compatibility boundary between future streaming APIs and
-  existing batch-oriented `check()`, `strip()`, and `probe()` entry points.
-- Documented the internal human presentation stream bridge for GitHub issue 174 phase 5, including
-  the separation between presentation options and realized report state, preserved TEXT/Markdown
-  compatibility contracts, retained result ownership, and benchmark-refresh deferral until CLI
-  execution is wired directly to the streaming core.
-- Documented GitHub issue 174 phase 6, including the public streaming API boundary, CLI check/strip
-  streaming orchestration, durable-result event ownership, JSON versus NDJSON ownership differences,
-  removal of obsolete apply-and-diff pipeline variants, and the remaining benchmark-refresh
-  rationale after the planned probe streaming migration.
-- Documented GitHub issue 174 phase 7, including CLI probe streaming orchestration, durable
-  synthetic probe-result ownership, JSON versus NDJSON ownership differences, machine-readable
-  output behavior, and the rationale for deferring a new canonical benchmark baseline until broader
-  collector and transient-ownership follow-ups are evaluated.
+- Documented the completed GitHub issue 174 durable-result streaming architecture, including public
+  stream APIs, internal stream collectors, CLI and presentation stream routing, JSON/NDJSON machine
+  output ownership, removal of obsolete compatibility helpers, and post-migration repository-scale
+  benchmark findings.
 - Documented the ownership boundary between `PipelineSelection` and `RunOptions`, clarifying
   executable pipeline selection versus invocation-specific runtime state, the
   `RunOptions.from_pipeline_selection(...)` derivation boundary, and the durable ownership chain
@@ -459,9 +436,6 @@ ______________________________________________________________________
 - Documented CLI stream-routing ownership, including STDOUT payload ownership, STDERR
   diagnostics/signaling, machine-readable parseability, and human diff/content-to-STDOUT routing
   behavior.
-- Documented GitHub issue 174 phase 8, clarifying that JSON remains a complete-envelope
-  compatibility format while its envelope is reconstructed from ordered durable-result stream events
-  shared with TEXT, Markdown, NDJSON, public stream APIs, and batch collectors.
 
 ### Internal - Unreleased
 

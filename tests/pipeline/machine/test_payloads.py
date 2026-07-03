@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from tests.helpers.pipeline import make_pipeline_context
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.pipeline.machine.payloads import build_processing_results_summary_rows_payload
+from topmark.pipeline.machine.payloads import iter_probe_results_payload_items
 from topmark.pipeline.machine.payloads import iter_processing_results_summary_entries
 from topmark.pipeline.result import ProcessingResult
 from topmark.pipeline.status import ComparisonStatus
@@ -47,6 +48,25 @@ def _make_inserted_context(tmp_path: Path) -> ProcessingContext:
     ctx.status.comparison = ComparisonStatus.CHANGED
     ctx.status.write = WriteStatus.WRITTEN
     return ctx
+
+
+def test_probe_payload_items_iterate_durable_results(tmp_path: Path) -> None:
+    """Probe payload iterator should preserve one payload per durable result."""
+    ctx: ProcessingContext = _make_inserted_context(tmp_path)
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+
+    payloads: list[dict[str, object]] = list(iter_probe_results_payload_items([result]))
+
+    assert payloads == [
+        {
+            "path": result.path.as_posix(),
+            "status": "probe_missing",
+            "reason": "no_resolution_probe_result",
+            "selected_file_type": None,
+            "selected_processor": None,
+            "candidates": [],
+        }
+    ]
 
 
 def test_processing_summary_rows_payload_uses_result_execution_mode(

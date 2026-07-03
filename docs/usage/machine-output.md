@@ -234,7 +234,7 @@ Example:
 Consumers should switch on the `kind` field rather than relying on ordering. Some command families
 emit a stable prefix, as documented below.
 
-Shared record construction and envelope serialization helpers live under
+Shared NDJSON record construction and envelope helpers live under
 \[`topmark.core.machine`\][topmark.core.machine]. Domain-specific payload builders and record kinds
 live in the corresponding `*.machine` packages.
 
@@ -413,11 +413,10 @@ the `config_diagnostics` and `diagnostic` records, before any `probe` records ar
 The JSON `probes` key and NDJSON `probe` kind are defined in
 \[`topmark.pipeline.machine.schemas.PipelineKey`\][topmark.pipeline.machine.schemas.PipelineKey] and
 \[`topmark.pipeline.machine.schemas.PipelineRecordKind`\][topmark.pipeline.machine.schemas.PipelineRecordKind].
-The NDJSON stream is produced by:
+The NDJSON stream is produced from durable-result stream events by:
 
-- \[`topmark.pipeline.machine.envelopes.iter_probe_results_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_probe_results_ndjson_records]
-- serialization helpers in
-  \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers]
+- \[`topmark.pipeline.machine.envelopes.iter_probe_results_stream_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_probe_results_stream_ndjson_records]
+- \[`topmark.pipeline.machine.streaming.iter_machine_processing_stream`\][topmark.pipeline.machine.streaming.iter_machine_processing_stream]
 
 ______________________________________________________________________
 
@@ -688,8 +687,8 @@ corresponding result object, while NDJSON detail mode emits adjacent standalone 
 stream consumers can process one result at a time.
 
 Although JSON and NDJSON differ in their published output shapes, both formats are now produced from
-the same ordered durable-result stream. JSON materializes the complete compatibility envelope at the
-end of stream consumption, whereas NDJSON exposes each record as it becomes available.
+the same ordered durable-result stream. JSON reconstructs the documented compatibility envelope
+after consuming the ordered durable-result stream before emitting the final document.
 
 In summary mode, per-file `result` records are replaced by one `summary` record per
 `(outcome, reason)` bucket:
@@ -719,11 +718,10 @@ If strict configuration validation stops a processing command before file discov
 execution begins, the stream may end after the `config_diagnostics` and `diagnostic` records, before
 any `result` or `summary` records are emitted.
 
-The NDJSON record stream is produced by:
+The NDJSON record stream is produced from durable-result stream events by:
 
-- \[`topmark.pipeline.machine.envelopes.iter_processing_results_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_processing_results_ndjson_records]
-- serialization helpers in
-  \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers]
+- \[`topmark.pipeline.machine.envelopes.iter_processing_results_stream_ndjson_records`\][topmark.pipeline.machine.envelopes.iter_processing_results_stream_ndjson_records]
+- \[`topmark.pipeline.machine.streaming.iter_machine_processing_stream`\][topmark.pipeline.machine.streaming.iter_machine_processing_stream]
 
 ______________________________________________________________________
 
@@ -743,8 +741,8 @@ The canonical builders and typing live under:
 - \[`topmark.pipeline.machine.schemas`\][topmark.pipeline.machine.schemas] (TypedDict schemas /
   payload shapes)
 - \[`topmark.pipeline.machine.payloads`\][topmark.pipeline.machine.payloads] (payload builders)
-- \[`topmark.pipeline.machine.serializers`\][topmark.pipeline.machine.serializers] (JSON/NDJSON
-  serialization)
+- \[`topmark.pipeline.machine.envelopes`\][topmark.pipeline.machine.envelopes] (JSON/NDJSON envelope
+  and record builders)
 
 Per-file result payloads report the selected processing path. If a file is reached through a
 symlink, the emitted `path` describes the resolved processing target rather than the symlink

@@ -54,14 +54,12 @@ from topmark.pipeline.machine.payloads import build_probe_result_payload
 from topmark.pipeline.machine.payloads import build_processing_result_payload
 from topmark.pipeline.machine.payloads import build_processing_results_summary_rows_payload
 from topmark.pipeline.machine.payloads import build_standalone_processing_diff_payload
-from topmark.pipeline.machine.payloads import iter_probe_results_payload_items
 from topmark.pipeline.machine.schemas import PipelineKey
 from topmark.pipeline.machine.schemas import PipelineRecordKind
 from topmark.pipeline.machine.schemas import StandaloneProcessingDiffPayload
 from topmark.pipeline.machine.streaming import MachineProcessingResultEvent
 from topmark.pipeline.machine.streaming import MachineRunCompletedEvent
 from topmark.pipeline.machine.streaming import MachineRunStartedEvent
-from topmark.pipeline.machine.streaming import iter_machine_processing_stream
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -71,52 +69,9 @@ if TYPE_CHECKING:
     from topmark.config.machine.schemas import ConfigPayload
     from topmark.config.model import FrozenConfig
     from topmark.diagnostic.model import FrozenDiagnosticLog
-    from topmark.pipeline.machine.schemas import OutcomeSummaryRow
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
     from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
-
-
-def build_probe_results_json_envelope(
-    *,
-    meta: MetaPayload,
-    config: FrozenConfig,
-    resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingResult],
-) -> dict[str, object]:
-    """Build the JSON envelope for resolution probe results.
-
-    Args:
-        meta: Shared metadata payload (`tool`/`version`).
-        config: The effective [`FrozenConfig`][topmark.config.model.FrozenConfig]
-            instance used for the run.
-        resolved_toml: Resolved TOML sources used to build the optional layered
-            provenance export.
-        results: Ordered list of probe contexts. The list may include normal
-            file-backed probe contexts and synthetic contexts for explicit inputs
-            filtered before file-type probing.
-
-    Returns:
-        JSON-serializable envelope mapping (not yet serialized to JSON).
-    """
-    # Prepare config payloads once, including flattened compatibility diagnostics.
-    cfg_payload: ConfigPayload = build_config_payload(
-        config,
-        resolved_toml=resolved_toml,
-    )
-    cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-    # Probe payloads include both normal file-type probe results and synthetic
-    # filtered results for explicit inputs removed during discovery.
-    probe_payloads: list[dict[str, object]] = list(iter_probe_results_payload_items(results))
-
-    return build_json_envelope(
-        meta=meta,
-        **{
-            ConfigKey.CONFIG.value: cfg_payload,
-            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
-            PipelineKey.PROBES.value: probe_payloads,
-        },
-    )
 
 
 def build_probe_results_stream_json_envelope(
@@ -195,35 +150,6 @@ def build_probe_results_stream_json_envelope(
             ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
             PipelineKey.PROBES.value: probe_payloads,
         },
-    )
-
-
-def iter_probe_results_ndjson_records(
-    *,
-    meta: MetaPayload,
-    config: FrozenConfig,
-    resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingResult],
-) -> Iterator[dict[str, object]]:
-    """Yield NDJSON records for resolution probe results.
-
-    Args:
-        meta: Shared metadata payload (`tool`/`version`).
-        config: Effective configuration instance.
-        resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of probe contexts. The list may include normal
-            file-backed probe contexts and synthetic contexts for explicit inputs
-            filtered before file-type probing.
-
-    Yields:
-        Shaped NDJSON record mappings for config prefix records, config diagnostics,
-        and one `kind="probe"` record per probe result event.
-    """
-    yield from iter_probe_results_stream_ndjson_records(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml,
-        events=iter_machine_processing_stream(results, command="probe"),
     )
 
 
@@ -315,89 +241,6 @@ def iter_probe_results_stream_ndjson_records(
         raise ValueError("Probe NDJSON stream is missing a run-start event.")
     if not completed:
         raise ValueError("Probe NDJSON stream is missing a run-completed event.")
-
-
-def build_processing_results_json_envelope(
-    *,
-    meta: MetaPayload,
-    config: FrozenConfig,
-    resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingResult],
-    summary_mode: bool,
-) -> dict[str, object]:
-    """Build the JSON envelope for processing results (`check`/`strip`).
-
-    Detail mode (`summary_mode=False`) produces a per-file results list:
-
-    ```json
-        {
-          "meta": ...,
-          "config": <ConfigPayload>,
-          "config_diagnostics": <ConfigDiagnosticsPayload>,
-          "results": [ <per-file result dict> ... ]
-        }
-    ```
-
-    Summary mode (`summary_mode=True`) produces a flat summary-row list:
-
-    ```json
-        {
-          "meta": ...,
-          "config": <ConfigPayload>,
-          "config_diagnostics": <ConfigDiagnosticsPayload>,
-          "summary": [
-            {"outcome": "unchanged", "reason": "no changes needed", "count": 3},
-            {"outcome": "would insert", "reason": "header missing, changes found", "count": 1}
-          ]
-        }
-    ```
-
-    Args:
-        meta: Shared metadata payload (`tool`/`version`).
-        config: The effective [`FrozenConfig`][topmark.config.model.FrozenConfig]
-            instance used for the run.
-        resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of durable per-file processing results.
-        summary_mode: If True, emit flat summary rows instead of per-file results.
-
-    Returns:
-        A JSON-serializable envelope mapping (not yet serialized to a JSON string).
-    """
-    # Prepare config payloads once, including flattened compatibility diagnostics.
-    cfg_payload: ConfigPayload = build_config_payload(
-        config,
-        resolved_toml=resolved_toml,
-    )
-    cfg_diag_payload: ConfigDiagnosticsPayload = build_config_diagnostics_payload(config)
-
-    # Envelope: meta + config + config diagnostics + results
-    # OR meta + config + config diagnostics + summary
-    # results_payload is {"results": [...]} or {"summary": {...}}
-    if summary_mode:
-        summary_list: list[OutcomeSummaryRow] = build_processing_results_summary_rows_payload(
-            results,
-        )
-        payload: dict[str, object] = {
-            ConfigKey.CONFIG.value: cfg_payload,
-            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
-            PipelineKey.SUMMARY.value: summary_list,
-        }
-    else:
-        result_payloads: list[dict[str, object]] = [
-            build_processing_result_payload(result) for result in results
-        ]
-        payload = {
-            ConfigKey.CONFIG.value: cfg_payload,
-            ConfigKey.CONFIG_DIAGNOSTICS.value: cfg_diag_payload,
-            PipelineKey.RESULTS.value: result_payloads,
-        }
-
-    envelope: dict[str, object] = build_json_envelope(
-        meta=meta,
-        **payload,
-    )
-
-    return envelope
 
 
 def build_processing_results_stream_json_envelope(
@@ -501,47 +344,6 @@ def build_processing_results_stream_json_envelope(
     return build_json_envelope(
         meta=meta,
         **payload,
-    )
-
-
-def iter_processing_results_ndjson_records(
-    *,
-    meta: MetaPayload,
-    config: FrozenConfig,
-    resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingResult],
-    summary_mode: bool,
-) -> Iterator[dict[str, object]]:
-    """Yield NDJSON records for processing results (`check`/`strip`).
-
-    The NDJSON stream is emitted in a stable order:
-
-    1) `kind="config"` record
-    2) `kind="config_diagnostics"` record (counts-only)
-    3) zero or more `kind="diagnostic"` records for flattened compatibility config diagnostics
-    4) then either:
-        - summary mode: one `kind="summary"` record per `(outcome, reason)` bucket
-        - detail mode: one `kind="result"` record per processed file, followed
-          immediately by a `kind="diff"` record for that file when retained diff
-          text is available
-
-    Args:
-        meta: Shared metadata payload (`tool`/`version`).
-        config: Effective configuration instance.
-        resolved_toml: ResolvedTopmarkTomlSources.
-        results: Ordered list of durable per-file processing results.
-        summary_mode: Whether to emit summary records instead of per-file result records.
-
-    Yields:
-        Shaped NDJSON records (not yet serialized). Each yielded record
-        includes `kind` and `meta` and follows the project's NDJSON envelope contract.
-    """
-    yield from iter_processing_results_stream_ndjson_records(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml,
-        events=iter_machine_processing_stream(results, command="check"),
-        summary_mode=summary_mode,
     )
 
 
