@@ -25,3 +25,9 @@ topmark:header:end
 > the failure remain visible in human-readable and machine-readable output formats.
 >
 > `strict` is resolved during TOML loading and does not become a layered configuration field.
+>
+> In non-strict mode, configuration diagnostics remain advisory. Markdown reports include advisory
+> diagnostics for completeness. Default TEXT output may instead report only the resulting runtime
+> outcome, such as a file being filtered after configuration normalization. When `--strict` is
+> enabled, advisory diagnostics become fatal configuration errors and are surfaced consistently
+> across output formats.

@@ -101,6 +101,115 @@ def test_processing_machine_summary_diff_keeps_stdout_parseable_and_warns_on_std
     assert "Note:" not in result.stdout
 
 
+@pytest.mark.parametrize(
+    ("command", "output_format"),
+    [
+        pytest.param(CliCmd.CHECK, OutputFormat.JSON, id="check-json"),
+        pytest.param(CliCmd.CHECK, OutputFormat.NDJSON, id="check-ndjson"),
+        pytest.param(CliCmd.STRIP, OutputFormat.JSON, id="strip-json"),
+        pytest.param(CliCmd.STRIP, OutputFormat.NDJSON, id="strip-ndjson"),
+    ],
+)
+def test_processing_machine_detail_output_stays_on_stdout(
+    tmp_path: Path,
+    command: str,
+    output_format: OutputFormat,
+) -> None:
+    """Processing machine detail output is emitted on STDOUT only."""
+    path: Path = tmp_path / "example.py"
+    path.write_text('print("hello")\n', encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.OUTPUT_FORMAT,
+            output_format.value,
+            path.name,
+        ],
+    )
+
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+    if output_format is OutputFormat.JSON:
+        payload: dict[str, object] = parse_json_object(result.stdout)
+        assert payload
+    else:
+        records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
+        assert records
+    assert result.stderr == ""
+
+
+@pytest.mark.parametrize(
+    ("command", "output_format"),
+    [
+        pytest.param(CliCmd.CHECK, OutputFormat.JSON, id="check-json"),
+        pytest.param(CliCmd.CHECK, OutputFormat.NDJSON, id="check-ndjson"),
+        pytest.param(CliCmd.STRIP, OutputFormat.JSON, id="strip-json"),
+        pytest.param(CliCmd.STRIP, OutputFormat.NDJSON, id="strip-ndjson"),
+    ],
+)
+def test_processing_machine_summary_output_stays_on_stdout(
+    tmp_path: Path,
+    command: str,
+    output_format: OutputFormat,
+) -> None:
+    """Processing machine summary output is emitted on STDOUT only."""
+    path: Path = tmp_path / "example.py"
+    path.write_text('print("hello")\n', encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.RESULTS_SUMMARY_MODE,
+            CliOpt.OUTPUT_FORMAT,
+            output_format.value,
+            path.name,
+        ],
+    )
+
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+    if output_format is OutputFormat.JSON:
+        payload: dict[str, object] = parse_json_object(result.stdout)
+        assert payload
+        assert "summary" in payload
+    else:
+        records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
+        assert records
+    assert result.stderr == ""
+
+
+def test_probe_json_payload_stays_on_stdout(tmp_path: Path) -> None:
+    """Probe JSON output emits a parseable payload on STDOUT without STDERR chatter."""
+    path: Path = tmp_path / "example.py"
+    path.write_text('print("hello")\n', encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.PROBE, CliOpt.OUTPUT_FORMAT, OutputFormat.JSON.value, path.name],
+    )
+
+    assert_SUCCESS(result)
+    payload: dict[str, object] = parse_json_object(result.stdout)
+    assert payload
+    assert result.stderr == ""
+
+
+def test_probe_quiet_text_consumes_stream_without_output(tmp_path: Path) -> None:
+    """Probe quiet TEXT mode still consumes the stream and suppresses human output."""
+    path: Path = tmp_path / "example.py"
+    path.write_text('print("hello")\n', encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.PROBE, CliOpt.QUIET, path.name],
+    )
+
+    assert_SUCCESS(result)
+    assert result.stdout == ""
+    assert result.stderr == ""
+
+
 def test_human_diff_routes_report_to_stderr_and_diff_payload_to_stdout(tmp_path: Path) -> None:
     """Human `--diff` reserves STDOUT for unified diff payloads."""
     path: Path = tmp_path / "example.py"

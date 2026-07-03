@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_machine_payloads.py
-#   file_relpath : tests/pipeline/test_machine_payloads.py
+#   file         : test_payloads.py
+#   file_relpath : tests/pipeline/machine/test_payloads.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

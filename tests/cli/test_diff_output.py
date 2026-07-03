@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_markdown_output_does_not_contain
 from tests.cli.conftest import assert_rich_output_does_not_contain
 from tests.cli.conftest import assert_SUCCESS
@@ -327,6 +328,36 @@ def test_check_diff_markdown_summary_output_suppresses_empty_diff_section(
         OutputFormat.MARKDOWN,
     ],
 )
+def test_check_apply_summary_output_reports_inserted_file(
+    tmp_path: Path,
+    output_format: OutputFormat,
+) -> None:
+    """`check --apply --summary` should report the inserted summary bucket."""
+    path: Path = _write_plain_python_file(tmp_path)
+
+    args: list[str] = [
+        CliCmd.CHECK,
+        CliOpt.APPLY_CHANGES,
+        CliOpt.RESULTS_SUMMARY_MODE,
+    ]
+    if output_format is OutputFormat.MARKDOWN:
+        args.extend([CliOpt.OUTPUT_FORMAT, output_format.value])
+    args.append(str(path))
+
+    result: Result = run_cli_in(tmp_path, args, prune_views=True)
+
+    assert_SUCCESS(result)
+    assert TOPMARK_START_MARKER in path.read_text(encoding="utf-8")
+    assert "inserted" in result.output.lower()
+
+
+@pytest.mark.parametrize(
+    "output_format",
+    [
+        OutputFormat.TEXT,
+        OutputFormat.MARKDOWN,
+    ],
+)
 def test_check_diff_per_file_output_suppresses_empty_diff_section(
     tmp_path: Path,
     output_format: OutputFormat,
@@ -497,6 +528,41 @@ def test_strip_diff_markdown_summary_output_suppresses_empty_diff_section(
     assert_markdown_output_does_not_contain(
         output=result.output,
         expected="```diff",
+    )
+
+
+@pytest.mark.parametrize(
+    "output_format",
+    [
+        OutputFormat.TEXT,
+        OutputFormat.MARKDOWN,
+    ],
+)
+def test_strip_apply_summary_output_reports_removed_file(
+    tmp_path: Path,
+    output_format: OutputFormat,
+) -> None:
+    """`strip --apply --summary` should report the removed summary bucket."""
+    path: Path = _write_markdown_file_with_topmark_header(tmp_path)
+
+    args: list[str] = [
+        CliCmd.STRIP,
+        CliOpt.APPLY_CHANGES,
+        CliOpt.RESULTS_SUMMARY_MODE,
+    ]
+    if output_format is OutputFormat.MARKDOWN:
+        args.extend([CliOpt.OUTPUT_FORMAT, output_format.value])
+    args.append(str(path))
+
+    result: Result = run_cli_in(tmp_path, args, prune_views=True)
+
+    assert_SUCCESS(result)
+    updated: str = path.read_text(encoding="utf-8")
+    assert TOPMARK_START_MARKER not in updated
+    assert_human_output_contains(
+        output_format=output_format,
+        output=result.output,
+        expected="stripped",
     )
 
 

@@ -32,6 +32,7 @@ from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_strict_file_type_overlap_warning
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
+from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
@@ -295,6 +296,51 @@ def test_probe_text_output_reports_strict_file_type_overlap_warning(
 
 
 # --- Markdown output: strict config diagnostics ---
+
+
+@pytest.mark.parametrize(
+    "output_format",
+    [
+        pytest.param(OutputFormat.TEXT, id="text"),
+        pytest.param(OutputFormat.MARKDOWN, id="markdown"),
+    ],
+)
+def test_probe_human_output_reports_non_strict_file_type_overlap_warning(
+    tmp_path: Path,
+    output_format: OutputFormat,
+) -> None:
+    """Human probe output should preserve non-strict overlap behavior.
+
+    Markdown renders the non-strict configuration warning explicitly. Default
+    TEXT probe output instead reports the affected explicit input as filtered.
+    """
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    args: list[str] = [
+        CliCmd.PROBE,
+        CliOpt.INCLUDE_FILE_TYPES,
+        "python",
+        CliOpt.EXCLUDE_FILE_TYPES,
+        "python",
+    ]
+    if output_format is OutputFormat.MARKDOWN:
+        args.extend([CliOpt.OUTPUT_FORMAT, output_format.value])
+    args.append(str(file))
+
+    runner = CliRunner()
+    result: Result = runner.invoke(cli, args)
+
+    assert_UNSUPPORTED_FILE_TYPE(result)
+    if output_format is OutputFormat.TEXT:
+        assert_human_output_contains(
+            output_format=OutputFormat.TEXT,
+            output=result.output,
+            expected="filtered: excluded_by_file_type_filter",
+        )
+        return
+
+    assert_overlap_warning_text(result.output, ("topmark:python",))
 
 
 def test_probe_markdown_output_reports_strict_file_type_overlap_warning(

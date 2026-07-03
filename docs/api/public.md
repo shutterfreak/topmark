@@ -64,13 +64,14 @@ file-result events in the same order as the corresponding batch result view, the
 corresponding batch API call, so filtered-out files are reflected in the final `skipped` count
 rather than emitted as file-result events.
 
-Internally, TopMark also uses stream collectors and machine-/presentation-output stream adapters to
-keep batch APIs, machine-readable output, human TEXT/Markdown presentation, and CLI `check`/`strip`
-orchestration aligned on the same ordering and result-ownership semantics. Those internal adapters
-are implementation details and do not expand the public compatibility surface. JSON output remains a
-complete-envelope format that is materialized before emission to preserve the existing
-machine-output contract. NDJSON and human output can consume ordered durable-result event streams
-directly.
+Internally, TopMark also uses durable-result stream collectors and machine-/presentation-output
+stream adapters to keep batch APIs, machine-readable output, human TEXT/Markdown presentation, and
+CLI command orchestration aligned on the same ordering and result-ownership semantics. Those
+internal adapters are implementation details and do not expand the public compatibility surface.
+JSON output remains a complete-envelope compatibility format, but the envelope is reconstructed from
+ordered durable-result stream events before emission. This keeps JSON compatible with existing
+machine-readable output consumers while aligning its implementation with the same durable-result
+streaming core used by NDJSON, human presentation, public stream APIs, and batch collectors.
 
 ### Configuration via mappings
 

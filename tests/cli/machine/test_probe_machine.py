@@ -25,21 +25,34 @@ from tests.cli.conftest import assert_CONFIG_ERROR
 from tests.cli.conftest import assert_FILE_NOT_FOUND
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
+from tests.helpers.config import make_frozen_config
 from tests.helpers.config_diagnostics import assert_config_diagnostics_warning_payload
 from tests.helpers.config_diagnostics import assert_overlap_warning_text
+from tests.helpers.console import CapturedConsole
+from tests.helpers.console import make_captured_console
 from tests.helpers.json import parse_json_object
 from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.ndjson import record_payload
 from tests.helpers.paths import symlink_or_skip
+from tests.helpers.pipeline import make_pipeline_context
+from topmark.cli.emitters.machine import emit_probe_results_machine
+from topmark.cli.emitters.machine import emit_probe_stream_json_machine
+from topmark.cli.emitters.machine import emit_probe_stream_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
 from topmark.core.formats import OutputFormat
+from topmark.core.machine.schemas import MetaPayload
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
+from topmark.pipeline.machine.streaming import MachineProcessingResultEvent
+from topmark.pipeline.machine.streaming import MachineRunCompletedEvent
+from topmark.pipeline.machine.streaming import MachineRunStartedEvent
+from topmark.pipeline.result import ProcessingResult
+from topmark.toml.resolution import ResolvedTopmarkTomlSources
 from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
@@ -47,6 +60,34 @@ if TYPE_CHECKING:
 
     from click.testing import Result
     from pytest import MonkeyPatch
+
+    from topmark.config.model import FrozenConfig
+    from topmark.pipeline.context.model import ProcessingContext
+
+
+def _machine_meta() -> MetaPayload:
+    """Return stable test metadata payload for machine-emitter tests."""
+    return MetaPayload(
+        tool="topmark",
+        version="test",
+        platform="test",
+    )
+
+
+def _empty_resolved_toml_sources() -> ResolvedTopmarkTomlSources:
+    """Return an empty TOML resolution result for machine-emitter tests."""
+    return ResolvedTopmarkTomlSources(
+        sources=[],
+        writer_options=None,
+        strict=None,
+    )
+
+
+def _probe_result(tmp_path: Path) -> tuple[FrozenConfig, ProcessingResult]:
+    """Return a minimal durable probe result for emitter tests."""
+    cfg: FrozenConfig = make_frozen_config()
+    ctx: ProcessingContext = make_pipeline_context(path=tmp_path / "example.py", cfg=cfg)
+    return cfg, ProcessingResult.from_context(ctx)
 
 
 def test_probe_json_output_shape(tmp_path: Path) -> None:
@@ -88,6 +129,59 @@ def test_probe_json_output_shape(tmp_path: Path) -> None:
     assert "selected_file_type" in probe
     assert "selected_processor" in probe
     assert "candidates" in probe
+
+
+def test_probe_json_output_separates_payload_from_stderr(tmp_path: Path) -> None:
+    """Probe JSON output should keep payload on STDOUT.
+
+    Probe JSON output keeps payload on STDOUT, nothing on STDERR.
+    """
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(file),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert result.stderr == ""
+    payload: dict[str, object] = parse_json_object(result.stdout)
+    assert "probes" in payload
+
+
+def test_probe_json_content_stdin_uses_payload_stdout_and_cleans_tempfile() -> None:
+    """Probe JSON should support content-on-STDIN without STDERR chatter.
+
+    Regression: JSON probe should support content-on-STDIN and clean up tempfiles.
+    """
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            "-",
+            CliOpt.STDIN_FILENAME,
+            "example.py",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+        input="print('hello')\n",
+    )
+
+    assert_SUCCESS(result)
+    assert result.stderr == ""
+    payload: dict[str, object] = parse_json_object(result.stdout)
+    probes_obj: object = payload["probes"]
+    assert is_any_list(probes_obj)
+    probes: list[object] = probes_obj
+    assert len(probes) == 1
 
 
 def test_probe_json_symlink_input_serializes_canonical_target_path(
@@ -635,3 +729,165 @@ def test_probe_ndjson_strict_config_warning_emits_machine_diagnostics(
         "\n".join(diagnostic_messages),
         expected_removed_file_types,
     )
+
+
+def test_probe_ndjson_output_separates_payload_from_stderr(tmp_path: Path) -> None:
+    """Probe NDJSON output should keep payload records on STDOUT.
+
+    Probe NDJSON output keeps payload records on STDOUT, nothing on STDERR.
+    """
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(file),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert result.stderr == ""
+    records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
+    assert "probe" in record_kinds(records)
+
+
+def test_probe_ndjson_content_stdin_uses_payload_stdout_and_cleans_tempfile() -> None:
+    """Probe NDJSON should support content-on-STDIN without STDERR chatter.
+
+    Regression: NDJSON probe should support content-on-STDIN and clean up tempfiles.
+    """
+    runner = CliRunner()
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            "-",
+            CliOpt.STDIN_FILENAME,
+            "example.py",
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.NDJSON.value,
+        ],
+        input="print('hello')\n",
+    )
+
+    assert_SUCCESS(result)
+    assert result.stderr == ""
+    records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
+    assert "probe" in record_kinds(records)
+
+
+# --- Emitter helper tests ---
+
+
+@pytest.mark.parametrize("fmt", [OutputFormat.JSON, OutputFormat.NDJSON])
+def test_emit_probe_results_machine_emits_legacy_probe_payload(
+    tmp_path: Path,
+    fmt: OutputFormat,
+) -> None:
+    """Legacy probe emitter should still write machine payloads."""
+    cfg, result = _probe_result(tmp_path)
+    captured: CapturedConsole = make_captured_console()
+
+    emit_probe_results_machine(
+        console=captured.console,
+        meta=_machine_meta(),
+        config=cfg,
+        resolved_toml=_empty_resolved_toml_sources(),
+        results=(result,),
+        fmt=fmt,
+    )
+
+    assert captured.out.getvalue().strip() != ""
+    assert captured.err.getvalue() == ""
+    if fmt is OutputFormat.JSON:
+        assert not captured.out.getvalue().endswith("\n")
+    else:
+        assert captured.out.getvalue().endswith("\n")
+
+
+def test_emit_probe_results_machine_rejects_non_machine_format(tmp_path: Path) -> None:
+    """Legacy probe emitter should reject non-machine formats."""
+    cfg, result = _probe_result(tmp_path)
+    captured: CapturedConsole = make_captured_console()
+
+    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+        emit_probe_results_machine(
+            console=captured.console,
+            meta=_machine_meta(),
+            config=cfg,
+            resolved_toml=_empty_resolved_toml_sources(),
+            results=(result,),
+            fmt=OutputFormat.TEXT,
+        )
+
+    assert captured.out.getvalue() == ""
+    assert captured.err.getvalue() == ""
+
+
+def test_emit_probe_stream_json_machine_emits_stream_json_payload(
+    tmp_path: Path,
+) -> None:
+    """Probe stream JSON emitter should write one newline-free JSON payload."""
+    cfg, result = _probe_result(tmp_path)
+    captured: CapturedConsole = make_captured_console()
+
+    emit_probe_stream_json_machine(
+        console=captured.console,
+        meta=_machine_meta(),
+        config=cfg,
+        resolved_toml=_empty_resolved_toml_sources(),
+        events=(
+            MachineRunStartedEvent(
+                command="probe",
+                selected_count=1,
+                paths=(result.path,),
+            ),
+            MachineProcessingResultEvent(
+                command="probe",
+                index=0,
+                result=result,
+            ),
+            MachineRunCompletedEvent(command="probe"),
+        ),
+    )
+
+    assert captured.err.getvalue() == ""
+    assert "probes" in captured.out.getvalue()
+    assert not captured.out.getvalue().endswith("\n")
+
+
+def test_emit_probe_stream_machine_emits_stream_ndjson_payload(
+    tmp_path: Path,
+) -> None:
+    """Probe stream NDJSON emitter should write line-delimited records."""
+    cfg, result = _probe_result(tmp_path)
+    captured: CapturedConsole = make_captured_console()
+
+    emit_probe_stream_machine(
+        console=captured.console,
+        meta=_machine_meta(),
+        config=cfg,
+        resolved_toml=_empty_resolved_toml_sources(),
+        events=(
+            MachineRunStartedEvent(
+                command="probe",
+                selected_count=1,
+                paths=(result.path,),
+            ),
+            MachineProcessingResultEvent(
+                command="probe",
+                index=0,
+                result=result,
+            ),
+            MachineRunCompletedEvent(command="probe"),
+        ),
+    )
+
+    assert captured.err.getvalue() == ""
+    assert "probe" in captured.out.getvalue()
+    assert captured.out.getvalue().endswith("\n")

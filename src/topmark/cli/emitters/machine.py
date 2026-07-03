@@ -26,6 +26,9 @@ from topmark.config.machine.serializers import serialize_config_diagnostics
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
 from topmark.core.machine.serializers import iter_ndjson_strings
+from topmark.core.machine.serializers import serialize_json_object
+from topmark.pipeline.machine.envelopes import build_probe_results_stream_json_envelope
+from topmark.pipeline.machine.envelopes import build_processing_results_stream_json_envelope
 from topmark.pipeline.machine.envelopes import iter_probe_results_stream_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_stream_ndjson_records
 from topmark.pipeline.machine.serializers import serialize_probe_results
@@ -107,6 +110,32 @@ def emit_probe_results_machine(
     emit_machine(serialized, console=console, nl=nl)
 
 
+def emit_probe_stream_json_machine(
+    *,
+    console: ConsoleProtocol,
+    meta: MetaPayload,
+    config: FrozenConfig,
+    resolved_toml: ResolvedTopmarkTomlSources,
+    events: Iterable[MachineProcessingStreamEvent],
+) -> None:
+    """Emit probe JSON from an internal durable-result stream.
+
+    Args:
+        console: Console used to emit serialized machine-readable output.
+        meta: The machine metadata payload.
+        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
+        resolved_toml: ResolvedTopmarkTomlSources.
+        events: Internal machine processing stream events in deterministic order.
+    """
+    envelope: dict[str, object] = build_probe_results_stream_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml,
+        events=events,
+    )
+    emit_machine(serialize_json_object(envelope), console=console, nl=False)
+
+
 def emit_probe_stream_machine(
     *,
     console: ConsoleProtocol,
@@ -172,6 +201,35 @@ def emit_processing_results_machine(
     # Do not emit trailing newline for JSON
     nl: bool = fmt != OutputFormat.JSON
     emit_machine(serialized, console=console, nl=nl)
+
+
+def emit_processing_stream_json_machine(
+    *,
+    console: ConsoleProtocol,
+    meta: MetaPayload,
+    config: FrozenConfig,
+    resolved_toml: ResolvedTopmarkTomlSources,
+    events: Iterable[MachineProcessingStreamEvent],
+    summary_mode: bool,
+) -> None:
+    """Emit processing JSON from an internal durable-result stream.
+
+    Args:
+        console: Console used to emit serialized machine-readable output.
+        meta: The machine metadata payload.
+        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
+        resolved_toml: ResolvedTopmarkTomlSources.
+        events: Internal machine processing stream events in deterministic order.
+        summary_mode: If True, emit aggregated counts instead of per-file entries.
+    """
+    envelope: dict[str, object] = build_processing_results_stream_json_envelope(
+        meta=meta,
+        config=config,
+        resolved_toml=resolved_toml,
+        events=events,
+        summary_mode=summary_mode,
+    )
+    emit_machine(serialize_json_object(envelope), console=console, nl=False)
 
 
 def emit_processing_stream_machine(
