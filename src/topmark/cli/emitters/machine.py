@@ -31,8 +31,6 @@ from topmark.pipeline.machine.envelopes import build_probe_results_stream_json_e
 from topmark.pipeline.machine.envelopes import build_processing_results_stream_json_envelope
 from topmark.pipeline.machine.envelopes import iter_probe_results_stream_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_stream_ndjson_records
-from topmark.pipeline.machine.serializers import serialize_probe_results
-from topmark.pipeline.machine.serializers import serialize_processing_results
 from topmark.registry.machine.serializers import serialize_bindings
 from topmark.registry.machine.serializers import serialize_filetypes
 from topmark.registry.machine.serializers import serialize_processors
@@ -45,7 +43,6 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
-    from topmark.pipeline.result import ProcessingResult
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -71,43 +68,6 @@ def emit_machine(
     else:
         for line in serialized:
             console.print(line, nl=nl)
-
-
-def emit_probe_results_machine(
-    *,
-    console: ConsoleProtocol,
-    meta: MetaPayload,
-    config: FrozenConfig,
-    resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingResult],
-    fmt: OutputFormat,
-) -> None:
-    """Emit topmark probe machine-readable output.
-
-    Args:
-        console: Console used to emit the already-serialized machine-readable output.
-        meta: The machine metadata payload.
-        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
-        resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of per-file probe results.
-        fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
-
-    Raises:
-        ValueError: if `fmt` is not a machine-readable format.
-    """
-    if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
-
-    serialized: str | Iterator[str] = serialize_probe_results(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml,
-        results=results,
-        fmt=fmt,
-    )
-
-    nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_probe_stream_json_machine(
@@ -160,47 +120,6 @@ def emit_probe_stream_machine(
         events=events,
     )
     emit_machine(iter_ndjson_strings(records), console=console)
-
-
-def emit_processing_results_machine(
-    *,
-    console: ConsoleProtocol,
-    meta: MetaPayload,
-    config: FrozenConfig,
-    resolved_toml: ResolvedTopmarkTomlSources,
-    results: Iterable[ProcessingResult],
-    fmt: OutputFormat,
-    summary_mode: bool,
-) -> None:
-    """Emit already-rendered machine strings to console.
-
-    Args:
-        console: Console used to emit the already-serialized machine-readable output.
-        meta: The machine metadata payload.
-        config: The immutable [`FrozenConfig`][topmark.config.model.FrozenConfig] instance.
-        resolved_toml: ResolvedTopmarkTomlSources,
-        results: Ordered list of durable per-file processing results.
-        fmt: Output format (`OutputFormat.JSON` or `OutputFormat.NDJSON`).
-        summary_mode: If True, emit aggregated counts instead of per-file entries.
-
-    Raises:
-        ValueError: if `fmt` is not a machine-readable format.
-    """
-    if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
-
-    serialized: str | Iterator[str] = serialize_processing_results(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml,
-        results=results,
-        fmt=fmt,
-        summary_mode=summary_mode,
-    )
-
-    # Do not emit trailing newline for JSON
-    nl: bool = fmt != OutputFormat.JSON
-    emit_machine(serialized, console=console, nl=nl)
 
 
 def emit_processing_stream_json_machine(

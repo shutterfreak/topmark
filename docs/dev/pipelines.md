@@ -160,7 +160,7 @@ The following changes should be treated as potentially breaking and require comp
 - changing reduction expectations so public surfaces can no longer consume durable
   `ProcessingResult` instances in stable order.
 
-These changes can affect CLI compatibility, public API behavior, machine-readable output, or future
+These changes can affect CLI compatibility, public API behavior, machine-readable output, or
 streaming/event surfaces. They should therefore be evaluated against the API stability policy before
 being accepted.
 
@@ -185,7 +185,7 @@ New pipeline behavior should follow these rules:
 
 Reporting and event APIs should consume durable results or purpose-built event DTOs derived from
 durable results. They should not depend directly on executable catalogue objects or mutable
-processing contexts. This keeps streaming/event work compatible with the existing selection,
+processing contexts. This keeps streaming/event consumers compatible with the existing selection,
 runtime, and reduction seams.
 
 Pipeline execution is streaming-capable internally and now supports both durable stream consumption
@@ -195,17 +195,18 @@ and batch-compatible collection. The engine can yield per-file
 snapshots those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
 \[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Stream adapters
-can expose those durable results as ordered run-start, per-file, and run-completed events.
+expose those durable results as ordered run-start, per-file, and run-completed events.
 
 Normal check and strip API batch orchestration can still use the result-oriented runtime adapter
 \[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results]. CLI `check`, `strip`, and
 `probe` orchestration consume ordered durable-result event streams directly for TEXT, Markdown,
 NDJSON, and JSON output. JSON remains a complete-envelope machine-readable format for compatibility,
-but that envelope is reconstructed from ordered durable-result stream events before emission rather
-than from a separate command-layer reduction. Public batch APIs still collect ordered durable
-results where stable summaries, exit codes, and batch-compatible DTOs require complete state. Probe
-reduction uses \[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results],
-including durable synthetic results for missing or filtered explicit probe inputs.
+but the documented compatibility envelope is reconstructed from ordered durable-result stream events
+before emission rather than from a separate command-layer reduction. Public batch APIs still collect
+ordered durable results where stable summaries, exit codes, and batch-compatible DTOs require
+complete state. Probe reduction uses
+\[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results], including
+durable synthetic results for missing or filtered explicit probe inputs.
 
 Pipeline execution also consumes a selected **processing path**. File-list resolution performs
 filesystem-identity evaluation before ordinary pipeline execution begins.
@@ -745,10 +746,10 @@ ______________________________________________________________________
   catalogue variants; public reporting, machine-readable output, and stream/event APIs consume
   durable `ProcessingResult` data rather than mutable execution contexts or catalogue internals
 - **Streaming-capable reduction seam:** the engine can yield per-file mutable processing contexts,
-  the reduction layer can snapshot them into durable processing results, stream adapters can expose
+  the reduction layer can snapshot them into durable processing results, stream adapters expose
   ordered durable-result events, and complete-envelope consumers such as JSON output and public
-  batch DTOs can reconstruct compatibility envelopes from those ordered events when they require
-  complete state
+  batch DTOs reconstruct documented compatibility envelopes from those ordered events when they
+  require complete state
 - **Separation of concerns:** Steps mutate context, views classify outcomes
 - **Runtime/configuration separation:** pipeline execution consumes resolved runtime configuration
   and runtime options rather than re-running TOML discovery during step execution

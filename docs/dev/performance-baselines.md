@@ -727,90 +727,57 @@ isolating file-image, comparison, patch-generation, and scanner/header materiali
 
 ### Public streaming API follow-up (GitHub issue 174)
 
-GitHub issue 174 builds on the streaming-oriented reduction architecture from GitHub issue 165 by
-exposing the previously internal execution model through a stable public event API. The first
-implementation phase established the compatibility contract by introducing public event DTOs. The
-second phase added `stream_check()`, `stream_strip()`, and `stream_probe()` while intentionally
-preserving the existing batch APIs, CLI behavior, presentation layer, and machine-output contracts.
+GitHub issue 174 completed the migration from a batch-oriented internal reduction architecture to a
+durable-result streaming architecture while preserving the existing public CLI, API, presentation,
+and machine-readable compatibility contracts.
 
-This work does not alter the benchmark methodology because the benchmark tool measures pipeline
-execution, reduction, durable-result ownership, and CLI-compatible processing rather than public API
-consumption. The new streaming entry points reuse the same durable public result DTOs as the batch
-APIs and therefore introduce an alternative consumption surface instead of a different execution
-model.
+The completed execution ownership is now:
 
-The third phase added reusable internal stream collectors that consume the public event sequence and
-rebuild batch-style result objects and selected-path metadata. This collector layer is an API-layer
-architecture change: it does not change pipeline execution, CLI output, presentation rendering,
-machine-output serialization, or benchmark methodology. Existing per-file diagnostics remain owned
-by the API producer because current public file-result events intentionally do not carry diagnostic
-entries.
+```text
+iter_steps_for_files()
+    -> ProcessingContext
+    -> ProcessingResult
+    -> durable stream events
+       ├── CLI check
+       ├── CLI strip
+       ├── CLI probe
+       ├── TEXT
+       ├── Markdown
+       ├── NDJSON
+       ├── JSON collectors
+       ├── public stream APIs
+       └── public batch collectors
+```
 
-The fourth phase migrated the NDJSON machine-output path onto a small internal machine-stream
-adapter. The adapter preserves the existing JSON and NDJSON payload schemas by keeping the richer
-durable `ProcessingResult` payload source behind the stream boundary; public stream DTOs remain
-unchanged and intentionally do not expose internal result state. This is an output-architecture
-change rather than a benchmark-methodology change: detail-mode NDJSON can emit per-file records as
-stream result events are consumed, while summary-mode NDJSON still rebuilds summary rows from
-retained durable results to preserve the existing schema and ordering contract.
+The migration introduced public streaming APIs, reusable internal stream collectors, streaming-aware
+CLI orchestration, and stream-backed machine and presentation adapters. JSON remains a
+complete-envelope compatibility format, but the documented compatibility envelope is reconstructed
+from ordered durable-result stream events before emission.
 
-The fifth phase migrated check/strip TEXT and Markdown human-output orchestration onto the same
-internal durable-result stream adapter used by the NDJSON migration. The CLI commands now pass human
-presentation options to a stream bridge instead of constructing presentation reports directly. The
-bridge defensively validates the stream lifecycle, consumes ordered durable-result events,
-reconstructs the realized report state needed by the existing renderers, and then delegates to the
-unchanged TEXT and Markdown renderers. This preserves human output compatibility while moving the
-presentation boundary toward stream-event input and keeping presentation configuration separate from
-retained report state.
+Because the benchmark suite measures pipeline execution, durable-result ownership, and retained
+memory rather than API consumption, the expected benchmark impact was architectural rather than a
+large change in peak allocations.
 
-This phase does not require a benchmark-methodology change. Human report-scope filtering, grouped
-summary rendering, and standalone diff payload rendering still rely on an ordered durable result set
-to preserve existing compatibility contracts. The change therefore clarifies ownership and aligns
-human presentation with the stream adapter architecture, but it does not remove the current retained
-output state or change the benchmarked pipeline execution model.
+A repository-scale benchmark was therefore rerun after completion of the migration.
 
-The sixth phase migrated CLI `check` and `strip` orchestration onto the streaming-capable engine
-boundary. For TEXT, Markdown, and NDJSON output, the commands now consume `iter_steps_for_files()`
-directly and reduce each completed context into an ordered durable-result event before forwarding it
-to downstream consumers. At this phase, JSON output intentionally remained a collected path because
-the existing JSON contract requires a complete machine-output envelope. Apply summaries, dry-run
-would-change exits, and prioritized processing error exits are observed from the same durable-result
-event stream instead of requiring a separate command-layer `ProcessingReduction` handover for these
-streaming output paths.
+Representative measurements were:
 
-This phase reduces one remaining command-layer batch ownership point for TEXT, Markdown, and NDJSON
-output, but it does not require a benchmark-methodology change. Summary-mode NDJSON and human
-summary rendering still retain the durable results needed for existing aggregate output contracts,
-and JSON remained intentionally batch-shaped until the later JSON collector phase. The expected
-benchmark impact was therefore architectural and lifecycle-oriented rather than a new canonical
-memory baseline.
+| Scenario                | Mode                | Files | Input size | Result diff | Peak traced |  Max RSS |
+| ----------------------- | ------------------- | ----: | ---------: | ----------: | ----------: | -------: |
+| `repo_many_small_mixed` | `check_pruned`      |   250 |   2.30 MiB |         0 B |    1.00 MiB | 45.3 MiB |
+| `repo_many_small_mixed` | `check_diff_pruned` |   250 |   2.30 MiB |   172.2 KiB |    1.32 MiB | 46.1 MiB |
+| `repo_many_small_mixed` | `strip_pruned`      |   250 |   2.30 MiB |         0 B |   962.6 KiB | 44.8 MiB |
+| `repo_many_small_mixed` | `strip_diff_pruned` |   250 |   2.30 MiB |    68.0 KiB |    1.13 MiB | 45.2 MiB |
 
-The seventh phase migrated CLI `probe` orchestration onto the same streaming-capable engine boundary
-already used by CLI `check` and `strip`. For TEXT, Markdown, and NDJSON output, `probe` now consumes
-`iter_steps_for_files()` directly, reduces real probe contexts into ordered durable-result events,
-appends durable synthetic results for missing and filtered explicit inputs, and observes
-probe-specific exit status from the consumed stream. At this phase, JSON remained the intentional
-complete-envelope collector path for compatibility with the existing machine-output contract.
+These measurements remain consistent with the earlier repository-scale baseline introduced during
+GitHub issue 187. Peak traced allocations stay close to 1 MiB and RSS remains approximately 45–46
+MiB despite exercising the fully stream-oriented execution architecture.
 
-This completed the planned command-layer streaming migration for issue 174 without changing the
-benchmark methodology. The likely memory effect was concentrated in large probe runs using TEXT,
-Markdown, or NDJSON output, where command orchestration no longer constructs a separate complete
-`ProcessingReduction` before emitting output. The benchmark suites remained primarily designed
-around check/strip pipeline ownership and repository-scale durable-result retention, so a new
-canonical memory baseline was not warranted for this phase alone.
-
-The eighth phase migrated JSON envelope assembly for `check`, `strip`, and `probe` onto reusable
-durable-result stream collectors while preserving the existing complete-envelope JSON contract. This
-removed the command-layer `ProcessingReduction` exception for JSON output: CLI JSON now observes the
-same durable-result stream used by TEXT, Markdown, and NDJSON before materializing the final
-compatibility envelope. JSON still necessarily retains the complete envelope before emission, so
-this phase is primarily an ownership simplification rather than a schema or output-volume change.
-
-This phase also makes the post-issue-174 architecture easier to benchmark at repository scale: all
-primary CLI output formats now share the durable-result streaming core, with JSON differing only at
-the final compatibility-envelope materialization boundary. Full repository-scale benchmark refreshes
-are therefore appropriate as follow-up work after the streaming migration is complete, but no new
-single-file canonical baseline is required for this JSON collector migration alone.
+This result is expected. The migration primarily simplifies ownership and eliminates obsolete
+compatibility layers rather than reducing the dominant benchmark costs, which continue to be file
+images, scanner/header processing, comparison, and retained patch data. The benchmark therefore
+validates that the completed streaming architecture preserves repository-scale performance while
+providing a substantially cleaner ownership model.
 
 ______________________________________________________________________
 

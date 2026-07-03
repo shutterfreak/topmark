@@ -56,8 +56,10 @@ from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.paths import symlink_or_skip
 from tests.helpers.pipeline import make_pipeline_context
+from topmark.cli.emitters.machine import emit_config_check_machine
+from topmark.cli.emitters.machine import emit_config_diagnostics_machine
+from topmark.cli.emitters.machine import emit_config_machine
 from topmark.cli.emitters.machine import emit_machine
-from topmark.cli.emitters.machine import emit_processing_results_machine
 from topmark.cli.emitters.machine import emit_processing_stream_json_machine
 from topmark.cli.emitters.machine import emit_processing_stream_machine
 from topmark.cli.keys import CliCmd
@@ -67,11 +69,12 @@ from topmark.core.machine.schemas import MetaPayload
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
-from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
-from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
+from topmark.pipeline.machine.envelopes import build_processing_results_stream_json_envelope
+from topmark.pipeline.machine.envelopes import iter_processing_results_stream_ndjson_records
 from topmark.pipeline.machine.streaming import MachineProcessingResultEvent
 from topmark.pipeline.machine.streaming import MachineRunCompletedEvent
 from topmark.pipeline.machine.streaming import MachineRunStartedEvent
+from topmark.pipeline.machine.streaming import iter_machine_processing_stream
 from topmark.pipeline.result import ProcessingResult
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
@@ -82,6 +85,7 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.kinds import PipelineKindLiteral
 
 
 class _WindowsStylePath:
@@ -152,6 +156,60 @@ def _write_markdown_file_with_topmark_header(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def test_emit_machine_skips_empty_serialized_output() -> None:
+    """Machine emitter should not write output for empty serialized payloads."""
+    captured: CapturedConsole = make_captured_console()
+
+    emit_machine("", console=captured.console)
+
+    assert captured.out.getvalue() == ""
+    assert captured.err.getvalue() == ""
+
+
+@pytest.mark.parametrize(
+    "emitter",
+    [
+        emit_config_machine,
+        emit_config_diagnostics_machine,
+        emit_config_check_machine,
+    ],
+)
+def test_config_machine_emitters_reject_unsupported_output_format(
+    emitter: object,
+) -> None:
+    """Config machine emitters should guard against unsupported direct formats."""
+    cfg: FrozenConfig = make_frozen_config()
+    captured: CapturedConsole = make_captured_console()
+    unsupported_format: OutputFormat = cast("OutputFormat", "unsupported")
+
+    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+        if emitter is emit_config_machine:
+            emit_config_machine(
+                console=captured.console,
+                meta=_machine_meta(),
+                config=cfg,
+                resolved_toml=_empty_resolved_toml_sources(),
+                fmt=unsupported_format,
+            )
+        elif emitter is emit_config_diagnostics_machine:
+            emit_config_diagnostics_machine(
+                console=captured.console,
+                meta=_machine_meta(),
+                config=cfg,
+                fmt=unsupported_format,
+            )
+        else:
+            emit_config_check_machine(
+                console=captured.console,
+                meta=_machine_meta(),
+                config=cfg,
+                resolved_toml=_empty_resolved_toml_sources(),
+                strict=True,
+                ok=True,
+                fmt=unsupported_format,
+            )
 
 
 # --- Path serialization contract tests ---
@@ -365,137 +423,6 @@ def test_processing_ndjson_detail_diff_record_shape(tmp_path: Path, command: str
     assert f"--- {path.name}" in diff_text_obj
     assert f"+++ {path.name}" in diff_text_obj
     assert "@@" in diff_text_obj
-
-
-@pytest.mark.parametrize(
-    ("command", "output_format"),
-    [
-        pytest.param(CliCmd.CHECK, OutputFormat.JSON, id="check-json"),
-        pytest.param(CliCmd.CHECK, OutputFormat.NDJSON, id="check-ndjson"),
-        pytest.param(CliCmd.STRIP, OutputFormat.JSON, id="strip-json"),
-        pytest.param(CliCmd.STRIP, OutputFormat.NDJSON, id="strip-ndjson"),
-    ],
-)
-def test_processing_machine_summary_output_separates_payload_from_stderr(
-    tmp_path: Path,
-    command: str,
-    output_format: OutputFormat,
-) -> None:
-    """Processing machine summary output should keep payload on STDOUT.
-
-    Machine summary output keeps payload on STDOUT, nothing on STDERR.
-    """
-    path: Path = (
-        _write_plain_python_file(tmp_path)
-        if command == CliCmd.CHECK
-        else _write_markdown_file_with_topmark_header(tmp_path)
-    )
-
-    result: Result = run_cli_in(
-        tmp_path,
-        [
-            command,
-            CliOpt.RESULTS_SUMMARY_MODE,
-            CliOpt.OUTPUT_FORMAT,
-            output_format.value,
-            str(path.relative_to(tmp_path)),
-        ],
-    )
-
-    assert_SUCCESS_or_WOULD_CHANGE(result)
-    assert result.stderr == ""
-
-    if output_format is OutputFormat.JSON:
-        payload: dict[str, object] = parse_json_object(result.stdout)
-        assert "summary" in payload
-        assert "results" not in payload
-        return
-
-    records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
-    assert "summary" in record_kinds(records)
-    assert "result" not in record_kinds(records)
-
-
-# --- Emitter helper tests ---
-
-
-def test_emit_machine_emits_single_serialized_string_without_newline() -> None:
-    """`emit_machine` should pass a serialized JSON string through once."""
-    captured: CapturedConsole = make_captured_console()
-
-    emit_machine('{"kind":"example"}', console=captured.console, nl=False)
-
-    assert captured.out.getvalue() == '{"kind":"example"}'
-    assert captured.err.getvalue() == ""
-
-
-def test_emit_machine_emits_serialized_iterable_line_by_line() -> None:
-    """`emit_machine` should emit serialized NDJSON strings line by line."""
-    captured: CapturedConsole = make_captured_console()
-
-    emit_machine(("first", "second"), console=captured.console)
-
-    assert captured.out.getvalue() == "first\nsecond\n"
-    assert captured.err.getvalue() == ""
-
-
-def test_emit_machine_ignores_empty_serialized_value() -> None:
-    """`emit_machine` should not write anything for empty serialized output."""
-    captured: CapturedConsole = make_captured_console()
-
-    emit_machine("", console=captured.console)
-
-    assert captured.out.getvalue() == ""
-    assert captured.err.getvalue() == ""
-
-
-@pytest.mark.parametrize("fmt", [OutputFormat.JSON, OutputFormat.NDJSON])
-def test_emit_processing_results_machine_emits_legacy_processing_payload(
-    tmp_path: Path,
-    fmt: OutputFormat,
-) -> None:
-    """Legacy processing emitter should still write machine payloads."""
-    cfg, result = _processing_result(tmp_path)
-    captured: CapturedConsole = make_captured_console()
-
-    emit_processing_results_machine(
-        console=captured.console,
-        meta=_machine_meta(),
-        config=cfg,
-        resolved_toml=_empty_resolved_toml_sources(),
-        results=(result,),
-        fmt=fmt,
-        summary_mode=False,
-    )
-
-    assert captured.out.getvalue().strip() != ""
-    assert captured.err.getvalue() == ""
-    if fmt is OutputFormat.JSON:
-        assert not captured.out.getvalue().endswith("\n")
-    else:
-        assert captured.out.getvalue().endswith("\n")
-
-
-def test_emit_processing_results_machine_rejects_non_machine_format(
-    tmp_path: Path,
-) -> None:
-    """Legacy processing emitter should reject non-machine formats."""
-    cfg, result = _processing_result(tmp_path)
-    captured: CapturedConsole = make_captured_console()
-
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
-        emit_processing_results_machine(
-            console=captured.console,
-            meta=_machine_meta(),
-            config=cfg,
-            resolved_toml=_empty_resolved_toml_sources(),
-            results=(result,),
-            fmt=OutputFormat.TEXT,
-            summary_mode=False,
-        )
-
-    assert captured.out.getvalue() == ""
-    assert captured.err.getvalue() == ""
 
 
 def test_emit_processing_stream_json_machine_emits_stream_json_payload(
@@ -735,7 +662,7 @@ def test_processing_json_detail_shape(tmp_path: Path, command: str) -> None:
 )
 def test_processing_json_detail_path_serializes_windows_style_path_as_posix(
     tmp_path: Path,
-    command: str,
+    command: PipelineKindLiteral,
 ) -> None:
     """Processing JSON result paths should use POSIX separators in detail mode."""
     cfg: FrozenConfig = make_frozen_config()
@@ -748,11 +675,11 @@ def test_processing_json_detail_path_serializes_windows_style_path_as_posix(
         path=cast("Path", _WindowsStylePath()),
     )
 
-    payload: dict[str, object] = build_processing_results_json_envelope(
+    payload: dict[str, object] = build_processing_results_stream_json_envelope(
         meta=_machine_meta(),
         config=cfg,
         resolved_toml=_empty_resolved_toml_sources(),
-        results=[processing_result],
+        events=iter_machine_processing_stream([processing_result], command=command),
         summary_mode=False,
     )
 
@@ -1021,7 +948,7 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
 )
 def test_processing_ndjson_detail_path_serializes_windows_style_path_as_posix(
     tmp_path: Path,
-    command: str,
+    command: PipelineKindLiteral,
 ) -> None:
     """Processing NDJSON result paths should use POSIX separators in detail mode."""
     cfg: FrozenConfig = make_frozen_config()
@@ -1035,11 +962,11 @@ def test_processing_ndjson_detail_path_serializes_windows_style_path_as_posix(
     )
 
     records: list[dict[str, object]] = list(
-        iter_processing_results_ndjson_records(
+        iter_processing_results_stream_ndjson_records(
             meta=_machine_meta(),
             config=cfg,
             resolved_toml=_empty_resolved_toml_sources(),
-            results=[processing_result],
+            events=iter_machine_processing_stream([processing_result], command=command),
             summary_mode=False,
         )
     )

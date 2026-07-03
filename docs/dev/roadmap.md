@@ -106,10 +106,10 @@ This roadmap keeps only the maintainer-facing baseline that affects stable 1.x g
 - CI and release workflow hardening, including Windows symlink coverage and GitHub Actions pin-audit
   repair support, are handled through focused issues and pull requests rather than roadmap-level
   task tracking;
-- in-memory and streaming pipeline support, richer staged diagnostics exposure, registry
-  query/filter commands, schema versioning, generated command-help documentation, Markdown output
-  refactoring, and broader workflow factoring remain explicitly deferred beyond the current stable
-  maintenance scope.
+- in-memory processing support beyond filesystem-backed execution, richer staged diagnostics
+  exposure, registry query/filter commands, schema versioning, generated command-help documentation,
+  Markdown output refactoring, and broader workflow factoring remain explicitly deferred beyond the
+  current stable maintenance scope.
 
 Recent post-1.0 governance and maintenance work confirms that TopMark now operates primarily through
 GitHub issue and pull-request tracking. The roadmap should therefore avoid repeating completed issue
@@ -339,8 +339,9 @@ compatibility or correctness issue requires it.
 
 The following remain strategic post-1.0 directions rather than active stable-line maintenance:
 
-- in-memory and streaming pipeline architecture for generated code, editor buffers, CI-provided
-  snippets, API-driven integrations, and lighter-weight tests;
+- broader in-memory processing support for generated code, editor buffers, CI-provided snippets,
+  API-driven integrations, and lighter-weight tests beyond the existing durable-result streaming
+  architecture;
 - richer registry query/filter and introspection commands;
 - explicit configuration schema versioning;
 - broader staged-validation exposure where it would improve public diagnostics without leaking
@@ -383,8 +384,8 @@ Use this checklist as a stable-line validation reminder, not as a task tracker:
 - [x] TOML → configuration → runtime layering is stabilized
 - [x] public/internal API boundaries are reviewed and documented
 - [x] filesystem-backed execution is accepted for stable 1.x
-- [x] in-memory and streaming pipeline support is explicitly deferred beyond the current stable
-  maintenance scope
+- [x] broader in-memory processing support beyond filesystem-backed execution is explicitly deferred
+  beyond the current stable maintenance scope
 - [x] namespace-aware file-type identity and registry binding semantics are frozen
 - [x] symlink, hard-link, canonical path, and configuration-source identity semantics are documented
   and regression-tested where practical

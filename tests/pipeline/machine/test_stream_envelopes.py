@@ -1,19 +1,18 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_serializers.py
-#   file_relpath : tests/pipeline/machine/test_serializers.py
+#   file         : test_stream_envelopes.py
+#   file_relpath : tests/pipeline/machine/test_stream_envelopes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Defensive unit tests for pipeline machine-readable serializers.
+"""Defensive unit tests for pipeline machine-readable stream envelopes.
 
-These tests exercise serializer guards that are intentionally unreachable
-through the public CLI. They verify that the serializer layer rejects
-unsupported output formats with a consistent `ValueError`, ensuring the
-defensive contract remains intact independently of CLI validation.
+These tests exercise stream envelope guards that are intentionally unreachable
+through the public CLI. They verify that the stream envelope layer rejects
+malformed durable-result event lifecycles with consistent `ValueError` diagnostics.
 """
 
 from __future__ import annotations
@@ -23,24 +22,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.helpers.pipeline import make_pipeline_context
-from tests.helpers.pipeline import unsupported_output_format
 from topmark.config.io.deserializers import mutable_config_from_defaults
-from topmark.core.formats import OutputFormat
 from topmark.core.machine.payloads import build_meta_payload
-from topmark.pipeline.machine.envelopes import build_probe_results_json_envelope
 from topmark.pipeline.machine.envelopes import build_probe_results_stream_json_envelope
-from topmark.pipeline.machine.envelopes import build_processing_results_json_envelope
 from topmark.pipeline.machine.envelopes import build_processing_results_stream_json_envelope
-from topmark.pipeline.machine.envelopes import iter_probe_results_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_probe_results_stream_ndjson_records
-from topmark.pipeline.machine.envelopes import iter_processing_results_ndjson_records
 from topmark.pipeline.machine.envelopes import iter_processing_results_stream_ndjson_records
-from topmark.pipeline.machine.serializers import serialize_probe_results
-from topmark.pipeline.machine.serializers import serialize_processing_results
 from topmark.pipeline.machine.streaming import MachineProcessingResultEvent
 from topmark.pipeline.machine.streaming import MachineRunCompletedEvent
 from topmark.pipeline.machine.streaming import MachineRunStartedEvent
-from topmark.pipeline.machine.streaming import iter_machine_processing_stream
 from topmark.pipeline.result import ProcessingResult
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
@@ -99,169 +89,6 @@ def _processing_result(tmp_path: Path, config: FrozenConfig) -> ProcessingResult
     return ProcessingResult.from_context(context)
 
 
-@pytest.mark.parametrize(
-    ("fmt", "is_supported"),
-    [
-        (OutputFormat.JSON, True),
-        (OutputFormat.NDJSON, True),
-        (OutputFormat.TEXT, False),
-        (OutputFormat.MARKDOWN, False),
-        ("bad_format", False),
-    ],
-)
-def test_serialize_probe_results_accepts_only_machine_formats(
-    fmt: OutputFormat | str,
-    is_supported: bool,
-) -> None:
-    """`serialize_probe_results` raises ValueError on unsupported machine formats."""
-    meta, config, resolved_toml_sources = _serializer_context()
-
-    effective_fmt: OutputFormat = unsupported_output_format(fmt)
-
-    if is_supported:
-        serialize_probe_results(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            results=[],
-            fmt=effective_fmt,
-        )
-        return
-
-    with pytest.raises(
-        ValueError,
-        match=f"Unsupported machine-readable output format: {effective_fmt!r}",
-    ):
-        serialize_probe_results(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            results=[],
-            fmt=effective_fmt,
-        )
-
-
-@pytest.mark.parametrize(
-    ("fmt", "is_supported"),
-    [
-        (OutputFormat.JSON, True),
-        (OutputFormat.NDJSON, True),
-        (OutputFormat.TEXT, False),
-        (OutputFormat.MARKDOWN, False),
-        ("bad_format", False),
-    ],
-)
-def test_serialize_processing_results_accepts_only_machine_formats(
-    fmt: OutputFormat | str,
-    is_supported: bool,
-) -> None:
-    """`serialize_processing_results` raises ValueError on unsupported machine formats."""
-    meta, config, resolved_toml_sources = _serializer_context()
-
-    effective_fmt: OutputFormat = unsupported_output_format(fmt)
-
-    if is_supported:
-        serialize_processing_results(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            results=[],
-            fmt=effective_fmt,
-            summary_mode=False,
-        )
-        return
-
-    with pytest.raises(
-        ValueError,
-        match=f"Unsupported machine-readable output format: {effective_fmt!r}",
-    ):
-        serialize_processing_results(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            results=[],
-            fmt=effective_fmt,
-            summary_mode=False,
-        )
-
-
-def test_processing_json_stream_collector_preserves_detail_envelope(tmp_path: Path) -> None:
-    """Processing JSON envelopes rebuilt from stream events should match legacy input."""
-    meta, config, resolved_toml_sources = _serializer_context()
-    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
-
-    legacy_envelope: dict[str, object] = build_processing_results_json_envelope(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml_sources,
-        results=results,
-        summary_mode=False,
-    )
-    stream_envelope: dict[str, object] = build_processing_results_stream_json_envelope(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml_sources,
-        events=iter_machine_processing_stream(
-            results,
-            command="check",
-        ),
-        summary_mode=False,
-    )
-
-    assert stream_envelope == legacy_envelope
-
-
-def test_processing_json_stream_collector_preserves_summary_envelope(tmp_path: Path) -> None:
-    """Processing JSON summary envelopes should be rebuilt from stream events."""
-    meta, config, resolved_toml_sources = _serializer_context()
-    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
-
-    legacy_envelope: dict[str, object] = build_processing_results_json_envelope(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml_sources,
-        results=results,
-        summary_mode=True,
-    )
-    stream_envelope: dict[str, object] = build_processing_results_stream_json_envelope(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml_sources,
-        events=iter_machine_processing_stream(
-            results,
-            command="strip",
-        ),
-        summary_mode=True,
-    )
-
-    assert stream_envelope == legacy_envelope
-
-
-def test_probe_json_stream_collector_preserves_probe_envelope(tmp_path: Path) -> None:
-    """Probe JSON envelopes rebuilt from stream events should match legacy input."""
-    meta, config, resolved_toml_sources = _serializer_context()
-    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
-
-    legacy_envelope: dict[str, object] = build_probe_results_json_envelope(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml_sources,
-        results=results,
-    )
-    stream_envelope: dict[str, object] = build_probe_results_stream_json_envelope(
-        meta=meta,
-        config=config,
-        resolved_toml=resolved_toml_sources,
-        events=iter_machine_processing_stream(
-            results,
-            command="probe",
-        ),
-    )
-
-    assert stream_envelope == legacy_envelope
-
-
-# Additional defensive tests for JSON stream collectors
 def test_processing_json_stream_collector_rejects_missing_start() -> None:
     """Processing JSON rejects completion before the run starts."""
     meta, config, resolved_toml_sources = _serializer_context()
@@ -715,94 +542,6 @@ def test_probe_json_stream_collector_rejects_empty_stream() -> None:
             resolved_toml=resolved_toml_sources,
             events=(),
         )
-
-
-def test_processing_ndjson_stream_adapter_preserves_detail_records(tmp_path: Path) -> None:
-    """Processing NDJSON emitted from stream events should match legacy result input."""
-    meta, config, resolved_toml_sources = _serializer_context()
-    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
-
-    legacy_records: list[dict[str, object]] = list(
-        iter_processing_results_ndjson_records(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            results=results,
-            summary_mode=False,
-        )
-    )
-    stream_records: list[dict[str, object]] = list(
-        iter_processing_results_stream_ndjson_records(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            events=iter_machine_processing_stream(
-                results,
-                command="check",
-            ),
-            summary_mode=False,
-        )
-    )
-
-    assert stream_records == legacy_records
-
-
-def test_processing_ndjson_stream_adapter_preserves_summary_records(tmp_path: Path) -> None:
-    """Processing NDJSON summary records should be rebuilt from stream events."""
-    meta, config, resolved_toml_sources = _serializer_context()
-    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
-
-    legacy_records: list[dict[str, object]] = list(
-        iter_processing_results_ndjson_records(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            results=results,
-            summary_mode=True,
-        )
-    )
-    stream_records: list[dict[str, object]] = list(
-        iter_processing_results_stream_ndjson_records(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            events=iter_machine_processing_stream(
-                results,
-                command="strip",
-            ),
-            summary_mode=True,
-        )
-    )
-
-    assert stream_records == legacy_records
-
-
-def test_probe_ndjson_stream_adapter_preserves_probe_records(tmp_path: Path) -> None:
-    """Probe NDJSON records emitted from stream events should match legacy result input."""
-    meta, config, resolved_toml_sources = _serializer_context()
-    results: tuple[ProcessingResult] = (_processing_result(tmp_path, config),)
-
-    legacy_records: list[dict[str, object]] = list(
-        iter_probe_results_ndjson_records(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            results=results,
-        )
-    )
-    stream_records: list[dict[str, object]] = list(
-        iter_probe_results_stream_ndjson_records(
-            meta=meta,
-            config=config,
-            resolved_toml=resolved_toml_sources,
-            events=iter_machine_processing_stream(
-                results,
-                command="probe",
-            ),
-        )
-    )
-
-    assert stream_records == legacy_records
 
 
 def test_processing_ndjson_stream_adapter_rejects_missing_start() -> None:

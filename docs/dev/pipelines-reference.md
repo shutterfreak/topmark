@@ -32,16 +32,16 @@ Internally, pipeline execution is streaming-capable. The engine can yield per-fi
 can snapshot those mutable contexts into durable
 \[`ProcessingResult`\][topmark.pipeline.result.ProcessingResult] instances through
 \[`iter_processing_results()`\][topmark.pipeline.reduction.iter_processing_results]. Stream adapters
-can expose those durable results as ordered run-start, per-file, and run-completed events.
+expose those durable results as ordered run-start, per-file, and run-completed events.
 
 Normal check/strip batch orchestration uses the result-oriented
 \[`run_pipeline_results()`\][topmark.api.runtime.run_pipeline_results] adapter, while CLI `check`,
 `strip`, `probe`, human TEXT/Markdown presentation, NDJSON, and JSON output consume ordered durable
 stream events carrying `ProcessingResult` snapshots. JSON remains the complete-envelope
-machine-readable compatibility format, but its envelope is reconstructed from those ordered
-durable-result stream events before emission rather than from a separate command-layer reduction.
-Probe execution continues to reduce real probe contexts and synthetic probe results across the same
-durable-result boundary through
+machine-readable compatibility format, but the documented compatibility envelope is reconstructed
+from those ordered durable-result stream events before emission rather than from a separate
+command-layer reduction. Probe execution continues to reduce real probe contexts and synthetic probe
+results across the same durable-result boundary through
 \[`run_probe_pipeline_results()`\][topmark.api.runtime.run_probe_pipeline_results]. Public batch
 APIs intentionally retain complete-result collection where stable DTOs, summaries, and exit-code
 aggregation require complete state, while public streaming APIs expose the same durable events
@@ -120,9 +120,9 @@ representation.
 
 Likewise, pipeline execution is agnostic to the eventual presentation format. Human frontends render
 retained unified diffs as terminal output. NDJSON emits adjacent result and diff records while
-consuming durable-result event streams. JSON reconstructs complete compatibility envelopes from the
-same durable-result event streams before embedding structured diff payloads. Summary output
-intentionally omits per-file diff payloads regardless of presentation format.
+consuming durable-result event streams. JSON reconstructs the documented complete compatibility
+envelope from the same durable-result event streams before embedding structured diff payloads.
+Summary output intentionally omits per-file diff payloads regardless of presentation format.
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 

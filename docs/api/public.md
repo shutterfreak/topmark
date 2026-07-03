@@ -55,8 +55,9 @@ The stream events intentionally do not expose internal `ProcessingContext` or `P
 objects. File-result events carry the same public DTOs used by the batch APIs, and run-completed
 events carry the same public summary, error, skip, write, and diagnostic aggregate semantics. This
 keeps the streaming surface aligned with the existing public compatibility policy while allowing
-future internal execution, presentation, and CLI orchestration to migrate incrementally onto the
-same event model without changing the documented API contracts.
+internal execution, presentation, machine-readable output, CLI orchestration, public stream APIs,
+and batch collectors to share the same durable-result event model without changing the documented
+API contracts.
 
 The streaming APIs preserve deterministic event ordering: one `RunStartedEvent`, then zero or more
 file-result events in the same order as the corresponding batch result view, then one
@@ -64,11 +65,11 @@ file-result events in the same order as the corresponding batch result view, the
 corresponding batch API call, so filtered-out files are reflected in the final `skipped` count
 rather than emitted as file-result events.
 
-Internally, TopMark also uses durable-result stream collectors and machine-/presentation-output
-stream adapters to keep batch APIs, machine-readable output, human TEXT/Markdown presentation, and
-CLI command orchestration aligned on the same ordering and result-ownership semantics. Those
-internal adapters are implementation details and do not expand the public compatibility surface.
-JSON output remains a complete-envelope compatibility format, but the envelope is reconstructed from
+Internally, TopMark uses durable-result stream collectors and machine-/presentation-output stream
+adapters to keep batch APIs, machine-readable output, human TEXT/Markdown presentation, and CLI
+command orchestration aligned on the same ordering and result-ownership semantics. Those internal
+adapters are implementation details and do not expand the public compatibility surface. JSON output
+remains a complete-envelope compatibility format, but the documented envelope is reconstructed from
 ordered durable-result stream events before emission. This keeps JSON compatible with existing
 machine-readable output consumers while aligning its implementation with the same durable-result
 streaming core used by NDJSON, human presentation, public stream APIs, and batch collectors.

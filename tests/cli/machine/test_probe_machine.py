@@ -37,7 +37,6 @@ from tests.helpers.ndjson import record_kinds
 from tests.helpers.ndjson import record_payload
 from tests.helpers.paths import symlink_or_skip
 from tests.helpers.pipeline import make_pipeline_context
-from topmark.cli.emitters.machine import emit_probe_results_machine
 from topmark.cli.emitters.machine import emit_probe_stream_json_machine
 from topmark.cli.emitters.machine import emit_probe_stream_machine
 from topmark.cli.keys import CliCmd
@@ -779,54 +778,6 @@ def test_probe_ndjson_content_stdin_uses_payload_stdout_and_cleans_tempfile() ->
     assert result.stderr == ""
     records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
     assert "probe" in record_kinds(records)
-
-
-# --- Emitter helper tests ---
-
-
-@pytest.mark.parametrize("fmt", [OutputFormat.JSON, OutputFormat.NDJSON])
-def test_emit_probe_results_machine_emits_legacy_probe_payload(
-    tmp_path: Path,
-    fmt: OutputFormat,
-) -> None:
-    """Legacy probe emitter should still write machine payloads."""
-    cfg, result = _probe_result(tmp_path)
-    captured: CapturedConsole = make_captured_console()
-
-    emit_probe_results_machine(
-        console=captured.console,
-        meta=_machine_meta(),
-        config=cfg,
-        resolved_toml=_empty_resolved_toml_sources(),
-        results=(result,),
-        fmt=fmt,
-    )
-
-    assert captured.out.getvalue().strip() != ""
-    assert captured.err.getvalue() == ""
-    if fmt is OutputFormat.JSON:
-        assert not captured.out.getvalue().endswith("\n")
-    else:
-        assert captured.out.getvalue().endswith("\n")
-
-
-def test_emit_probe_results_machine_rejects_non_machine_format(tmp_path: Path) -> None:
-    """Legacy probe emitter should reject non-machine formats."""
-    cfg, result = _probe_result(tmp_path)
-    captured: CapturedConsole = make_captured_console()
-
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
-        emit_probe_results_machine(
-            console=captured.console,
-            meta=_machine_meta(),
-            config=cfg,
-            resolved_toml=_empty_resolved_toml_sources(),
-            results=(result,),
-            fmt=OutputFormat.TEXT,
-        )
-
-    assert captured.out.getvalue() == ""
-    assert captured.err.getvalue() == ""
 
 
 def test_emit_probe_stream_json_machine_emits_stream_json_payload(
