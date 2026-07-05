@@ -29,6 +29,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
+from topmark.core.machine.errors import unsupported_machine_readable_format
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
 from topmark.registry.machine.envelopes import build_bindings_json_envelope
@@ -69,7 +70,7 @@ def serialize_filetypes(
 
     Raises:
         ValueError: If `fmt` is not JSON or NDJSON.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     if fmt == OutputFormat.JSON:
         return serialize_filetypes_json(
             meta=meta,
@@ -82,7 +83,7 @@ def serialize_filetypes(
             show_details=show_details,
         )
 
-    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+    raise unsupported_machine_readable_format(fmt)
 
 
 def serialize_filetypes_json(
@@ -153,7 +154,7 @@ def serialize_processors(
 
     Raises:
         ValueError: If `fmt` is not JSON or NDJSON.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     if fmt == OutputFormat.JSON:
         return serialize_processors_json(
             meta=meta,
@@ -166,7 +167,7 @@ def serialize_processors(
             show_details=show_details,
         )
 
-    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+    raise unsupported_machine_readable_format(fmt)
 
 
 def serialize_processors_json(
@@ -236,7 +237,7 @@ def serialize_bindings(
 
     Raises:
         ValueError: If `fmt` is not JSON or NDJSON.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     if fmt == OutputFormat.JSON:
         return serialize_bindings_json(
             meta=meta,
@@ -249,7 +250,7 @@ def serialize_bindings(
             show_details=show_details,
         )
 
-    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+    raise unsupported_machine_readable_format(fmt)
 
 
 def serialize_bindings_json(

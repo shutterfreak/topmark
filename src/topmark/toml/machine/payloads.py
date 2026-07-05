@@ -115,7 +115,11 @@ def build_toml_provenance_payload(
 
             parsed: ParsedTopmarkToml | None = source.parsed
             if parsed is None:
-                raise ValueError("config provenance layer resolved to an invalid TOML source")
+                # Defensive guard: the loop above advances past invalid sources,
+                # so this can only fire if that invariant is broken later.
+                raise ValueError(  # pragma: no cover
+                    "config provenance layer resolved to an invalid TOML source"
+                )
 
             toml_fragment = _normalize_toml_fragment(parsed.toml_fragment)
 

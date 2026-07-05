@@ -35,6 +35,7 @@ from topmark.config.machine.envelopes import iter_config_diagnostics_ndjson_reco
 from topmark.config.machine.envelopes import iter_config_ndjson_records
 from topmark.core.formats import OutputFormat
 from topmark.core.formats import is_machine_format
+from topmark.core.machine.errors import unsupported_machine_readable_format
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
 from topmark.toml.machine.payloads import build_toml_provenance_payload
@@ -108,9 +109,9 @@ def serialize_config(
 
     Raises:
         ValueError: If `fmt` is not a supported machine-readable format.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+        raise unsupported_machine_readable_format(fmt)
 
     if fmt == OutputFormat.JSON:
         return serialize_config_json(
@@ -128,8 +129,9 @@ def serialize_config(
             show_config_layers=show_config_layers,
         )
 
-    # Defensive guard
-    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+    # Defensive guard: reached only if a new machine-readable OutputFormat is
+    # added without updating this serializer dispatch.
+    raise unsupported_machine_readable_format(fmt)  # pragma: no cover
 
 
 def serialize_config_json(
@@ -243,9 +245,9 @@ def serialize_config_diagnostics(
 
     Raises:
         ValueError: if `fmt` is not a supported machine-readable format.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+        raise unsupported_machine_readable_format(fmt)
 
     if fmt == OutputFormat.JSON:
         return serialize_config_diagnostics_json(
@@ -259,8 +261,9 @@ def serialize_config_diagnostics(
             config=config,
         )
 
-    # Defensive guard
-    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+    # Defensive guard: reached only if a new machine-readable OutputFormat is
+    # added without updating this serializer dispatch.
+    raise unsupported_machine_readable_format(fmt)  # pragma: no cover
 
 
 def serialize_config_diagnostics_json(
@@ -346,9 +349,9 @@ def serialize_config_check(
 
     Raises:
         ValueError: If `fmt` is not a supported machine-readable format.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+        raise unsupported_machine_readable_format(fmt)
 
     if fmt == OutputFormat.JSON:
         return serialize_config_check_json(
@@ -368,8 +371,9 @@ def serialize_config_check(
             ok=ok,
         )
 
-    # Defensive guard
-    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+    # Defensive guard: reached only if a new machine-readable OutputFormat is
+    # added without updating this serializer dispatch.
+    raise unsupported_machine_readable_format(fmt)  # pragma: no cover
 
 
 def serialize_config_check_json(
