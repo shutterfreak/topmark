@@ -74,6 +74,59 @@ if TYPE_CHECKING:
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
+# ---- Stream error helpers ----
+
+
+def _duplicate_start_error(label: str) -> ValueError:
+    """Build an error for duplicate stream start events."""
+    return ValueError(f"{label} stream contains more than one run-start event.")
+
+
+def _result_before_start_error(label: str) -> ValueError:
+    """Build an error for result events before stream start."""
+    return ValueError(f"{label} file-result event appeared before run-start.")
+
+
+def _result_after_completion_error(label: str) -> ValueError:
+    """Build an error for result events after stream completion."""
+    return ValueError(f"{label} file-result event appeared after run-completed.")
+
+
+def _non_contiguous_result_index_error(
+    *,
+    label: str,
+    expected_index: int,
+    actual_index: int,
+) -> ValueError:
+    """Build an error for non-contiguous result indexes."""
+    return ValueError(f"Expected {label} file-result index {expected_index}, got {actual_index}.")
+
+
+def _completion_before_start_error(label: str) -> ValueError:
+    """Build an error for completion events before stream start."""
+    return ValueError(f"{label} run-completed event appeared before run-start.")
+
+
+def _duplicate_completion_error(label: str) -> ValueError:
+    """Build an error for duplicate stream completion events."""
+    return ValueError(f"{label} stream contains more than one run-completed event.")
+
+
+def _wrong_command_error(label: str) -> ValueError:
+    """Build an error for stream events from another command."""
+    return ValueError(f"{label} stream contains an event for a different command.")
+
+
+def _missing_start_error(label: str) -> ValueError:
+    """Build an error for streams missing their start event."""
+    return ValueError(f"{label} stream is missing a run-start event.")
+
+
+def _missing_completion_error(label: str) -> ValueError:
+    """Build an error for streams missing their completion event."""
+    return ValueError(f"{label} stream is missing a run-completed event.")
+
+
 def build_probe_results_stream_json_envelope(
     *,
     meta: MetaPayload,
@@ -94,7 +147,7 @@ def build_probe_results_stream_json_envelope(
 
     Raises:
         ValueError: If the stream lifecycle or command identity is invalid.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     cfg_payload: ConfigPayload = build_config_payload(
         config,
         resolved_toml=resolved_toml,
@@ -109,39 +162,36 @@ def build_probe_results_stream_json_envelope(
         match event:
             case MachineRunStartedEvent(command="probe"):
                 if started:
-                    raise ValueError("Probe JSON stream contains more than one run-start event.")
-                if expected_index != 0 or completed:  # pragma: no cover
-                    # This branch is effectively unreachable with the current
-                    # validation order because duplicate-start is caught first.
-                    raise ValueError("Probe JSON run-start event must be first.")
+                    raise _duplicate_start_error("Probe JSON")
+                # `started` remains true for the rest of the stream, so every
+                # later run-start is handled by the duplicate-start guard above.
                 started = True
             case MachineProcessingResultEvent(command="probe"):
                 if not started:
-                    raise ValueError("Probe JSON file-result event appeared before run-start.")
+                    raise _result_before_start_error("Probe JSON")
                 if completed:
-                    raise ValueError("Probe JSON file-result event appeared after run-completed.")
+                    raise _result_after_completion_error("Probe JSON")
                 if event.index != expected_index:
-                    raise ValueError(
-                        f"Expected probe JSON file-result index {expected_index}, "
-                        f"got {event.index}."
+                    raise _non_contiguous_result_index_error(
+                        label="probe JSON",
+                        expected_index=expected_index,
+                        actual_index=event.index,
                     )
                 expected_index += 1
                 probe_payloads.append(build_probe_result_payload(event.result))
             case MachineRunCompletedEvent(command="probe"):
                 if not started:
-                    raise ValueError("Probe JSON run-completed event appeared before run-start.")
+                    raise _completion_before_start_error("Probe JSON")
                 if completed:
-                    raise ValueError(
-                        "Probe JSON stream contains more than one run-completed event."
-                    )
+                    raise _duplicate_completion_error("Probe JSON")
                 completed = True
             case _:
-                raise ValueError("Probe JSON stream contains an event for a different command.")
+                raise _wrong_command_error("Probe JSON")
 
     if not started:
-        raise ValueError("Probe JSON stream is missing a run-start event.")
+        raise _missing_start_error("Probe JSON")
     if not completed:
-        raise ValueError("Probe JSON stream is missing a run-completed event.")
+        raise _missing_completion_error("Probe JSON")
 
     return build_json_envelope(
         meta=meta,
@@ -175,7 +225,7 @@ def iter_probe_results_stream_ndjson_records(
         ValueError: If the stream contains events for another command, duplicate
             lifecycle events, missing lifecycle events, file events before start or
             after completion, or non-contiguous file-result indexes.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     cfg_payload: ConfigPayload = build_config_payload(
         config,
         resolved_toml=resolved_toml,
@@ -204,21 +254,20 @@ def iter_probe_results_stream_ndjson_records(
         match event:
             case MachineRunStartedEvent(command="probe"):
                 if started:
-                    raise ValueError("Probe NDJSON stream contains more than one run-start event.")
-                if expected_index != 0 or completed:  # pragma: no cover
-                    # This branch is effectively unreachable with the current validation order
-                    # because duplicate-start is caught first.
-                    raise ValueError("Probe NDJSON run-start event must be first.")
+                    raise _duplicate_start_error("Probe NDJSON")
+                # `started` remains true for the rest of the stream, so every
+                # later run-start is handled by the duplicate-start guard above.
                 started = True
             case MachineProcessingResultEvent(command="probe"):
                 if not started:
-                    raise ValueError("Probe NDJSON file-result event appeared before run-start.")
+                    raise _result_before_start_error("Probe NDJSON")
                 if completed:
-                    raise ValueError("Probe NDJSON file-result event appeared after run-completed.")
+                    raise _result_after_completion_error("Probe NDJSON")
                 if event.index != expected_index:
-                    raise ValueError(
-                        f"Expected probe NDJSON file-result index {expected_index}, "
-                        f"got {event.index}."
+                    raise _non_contiguous_result_index_error(
+                        label="probe NDJSON",
+                        expected_index=expected_index,
+                        actual_index=event.index,
                     )
                 expected_index += 1
                 yield build_ndjson_record(
@@ -228,19 +277,17 @@ def iter_probe_results_stream_ndjson_records(
                 )
             case MachineRunCompletedEvent(command="probe"):
                 if not started:
-                    raise ValueError("Probe NDJSON run-completed event appeared before run-start.")
+                    raise _completion_before_start_error("Probe NDJSON")
                 if completed:
-                    raise ValueError(
-                        "Probe NDJSON stream contains more than one run-completed event."
-                    )
+                    raise _duplicate_completion_error("Probe NDJSON")
                 completed = True
             case _:
-                raise ValueError("Probe NDJSON stream contains an event for a different command.")
+                raise _wrong_command_error("Probe NDJSON")
 
     if not started:
-        raise ValueError("Probe NDJSON stream is missing a run-start event.")
+        raise _missing_start_error("Probe NDJSON")
     if not completed:
-        raise ValueError("Probe NDJSON stream is missing a run-completed event.")
+        raise _missing_completion_error("Probe NDJSON")
 
 
 def build_processing_results_stream_json_envelope(
@@ -265,7 +312,7 @@ def build_processing_results_stream_json_envelope(
 
     Raises:
         ValueError: If the stream lifecycle or command identity is invalid.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     cfg_payload: ConfigPayload = build_config_payload(
         config,
         resolved_toml=resolved_toml,
@@ -281,25 +328,20 @@ def build_processing_results_stream_json_envelope(
         match event:
             case MachineRunStartedEvent(command="check" | "strip"):
                 if started:
-                    raise ValueError(
-                        "Processing JSON stream contains more than one run-start event."
-                    )
-                if expected_index != 0 or completed:  # pragma: no cover
-                    # This branch is effectively unreachable with the current
-                    # validation order because duplicate-start is caught first.
-                    raise ValueError("Processing JSON run-start event must be first.")
+                    raise _duplicate_start_error("Processing JSON")
+                # `started` remains true for the rest of the stream, so every
+                # later run-start is handled by the duplicate-start guard above.
                 started = True
             case MachineProcessingResultEvent(command="check" | "strip"):
                 if not started:
-                    raise ValueError("Processing JSON file-result event appeared before run-start.")
+                    raise _result_before_start_error("Processing JSON")
                 if completed:
-                    raise ValueError(
-                        "Processing JSON file-result event appeared after run-completed."
-                    )
+                    raise _result_after_completion_error("Processing JSON")
                 if event.index != expected_index:
-                    raise ValueError(
-                        f"Expected processing JSON file-result index {expected_index}, "
-                        f"got {event.index}."
+                    raise _non_contiguous_result_index_error(
+                        label="processing JSON",
+                        expected_index=expected_index,
+                        actual_index=event.index,
                     )
                 expected_index += 1
                 if summary_mode:
@@ -308,23 +350,17 @@ def build_processing_results_stream_json_envelope(
                     result_payloads.append(build_processing_result_payload(event.result))
             case MachineRunCompletedEvent(command="check" | "strip"):
                 if not started:
-                    raise ValueError(
-                        "Processing JSON run-completed event appeared before run-start."
-                    )
+                    raise _completion_before_start_error("Processing JSON")
                 if completed:
-                    raise ValueError(
-                        "Processing JSON stream contains more than one run-completed event."
-                    )
+                    raise _duplicate_completion_error("Processing JSON")
                 completed = True
             case _:
-                raise ValueError(
-                    "Processing JSON stream contains an event for a different command."
-                )
+                raise _wrong_command_error("Processing JSON")
 
     if not started:
-        raise ValueError("Processing JSON stream is missing a run-start event.")
+        raise _missing_start_error("Processing JSON")
     if not completed:
-        raise ValueError("Processing JSON stream is missing a run-completed event.")
+        raise _missing_completion_error("Processing JSON")
 
     if summary_mode:
         payload: dict[str, object] = {
@@ -371,7 +407,7 @@ def iter_processing_results_stream_ndjson_records(
         ValueError: If the stream contains events for another command, duplicate
             lifecycle events, missing lifecycle events, file events before start or
             after completion, or non-contiguous file-result indexes.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     cfg_payload: ConfigPayload = build_config_payload(
         config,
         resolved_toml=resolved_toml,
@@ -401,27 +437,20 @@ def iter_processing_results_stream_ndjson_records(
         match event:
             case MachineRunStartedEvent(command="check" | "strip"):
                 if started:
-                    raise ValueError(
-                        "Processing NDJSON stream contains more than one run-start event."
-                    )
-                if expected_index != 0 or completed:  # pragma: no cover
-                    # This branch is effectively unreachable with the current validation order
-                    # because duplicate-start is caught first.
-                    raise ValueError("Processing NDJSON run-start event must be first.")
+                    raise _duplicate_start_error("Processing NDJSON")
+                # `started` remains true for the rest of the stream, so every
+                # later run-start is handled by the duplicate-start guard above.
                 started = True
             case MachineProcessingResultEvent(command="check" | "strip"):
                 if not started:
-                    raise ValueError(
-                        "Processing NDJSON file-result event appeared before run-start."
-                    )
+                    raise _result_before_start_error("Processing NDJSON")
                 if completed:
-                    raise ValueError(
-                        "Processing NDJSON file-result event appeared after run-completed."
-                    )
+                    raise _result_after_completion_error("Processing NDJSON")
                 if event.index != expected_index:
-                    raise ValueError(
-                        f"Expected processing NDJSON file-result index {expected_index}, "
-                        f"got {event.index}."
+                    raise _non_contiguous_result_index_error(
+                        label="processing NDJSON",
+                        expected_index=expected_index,
+                        actual_index=event.index,
                     )
                 expected_index += 1
                 if summary_mode:
@@ -448,23 +477,17 @@ def iter_processing_results_stream_ndjson_records(
                         )
             case MachineRunCompletedEvent(command="check" | "strip"):
                 if not started:
-                    raise ValueError(
-                        "Processing NDJSON run-completed event appeared before run-start."
-                    )
+                    raise _completion_before_start_error("Processing NDJSON")
                 if completed:
-                    raise ValueError(
-                        "Processing NDJSON stream contains more than one run-completed event."
-                    )
+                    raise _duplicate_completion_error("Processing NDJSON")
                 completed = True
             case _:
-                raise ValueError(
-                    "Processing NDJSON stream contains an event for a different command."
-                )
+                raise _wrong_command_error("Processing NDJSON")
 
     if not started:
-        raise ValueError("Processing NDJSON stream is missing a run-start event.")
+        raise _missing_start_error("Processing NDJSON")
     if not completed:
-        raise ValueError("Processing NDJSON stream is missing a run-completed event.")
+        raise _missing_completion_error("Processing NDJSON")
 
     if summary_mode:
         for record in build_processing_results_summary_rows_payload(summary_results):
