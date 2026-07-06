@@ -25,6 +25,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import ClassVar
 
+import click
 import pytest
 
 from tests.cli.conftest import assert_human_output_contains
@@ -32,8 +33,12 @@ from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
+from tests.helpers.pipeline import unsupported_output_format
 from tests.helpers.registry import make_file_type
 from tests.helpers.registry import patched_effective_registries
+from topmark.cli.commands.registry_bindings import registry_bindings_command
+from topmark.cli.commands.registry_filetypes import registry_filetypes_command
+from topmark.cli.commands.registry_processors import registry_processors_command
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.formats import OutputFormat
@@ -106,7 +111,7 @@ def registry_snapshot() -> Iterator[None]:
         yield
 
 
-# --- TEXT output: filetypes ---
+# --- TEXT output: filetypes, processors, and bindings ---
 
 
 def test_registry_filetypes_text_output_is_compact_by_default(
@@ -188,6 +193,76 @@ def test_registry_filetypes_text_long_shows_details(
         output_format=None,
         output=result.output,
         expected=".bound",
+    )
+
+
+def test_registry_processors_text_output_is_compact_by_default(
+    registry_snapshot: None,
+) -> None:
+    """Default TEXT processors output should render a compact view."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_PROCESSORS,
+            CliOpt.NO_COLOR_MODE,
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:bound_processor",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:unused_processor",
+    )
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result.output,
+        expected="Line prefix:",
+    )
+
+
+def test_registry_bindings_text_output_is_compact_by_default(
+    registry_snapshot: None,
+) -> None:
+    """Default TEXT bindings output should render a compact view."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.NO_COLOR_MODE,
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:bound_ft",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:bound_processor",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:unbound_ft",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="pytest:unused_processor",
+    )
+    assert_human_output_does_not_contain(
+        output_format=None,
+        output=result.output,
+        expected="Processor description:",
     )
 
 
@@ -410,3 +485,31 @@ def test_registry_bindings_markdown_long_shows_binding_details(
         output=result.output,
         expected="Bound registry test file type.",
     )
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        pytest.param(registry_filetypes_command, id="filetypes"),
+        pytest.param(registry_processors_command, id="processors"),
+        pytest.param(registry_bindings_command, id="bindings"),
+    ],
+)
+def test_registry_commands_reject_invalid_direct_output_format(
+    command: click.Command,
+    registry_snapshot: None,
+) -> None:
+    """Direct callback use with an invalid format should fail closed consistently."""
+    ctx = click.Context(command)
+    invalid_format: OutputFormat = unsupported_output_format("fake_format")
+    callback = command.callback
+    assert callback is not None
+
+    with ctx, pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+        callback(
+            verbosity=0,
+            color_mode=None,
+            no_color=True,
+            show_details=False,
+            output_format=invalid_format,
+        )

@@ -612,6 +612,7 @@ def assert_rich_output_no_such_option(
     result: Result,
     *,
     option_name: str,
+    valid_option_name: str | None = None,
 ) -> None:
     """Assert that Rich Click reported an unknown CLI option.
 
@@ -620,10 +621,15 @@ def assert_rich_output_no_such_option(
     TopMark intentionally does not assign code 2 to a semantic outcome; `WOULD_CHANGE`
     uses code 3 instead. This helper therefore asserts both the Click-owned code
     and the rendered `No such option` diagnostic.
+
+    Args:
+        result: the captured result of an invoked CLI script.
+        option_name: Full invalid option spelling, including its hyphen prefix.
+        valid_option_name: Optional full valid option spelling, including its hyphen prefix.
     """
     # Click handles the parser error and `CliRunner` captures the resulting
     # `SystemExit(2)`, not the original `click.NoSuchOption` instance. The
-    # The rendered diagnostic distinguishes this parser-level failure from
+    # rendered diagnostic distinguishes this parser-level failure from
     # TopMark-owned semantic outcomes such as WOULD_CHANGE (code 3).
     assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE, result.output
 
@@ -632,6 +638,11 @@ def assert_rich_output_no_such_option(
         result.output,
         expected=f"No such option '{option_name}'.",
     )
+    if valid_option_name:
+        assert_rich_output_contains(
+            result.output,
+            expected=f"Did you mean '{valid_option_name}'?",
+        )
 
 
 def command_option_names(command_name: str) -> set[str]:

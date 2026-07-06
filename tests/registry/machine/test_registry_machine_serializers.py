@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_registry_machine_serializers.py
-#   file_relpath : tests/cli/machine/test_registry_machine_serializers.py
+#   file_relpath : tests/registry/machine/test_registry_machine_serializers.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

@@ -36,6 +36,7 @@ from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
 from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
+from topmark.core.machine.errors import unsupported_machine_readable_format
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.core.machine.payloads import with_detail_level
 from topmark.presentation.markdown.registry import render_processors_markdown
@@ -109,7 +110,7 @@ def registry_processors_command(
 
     Raises:
         ValueError: If an unsupported output format is requested.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
     ctx: click.Context = click.get_current_context()
     state: TopmarkCliState = bootstrap_cli_state(ctx)
 
@@ -178,5 +179,5 @@ def registry_processors_command(
         )
         return
 
-    # Defensive guard
-    raise ValueError(f"Unsupported output format: {fmt!r}")
+    # Defensive guard for direct callback use with an invalid format object.
+    raise unsupported_machine_readable_format(fmt)

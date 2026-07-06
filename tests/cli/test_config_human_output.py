@@ -202,6 +202,34 @@ def test_config_dump_text_verbose_adds_progressive_disclosure_details() -> None:
     )
 
 
+def test_config_init_text_output_renders_starter_template() -> None:
+    """TEXT config init output should render the annotated starter template."""
+    result: Result = run_cli(
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_INIT,
+            CliOpt.NO_COLOR_MODE,
+        ]
+    )
+
+    assert_SUCCESS(result)
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="[config]",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="[header]",
+    )
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="[fields]",
+    )
+
+
 # --- Markdown document content ---
 def test_config_dump_markdown_includes_document_sections_by_default() -> None:
     """Markdown config dump should include document sections without verbosity."""

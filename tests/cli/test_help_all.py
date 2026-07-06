@@ -8,12 +8,13 @@
 #
 # topmark:header:end
 
-"""CLI help-output smoke tests.
+"""CLI help-output contract tests.
 
-This module verifies that the top-level CLI and all public command paths expose
-a working `--help` page and exit successfully.
+This module verifies that the root command and all public command paths expose
+working rich-click help pages for the supported help invocation forms.
 
-These tests are broad command-surface smoke tests, not detailed content checks.
+These tests protect broad command-surface behavior rather than detailed help
+copy or formatting.
 """
 
 from __future__ import annotations
@@ -22,17 +23,20 @@ import re
 from typing import TYPE_CHECKING
 from typing import Final
 
+import pytest
+
 from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import normalize_rich_cli_output
 from tests.cli.conftest import run_cli
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.keys import CliShortOpt
 
 if TYPE_CHECKING:
     from click.testing import Result
 
-PUBLIC_HELP_COMMAND_PATHS: Final[tuple[tuple[str, ...], ...]] = (
+PUBLIC_COMMAND_PATHS_WITH_HELP: Final[tuple[tuple[str, ...], ...]] = (
     (CliCmd.PROBE,),
     (CliCmd.CHECK,),
     (CliCmd.STRIP,),
@@ -73,11 +77,17 @@ PUBLIC_HELP_COMMAND_PATHS: Final[tuple[tuple[str, ...], ...]] = (
 # --- Top-level help ---
 
 
-def test_top_level_help_exits_success() -> None:
-    """`topmark --help` should exit SUCCESS."""
-    result: Result = run_cli(
-        [CliOpt.HELP],
-    )
+@pytest.mark.parametrize(
+    "args",
+    [
+        pytest.param((), id="without-args"),
+        pytest.param((CliOpt.HELP,), id="help-long"),
+        pytest.param((CliShortOpt.HELP,), id="help-short"),
+    ],
+)
+def test_root_help_invocations_exit_success(args: tuple[str, ...]) -> None:
+    """The root command should render help for bare, long-help, and short-help forms."""
+    result: Result = run_cli(args)
 
     assert_SUCCESS(result)
     assert_rich_output_contains(
@@ -89,12 +99,19 @@ def test_top_level_help_exits_success() -> None:
 # --- Public command help pages ---
 
 
-def test_each_public_command_path_has_help() -> None:
-    """Every public command path should expose a working `--help` page."""
-    for command_path in PUBLIC_HELP_COMMAND_PATHS:
-        result: Result = run_cli(
-            command_path + (CliOpt.HELP,),
-        )
+@pytest.mark.parametrize(
+    "help_opt",
+    [
+        pytest.param(CliOpt.HELP, id="help-long"),
+        pytest.param(CliShortOpt.HELP, id="help-short"),
+    ],
+)
+def test_public_command_help_invocations_exit_success(
+    help_opt: str,
+) -> None:
+    """Every public command path should support long and short help options."""
+    for command_path in PUBLIC_COMMAND_PATHS_WITH_HELP:
+        result: Result = run_cli(command_path + (help_opt,))
 
         assert_SUCCESS(result)
         assert_rich_output_contains(
@@ -103,13 +120,22 @@ def test_each_public_command_path_has_help() -> None:
         )
 
 
-def test_config_dump_help_listed_paths_noop() -> None:
-    """Listed paths do not affect the dumped configuration."""
+@pytest.mark.parametrize(
+    "help_opt",
+    [
+        pytest.param(CliOpt.HELP, id="help-long"),
+        pytest.param(CliShortOpt.HELP, id="help-short"),
+    ],
+)
+def test_config_dump_help_documents_listed_paths_noop(
+    help_opt: str,
+) -> None:
+    """`config dump --help` should document that listed paths are ignored."""
     result: Result = run_cli(
         [
             CliCmd.CONFIG,
             CliCmd.CONFIG_DUMP,
-            CliOpt.HELP,
+            help_opt,
         ]
     )
 
@@ -122,9 +148,26 @@ def test_config_dump_help_listed_paths_noop() -> None:
 # ---- Test hidden aliases ----
 
 
-def test_file_type_hidden_singular_aliases_are_not_shown_in_help() -> None:
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        pytest.param(CliCmd.CHECK, id="check"),
+        pytest.param(CliCmd.STRIP, id="strip"),
+    ],
+)
+@pytest.mark.parametrize(
+    "help_opt",
+    [
+        pytest.param(CliOpt.HELP, id="help-long"),
+        pytest.param(CliShortOpt.HELP, id="help-short"),
+    ],
+)
+def test_file_type_hidden_singular_aliases_are_not_shown_in_help(
+    cmd: str,
+    help_opt: str,
+) -> None:
     """Hidden singular file type filter aliases are not shown in help."""
-    result: Result = run_cli([CliCmd.CHECK, CliOpt.HELP])
+    result: Result = run_cli((cmd, help_opt))
 
     assert_SUCCESS(result)
     assert_rich_output_contains(result.output, expected=CliOpt.INCLUDE_FILE_TYPES)

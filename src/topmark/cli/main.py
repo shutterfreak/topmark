@@ -22,17 +22,17 @@ This module intentionally stays compact to keep CLI wiring explicit and predicta
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import click
 import rich_click
 
+from topmark.cli.cmd_common import init_common_state
 from topmark.cli.commands.check import check_command
 from topmark.cli.commands.config import config_command
 from topmark.cli.commands.probe import probe_command
 from topmark.cli.commands.registry import registry_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
+from topmark.cli.console.color import ColorMode
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
@@ -42,9 +42,6 @@ from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.core.formats import OutputFormat
 from topmark.utils.version import check_python_version
-
-if TYPE_CHECKING:
-    from topmark.cli.console.protocols import ConsoleProtocol
 
 
 @rich_click.group(
@@ -91,18 +88,28 @@ def cli(
     """TopMark CLI entry point.
 
     Bootstraps shared CLI state and delegates execution to subcommands.
-    When invoked without a subcommand, prints a short hint and the help text.
+    When invoked without a subcommand, renders the root help page explicitly.
     """
     # Check the Python version (may exit)
     check_python_version()
 
-    # Subcommands now own verbosity/color options and call init_common_state().
-    # Ensure we still have a console for the root group help output.
-    state: TopmarkCliState = bootstrap_cli_state(ctx)
-    console: ConsoleProtocol = state.console
+    # Subcommands own verbosity/color options and call init_common_state().
+    # The root command has no command-specific options, but `topmark` without a
+    # subcommand still renders help explicitly through the configured console.
+    # Match the default human-output policy used by command help: auto color,
+    # non-quiet text output.
 
     if ctx.invoked_subcommand is None:
-        console.print(ctx.get_help())
+        # Ensure we still have a console for the root group help output.
+        init_common_state(
+            ctx,
+            verbosity=0,
+            quiet=False,
+            color_mode=ColorMode.AUTO,
+            no_color=False,
+        )
+        state: TopmarkCliState = bootstrap_cli_state(ctx)
+        state.console.print(ctx.get_help())
 
 
 cli.add_command(config_command)
