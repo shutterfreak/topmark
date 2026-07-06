@@ -51,7 +51,9 @@ from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
+from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import effective_frozen_policy
+from topmark.config.policy import make_policy_registry
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
@@ -523,6 +525,7 @@ def test_apply_config_overrides_updates_global_policy_fields() -> None:
             policy=PolicyOverrides(
                 header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
                 allow_header_in_empty_files=True,
+                empty_insert_mode=EmptyInsertMode.WHITESPACE_EMPTY,
                 render_empty_header_when_no_fields=True,
                 allow_reflow=True,
                 allow_content_probe=False,
@@ -532,6 +535,7 @@ def test_apply_config_overrides_updates_global_policy_fields() -> None:
 
     assert mc.policy.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
     assert mc.policy.allow_header_in_empty_files is True
+    assert mc.policy.empty_insert_mode == EmptyInsertMode.WHITESPACE_EMPTY
     assert mc.policy.render_empty_header_when_no_fields is True
     assert mc.policy.allow_reflow is True
     assert mc.policy.allow_content_probe is False
@@ -683,3 +687,53 @@ def test_mutable_policy_merge_with_per_field(
         assert merged_value is expected
     else:
         assert merged_value == expected
+
+
+def test_mutable_policy_freeze_resolves_builtin_defaults() -> None:
+    """Mutable policy freeze should resolve unset fields against built-in defaults."""
+    assert MutablePolicy().freeze() == FrozenPolicy()
+
+
+def test_frozen_policy_to_dict_serializes_all_toml_policy_keys() -> None:
+    """Frozen policy export should expose stable TOML keys with primitive values."""
+    from topmark.config.policy import policy_to_dict
+    from topmark.toml.keys import Toml
+
+    policy = FrozenPolicy(
+        header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
+        allow_header_in_empty_files=True,
+        empty_insert_mode=EmptyInsertMode.WHITESPACE_EMPTY,
+        render_empty_header_when_no_fields=True,
+        allow_reflow=True,
+        allow_content_probe=False,
+    )
+
+    expected: dict[str, object] = {
+        Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.UPDATE_ONLY.value,
+        Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: True,
+        Toml.KEY_POLICY_EMPTIES_INSERT_MODE: EmptyInsertMode.WHITESPACE_EMPTY.value,
+        Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: True,
+        Toml.KEY_POLICY_ALLOW_REFLOW: True,
+        Toml.KEY_POLICY_ALLOW_CONTENT_PROBE: False,
+    }
+
+    assert policy.to_dict() == expected
+    assert policy_to_dict(policy) == expected
+
+
+def test_make_policy_registry_builds_constant_time_policy_lookup() -> None:
+    """Policy registry should reuse resolved config policies without extra merging."""
+    mc: MutableConfig = mutable_config_from_defaults()
+    mc.policy = MutablePolicy(allow_content_probe=False)
+    mc.policy_by_type = {
+        "topmark:python": MutablePolicy(allow_header_in_empty_files=True),
+    }
+    cfg: FrozenConfig = mc.freeze()
+
+    registry: PolicyRegistry = make_policy_registry(cfg)
+
+    assert registry.global_policy is cfg.policy
+    assert registry.by_type is cfg.policy_by_type
+    assert registry.for_type(None) is cfg.policy
+    assert registry.for_type("topmark:python") is cfg.policy_by_type["topmark:python"]
+    assert registry.for_type("topmark:missing") is cfg.policy
