@@ -19,6 +19,7 @@ import click
 import pytest
 
 import topmark.cli.cmd_common as cmd_common
+from topmark.cli.cmd_common import PreparedCliConfig
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
@@ -294,7 +295,7 @@ def test_bootstrapped_state_starts_with_text_output_format() -> None:
 
 def test_exit_for_config_validation_error_renders_markdown_diagnostics() -> None:
     """Markdown validation failures should render diagnostic details before exit."""
-    mutable_config = _mutable_config_with_error()
+    mutable_config: MutableConfig = _mutable_config_with_error()
     config: FrozenConfig = mutable_config.freeze()
     exc = ConfigValidationError(validation_logs=mutable_config.validation_logs, strict=False)
     console = _CapturingConsole()
@@ -320,7 +321,7 @@ def test_exit_for_config_validation_error_renders_markdown_diagnostics() -> None
 
 def test_exit_for_config_validation_error_skips_empty_markdown_diagnostics() -> None:
     """Markdown validation exits should not print empty diagnostic details."""
-    mutable_config = _mutable_config_without_diagnostics()
+    mutable_config: MutableConfig = _mutable_config_without_diagnostics()
     config: FrozenConfig = mutable_config.freeze()
     exc = ConfigValidationError(validation_logs=mutable_config.validation_logs, strict=False)
     console = _CapturingConsole()
@@ -356,7 +357,7 @@ def test_exit_for_config_validation_error_honors_text_quiet_mode(
     expects_details: bool,
 ) -> None:
     """TEXT validation failures should always show the stop reason but honor quiet."""
-    mutable_config = _mutable_config_with_error()
+    mutable_config: MutableConfig = _mutable_config_with_error()
     config: FrozenConfig = mutable_config.freeze()
     exc = ConfigValidationError(validation_logs=mutable_config.validation_logs, strict=False)
     console = _CapturingConsole()
@@ -382,7 +383,7 @@ def test_exit_for_config_validation_error_honors_text_quiet_mode(
 
 def test_exit_for_config_validation_error_skips_empty_text_diagnostics() -> None:
     """TEXT validation exits should not print empty diagnostic details."""
-    mutable_config = _mutable_config_without_diagnostics()
+    mutable_config: MutableConfig = _mutable_config_without_diagnostics()
     config: FrozenConfig = mutable_config.freeze()
     exc = ConfigValidationError(validation_logs=mutable_config.validation_logs, strict=False)
     console = _CapturingConsole()
@@ -415,8 +416,8 @@ def test_exit_for_config_validation_error_skips_empty_text_diagnostics() -> None
             id="relative-parent",
         ),
         pytest.param(
-            str(Path("/example-topmark-stdin/pkg/module.py")),
-            [Path("/example-topmark-stdin/pkg")],
+            str(Path.cwd().anchor + "example-topmark-stdin/pkg/module.py"),
+            None,
             id="absolute-parent",
         ),
         pytest.param("stdin.py", None, id="plain-filename"),
@@ -429,6 +430,8 @@ def test_build_resolved_config_uses_stdin_filename_as_discovery_anchor(
     expected_inputs: list[Path] | None,
 ) -> None:
     """STDIN filenames should provide discovery anchors only when they name a parent."""
+    if stdin_filename is not None and Path(stdin_filename).is_absolute():
+        expected_inputs = [Path(stdin_filename).parent]
     captured_inputs: list[Path] | None = None
     draft = MutableConfig()
     writer_options = WriterOptions(file_write_strategy=FileWriteStrategy.ATOMIC)
@@ -470,7 +473,7 @@ def test_build_resolved_config_uses_stdin_filename_as_discovery_anchor(
     monkeypatch.setattr(cmd_common, "apply_config_overrides", fake_apply_config_overrides)
     ctx = click.Context(click.Command("check"))
 
-    prepared = build_resolved_toml_sources_and_config_for_plan(
+    prepared: PreparedCliConfig = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=_empty_input_plan(stdin_mode=True, stdin_filename=stdin_filename),
         no_config=False,
@@ -534,7 +537,7 @@ def test_build_resolved_config_applies_cli_override_payload(
     )
     monkeypatch.setattr(cmd_common, "apply_config_overrides", fake_apply_config_overrides)
     ctx = click.Context(click.Command("check"))
-    plan = _empty_input_plan(
+    plan: InputPlan = _empty_input_plan(
         paths=["src/topmark/__init__.py", "-"],
         files_from=["files.txt"],
         include_from=["include.txt"],
