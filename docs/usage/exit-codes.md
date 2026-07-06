@@ -129,6 +129,8 @@ Notes:
 - In CI, treat `3` as "diff detected".
 - Explicit missing input paths are reported as errors (66), even if no files are selected for
   processing.
+- An empty `--files-from FILE` list is treated as a valid input source. If it contributes no
+  processing targets, the command exits successfully rather than reporting CLI usage error (64).
 - Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
 - Files reached through symlinks contribute to the same runtime outcome as their selected processing
   target and do not introduce additional exit-code states.
@@ -153,6 +155,8 @@ ______________________________________________________________________
 Notes:
 
 - Explicit missing input paths are reported as errors (66).
+- An empty `--files-from FILE` list is treated as a valid input source. If it contributes no
+  processing targets, the command exits successfully rather than reporting CLI usage error (64).
 - Unmatched glob patterns are treated as discovery diagnostics and do not cause failure.
 - `3` is a semantic change signal, not a runtime failure: it indicates that headers would be
   stripped.
@@ -180,6 +184,8 @@ Notes:
 - This is useful for automation that requires full resolvability.
 - Missing explicit input paths are treated as hard errors (66) and take precedence over semantic
   probe outcomes.
+- An empty `--files-from FILE` list is treated as a valid input source. If it contributes no
+  processing targets, the command completes normally instead of reporting CLI usage error (64).
 - Unmatched glob patterns are reported as filtered semantic outcomes and result in exit code 69.
 - Ambiguous or unresolved file-type filtering may also contribute to semantic resolution outcomes.
 - Filesystem-identity evaluation occurs before runtime probing. Exit-code semantics are based on

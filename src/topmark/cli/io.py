@@ -316,7 +316,8 @@ def plan_cli_inputs(
     include_from = from_values.include_from
     exclude_from = from_values.exclude_from
 
-    if not paths and not allow_empty_paths:
+    has_candidate_inputs: bool = bool(paths) or bool(files_from)
+    if not has_candidate_inputs and not allow_empty_paths:
         raise TopmarkCliUsageError(f"No arguments provided. Try 'topmark {ctx.command.name} FILE'")
 
     return InputPlan(

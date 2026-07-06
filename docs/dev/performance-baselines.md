@@ -770,7 +770,7 @@ Representative measurements were:
 | `repo_many_small_mixed` | `strip_diff_pruned` |   250 |   2.30 MiB |    68.0 KiB |    1.13 MiB | 45.2 MiB |
 
 These measurements remain consistent with the earlier repository-scale baseline introduced during
-GitHub issue 187. Peak traced allocations stay close to 1 MiB and RSS remains approximately 45–46
+GitHub issue 187. Peak traced allocations stay close to 1 MiB and RSS remains approximately 45--46
 MiB despite exercising the fully stream-oriented execution architecture.
 
 This result is expected. The migration primarily simplifies ownership and eliminates obsolete

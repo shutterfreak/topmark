@@ -33,18 +33,21 @@ from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_strict_file_type_overlap_warning
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
-from tests.cli.conftest import assert_USAGE_ERROR
 from tests.cli.conftest import run_cli_in
 from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
+from topmark.cli.streaming import ProbeStreamStats
+from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from pytest import MonkeyPatch
+
+    from topmark.pipeline.result import ProcessingResult
 
 
 # --- TEXT output: verbosity levels ---
@@ -240,10 +243,10 @@ def test_probe_text_output_reports_empty_explicit_directory_as_filtered(
     )
 
 
-def test_probe_text_output_rejects_files_from_without_positional_paths(
+def test_probe_text_output_reports_no_work_for_empty_files_from(
     tmp_path: Path,
 ) -> None:
-    """Until #244 is fixed, `--files-from` alone should document the usage error."""
+    """Empty `--files-from` input should reach the TEXT no-work rendering path."""
     (tmp_path / "files.txt").write_text("", encoding="utf-8")
 
     result: Result = run_cli_in(
@@ -251,13 +254,39 @@ def test_probe_text_output_rejects_files_from_without_positional_paths(
         [CliCmd.PROBE, CliOpt.FILES_FROM, "files.txt"],
     )
 
-    assert_USAGE_ERROR(result)
+    assert_SUCCESS(result)
 
     assert_human_output_contains(
         output_format=OutputFormat.TEXT,
         output=result.output,
-        expected="No arguments provided.",
+        expected="No files to process.",
     )
+
+
+def test_probe_exits_pipeline_error_when_stream_result_lacks_probe_snapshot(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Probe should fail closed when a durable stream result has no probe snapshot."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+
+    class MissingProbeStats(ProbeStreamStats):
+        """Stats test double that simulates a missing probe snapshot observation."""
+
+        def observe(self, result: ProcessingResult) -> None:
+            """Record the result, then force the command-level invariant failure."""
+            super().observe(result)
+            self.missing_probe = True
+
+    monkeypatch.setattr(probe_module, "ProbeStreamStats", MissingProbeStats)
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.PROBE, file.name],
+    )
+
+    assert result.exit_code == ExitCode.PIPELINE_ERROR
 
 
 def test_probe_text_output_reports_missing_input_only_once(
