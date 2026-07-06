@@ -32,6 +32,15 @@ from topmark.toml.getters import get_string_value_checked
 from topmark.toml.getters import get_string_value_or_none
 from topmark.toml.getters import get_string_value_or_none_checked
 from topmark.toml.getters import get_table_value
+from topmark.toml.typing_guards import as_toml_table
+from topmark.toml.typing_guards import as_toml_table_map
+from topmark.toml.typing_guards import is_toml_value
+from topmark.toml.typing_guards import is_tomlkit_table
+from topmark.toml.typing_guards import toml_table_from_mapping
+from topmark.toml.utils import as_toml_string_list
+from topmark.toml.utils import as_toml_table_list
+from topmark.toml.utils import insert_if_present
+from topmark.toml.utils import strip_none_for_toml
 
 if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
@@ -396,3 +405,128 @@ def test_get_table_value_returns_table_or_empty_dict() -> None:
     assert get_table_value(table, "header") == nested
     assert get_table_value(table, "file") == {}
     assert get_table_value(table, "missing") == {}
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("demo", True),
+        (1, True),
+        (1.5, True),
+        (False, True),
+        (None, False),
+        (["a", 1, True], True),
+        (["a", None], False),
+        ({"section": {"key": "value"}}, True),
+        ({"section": {"key": None}}, False),
+        ({1: "value"}, False),
+    ],
+)
+def test_is_toml_value_accepts_recursive_toml_shapes_only(
+    value: object,
+    expected: bool,
+) -> None:
+    """TOML value guard should reject nulls and non-string table keys."""
+    assert is_toml_value(value) is expected
+
+
+def test_toml_table_from_mapping_copies_valid_mapping() -> None:
+    """Mapping conversion should copy recursive TOML-compatible values."""
+    source: dict[str, object] = {"project": "Demo", "nested": {"enabled": True}}
+
+    result: TomlTable = toml_table_from_mapping(source)
+
+    assert result == {"project": "Demo", "nested": {"enabled": True}}
+    assert result is not source
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        {"missing": None},
+        {"items": ["a", None]},
+        {"nested": {"bad": object()}},
+    ],
+)
+def test_toml_table_from_mapping_rejects_non_toml_values(
+    source: dict[str, object],
+) -> None:
+    """Mapping conversion should fail loudly before invalid TOML reaches serializers."""
+    with pytest.raises(TypeError, match="non-TOML-compatible value"):
+        toml_table_from_mapping(source)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ({"project": "Demo"}, {"project": "Demo"}),
+        ("not-a-table", None),
+    ],
+)
+def test_as_toml_table_returns_dict_tables_only(
+    value: object,
+    expected: TomlTable | None,
+) -> None:
+    """Table normalization should preserve dict tables and reject other shapes."""
+    assert as_toml_table(value) == expected
+
+
+def test_as_toml_table_map_keeps_only_string_keyed_tables() -> None:
+    """Table-map normalization should drop malformed grouped-table entries."""
+    valid_table: TomlTable = {"license": "MIT"}
+    source: dict[object, object] = {
+        "python": valid_table,
+        "not-a-table": "MIT",
+        123: {"license": "Apache-2.0"},
+    }
+
+    assert as_toml_table_map(source) == {"python": valid_table}
+
+
+def test_as_toml_table_map_returns_empty_map_for_non_dict_input() -> None:
+    """Table-map normalization should tolerate non-table input as an empty map."""
+    assert as_toml_table_map(["python"]) == {}
+
+
+def test_is_tomlkit_table_recognizes_parsed_tomlkit_tables() -> None:
+    """Tomlkit table guard should distinguish TOML tables from plain dicts."""
+    import tomlkit
+
+    table: object = tomlkit.table()
+
+    assert is_tomlkit_table(table) is True
+    assert is_tomlkit_table({"tool": "topmark"}) is False
+
+
+def test_insert_if_present_omits_none_values() -> None:
+    """TOML builders should omit absent values rather than rendering nulls."""
+    table: TomlTable = {}
+
+    insert_if_present(table, "project", "Demo")
+    insert_if_present(table, "license", None)
+
+    assert table == {"project": "Demo"}
+
+
+def test_strip_none_for_toml_drops_nulls_and_stringifies_mapping_keys() -> None:
+    """TOML normalization should omit absent values because TOML has no null."""
+    source: dict[object, object] = {
+        "keep": "value",
+        "drop": None,
+        "items": ["a", None, {"nested": None, "ok": True}],
+        10: "numeric key",
+    }
+
+    assert strip_none_for_toml(source) == {
+        "keep": "value",
+        "items": ["a", {"ok": True}],
+        "10": "numeric key",
+    }
+
+
+def test_as_toml_list_helpers_return_plain_lists() -> None:
+    """List builders should preserve values while widening the static TOML value type."""
+    table: TomlTable = {"project": "Demo"}
+
+    assert as_toml_string_list(("src", "tests")) == ["src", "tests"]
+    assert as_toml_table_list((table,)) == [table]

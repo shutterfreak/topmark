@@ -22,19 +22,26 @@ These tests exercise:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import cast
 
 from tests.helpers.diagnostics import NON_EMPTY
 from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from tests.helpers.diagnostics import assert_validation_stage_totals
+from tests.helpers.registry import make_file_type
+from tests.helpers.registry import patched_effective_registries
 from tests.toml.conftest import write_toml_document
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.model import sanitized_config
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
+from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MutablePolicy
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.config.resolution.merge import merge_layers_globally
 from topmark.config.resolution.merge import select_applicable_layers
+from topmark.core.errors import ConfigValidationError
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
 from topmark.toml.resolution import resolve_topmark_toml_sources
 
@@ -43,9 +50,11 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
+    from topmark.config.policy import FrozenPolicy
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.config.resolution.layers import ConfigLayer
     from topmark.diagnostic.model import MutableDiagnosticLog
+    from topmark.filetypes.model import FileType
 
 
 def test_include_from_accumulates_across_multiple_applicable_layers(
@@ -329,3 +338,204 @@ def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:
         "Ignoring empty string entries in override files" in d.message
         for d in flattened_diagnostics.items
     )
+
+
+def test_sanitized_config_resolves_runtime_applicability_diagnostics() -> None:
+    """Sanitizing a frozen config should normalize file-type filters via thaw/freeze."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_file_types = {"python", "unknown"}
+
+    sanitized: FrozenConfig = sanitized_config(draft.freeze())
+
+    assert sanitized.include_file_types == frozenset({"topmark:python"})
+    assert any(
+        "Unknown included file types specified" in diagnostic.message
+        for diagnostic in sanitized.validation_logs.runtime_applicability.items
+    )
+
+
+def test_mutable_config_ensure_valid_raises_for_invalid_draft() -> None:
+    """Mutable config validity should raise with staged validation context."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.validation_logs.merged_config.add_error("bad override")
+
+    try:
+        draft.ensure_valid()
+    except ConfigValidationError as exc:
+        assert exc.context.diagnostics is not None
+        assert any(
+            diagnostic.message == "bad override" for diagnostic in exc.context.diagnostics.items
+        )
+    else:  # pragma: no cover - assertion guard
+        raise AssertionError("MutableConfig.ensure_valid() did not raise")
+
+
+def test_merge_policy_by_type_preserves_parent_when_override_key_missing() -> None:
+    """Per-type policy merge should preserve parent-only policy entries."""
+    base: MutableConfig = mutable_config_from_defaults()
+    base.policy_by_type = {
+        "python": MutablePolicy(header_mutation_mode=HeaderMutationMode.ADD_ONLY),
+    }
+    override: MutableConfig = mutable_config_from_defaults()
+
+    merged: MutableConfig = base.merge_with(override)
+
+    assert merged.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
+
+
+def test_freeze_records_unknown_excluded_file_type_diagnostic() -> None:
+    """Unknown exclude-file-type identifiers should be ignored with exclusion wording."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.exclude_file_types = {"missing"}
+
+    frozen: FrozenConfig = draft.freeze()
+
+    assert frozen.exclude_file_types == frozenset()
+    assert any(
+        "Unknown excluded file types specified (ignored): missing" in diagnostic.message
+        for diagnostic in frozen.validation_logs.runtime_applicability.items
+    )
+
+
+def test_freeze_records_malformed_file_type_filter_diagnostics() -> None:
+    """Malformed include/exclude file-type filters should be ignored with diagnostics."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_file_types = {":python"}
+    draft.exclude_file_types = {"topmark:"}
+
+    frozen: FrozenConfig = draft.freeze()
+
+    assert frozen.include_file_types == frozenset()
+    assert frozen.exclude_file_types == frozenset()
+    messages: list[str] = [
+        diagnostic.message for diagnostic in frozen.validation_logs.runtime_applicability.items
+    ]
+    assert "Malformed include_file_types file type identifier ignored: :python" in messages
+    assert "Malformed exclude_file_types file type identifier ignored: topmark:" in messages
+
+
+def test_freeze_records_ambiguous_file_type_filter_diagnostics() -> None:
+    """Ambiguous include/exclude local file-type identifiers should be ignored."""
+    first: FileType = make_file_type(
+        local_key="shared",
+        namespace="first",
+        extensions=[".one"],
+        description="First shared file type",
+    )
+    second: FileType = make_file_type(
+        local_key="shared",
+        namespace="second",
+        extensions=[".two"],
+        description="Second shared file type",
+    )
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_file_types = {"shared"}
+    draft.exclude_file_types = {"shared"}
+
+    with patched_effective_registries(
+        filetypes={"first-shared": first, "second-shared": second},
+        processors={},
+    ):
+        frozen: FrozenConfig = draft.freeze()
+
+    assert frozen.include_file_types == frozenset()
+    assert frozen.exclude_file_types == frozenset()
+    messages: list[str] = [
+        diagnostic.message for diagnostic in frozen.validation_logs.runtime_applicability.items
+    ]
+    assert any(
+        message.startswith("Ambiguous include_file_types file type identifier ignored: shared")
+        for message in messages
+    )
+    assert any(
+        message.startswith("Ambiguous exclude_file_types file type identifier ignored: shared")
+        for message in messages
+    )
+
+
+def test_frozen_config_ensure_valid_raises_for_invalid_snapshot() -> None:
+    """Frozen config validity should raise with staged validation context."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.validation_logs.runtime_applicability.add_error("bad runtime filter")
+    frozen: FrozenConfig = draft.freeze()
+
+    try:
+        frozen.ensure_valid()
+    except ConfigValidationError as exc:
+        assert exc.context.diagnostics is not None
+        assert any(
+            diagnostic.message == "bad runtime filter"
+            for diagnostic in exc.context.diagnostics.items
+        )
+    else:  # pragma: no cover - assertion guard
+        raise AssertionError("FrozenConfig.ensure_valid() did not raise")
+
+
+def test_freeze_empty_file_type_identifier_is_ignored_with_diagnostic() -> None:
+    """Empty file-type filter entries should be ignored during sanitization."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_file_types = {""}
+
+    frozen: FrozenConfig = draft.freeze()
+
+    assert frozen.include_file_types == frozenset()
+    assert any(
+        "Unknown included file types specified (ignored): " in diagnostic.message
+        for diagnostic in frozen.validation_logs.runtime_applicability.items
+    )
+
+
+def test_freeze_warns_when_file_type_is_included_and_excluded() -> None:
+    """Overlapping file-type filters should be preserved with an exclusion-wins warning."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_file_types = {"python"}
+    draft.exclude_file_types = {"python"}
+
+    frozen: FrozenConfig = draft.freeze()
+
+    assert frozen.include_file_types == frozenset({"topmark:python"})
+    assert frozen.exclude_file_types == frozenset({"topmark:python"})
+    expected_message: str = (
+        "File types specified in both include and exclude filters; exclusion wins: topmark:python"
+    )
+    assert any(
+        diagnostic.message == expected_message
+        for diagnostic in frozen.validation_logs.runtime_applicability.items
+    )
+
+
+def test_freeze_merges_duplicate_policy_by_type_canonical_keys() -> None:
+    """Equivalent local and qualified per-type policy keys should merge."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.policy_by_type = {
+        "python": MutablePolicy(header_mutation_mode=HeaderMutationMode.ADD_ONLY),
+        "topmark:python": MutablePolicy(allow_content_probe=False),
+    }
+
+    frozen: FrozenConfig = draft.freeze()
+
+    python_policy: FrozenPolicy = frozen.policy_by_type["topmark:python"]
+    assert python_policy.header_mutation_mode == HeaderMutationMode.ADD_ONLY
+    assert python_policy.allow_content_probe is False
+
+
+def test_config_ensure_valid_noops_for_valid_snapshots() -> None:
+    """Validation helpers should return normally for valid mutable and frozen config."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    frozen: FrozenConfig = draft.freeze()
+
+    draft.ensure_valid()
+    frozen.ensure_valid()
+
+
+def test_merge_policy_by_type_ignores_type_violating_missing_override() -> None:
+    """Policy merge should tolerate an impossible missing override value defensively."""
+    base: MutableConfig = mutable_config_from_defaults()
+    override: MutableConfig = mutable_config_from_defaults()
+    # Intentional: exercise the defensive branch for runtime type-violating callers.
+    override.policy_by_type = cast("dict[str, MutablePolicy]", {"python": None})
+
+    merged: MutableConfig = base.merge_with(override)
+
+    assert "python" not in merged.policy_by_type
+    assert merged.policy.header_mutation_mode == HeaderMutationMode.ALL

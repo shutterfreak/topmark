@@ -15,15 +15,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tests.helpers.paths import symlink_or_skip
+from topmark.config.resolution import bridge
 from topmark.config.resolution.bridge import resolve_default_table_and_build_mutable_config
 from topmark.config.resolution.bridge import resolve_default_template_and_build_mutable_config
 from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.constants import EXAMPLE_TOPMARK_TOML_NAME
 from topmark.core.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
+from topmark.toml.defaults import DefaultTomlTemplateText
 from topmark.toml.resolution import resolve_topmark_toml_sources
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.diagnostic.model import MutableDiagnosticLog
@@ -124,3 +128,50 @@ def test_duplicate_symlinked_config_source_identity_is_deduplicated(
     assert resolved.sources[0].path == target_config.resolve()
     assert resolved.sources[0].path != link_config
     assert resolved.strict is True
+
+
+def test_default_template_replays_template_load_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Template fallback errors should be replayed into config diagnostics."""
+    fallback_text: str = """
+[header]
+fields = ["file"]
+
+[formatting]
+align_fields = true
+
+[policy]
+header_mutation_mode = "all"
+allow_header_in_empty_files = false
+empty_insert_mode = "logical_empty"
+
+[files]
+include_from = []
+exclude_from = []
+files_from = []
+include_patterns = []
+exclude_patterns = []
+include_file_types = []
+exclude_file_types = []
+files = []
+"""
+
+    def fake_load_default_topmark_template_toml_text() -> DefaultTomlTemplateText:
+        return DefaultTomlTemplateText(
+            toml_text=fallback_text,
+            error=OSError("template unavailable"),
+        )
+
+    monkeypatch.setattr(
+        bridge,
+        "load_default_topmark_template_toml_text",
+        fake_load_default_topmark_template_toml_text,
+    )
+
+    resolved_config: ResolvedConfigDraft = resolve_default_template_and_build_mutable_config()
+
+    assert any(
+        diagnostic.message == "template unavailable"
+        for diagnostic in resolved_config.draft.validation_logs.toml_source.items
+    )

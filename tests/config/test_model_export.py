@@ -17,23 +17,28 @@ These tests cover:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import cast
 
 import pytest
 
+from topmark.config.io import serializers
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.serializers import config_to_topmark_toml_table
+from topmark.config.policy import MutablePolicy
 from topmark.config.resolution.synthetic import DEFAULT_CONFIG_SOURCE
 from topmark.config.types import PatternGroup
 from topmark.config.types import PatternSource
+from topmark.core.errors import TomlRenderError
 from topmark.core.keys import ArgKey
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.toml.enums import FilesSerializationMode
 from topmark.toml.keys import Toml
 from topmark.toml.render import render_toml_table
+from topmark.utils.file import RebasedGlobPatterns
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.toml.types import TomlTable
@@ -265,3 +270,111 @@ def test_config_to_toml_dict_files_serialization_modes_emit_expected_shapes(
 
     assert expected_keys <= files_tbl.keys()
     assert unexpected_keys.isdisjoint(files_tbl.keys())
+
+
+def test_config_to_toml_dict_origin_mode_omits_policy_by_type_when_empty() -> None:
+    """Config export should omit [policy_by_type] unless per-type policies exist."""
+    c: FrozenConfig = mutable_config_from_defaults().freeze()
+
+    d: TomlTable = config_to_topmark_toml_table(c)
+
+    assert Toml.SECTION_POLICY_BY_TYPE not in d
+
+
+def test_config_to_toml_dict_rebased_warnings_use_diagnostics_when_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rebased export should route pattern rebasing warnings to diagnostics."""
+
+    def fake_rebase_glob_patterns(
+        patterns: object,
+        *,
+        from_base: Path,
+        to_base: Path,
+    ) -> RebasedGlobPatterns:
+        return RebasedGlobPatterns(
+            patterns=["src/**/*.py"],
+            warnings=[f"synthetic warning from {from_base} to {to_base}"],
+        )
+
+    monkeypatch.setattr(serializers, "rebase_glob_patterns", fake_rebase_glob_patterns)
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_pattern_groups = [
+        PatternGroup(patterns=("src/**/*.py",), base=Path("/project")),
+    ]
+    draft.exclude_pattern_groups = [
+        PatternGroup(patterns=("build/**",), base=Path("/project")),
+    ]
+    diagnostics = MutableDiagnosticLog()
+
+    config_to_topmark_toml_table(
+        draft.freeze(),
+        files_serialization_mode=FilesSerializationMode.REBASED,
+        diagnostics=diagnostics,
+    )
+
+    assert diagnostics.stats().n_warning == 2
+
+
+def test_config_to_toml_dict_rebased_warnings_are_logged_without_diagnostics(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rebased export should log pattern rebasing warnings without diagnostics."""
+
+    def fake_rebase_glob_patterns(
+        patterns: object,
+        *,
+        from_base: Path,
+        to_base: Path,
+    ) -> RebasedGlobPatterns:
+        return RebasedGlobPatterns(
+            patterns=["build/**"],
+            warnings=[f"synthetic warning from {from_base} to {to_base}"],
+        )
+
+    caplog.set_level("WARNING")
+    monkeypatch.setattr(serializers, "rebase_glob_patterns", fake_rebase_glob_patterns)
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_pattern_groups = [
+        PatternGroup(patterns=("src/**/*.py",), base=Path("/project")),
+    ]
+    draft.exclude_pattern_groups = [
+        PatternGroup(patterns=("build/**",), base=Path("/project")),
+    ]
+
+    config_to_topmark_toml_table(
+        draft.freeze(),
+        files_serialization_mode=FilesSerializationMode.REBASED,
+    )
+
+    assert "synthetic warning" in caplog.text
+
+
+def test_config_to_toml_dict_serializes_per_type_policy_table() -> None:
+    """Config export should include [policy_by_type] when per-type policies exist."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.policy_by_type = {
+        "python": MutablePolicy(allow_header_in_empty_files=True),
+    }
+
+    d: TomlTable = config_to_topmark_toml_table(draft.freeze())
+
+    policy_by_type_tbl = d[Toml.SECTION_POLICY_BY_TYPE]
+    assert isinstance(policy_by_type_tbl, dict)
+    python_policy = policy_by_type_tbl["topmark:python"]
+    assert isinstance(python_policy, dict)
+    assert python_policy[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] is True
+
+
+def test_config_to_toml_dict_rejects_invalid_files_serialization_mode() -> None:
+    """Config export should reject type-violating files serialization modes."""
+    c: FrozenConfig = mutable_config_from_defaults().freeze()
+    # Intentional: exercise defensive runtime guard for type-violating callers.
+    invalid_mode: FilesSerializationMode = cast("FilesSerializationMode", "invalid")
+
+    with pytest.raises(TomlRenderError, match="Invalid files_serialization_mode"):
+        config_to_topmark_toml_table(
+            c,
+            files_serialization_mode=invalid_mode,
+        )

@@ -31,6 +31,9 @@ from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from tests.helpers.diagnostics import assert_validation_stage_totals
 from tests.helpers.diagnostics import assert_warned_and_diagnosed
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
+from topmark.config.io.deserializers import mutable_config_from_mapping
+from topmark.config.paths import extend_pattern_sources
+from topmark.config.paths import pattern_source_from_config
 from topmark.toml.keys import Toml
 
 if TYPE_CHECKING:
@@ -462,9 +465,6 @@ def test_extend_pattern_sources_resolves_relative_paths_against_base(
     tmp_path: Path,
 ) -> None:
     """extend_pattern_sources() resolves relative paths against the provided base."""
-    from topmark.config.paths import extend_pattern_sources
-    from topmark.config.paths import pattern_source_from_config
-
     cfg_dir: Path = tmp_path / "cfg"
     cfg_dir.mkdir()
     (cfg_dir / "a.txt").write_text("x", encoding="utf-8")
@@ -481,3 +481,162 @@ def test_extend_pattern_sources_resolves_relative_paths_against_base(
     assert len(dst) == 1
     assert dst[0].path == (cfg_dir / "a.txt").resolve()
     assert dst[0].base == (cfg_dir / "a.txt").resolve().parent
+
+
+def test_files_entries_without_config_file_remain_raw_relative_paths() -> None:
+    """Synthetic layered configs should not bind [files].files entries to CWD."""
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_FILES: {
+                Toml.KEY_FILES: ["src/topmark/__init__.py"],
+            },
+        },
+    )
+
+    assert draft.files == ["src/topmark/__init__.py"]
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        Toml.KEY_INCLUDE_FROM,
+        Toml.KEY_EXCLUDE_FROM,
+        Toml.KEY_FILES_FROM,
+    ],
+)
+def test_pattern_source_entries_without_config_file_use_cwd_base(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    key: str,
+) -> None:
+    """Synthetic layered configs should preserve source entries using CWD provenance."""
+    monkeypatch.chdir(tmp_path)
+
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_FILES: {
+                key: ["patterns.txt"],
+            },
+        },
+    )
+
+    sources = getattr(draft, key)
+    assert len(sources) == 1
+    source: PatternSource = sources[0]
+    assert source.path == tmp_path / "patterns.txt"
+    assert source.base == tmp_path
+
+
+@pytest.mark.parametrize(
+    ("key", "attribute"),
+    [
+        (Toml.KEY_INCLUDE_PATTERN_GROUPS, "include_pattern_groups"),
+        (Toml.KEY_EXCLUDE_PATTERN_GROUPS, "exclude_pattern_groups"),
+    ],
+)
+def test_origin_pattern_groups_deserialize_valid_table_entries_only(
+    tmp_path: Path,
+    key: str,
+    attribute: str,
+) -> None:
+    """Origin-mode pattern groups should ignore malformed entries and keep valid ones."""
+    base: Path = tmp_path / "project"
+    base.mkdir()
+
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_FILES: {
+                key: [
+                    "not-a-table",
+                    {Toml.KEY_BASE: str(base), Toml.KEY_PATTERNS: ["src/**/*.py"]},
+                    {Toml.KEY_BASE: "", Toml.KEY_PATTERNS: ["ignored"]},
+                    {Toml.KEY_BASE: str(base), Toml.KEY_PATTERNS: []},
+                ],
+            },
+        },
+    )
+
+    groups = getattr(draft, attribute)
+    assert len(groups) == 1
+    group = groups[0]
+    assert group.patterns == ("src/**/*.py",)
+    assert group.base == base.resolve()
+
+
+def test_absolute_header_relative_to_is_preserved(tmp_path: Path) -> None:
+    """Absolute [header].relative_to values should be resolved as absolute paths."""
+    root: Path = tmp_path / "topmark-root"
+    root.mkdir()
+
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: ["file"],
+                Toml.KEY_RELATIVE_TO: str(root),
+            },
+        },
+    )
+
+    assert draft.relative_to_raw == str(root)
+    assert draft.relative_to == root.resolve()
+
+
+def test_relative_header_relative_to_without_config_file_remains_unbound() -> None:
+    """Synthetic relative_to values should stay raw until project-root resolution."""
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: ["file"],
+                Toml.KEY_RELATIVE_TO: "src",
+            },
+        },
+    )
+
+    assert draft.relative_to_raw == "src"
+    assert draft.relative_to is None
+
+
+def test_policy_by_type_table_deserializes_and_records_value_shape_warnings(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Per-type policy deserialization should diagnose invalid value shapes."""
+    caplog.set_level("WARNING")
+
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_POLICY_BY_TYPE: {
+                "python": {
+                    Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: True,
+                    Toml.KEY_POLICY_ALLOW_CONTENT_PROBE: "not-bool",
+                },
+            },
+        },
+    )
+
+    assert draft.policy_by_type["python"].allow_header_in_empty_files is True
+    assert draft.policy_by_type["python"].allow_content_probe is True
+    assert_warned_and_diagnosed(
+        caplog=caplog,
+        draft=draft,
+        needle=(
+            "Expected bool in "
+            f"[{Toml.SECTION_POLICY_BY_TYPE}.python].{Toml.KEY_POLICY_ALLOW_CONTENT_PROBE}"
+        ),
+    )
+
+
+def test_mutable_config_from_mapping_copies_api_mapping_boundary() -> None:
+    """API-style mapping deserialization should delegate through TOML shape validation."""
+    draft: MutableConfig = mutable_config_from_mapping(
+        {
+            Toml.SECTION_FIELDS: {
+                "project": "TopMark",
+            },
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: ["project"],
+            },
+        },
+    )
+
+    assert draft.field_values == {"project": "TopMark"}
+    assert draft.header_fields == ["project"]

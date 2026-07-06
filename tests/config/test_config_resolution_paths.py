@@ -32,6 +32,7 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
+from topmark.config.types import PatternGroup
 from topmark.resolution.files import resolve_file_list_with_diagnostics
 
 if TYPE_CHECKING:
@@ -456,3 +457,155 @@ def test_config_resolution_preserves_absolute_cli_path(
     assert ps.path == absolute_file.resolve(strict=False)
     assert ps.path.is_absolute()
     assert ps.path.drive == absolute_file.drive
+
+
+def test_apply_config_overrides_can_clear_pattern_groups(tmp_path: Path) -> None:
+    """Empty pattern-list overrides should explicitly clear existing groups."""
+    base: Path = tmp_path / "work"
+    base.mkdir()
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.include_pattern_groups = [PatternGroup(patterns=("src/**/*.py",), base=base)]
+    draft.exclude_pattern_groups = [PatternGroup(patterns=("build/**",), base=base)]
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(
+            config_base=base,
+            include_patterns=[],
+            exclude_patterns=[],
+        ),
+    )
+
+    assert draft.include_pattern_groups == []
+    assert draft.exclude_pattern_groups == []
+
+
+def test_apply_config_overrides_resolves_relative_to_and_header_values(
+    tmp_path: Path,
+) -> None:
+    """Header-related overrides should update relative_to, fields, and values."""
+    base: Path = tmp_path / "work"
+    base.mkdir()
+    draft: MutableConfig = mutable_config_from_defaults()
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(
+            config_base=base,
+            relative_to="src",
+            header_fields=["file", "license"],
+            field_values={"license": "MIT"},
+        ),
+    )
+
+    assert draft.relative_to_raw == "src"
+    assert draft.relative_to == (base / "src").resolve()
+    assert draft.header_fields == ["file", "license"]
+    assert draft.field_values == {"license": "MIT"}
+
+
+def test_apply_config_overrides_reports_duplicate_file_type_filters() -> None:
+    """Duplicate override file-type filters should be deduplicated with diagnostics."""
+    draft: MutableConfig = mutable_config_from_defaults()
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(
+            include_file_types=["python", "python", "markdown"],
+            exclude_file_types=["xml", "xml"],
+        ),
+    )
+
+    assert draft.include_file_types == {"python", "markdown"}
+    assert draft.exclude_file_types == {"xml"}
+    messages: list[str] = [
+        diagnostic.message for diagnostic in draft.validation_logs.merged_config.items
+    ]
+    assert "Ignored 1 duplicate values for override include_file_types" in messages
+    assert "Ignored 1 duplicate values for override exclude_file_types" in messages
+
+
+def test_apply_config_overrides_builds_pattern_groups_from_non_empty_values(
+    tmp_path: Path,
+) -> None:
+    """Non-empty include/exclude pattern overrides should replace pattern groups."""
+    base: Path = tmp_path / "work"
+    base.mkdir()
+    draft: MutableConfig = mutable_config_from_defaults()
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(
+            config_base=base,
+            include_patterns=["src/**/*.py", ""],
+            exclude_patterns=["build/**", ""],
+        ),
+    )
+
+    assert draft.include_pattern_groups == [
+        PatternGroup(patterns=("src/**/*.py",), base=base.resolve()),
+    ]
+    assert draft.exclude_pattern_groups == [
+        PatternGroup(patterns=("build/**",), base=base.resolve()),
+    ]
+
+
+def test_apply_config_overrides_replaces_path_source_lists(
+    tmp_path: Path,
+) -> None:
+    """Path-source overrides should clear existing sources and add non-empty entries."""
+    base: Path = tmp_path / "work"
+    base.mkdir()
+    include_file: Path = base / "include.txt"
+    exclude_file: Path = base / "exclude.txt"
+    files_file: Path = base / "files.txt"
+    for path in (include_file, exclude_file, files_file):
+        path.write_text("src/a.py\n", encoding="utf-8")
+
+    draft: MutableConfig = mutable_config_from_defaults()
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(
+            config_base=base,
+            include_from=["", "include.txt"],
+            exclude_from=["", "exclude.txt"],
+            files_from=["", "files.txt"],
+        ),
+    )
+
+    assert [source.path for source in draft.include_from] == [include_file.resolve()]
+    assert [source.path for source in draft.exclude_from] == [exclude_file.resolve()]
+    assert [source.path for source in draft.files_from] == [files_file.resolve()]
+    assert [source.base for source in draft.include_from] == [base.resolve()]
+    assert [source.base for source in draft.exclude_from] == [base.resolve()]
+    assert [source.base for source in draft.files_from] == [base.resolve()]
+
+
+def test_apply_config_overrides_accepts_no_duplicate_file_type_filters() -> None:
+    """Unique file-type override filters should not emit duplicate diagnostics."""
+    draft: MutableConfig = mutable_config_from_defaults()
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(
+            include_file_types=["python", "markdown"],
+            exclude_file_types=["xml"],
+        ),
+    )
+
+    assert draft.include_file_types == {"python", "markdown"}
+    assert draft.exclude_file_types == {"xml"}
+    assert not draft.validation_logs.merged_config.items
+
+
+def test_apply_config_overrides_replaces_files_without_empty_warnings() -> None:
+    """Explicit file overrides without empty entries should replace files quietly."""
+    draft: MutableConfig = mutable_config_from_defaults()
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(files=["README.md", "src/topmark/__init__.py"]),
+    )
+
+    assert draft.files == ["README.md", "src/topmark/__init__.py"]
+    assert not draft.validation_logs.merged_config.items
