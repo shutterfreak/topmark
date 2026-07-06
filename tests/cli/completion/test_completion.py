@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_completion.py
-#   file_relpath : tests/cli/test_completion.py
+#   file_relpath : tests/cli/completion/test_completion.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

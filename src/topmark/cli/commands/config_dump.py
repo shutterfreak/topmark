@@ -65,11 +65,8 @@ from topmark.presentation.shared.config import build_config_dump_human_report
 from topmark.presentation.text.config import render_config_dump_text
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 from topmark.runtime.model import RunOptions
-from topmark.utils.file import safe_unlink
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from topmark.cli.cmd_common import PreparedCliConfig
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
@@ -310,17 +307,12 @@ def config_dump_command(
             )
         )
 
-    temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
-
     logger.trace(
         "MutableConfig after merging CLI and discovered config: %s",
         prepared_cli_config.draft,
     )
 
     def _exit() -> None:
-        # Cleanup any temp file created by content-on-STDIN mode (defensive)
-        if temp_path and temp_path.exists():
-            safe_unlink(temp_path)
         ctx.exit(ExitCode.SUCCESS)
 
     # We don't actually care about the file list here; just dump the config

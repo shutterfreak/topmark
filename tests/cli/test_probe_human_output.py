@@ -26,12 +26,15 @@ import pytest
 from click.testing import CliRunner
 from click.testing import Result
 
+import topmark.cli.commands.probe as probe_module
 from tests.cli.conftest import assert_FILE_NOT_FOUND
 from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_human_output_does_not_contain
 from tests.cli.conftest import assert_strict_file_type_overlap_warning
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_UNSUPPORTED_FILE_TYPE
+from tests.cli.conftest import assert_USAGE_ERROR
+from tests.cli.conftest import run_cli_in
 from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -209,6 +212,51 @@ def test_probe_text_output_omits_directory_filtered_result_when_children_selecte
         output_format=OutputFormat.TEXT,
         output=result.output,
         expected="<filtered>",
+    )
+
+
+def test_probe_text_output_reports_empty_explicit_directory_as_filtered(
+    tmp_path: Path,
+) -> None:
+    """Empty explicit directories should produce a filtered probe diagnostic."""
+    empty_directory: Path = tmp_path / "empty"
+    empty_directory.mkdir()
+    runner = CliRunner()
+
+    result: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            str(empty_directory),
+        ],
+    )
+
+    assert_UNSUPPORTED_FILE_TYPE(result)
+
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="filtered: excluded_by_discovery_filter",
+    )
+
+
+def test_probe_text_output_rejects_files_from_without_positional_paths(
+    tmp_path: Path,
+) -> None:
+    """Until #244 is fixed, `--files-from` alone should document the usage error."""
+    (tmp_path / "files.txt").write_text("", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.PROBE, CliOpt.FILES_FROM, "files.txt"],
+    )
+
+    assert_USAGE_ERROR(result)
+
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="No arguments provided.",
     )
 
 
@@ -458,3 +506,32 @@ def test_probe_markdown_output_ignores_text_quiet(tmp_path: Path) -> None:
         output=result.output,
         expected="TopMark Resolution Probe Results",
     )
+
+
+# --- Content-STDIN lifecycle ---
+
+
+def test_probe_content_stdin_success_cleans_temp_file(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Successful content-STDIN probe processing should clean its temp file."""
+    unlinked_paths: list[Path] = []
+
+    def record_safe_unlink(path: Path | None) -> None:
+        if path is not None:
+            assert path.exists()
+            unlinked_paths.append(path)
+            path.unlink()
+
+    monkeypatch.setattr(probe_module, "safe_unlink", record_safe_unlink)
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.PROBE, "-", CliOpt.STDIN_FILENAME, "stdin.py"],
+        input_text="print('clean')\n",
+    )
+
+    assert_SUCCESS(result)
+    assert len(unlinked_paths) == 1
+    assert not unlinked_paths[0].exists()

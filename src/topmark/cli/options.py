@@ -317,7 +317,11 @@ def normalize_verbosity(verbose_count: int) -> int:
 # ---- Trap infrastructure ----
 
 
-def _trap_underscored_option(ctx: click.Context, param: click.Option, _value: object) -> None:
+def _trap_underscored_option(
+    ctx: click.Context,
+    param: click.Option,
+    _value: object,
+) -> None:
     """Raise a helpful error for underscored long options (e.g., `--exclude_from`).
 
     This runs eagerly during option parsing and uses Click's `ParameterSource`
@@ -330,20 +334,17 @@ def _trap_underscored_option(ctx: click.Context, param: click.Option, _value: ob
         _value: Parsed option value (ignored).
 
     Raises:
-        click.UsageError: Always, when the trap option was provided on the CLI.
+        click.NoSuchOption: Always, when the trap option was provided on the CLI.
     """
     name: str | None = param.name or None
-    try:
-        src: ParameterSource | None = ctx.get_parameter_source(name) if name else None
-    except (AttributeError, RuntimeError, click.ClickException):
-        src = None
+    src: ParameterSource | None = ctx.get_parameter_source(name) if name else None
 
     if src is not ParameterSource.COMMANDLINE:
         return
 
     bad: str = param.opts[0] if param.opts else "--?"
     suggestion: str = bad.replace("_", "-")
-    raise click.UsageError(f"Unknown option: '{bad}'. Did you mean '{suggestion}'?")
+    raise click.NoSuchOption(bad, possibilities=[suggestion])
 
 
 def option_with_underscore_traps(
