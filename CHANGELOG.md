@@ -25,17 +25,22 @@ ______________________________________________________________________
 > This release includes breaking changes to CLI exit-code semantics, `config check` validation
 > failures, option-like path parsing, `check`/`strip` diff-option semantics, STDOUT/STDERR output
 > routing, machine-readable processing-result serialization, filename-rule validation/normalization,
-> and public API report-scope defaults. Consumers should review the **Breaking Changes** and
-> **Notes** sections before upgrading automation, CI jobs, golden tests, machine-output parsers, or
-> plugin/custom file-type definitions.
+> `--files-from` input planning for path-based commands, and public API report-scope defaults.
+> Consumers should review the **Breaking Changes** and **Notes** sections before upgrading
+> automation, CI jobs, golden tests, machine-output parsers, or plugin/custom file-type definitions.
 >
-> In particular, `WOULD_CHANGE` now exits with code `3` instead of `2`; Click parser-level usage
-> errors reserve exit code `2`; `--diff` is now supported for machine-readable detail output;
-> machine-readable diff information is emitted as dedicated structured diff payloads rather than via
-> `ProcessingResult.details`; CLI diagnostics are consistently routed to `stderr` while machine
-> payloads remain on `stdout`; JSON/NDJSON `check` and `strip` result paths use POSIX `/` separators
-> on all platforms; invalid `FileType.filenames` rules are rejected during file-type construction;
-> and public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
+> In particular:
+>
+> - `WOULD_CHANGE` now exits with code `3` instead of `2`; Click parser-level usage errors reserve
+>   exit code `2`.
+> - `--diff` is now supported for machine-readable detail output.
+> - Machine-readable diff information is emitted as dedicated structured diff payloads rather than
+>   via `ProcessingResult.details`.
+> - CLI diagnostics are consistently routed to `stderr` while machine payloads remain on `stdout`.
+> - JSON/NDJSON `check` and `strip` result paths use POSIX `/` separators on all platforms.
+> - `--files-from FILE` is treated as an explicit input source for `check`, `strip`, and `probe`.
+> - Invalid `FileType.filenames` rules are rejected during file-type construction.
+> - Public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
 
 ### Added - Unreleased
 
@@ -119,6 +124,9 @@ ______________________________________________________________________
   generic `FAILURE (1)` exit code.
 - Aligned path-oriented command parsing with Click and POSIX-style option handling: unknown
   option-like tokens are now parser errors unless passed after `--`.
+- Aligned `--files-from FILE` with positional path semantics for `check`, `strip`, and `probe` so
+  explicit file-list inputs may be used as the sole path-based input source while `--include-from`
+  and `--exclude-from` remain filtering-rule sources only.
 - Standardized processing machine-output path serialization for `check` and `strip` JSON/NDJSON
   result payloads to use POSIX `/` separators, matching existing `probe` machine-output behavior.
 - Normalized `FileType.filenames` tail-subpath rules to canonical POSIX-style `/` separators during
@@ -207,6 +215,10 @@ ______________________________________________________________________
 - `topmark check`, `topmark strip`, and `topmark probe` now reject unknown option-like arguments
   before `--` as Click parser-level usage errors. Literal filenames that begin with `-` must be
   passed after the standard `--` delimiter, for example `topmark check -- --generated.py`.
+- `topmark check --files-from FILE`, `topmark strip --files-from FILE`, and
+  `topmark probe --files-from FILE` are now valid without positional `PATH` arguments. Empty file
+  lists now reach each command's normal no-work behavior instead of failing with CLI usage error
+  `64`. Automation that depended on the former usage error should update its expectations.
 - `topmark check` and `topmark strip` JSON/NDJSON `result.path` values now use POSIX `/` separators
   on all platforms. Consumers that compare Windows machine-output paths literally may need to update
   expectations from backslash-separated paths to slash-separated paths.
@@ -254,6 +266,8 @@ ______________________________________________________________________
   outcomes.
 - Fixed unknown options passed to `check`, `strip`, and `probe` so they are no longer interpreted as
   missing input paths.
+- Fixed `--files-from FILE` handling for `check`, `strip`, and `probe` so ordinary file-list inputs
+  count as candidate input sources even when no positional paths are supplied.
 - Fixed inconsistent path serialization between `probe` machine output and `check` / `strip`
   processing result machine output.
 - Fixed platform-dependent registry filename-rule behavior by normalizing tail-subpath matching
@@ -308,6 +322,9 @@ ______________________________________________________________________
 - Documented the exit-code migration from `WOULD_CHANGE (2)` to `WOULD_CHANGE (3)` and the revised
   `config check` validation-failure behavior.
 - Documented use of the standard `--` delimiter for literal dash-prefixed path names.
+- Documented the distinction between path-based input sources and filtering rules, including that
+  `--files-from FILE` contributes explicit processing inputs while `--include-from` and
+  `--exclude-from` contribute filtering rules only.
 - Documented TopMark's machine-readable path serialization contract for header metadata, processing
   output, probe output, configuration payloads, TOML/config provenance payloads, and human-readable
   display output boundaries.
@@ -586,6 +603,10 @@ ______________________________________________________________________
 - Added focused regression coverage for CLI stream routing, stream-event lifecycle, exit-code
   prioritization, and streaming orchestration parity while preserving existing public CLI, API,
   JSON, NDJSON, and presentation behavior.
+- Added regression coverage for `--files-from FILE` as the sole path-based input source across
+  `check`, `strip`, and `probe`, including empty-list no-work behavior, populated-list processing,
+  preserved filter-only semantics for include/exclude list files, and defensive probe stream-stat
+  handling.
 - Added focused regression coverage for reusable JSON stream collectors, malformed JSON stream
   lifecycle handling, stream-backed JSON/NDJSON machine emitters, STDOUT/STDERR payload routing, and
   command-layer JSON collector parity.

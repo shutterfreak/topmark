@@ -50,6 +50,10 @@ topmark strip --strict src/
 
 # Read targets from stdin (one path per line) and generate unified diff output
 git ls-files | topmark strip --files-from - --diff
+
+# Read targets from a file
+find src -name '*.py' > files.txt
+topmark strip --files-from files.txt
 ```
 
 ______________________________________________________________________
@@ -69,6 +73,10 @@ ______________________________________________________________________
 
 `strip` supports both list STDIN mode (`--files-from -`, `--include-from -`, or `--exclude-from -`)
 and content STDIN mode (`-` plus `--stdin-filename NAME`). These modes are mutually exclusive.
+
+`--files-from FILE` may also be used without positional `PATH` arguments. When the referenced file
+is empty, the command proceeds normally and reports that there are no files to process rather than
+treating the invocation as invalid CLI usage.
 
 With `--apply` in content mode, transformed content is written to STDOUT and diagnostics are routed
 to STDERR.
@@ -109,11 +117,11 @@ ______________________________________________________________________
 TopMark determines which files to process using a combination of path-based filters and file-type
 filters.
 
-Path arguments, include/exclude patterns, `--files-from`, and file-type filters follow the shared
-TopMark filtering pipeline. Positional paths and relative patterns are resolved from the current
-working directory; path-based filters run before file-type filters, and exclude rules take
-precedence. See [Filtering](../filtering.md#path-based-filtering) for the full path discovery
-contract.
+Path arguments, `--files-from` file lists, include/exclude patterns, and file-type filters follow
+the shared TopMark filtering pipeline. Positional paths and relative patterns are resolved from the
+current working directory; path-based filters run before file-type filters, and exclude rules take
+precedence. See [Filtering](../filtering.md#path-inputs-and-path-based-filtering) for the full path
+discovery contract.
 
 During discovery, TopMark performs filesystem-identity evaluation and selects processing paths. If
 multiple path spellings resolve to the same filesystem target (for example a symlink and its
@@ -154,8 +162,12 @@ topmark strip --exclude-file-types topmark:markdown docs/
 - `--include-from`, `--exclude-from` Load patterns from files (one per line).
 - `--files-from` Provide an explicit list of files to process.
 
-See [Filtering](../filtering.md#path-based-filtering) for CWD-resolution rules, missing vs unmatched
-input behavior, include/exclude precedence, and STDIN interactions.
+`--files-from` contributes explicit processing inputs in the same way as positional paths. It may
+therefore be used on its own or together with positional paths. By contrast, `--include-from` and
+`--exclude-from` provide filtering rules only and do not contribute processing inputs by themselves.
+
+See [Filtering](../filtering.md#path-inputs-and-path-based-filtering) for CWD-resolution rules,
+missing vs unmatched input behavior, include/exclude precedence, and STDIN interactions.
 
 Notes:
 

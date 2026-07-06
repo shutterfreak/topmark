@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.cli.conftest import assert_human_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli_in
@@ -99,6 +100,88 @@ def _ndjson_probe_paths(records: list[dict[str, object]]) -> list[str]:
         payload: dict[str, object] = record_payload(record)
         paths.append(assert_machine_path(payload.get("path")))
     return paths
+
+
+# --- File-list file mode ---
+
+
+@pytest.mark.parametrize("command", [CliCmd.PROBE, CliCmd.CHECK, CliCmd.STRIP])
+def test_files_from_file_allows_empty_list_as_sole_input_source(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    """`--files-from FILE` should reach normal no-work handling when empty."""
+    (tmp_path / "files.txt").write_text("", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.FILES_FROM,
+            "files.txt",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert_human_output_contains(
+        output_format=OutputFormat.TEXT,
+        output=result.output,
+        expected="No files to process.",
+    )
+
+
+@pytest.mark.parametrize(
+    "command,expected_exit",
+    [
+        (CliCmd.PROBE, "SUCCESS"),
+        (CliCmd.CHECK, "WOULD_CHANGE"),
+        (CliCmd.STRIP, "SUCCESS"),
+    ],
+)
+def test_files_from_file_processes_listed_paths_without_positional_paths(
+    tmp_path: Path,
+    command: str,
+    expected_exit: str,
+) -> None:
+    """`--files-from FILE` should be accepted as the sole input source."""
+    _write_python_file(tmp_path / "listed.py")
+    (tmp_path / "files.txt").write_text("listed.py\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            command,
+            CliOpt.FILES_FROM,
+            "files.txt",
+        ],
+    )
+
+    if expected_exit == "WOULD_CHANGE":
+        assert_WOULD_CHANGE(result)
+    else:
+        assert_SUCCESS(result)
+    assert "No arguments provided" not in result.output
+
+
+def test_files_from_file_merges_with_positional_paths(tmp_path: Path) -> None:
+    """PATHS and `--files-from FILE` should remain additive input sources."""
+    _write_python_file(tmp_path / "listed.py")
+    _write_python_file(tmp_path / "positional.py")
+    (tmp_path / "files.txt").write_text("listed.py\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.PROBE,
+            CliOpt.FILES_FROM,
+            "files.txt",
+            "positional.py",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert "listed.py" in result.output
+    assert "positional.py" in result.output
 
 
 # --- File-list STDIN mode ---

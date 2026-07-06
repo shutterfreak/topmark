@@ -186,6 +186,10 @@ Runtime file-processing commands ([`check`](commands/check.md), [`strip`](comman
 These modes are mutually exclusive: do not mix `-` (content mode) with `--files-from -`,
 `--include-from -`, or `--exclude-from -` (list mode).
 
+Filesystem processing inputs may be supplied either as positional paths, via `--files-from FILE`, or
+by combining both. `--files-from` contributes processing inputs in the same way as positional paths,
+whereas `--include-from` and `--exclude-from` contribute filtering rules only.
+
 For filesystem-backed inputs, TopMark evaluates filesystem identity and selects processing paths
 before runtime processing begins. Filesystem-identity normalization resolves equivalent path
 spellings, such as symlink spellings, to the selected processing path used for runtime processing.

@@ -38,13 +38,14 @@ ______________________________________________________________________
 
 ## Common workflows
 
-| Goal                                 | Command                             | More info                                                                                              |
-| ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Check headers safely in dry-run mode | `topmark check src/`                | [`topmark check`](commands/check.md), [Shared options](shared-options.md), [Exit codes](exit-codes.md) |
-| Apply header updates explicitly      | `topmark check --apply src/`        | [`topmark check`](commands/check.md), [Policies](policies.md)                                          |
-| Remove TopMark headers               | `topmark strip --apply src/`        | [`topmark strip`](commands/strip.md), [Header placement](header-placement.md)                          |
-| Inspect file type resolution         | `topmark probe README.md`           | [`topmark probe`](commands/probe.md), [Filtering](filtering.md)                                        |
-| Inspect effective configuration      | `topmark config dump --show-layers` | [`topmark config dump`](commands/config/dump.md), [Configuration](configuration.md)                    |
+| Goal                                 | Command                                | More info                                                                                              |
+| ------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Check headers safely in dry-run mode | `topmark check src/`                   | [`topmark check`](commands/check.md), [Shared options](shared-options.md), [Exit codes](exit-codes.md) |
+| Apply header updates explicitly      | `topmark check --apply src/`           | [`topmark check`](commands/check.md), [Policies](policies.md)                                          |
+| Remove TopMark headers               | `topmark strip --apply src/`           | [`topmark strip`](commands/strip.md), [Header placement](header-placement.md)                          |
+| Inspect file type resolution         | `topmark probe README.md`              | [`topmark probe`](commands/probe.md), [Filtering](filtering.md)                                        |
+| Process an explicit file list        | `topmark check --files-from files.txt` | [`topmark check`](commands/check.md), [Shared options](shared-options.md)                              |
+| Inspect effective configuration      | `topmark config dump --show-layers`    | [`topmark config dump`](commands/config/dump.md), [Configuration](configuration.md)                    |
 
 Filesystem inputs undergo filesystem-identity evaluation before runtime processing. If multiple path
 spellings resolve to the same filesystem target (for example a symlink and its target),
@@ -111,6 +112,10 @@ topmark strip --apply src/
 For commands that operate on filesystem inputs (`check`, `strip`, and `probe`), positional paths
 participate in TopMark's discovery, filtering, filesystem-identity evaluation, and processing-path
 selection pipeline before runtime processing begins.
+
+Filesystem processing inputs may be supplied either as positional paths, via `--files-from FILE`, or
+by combining both. `--files-from` contributes processing inputs in the same way as positional paths,
+whereas `--include-from` and `--exclude-from` contribute filtering rules only.
 
 Before that runtime pipeline starts, TopMark discovers project configuration from the resolved
 discovery anchor. This keeps configuration discovery separate from filesystem-identity evaluation
@@ -286,6 +291,10 @@ suppression are therefore emitted on STDERR. For human `check --diff` / `strip -
 reserved for unified diff payloads and the human report is emitted on STDERR. For apply-mode content
 processing through STDIN or `--write-mode=stdout`, STDOUT is reserved for rewritten file content and
 human reports or summaries are emitted on STDERR.
+
+When `--files-from FILE` contributes no processing targets (for example because the file is empty),
+filesystem-processing commands complete normally using their standard no-work behavior instead of
+treating the invocation as invalid CLI usage.
 
 ______________________________________________________________________
 

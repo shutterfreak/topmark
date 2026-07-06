@@ -131,6 +131,15 @@ Check if the files have TopMark headers compliant with the settings defined.
 topmark check .
 ```
 
+You can also process an explicit list of files:
+
+```bash
+find src -name '*.py' > files.txt
+topmark check --files-from files.txt
+```
+
+`--files-from` may be used on its own or combined with positional paths.
+
 > [!NOTE]
 >
 > TopMark evaluates filesystem identity before processing files. Filesystem-identity normalization

@@ -151,3 +151,35 @@ def test_only_one_list_mode_option_may_consume_stdin(tmp_path: Path) -> None:
         output=result.output,
         expected="-",
     )
+
+
+# --- Pattern-list file modes: filters are not input sources ---
+@pytest.mark.parametrize(
+    "option",
+    [
+        CliOpt.INCLUDE_FROM,
+        CliOpt.EXCLUDE_FROM,
+    ],
+)
+def test_pattern_from_file_alone_is_not_an_input_source(
+    tmp_path: Path,
+    option: str,
+) -> None:
+    """`--include-from FILE` and `--exclude-from FILE` remain filters only."""
+    (tmp_path / "patterns.txt").write_text("*.py\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.PROBE,
+            option,
+            "patterns.txt",
+        ],
+    )
+
+    assert_USAGE_ERROR(result)
+    assert_human_output_contains(
+        output_format=None,
+        output=result.output,
+        expected="No arguments provided.",
+    )

@@ -19,8 +19,8 @@ Filtering controls determine stable runtime behavior such as:
 - how explicit inputs participate in semantic runtime outcomes
 - how probe diagnostics are reported
 
-TopMark determines which files to process using a combination of **path-based filters** and **file
-type filters**.
+TopMark determines which files to process using a combination of **explicit input sources**,
+**path-based filters**, and **file type filters**.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -35,9 +35,10 @@ Filtering and discovery semantics are shared consistently across:
 - API overlays
 - runtime-resolution and probe filtering
 
-TopMark applies filtering in a deterministic order:
+TopMark applies input selection and filtering in a deterministic order:
 
-1. Path-based discovery and filtering
+1. Explicit input collection and path-based discovery
+1. Path-based filtering
 1. File-type filtering
 1. Runtime applicability evaluation
 1. Runtime processor resolution
@@ -69,6 +70,7 @@ ______________________________________________________________________
 
 TopMark intentionally separates:
 
+1. explicit input collection
 1. path discovery
 1. path filtering
 1. filesystem-identity evaluation
@@ -114,18 +116,26 @@ match nothing do not cause runtime processing-command failures.
 
 ______________________________________________________________________
 
-## Path-based filtering
+## Path inputs and path-based filtering
 
-TopMark supports the following path-based filtering controls:
+TopMark separates explicit processing inputs from path-based filters. Explicit processing inputs
+define the paths that participate in discovery. Path-based filters then narrow those selected
+inputs.
+
+Explicit processing inputs are supplied by:
+
+- positional `PATH` arguments
+- `--files-from FILE`, which provides an explicit list of files to process
+
+Path-based filtering controls are supplied by:
 
 - `--include`, `--exclude` Include or exclude glob patterns.
 - `--include-from`, `--exclude-from` Load patterns from files (one per line).
-- `--files-from` Provide an explicit list of files to process.
 
 Stable path-filtering semantics:
 
-- Positional arguments are parsed by Click and resolved **relative to the current working
-  directory** (CWD).
+- Positional arguments and paths loaded from `--files-from FILE` are resolved relative to the
+  current working directory (CWD).
 - Configuration discovery is evaluated earlier from the resolved discovery anchor; CWD-relative path
   parsing for filters does not create a separate project-chain discovery root.
 - Unknown option-like tokens before the standard `--` delimiter are parser errors. Use `--` before
@@ -134,7 +144,7 @@ Stable path-filtering semantics:
   are also resolved **relative to CWD**.
 - Absolute patterns are not supported.
 - Exclude rules take precedence over include rules.
-- Path-based filtering occurs before file-type filtering.
+- Path-based filtering is applied after explicit input collection and before file-type filtering.
 - Existing filesystem inputs undergo filesystem-identity evaluation before runtime processing.
 - Hard-linked selected paths are handled as processing-target eligibility failures. Each affected
   path is reported independently and blocked from processing; TopMark does not select a preferred
@@ -222,8 +232,8 @@ Filtered probe results may use one of the following reasons:
   identified
 - `no_candidates` - no file-type candidates were found (e.g., unsupported extension)
 
-Only explicitly requested runtime inputs (CLI paths or `--files-from`) are reported this way. Files
-excluded implicitly during recursive discovery are not enumerated.
+Only explicitly requested runtime inputs (positional paths or `--files-from`) are reported this way.
+Files excluded implicitly during recursive discovery are not enumerated.
 
 For probe records that reach runtime probing, reported filesystem paths describe the selected
 processing path. They do not guarantee preservation of the original CLI argument, glob match, or
@@ -322,7 +332,10 @@ Equivalent canonical form:
 exclude_file_types = ["topmark:yaml"]
 ```
 
-### Recipe: Process only an explicit file list (from Git)
+### Recipe: Use an explicit file list as the input source (from Git)
+
+This is an input-source recipe rather than a filter recipe. Include/exclude filters still apply
+after TopMark collects the explicit file list.
 
 Generate a file list:
 

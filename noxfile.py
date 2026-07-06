@@ -207,7 +207,7 @@ def run_lychee(
 
     for i in range(0, len(targets), chunk_size):
         chunk: list[str] = targets[i : i + chunk_size]
-        session.log("lychee: chunk %d–%d", i + 1, min(i + chunk_size, len(targets)))
+        session.log("lychee: chunk %d--%d", i + 1, min(i + chunk_size, len(targets)))
         args: list[str] = [
             "lychee",
             "--config",
