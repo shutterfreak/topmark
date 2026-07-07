@@ -16,6 +16,8 @@ import re
 import sys
 from dataclasses import dataclass
 
+from topmark.core.constants import MAX_VERSION_MAJOR
+from topmark.core.constants import MAX_VERSION_MINOR
 from topmark.core.constants import MIN_VERSION_MAJOR
 from topmark.core.constants import MIN_VERSION_MINOR
 from topmark.core.constants import TOPMARK
@@ -146,11 +148,15 @@ def compute_version_text(
 
 # Simple runtime safety check (Optional but recommended)
 def check_python_version() -> None:
-    """Check if the current Python version meets the minimum requirement."""
-    if sys.version_info < (MIN_VERSION_MAJOR, MIN_VERSION_MINOR):
+    """Check if the current Python version is supported by TopMark."""
+    current_version: tuple[int, int] = (sys.version_info[0], sys.version_info[1])
+    min_version: tuple[int, int] = (MIN_VERSION_MAJOR, MIN_VERSION_MINOR)
+    max_version: tuple[int, int] = (MAX_VERSION_MAJOR, MAX_VERSION_MINOR)
+    if current_version < min_version or current_version >= max_version:
         print(  # noqa: T201
             f"Error: {TOPMARK} v{TOPMARK_VERSION} requires "
-            f"Python {MIN_VERSION_MAJOR}.{MIN_VERSION_MINOR} or higher.\n"
+            f"Python {MIN_VERSION_MAJOR}.{MIN_VERSION_MINOR} through "
+            f"{MAX_VERSION_MAJOR}.{MAX_VERSION_MINOR - 1}.\n"
             f"Current version: {sys.version.split()[0]}",
             file=sys.stderr,
         )

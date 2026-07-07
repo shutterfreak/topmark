@@ -85,7 +85,7 @@ def test_constants_use_stable_fallbacks_when_distribution_metadata_is_unavailabl
     assert reloaded.TOPMARK_VERSION == "0.0.0.dev0"
     assert reloaded.DESCRIPTION == "A Python CLI to inspect and manage license headers."
     assert reloaded.LICENSE == "MIT"
-    assert reloaded.REQUIRES_PYTHON == ">=3.10"
+    assert reloaded.REQUIRES_PYTHON == ">=3.10,<3.15"
     assert reloaded.DEPENDENCIES == []
     assert reloaded.DEV_DEPENDENCIES == []
     assert reloaded.DOCS_DEPENDENCIES == []
@@ -104,7 +104,7 @@ def test_dependency_metadata_buckets_core_and_extra_requirements(
     package_metadata["Name"] = "TopMark"
     package_metadata["Summary"] = "Metadata-backed summary"
     package_metadata["License-Expression"] = "MIT"
-    package_metadata["Requires-Python"] = ">=3.10"
+    package_metadata["Requires-Python"] = ">=3.10,<3.15"
     package_metadata["Requires-Dist"] = "click>=8.2"
     package_metadata["Requires-Dist"] = "coverage; extra == 'test'"
     package_metadata["Requires-Dist"] = "mkdocs; extra == 'docs'"
@@ -138,7 +138,7 @@ def test_dependency_metadata_buckets_core_and_extra_requirements(
     assert reloaded.TOPMARK == "TopMark"
     assert reloaded.DESCRIPTION == "Metadata-backed summary"
     assert reloaded.LICENSE == "MIT"
-    assert reloaded.REQUIRES_PYTHON == ">=3.10"
+    assert reloaded.REQUIRES_PYTHON == ">=3.10,<3.15"
     assert [
         DependencyInfo(
             name="click",
@@ -227,6 +227,8 @@ def test_public_constants_expose_stable_identity_markers_and_newline_contracts()
     assert constants.DISPLAY_NAME == "TopMark"
     assert constants.MIN_VERSION_MAJOR == 3
     assert constants.MIN_VERSION_MINOR == 10
+    assert constants.MAX_VERSION_MAJOR == 3
+    assert constants.MAX_VERSION_MINOR == 15
     assert constants.TOPMARK_NAMESPACE == "topmark"
     assert constants.TOPMARK_START_MARKER == "topmark:header:start"
     assert constants.TOPMARK_END_MARKER == "topmark:header:end"
