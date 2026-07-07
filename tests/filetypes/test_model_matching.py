@@ -115,3 +115,28 @@ def test_file_type_does_not_match_unrelated_pattern_rule() -> None:
     )
 
     assert file_type.matches(Path("constraints.txt")) is False
+
+
+def test_file_type_matches_multi_dot_extension_rule() -> None:
+    """Multi-dot extension rules match complete filename suffixes."""
+    file_type: FileType = make_file_type(
+        local_key="archive",
+        extensions=[".tar.gz"],
+        filenames=[],
+        patterns=[],
+    )
+
+    assert file_type.matches(Path("dist/topmark.tar.gz")) is True
+    assert file_type.matches(Path("dist/topmark.gz")) is False
+
+
+def test_file_type_invalid_pattern_fails_closed() -> None:
+    """Invalid regex patterns do not crash matching."""
+    file_type: FileType = make_file_type(
+        local_key="broken-pattern",
+        extensions=[],
+        filenames=[],
+        patterns=["["],
+    )
+
+    assert file_type.matches(Path("anything.txt")) is False
