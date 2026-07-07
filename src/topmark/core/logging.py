@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 TRACE_LEVEL: Final[int] = logging.DEBUG - 5
 if not hasattr(logging, "TRACE"):
     logging.addLevelName(TRACE_LEVEL, "TRACE")
-    logging.TRACE = TRACE_LEVEL  # type: ignore[attr-defined]
+    setattr(logging, "TRACE", TRACE_LEVEL)  # noqa: B010
 
 
 class TopmarkLogger(logging.Logger):
@@ -108,7 +108,7 @@ def setup_logging(level: int | None = None) -> None:
 
     If ``level`` is None, environment variables are consulted via
     [`resolve_env_log_level`][topmark.core.logging.resolve_env_log_level].
-    Default is CRITICAL when unspecified.
+    Default is CRITICAL when unspecified or when the environment value is not recognized.
     """
     if level is None:
         level = resolve_env_log_level() or logging.CRITICAL
@@ -126,7 +126,7 @@ def setup_logging(level: int | None = None) -> None:
 
     # Create and add a StreamHandler explicitly outputting to sys.stdout
     handler = logging.StreamHandler(sys.stdout)
-    # Use detailed logging format for info and above levels, simpler otherwise
+    # Use detailed logging below INFO, where diagnostic output is intentionally verbose.
     formatter = TopmarkFormatter(_LOG_FORMAT if level >= logging.INFO else _DEBUG_LOG_FORMAT)
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)
