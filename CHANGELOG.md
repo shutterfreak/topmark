@@ -309,6 +309,9 @@ ______________________________________________________________________
 - Fixed machine-readable diff output to avoid embedding terminal-oriented unified diff text inside
   processing-result payloads, replacing it with structured diff payloads that preserve streaming
   NDJSON behavior and provide a clearer JSON compatibility contract.
+- Fixed the Python runtime compatibility guard so it rejects unsupported interpreter versions above
+  the declared supported range in addition to unsupported older versions, keeping runtime validation
+  aligned with the project's `requires-python` metadata and supported Python-version policy.
 
 ### Documentation - Unreleased
 

@@ -95,23 +95,46 @@ def test_compute_version_text_falls_back_to_pep440_when_semver_fails(
     assert str(result.error) == "Post-releases are not valid SemVer: '1.2.3.post4'"
 
 
-def test_check_python_version_accepts_supported_runtime() -> None:
+@pytest.mark.parametrize(
+    "version_info",
+    [
+        (3, 10, 0),
+        (3, 14, 9),
+    ],
+)
+def test_check_python_version_accepts_supported_runtime(
+    monkeypatch: MonkeyPatch,
+    version_info: tuple[int, int, int],
+) -> None:
     """Supported Python runtimes should pass without output."""
+    monkeypatch.setattr(version_utils.sys, "version_info", version_info)
+
     check_python_version()
 
 
+@pytest.mark.parametrize(
+    ("version_info", "version_text"),
+    [
+        ((2, 7, 18), "2.7.18"),
+        ((3, 9, 0), "3.9.0"),
+        ((3, 15, 0), "3.15.0"),
+        ((4, 0, 0), "4.0.0"),
+    ],
+)
 def test_check_python_version_exits_for_unsupported_runtime(
     monkeypatch: MonkeyPatch,
     capsys: CaptureFixture[str],
+    version_info: tuple[int, int, int],
+    version_text: str,
 ) -> None:
     """Unsupported Python runtimes should print a clear stderr error and exit."""
-    monkeypatch.setattr(version_utils.sys, "version_info", (3, 9, 0))
-    monkeypatch.setattr(version_utils.sys, "version", "3.9.0 (test build)")
+    monkeypatch.setattr(version_utils.sys, "version_info", version_info)
+    monkeypatch.setattr(version_utils.sys, "version", f"{version_text} (test build)")
 
     with pytest.raises(SystemExit) as exc_info:
         check_python_version()
 
     assert exc_info.value.code == 1
     captured: str = capsys.readouterr().err
-    assert "requires Python 3.10 or higher" in captured
-    assert "Current version: 3.9.0" in captured
+    assert "requires Python 3.10 through 3.14" in captured
+    assert f"Current version: {version_text}" in captured

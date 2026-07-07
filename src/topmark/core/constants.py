@@ -54,9 +54,11 @@ PACKAGE_NAME: Final = "topmark"
 # Branded name for display/documentation
 DISPLAY_NAME: Final = "TopMark"
 
-# Minimal Python version
+# Supported Python version range
 MIN_VERSION_MAJOR: Final[int] = 3
 MIN_VERSION_MINOR: Final[int] = 10
+MAX_VERSION_MAJOR: Final[int] = 3
+MAX_VERSION_MINOR: Final[int] = 15
 
 
 class DependencyInfo(TypedDict):
@@ -140,7 +142,9 @@ except (ImportError, PackageNotFoundError):
     _version = "0.0.0.dev0"
     _description = "A Python CLI to inspect and manage license headers."
     _license = "MIT"
-    _requires_python = f">={MIN_VERSION_MAJOR}.{MIN_VERSION_MINOR}"
+    _requires_python = (
+        f">={MIN_VERSION_MAJOR}.{MIN_VERSION_MINOR},<{MAX_VERSION_MAJOR}.{MAX_VERSION_MINOR}"
+    )
     _dep_buckets = {"core": []}
 
 TOPMARK: Final = _topmark
