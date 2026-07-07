@@ -435,7 +435,7 @@ class FileTypeRegistry:
 
         with cls._lock:
             local_key: str = ft_obj.local_key
-            if not local_key.strip():
+            if not local_key.strip():  # pragma: no cover - _validate_ft() rejects this first.
                 raise ValueError(
                     f"FileType.local_key must be a nonempty string (found {local_key!r})."
                 )
