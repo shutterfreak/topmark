@@ -449,23 +449,26 @@ class FileType:
         # Evaluate whether the content matcher is *allowed* to run, based on the gate.
         gate: Final[ContentGate] = self.content_gate
         allow_by_gate: bool
-        if gate is ContentGate.NEVER:
-            allow_by_gate = False
-        elif gate is ContentGate.IF_EXTENSION:
-            allow_by_gate = matched_by == "extension"
-        elif gate is ContentGate.IF_FILENAME:
-            allow_by_gate = matched_by == "filename"
-        elif gate is ContentGate.IF_PATTERN:
-            allow_by_gate = matched_by == "pattern"
-        elif gate is ContentGate.IF_ANY_NAME_RULE:
-            allow_by_gate = matched_by is not None
-        elif gate is ContentGate.IF_NONE:
-            # Permit content probing only if *no* name rules exist for this type.
-            allow_by_gate = not (self.extensions or self.filenames or self.patterns)
-        elif gate is ContentGate.ALWAYS:
-            allow_by_gate = True
-        else:
-            allow_by_gate = False  # safety default
+        match gate:
+            case ContentGate.NEVER:
+                allow_by_gate = False
+            case ContentGate.IF_EXTENSION:
+                allow_by_gate = matched_by == "extension"
+            case ContentGate.IF_FILENAME:
+                allow_by_gate = matched_by == "filename"
+            case ContentGate.IF_PATTERN:
+                allow_by_gate = matched_by == "pattern"
+            case ContentGate.IF_ANY_NAME_RULE:
+                allow_by_gate = matched_by is not None
+            case ContentGate.IF_NONE:
+                # Permit content probing only if *no* name rules exist for this type.
+                allow_by_gate = not (self.extensions or self.filenames or self.patterns)
+            case ContentGate.ALWAYS:
+                allow_by_gate = True
+            case _:  # pragma: no cover
+                # Defensive fallback for malformed runtime values; valid ContentGate
+                # members are exhaustively handled above.
+                allow_by_gate = False
 
         # If gate disallows probing, return the name-rule result.
         if not allow_by_gate:

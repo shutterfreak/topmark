@@ -68,20 +68,15 @@ def looks_like_jsonc(path: Path) -> bool:
 
         # Not currently in any comment
         if in_string:
-            # Inside a JSON string (double quotes only).
+            # Inside a JSON string (double quotes only). Backslash escapes consume
+            # the next code point, so any quote reached here is an unescaped close.
             if ch == "\\":
                 # Skip a backslash-escaped code point (handles sequences like \\\" correctly)
                 i += 2
                 continue
             if ch == '"':
-                # Count preceding backslashes to determine if escaped.
-                bs = 0
-                j: int = i - 1
-                while j >= 0 and text[j] == "\\":
-                    bs += 1
-                    j -= 1
-                if (bs % 2) == 0:
-                    in_string = False
+                # Unescaped close '"'
+                in_string = False
             i += 1
             continue
 
