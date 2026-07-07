@@ -215,12 +215,12 @@ def test_file_type_lookup_errors_include_optional_path_context() -> None:
     unsupported = UnsupportedFileTypeError(file_type="topmark:python", path=path)
     unknown = UnknownFileTypeError(file_type="plugin:missing", path=path)
 
-    assert str(unsupported) == "Unsupported file type for src/example.py: topmark:python"
+    assert str(unsupported) == f"Unsupported file type for {path}: topmark:python"
     assert unsupported.context.path == path
     assert unsupported.context.qualified_key == "topmark:python"
     assert unsupported.file_type == "topmark:python"
 
-    assert str(unknown) == "Unknown file type identifier for src/example.py: plugin:missing"
+    assert str(unknown) == f"Unknown file type identifier for {path}: plugin:missing"
     assert unknown.context.path == path
     assert unknown.context.qualified_key == "plugin:missing"
     assert unknown.file_type == "plugin:missing"
