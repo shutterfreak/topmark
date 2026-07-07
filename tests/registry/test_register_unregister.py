@@ -14,13 +14,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.registry import make_file_type
+from topmark.core.errors import ProcessorBindingError
+from topmark.core.errors import UnknownFileTypeError
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from topmark.filetypes.model import FileType
     from topmark.registry.types import ProcessorDefinition
 
@@ -220,3 +226,77 @@ def test_binding_registry_unbind_processor_removes_all_references() -> None:
             HeaderProcessorRegistry.unregister(proc_def.qualified_key)
         for ft in fts:
             FileTypeRegistry.unregister_by_local_key(ft.local_key)
+
+
+def test_binding_registry_bind_rejects_unknown_filetype() -> None:
+    """Binding an unknown file type should fail before processor lookup."""
+    with pytest.raises(UnknownFileTypeError):
+        BindingRegistry.bind(
+            file_type_key="pytest:missing_filetype",
+            processor_key="pytest:missing_processor",
+        )
+
+
+def test_binding_registry_as_mapping_is_readonly() -> None:
+    """Effective binding mappings should be exposed as read-only views."""
+    import types
+
+    mapping: Mapping[str, str] = BindingRegistry.as_mapping()
+
+    assert isinstance(mapping, types.MappingProxyType)
+    assert not hasattr(mapping, "__setitem__")
+
+
+def test_binding_registry_iter_meta_returns_sorted_pairs() -> None:
+    """Binding metadata iteration should expose sorted effective key pairs."""
+    pairs: tuple[tuple[str, str], ...] = tuple(BindingRegistry.iter_meta())
+
+    # Note: iter_meta() sorts explicitly; as_mapping().items() does not guarantee
+    # the same order, so sorting both sides is the stable contract:
+    assert pairs == tuple(sorted(pairs))
+    assert pairs == tuple(sorted(BindingRegistry.as_mapping().items()))
+
+
+def test_binding_registry_compose_rejects_unknown_base_filetype(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Composed bindings should reject base entries for unknown file types."""
+
+    def _base_registry() -> dict[str, str]:
+        return {"pytest:missing_filetype": "pytest:missing_processor"}
+
+    monkeypatch.setattr(
+        "topmark.processors.instances.get_base_processor_binding_registry",
+        _base_registry,
+    )
+
+    with pytest.raises(ProcessorBindingError, match="unknown file type"):
+        BindingRegistry.as_mapping()
+
+
+def test_binding_registry_compose_rejects_unknown_base_processor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Composed bindings should reject base entries for unknown processors."""
+    ft: FileType = make_file_type(
+        local_key="tmp_unknown_base_processor",
+        extensions=[".tubp"],
+        filenames=[],
+        patterns=[],
+        description="tmp unknown base processor",
+    )
+
+    def _base_registry() -> dict[str, str]:
+        return {ft.qualified_key: "pytest:missing_processor"}
+
+    FileTypeRegistry.register(ft)
+    try:
+        monkeypatch.setattr(
+            "topmark.processors.instances.get_base_processor_binding_registry",
+            _base_registry,
+        )
+
+        with pytest.raises(ProcessorBindingError, match="unknown processor"):
+            BindingRegistry.as_mapping()
+    finally:
+        FileTypeRegistry.unregister_by_local_key(ft.local_key)
