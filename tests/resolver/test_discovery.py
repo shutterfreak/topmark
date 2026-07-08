@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tests.helpers.config import make_frozen_config
+from topmark.config.types import PatternGroup
 from topmark.resolution.discovery import FileSelectionProbeResult
 from topmark.resolution.discovery import FileSelectionReason
 from topmark.resolution.discovery import FileSelectionStatus
@@ -28,6 +29,20 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
+
+
+def test_file_selection_status_and_reason_values_are_stable_machine_strings() -> None:
+    """Discovery probe enums should expose stable string values."""
+    assert FileSelectionStatus.SELECTED.value == "selected"
+    assert FileSelectionStatus.FILTERED.value == "filtered"
+    assert FileSelectionStatus.NOT_FOUND.value == "not_found"
+
+    assert FileSelectionReason.SELECTED.value == "selected"
+    assert FileSelectionReason.EXCLUDED_BY_PATH_FILTER.value == "excluded_by_path_filter"
+    assert FileSelectionReason.EXCLUDED_BY_FILE_TYPE_FILTER.value == "excluded_by_file_type_filter"
+    assert FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER.value == "excluded_by_discovery_filter"
+    assert FileSelectionReason.NOT_A_FILE.value == "not_a_file"
+    assert FileSelectionReason.NOT_FOUND.value == "not_found"
 
 
 def test_probe_explicit_file_selection_omits_selected_file(tmp_path: Path) -> None:
@@ -71,6 +86,34 @@ def test_probe_explicit_file_selection_reports_path_filtered_file(tmp_path: Path
     cfg: FrozenConfig = make_frozen_config(
         files=[str(file)],
         exclude_patterns=["ignored/"],
+    )
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[],
+    )
+
+    assert len(results) == 1
+    result: FileSelectionProbeResult = results[0]
+    assert result.path == file
+    assert result.status == FileSelectionStatus.FILTERED
+    assert result.reason == FileSelectionReason.EXCLUDED_BY_PATH_FILTER
+
+
+def test_probe_explicit_file_selection_reports_include_filtered_file(
+    tmp_path: Path,
+) -> None:
+    """Existing files outside include filters should report path-filter reason."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+    cfg: FrozenConfig = make_frozen_config(
+        files=[str(file)],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("docs/**/*.md",),
+                base=tmp_path.resolve(),
+            ),
+        ],
     )
 
     results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
@@ -197,3 +240,68 @@ def test_probe_explicit_file_selection_omits_directory_with_selected_descendant(
     )
 
     assert results == ()
+
+
+def test_explicit_directory_with_selected_sibling_is_reported_not_a_file(
+    tmp_path: Path,
+) -> None:
+    """Explicit directories should not be hidden by selected non-descendants."""
+    directory: Path = tmp_path / "data"
+    directory.mkdir()
+    sibling: Path = tmp_path / "sibling.py"
+    sibling.write_text("x", encoding="utf-8")
+
+    cfg: FrozenConfig = make_frozen_config(files=[str(directory)])
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[sibling],
+    )
+
+    assert len(results) == 1
+    assert results[0].path == directory
+    assert results[0].status == FileSelectionStatus.FILTERED
+    assert results[0].reason == FileSelectionReason.NOT_A_FILE
+
+
+def test_probe_explicit_file_selection_reports_excluded_file_type(
+    tmp_path: Path,
+) -> None:
+    """Explicit files matching excluded file types should report file-type reason."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+    cfg: FrozenConfig = make_frozen_config(
+        files=[str(file)],
+        exclude_file_types={"python"},
+    )
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[],
+    )
+
+    assert len(results) == 1
+    assert results[0].path == file
+    assert results[0].status == FileSelectionStatus.FILTERED
+    assert results[0].reason == FileSelectionReason.EXCLUDED_BY_FILE_TYPE_FILTER
+
+
+def test_probe_explicit_file_selection_keeps_non_matching_exclude_file_type_reason_generic(
+    tmp_path: Path,
+) -> None:
+    """Exclude file-type filters should not explain non-matching files."""
+    file: Path = tmp_path / "example.py"
+    file.write_text("print('hello')\n", encoding="utf-8")
+    cfg: FrozenConfig = make_frozen_config(
+        files=[str(file)],
+        exclude_file_types={"markdown"},
+    )
+
+    results: tuple[FileSelectionProbeResult, ...] = probe_explicit_file_selection(
+        cfg,
+        selected_files=[],
+    )
+
+    assert len(results) == 1
+    assert results[0].path == file
+    assert results[0].status == FileSelectionStatus.FILTERED
+    assert results[0].reason == FileSelectionReason.EXCLUDED_BY_DISCOVERY_FILTER

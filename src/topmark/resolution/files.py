@@ -103,10 +103,8 @@ def load_patterns_from_file(
     """
     try:
         text: str = source.path.read_text(encoding="utf-8")
-    except FileNotFoundError as e:
-        logger.error("Cannot read patterns from '%s': %s", source.path, e)
-        return []
-    except OSError as e:
+    except (FileNotFoundError, OSError) as e:
+        # Treat missing and unreadable pattern/list sources as fail-open user input errors.
         logger.error("Cannot read patterns from '%s': %s", source.path, e)
         return []
     patterns: list[str] = []
@@ -136,10 +134,8 @@ def _read_input_paths_from_source(
     """
     try:
         text: str = source.path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        logger.error("Cannot read file list from '%s' (not found).", source.path)
-        return []
-    except OSError as e:
+    except (FileNotFoundError, OSError) as e:
+        # Treat missing and unreadable pattern/list sources as fail-open user input errors.
         logger.error("Cannot read file list from '%s': %s", source.path, e)
         return []
     out: list[Path] = []
@@ -184,8 +180,7 @@ def _candidate_match_strings(
     # slash form for directory candidates.
     if path.is_dir() and normalized:
         slash_form: str = normalized.rstrip("/") + "/"
-        if slash_form != normalized:
-            return (normalized, slash_form)
+        return (normalized, slash_form)
     return (normalized,)
 
 
@@ -279,7 +274,7 @@ def _processing_identity_paths(paths: Sequence[Path]) -> set[Path]:
     for path in paths:
         try:
             resolved.add(canonical_processing_path(path))
-        except OSError:
+        except OSError:  # pragma: no cover - unstable FS race fallback.
             resolved.add(path)
     return resolved
 
@@ -316,7 +311,7 @@ def _has_selected_descendant(
     """
     try:
         directory_identity: Path = canonical_processing_path(directory)
-    except OSError:
+    except OSError:  # pragma: no cover - unstable FS race fallback.
         directory_identity = directory
 
     for selected in selected_identities:
@@ -533,7 +528,9 @@ def _resolve_configured_file_types(
             )
             continue
 
-        if file_type is None:
+        if file_type is None:  # pragma: no cover - defensive after config validation.
+            # Normal config validation/sanitization should catch unknown
+            # identifiers before file-list resolution receives frozen config.
             logger.warning(
                 "Unknown file type identifier ignored during file selection: %s",
                 file_type_id,
@@ -610,8 +607,8 @@ def resolve_file_list_with_diagnostics(
     files_from_sources: tuple[PatternSource, ...] = config.files_from
 
     workspace_root: Path | None = config.relative_to
-    # Defensive fallback only; in normal operation resolve_config_from_click() sets this.
-    if workspace_root is None:
+    # Defensive fallback only; FrozenConfig defaults provide relative_to in normal use.
+    if workspace_root is None:  # pragma: no cover - guarded by config defaults.
         workspace_root = Path.cwd()
 
     cwd: Path = Path.cwd()
@@ -726,13 +723,7 @@ def resolve_file_list_with_diagnostics(
 
     # Step 1: Build candidate set from positional paths only; do not treat
     # config files as inputs. We'll optionally seed from include globs later.
-    if len(positional_paths) > 0:
-        # Use positional paths if provided
-        # NOTE: This branch is reachable depending on CLI/config inputs;
-        # some static analyzers may flag it falsely.
-        input_paths: list[Path] = [Path(p) for p in positional_paths]
-    else:
-        input_paths = []
+    input_paths: list[Path] = [Path(p) for p in positional_paths]
 
     logger.debug("Initial input paths: %s", input_paths)
     # Merge paths from files-from into the candidate inputs (resolve relatives vs. source.base)
@@ -792,34 +783,27 @@ def resolve_file_list_with_diagnostics(
     # Only keep files (drop directories) before filtering
     candidate_set = {p for p in candidate_set if p.is_file()}
 
-    # Step 3: Apply include intersection filter (if any include patterns)
-    # Merge include_patterns + include_from patterns
-    any_includes: bool = bool(include_pattern_groups) or bool(include_sources)
-    if any_includes:
+    # Step 3: Apply include intersection filter when at least one usable include
+    # matcher exists. Empty pattern groups and unreadable include_from sources are
+    # ignored by _compile_matchers() and therefore fail open.
+    include_specs_all: list[tuple[GitIgnorePathSpec, Path]] = _compile_matchers(
+        include_pattern_groups,
+        include_sources,
+    )
+    if include_specs_all:
         kept: set[Path] = set()
-        include_specs_all: list[tuple[GitIgnorePathSpec, Path]] = _compile_matchers(
-            include_pattern_groups,
-            include_sources,
-        )
-        if include_specs_all:
-            for p in candidate_set:
-                if _matches_any(include_specs_all, p):
-                    kept.add(p)
+        for p in candidate_set:
+            if _matches_any(include_specs_all, p):
+                kept.add(p)
         candidate_set = kept
 
-    # Step 4: Apply exclude subtraction filter (if any exclude patterns/sources)
-    any_excludes: bool = bool(exclude_pattern_groups) or bool(exclude_sources)
-    if any_excludes:
+    # Step 4: Apply exclude subtraction only when at least one usable exclude
+    # matcher exists. Empty groups and unreadable exclude_from sources fail open.
+    if exclude_specs_all:
         kept: set[Path] = set()
-        # 4.1 exclude_patterns: evaluate against CWD and each config file directory
-        if exclude_specs_all:
-            # NOTE: This branch is reachable depending on CLI/config inputs;
-            # some static analyzers may flag it falsely.
-            for p in candidate_set:
-                if not _matches_any(exclude_specs_all, p):
-                    kept.add(p)
-        else:
-            kept = set(candidate_set)
+        for p in candidate_set:
+            if not _matches_any(exclude_specs_all, p):
+                kept.add(p)
         candidate_set = kept
 
     filtered_paths: set[Path] = candidate_set

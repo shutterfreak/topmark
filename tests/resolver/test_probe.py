@@ -46,6 +46,30 @@ def _selected_candidate_count(probe: ResolutionProbeResult) -> int:
     return sum(1 for candidate in probe.candidates if candidate.selected)
 
 
+def test_probe_status_and_reason_values_are_stable_machine_strings() -> None:
+    """Probe enums should expose stable string values for machine consumers."""
+    assert ResolutionProbeStatus.FILTERED.value == "filtered"
+    assert ResolutionProbeStatus.RESOLVED.value == "resolved"
+    assert ResolutionProbeStatus.UNSUPPORTED.value == "unsupported"
+    assert ResolutionProbeStatus.NO_PROCESSOR.value == "no_processor"
+
+    assert ResolutionProbeReason.EXCLUDED_BY_PATH_FILTER.value == "excluded_by_path_filter"
+    assert (
+        ResolutionProbeReason.EXCLUDED_BY_FILE_TYPE_FILTER.value == "excluded_by_file_type_filter"
+    )
+    assert (
+        ResolutionProbeReason.EXCLUDED_BY_DISCOVERY_FILTER.value == "excluded_by_discovery_filter"
+    )
+    assert ResolutionProbeReason.SELECTED_HIGHEST_SCORE.value == "selected_highest_score"
+    assert ResolutionProbeReason.SELECTED_BY_TIE_BREAK.value == "selected_by_tie_break"
+    assert ResolutionProbeReason.NO_CANDIDATES.value == "no_candidates"
+    assert ResolutionProbeReason.HARD_LINK_DUPLICATE.value == "hard_link_duplicate"
+    assert (
+        ResolutionProbeReason.SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR.value
+        == "selected_file_type_has_no_bound_processor"
+    )
+
+
 def test_probe_python_file_resolves_with_selected_file_type_and_processor(
     tmp_path: Path,
     effective_registries: EffectiveRegistries,

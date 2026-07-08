@@ -27,6 +27,8 @@ from tests.helpers.config import make_frozen_config
 from tests.helpers.paths import symlink_or_skip
 from tests.helpers.registry import make_file_type
 from topmark.config.types import PatternGroup
+from topmark.core.errors import AmbiguousFileTypeIdentifierError
+from topmark.core.errors import InvalidRegistryIdentityError
 from topmark.filetypes.model import ContentGate
 from topmark.registry.filetypes import FileTypeRegistry
 
@@ -335,6 +337,56 @@ def test_include_no_matches_yields_empty(tmp_path: Path, monkeypatch: pytest.Mon
     assert resolve_selected(cfg) == []
 
 
+def test_include_seed_without_inputs_ignores_directory_matches(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Include seeding should only add files, not matching directories."""
+    (tmp_path / "src").mkdir()
+    cfg_file: Path = tmp_path / "pyproject.toml"
+    cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    cfg: FrozenConfig = make_frozen_config(
+        config_files=[str(cfg_file)],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("src",),
+                base=tmp_path.resolve(),
+            ),
+        ],
+    )
+
+    assert resolve_selected(cfg) == []
+
+
+def test_include_seed_without_inputs_with_no_matches_yields_empty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Include seeding should remain empty when configured globs match nothing."""
+    cfg_file: Path = tmp_path / "pyproject.toml"
+    cfg_file.write_text("[tool.topmark]\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    cfg: FrozenConfig = make_frozen_config(
+        config_files=[str(cfg_file)],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=("missing/**/*.py",),
+                base=tmp_path.resolve(),
+            ),
+        ],
+    )
+
+    resolution: file_resolver_mod.FileListResolution = (
+        file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
+    )
+    assert resolution.selected == ()
+    assert resolution.missing_literals == ()
+    assert resolution.unmatched_patterns == ()
+
+
 def test_exclude_wins_over_include(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Exclude takes precedence over include when both match."""
     (tmp_path / "keep.md").write_text("x")
@@ -499,6 +551,29 @@ def test_empty_include_means_no_include_filter(
     cfg: FrozenConfig = make_frozen_config(
         files=["."],
     )
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+    assert rel == ["a.py", "b.txt"]
+
+
+def test_empty_include_pattern_group_means_no_include_filter(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty include pattern groups should be ignored rather than filtering all files."""
+    write(tmp_path / "a.py", "x")
+    write(tmp_path / "b.txt", "x")
+    monkeypatch.chdir(tmp_path)
+
+    cfg: FrozenConfig = make_frozen_config(
+        files=["."],
+        include_pattern_groups=[
+            PatternGroup(
+                patterns=(),
+                base=tmp_path.resolve(),
+            ),
+        ],
+    )
+
     rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
     assert rel == ["a.py", "b.txt"]
 
@@ -864,19 +939,49 @@ def test_pattern_files_trim_whitespace_and_trailing_spaces(
 def test_missing_pattern_files_fail_gracefully(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """Missing include_from/exclude_from files log an error and (for include) filter to none."""
+    """Missing pattern source files should log an error and fail open."""
+    (tmp_path / "a.py").write_text("x", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    caplog.set_level("ERROR")
+
+    include_cfg: FrozenConfig = make_frozen_config(
+        files=["."],
+        include_from=[str(tmp_path / "missing-include.txt")],  # non-existent
+    )
+    include_files: list[Path] = resolve_selected(include_cfg)
+    # Missing include_from files log an error but do not remove candidates.
+    assert [p.as_posix() for p in include_files] == ["a.py"]
+    assert any("Cannot read patterns from" in r.message for r in caplog.records)
+
+    caplog.clear()
+    exclude_cfg: FrozenConfig = make_frozen_config(
+        files=["."],
+        exclude_from=[str(tmp_path / "missing-exclude.txt")],
+    )
+    exclude_files: list[Path] = resolve_selected(exclude_cfg)
+
+    assert [p.as_posix() for p in exclude_files] == ["a.py"]
+    assert any("Cannot read patterns from" in r.message for r in caplog.records)
+
+
+def test_missing_exclude_from_file_fails_open(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Missing exclude_from files should log an error without removing candidates."""
     (tmp_path / "a.py").write_text("x", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     caplog.set_level("ERROR")
 
     cfg: FrozenConfig = make_frozen_config(
         files=["."],
-        include_from=[str(tmp_path / "missing-include.txt")],  # non-existent
+        exclude_from=[str(tmp_path / "missing-exclude.txt")],
     )
-    files: list[Path] = resolve_selected(cfg)
-    # include_from with no readable patterns → include filter removes all
-    assert files == []
-    assert any("Cannot read patterns from" in r.message for r in caplog.records)
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+
+    assert rel == ["a.py"]
+    assert any("Cannot read patterns from" in record.message for record in caplog.records)
 
 
 def test_exclude_dotfiles_with_pattern(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -966,6 +1071,73 @@ def test_files_from_seeds_candidates(tmp_path: Path, monkeypatch: pytest.MonkeyP
         assert rel == ["src/a.py", "src/b.txt"]
 
 
+def test_files_from_ignores_blank_and_comment_lines(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """files_from sources should ignore blank lines and comments."""
+    write(tmp_path / "src" / "a.py", "x")
+    write(tmp_path / "src" / "b.py", "x")
+    lst: Path = write(
+        tmp_path / "files.txt",
+        "# generated file list\n\n src/a.py \n\n# another comment\nsrc/b.py\n",
+    )
+
+    with monkeypatch.context() as m:
+        m.chdir(tmp_path)
+        cfg: FrozenConfig = make_frozen_config(files_from=[str(lst)])
+        rel: list[str] = sorted(p.as_posix() for p in resolve_selected(cfg))
+
+    assert rel == ["src/a.py", "src/b.py"]
+
+
+def test_excluded_root_directory_prunes_traversal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Excluded explicit root directories should not contribute descendants."""
+    write(tmp_path / "ignored" / "a.py", "x")
+    write(tmp_path / "kept" / "b.py", "x")
+    monkeypatch.chdir(tmp_path)
+
+    cfg: FrozenConfig = make_frozen_config(
+        files=["ignored", "kept"],
+        exclude_pattern_groups=[
+            PatternGroup(
+                patterns=("ignored/",),
+                base=tmp_path.resolve(),
+            ),
+        ],
+    )
+
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+    assert rel == ["kept/b.py"]
+
+
+def test_missing_files_from_file_fails_open_with_no_selected_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Missing files_from sources should log an error and contribute no inputs."""
+    write(tmp_path / "src" / "a.py", "x")
+
+    with monkeypatch.context() as m:
+        m.chdir(tmp_path)
+        caplog.set_level("ERROR")
+        cfg: FrozenConfig = make_frozen_config(
+            files_from=[str(tmp_path / "missing-files.txt")],
+        )
+        resolution: file_resolver_mod.FileListResolution = (
+            file_resolver_mod.resolve_file_list_with_diagnostics(cfg)
+        )
+
+    assert resolution.selected == ()
+    assert resolution.missing_literals == ()
+    assert resolution.unmatched_patterns == ()
+    assert any("Cannot read file list from" in record.message for record in caplog.records)
+
+
 def test_nonexistent_literal_paths_are_reported_as_missing_diagnostics(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -1033,3 +1205,82 @@ def test_resolve_file_list_wrapper_returns_selected_files_only(
         files: list[Path] = list(resolution.selected)
 
     assert [p.as_posix() for p in files] == ["a.py"]
+
+
+def test_ambiguous_file_type_identifier_is_ignored(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Ambiguous file type identifiers should warn and resolve to no type."""
+
+    def raise_ambiguous(_file_type_id: str) -> FileType | None:
+        raise AmbiguousFileTypeIdentifierError(
+            file_type="python",
+            candidates=("alpha:python", "beta:python"),
+        )
+
+    monkeypatch.setattr(
+        FileTypeRegistry,
+        "resolve_filetype_id",
+        raise_ambiguous,
+    )
+    caplog.set_level("WARNING")
+
+    resolved: list[FileType] = file_resolver_mod._resolve_configured_file_types(  # pyright: ignore[reportPrivateUsage]
+        frozenset({"python"}),
+    )
+
+    assert resolved == []
+    assert any(
+        "Ambiguous file type identifier ignored during file selection: python" in record.message
+        for record in caplog.records
+    )
+
+
+def test_malformed_file_type_identifier_is_ignored(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Malformed file type identifiers should warn and resolve to no type."""
+
+    def raise_malformed(_file_type_id: str) -> FileType | None:
+        raise InvalidRegistryIdentityError(
+            message="bad identifier",
+        )
+
+    monkeypatch.setattr(
+        FileTypeRegistry,
+        "resolve_filetype_id",
+        raise_malformed,
+    )
+    caplog.set_level("WARNING")
+
+    resolved: list[FileType] = file_resolver_mod._resolve_configured_file_types(  # pyright: ignore[reportPrivateUsage]
+        frozenset({"bad identifier"}),
+    )
+
+    assert resolved == []
+    assert any(
+        "Malformed file type identifier ignored during file selection: bad identifier"
+        in record.message
+        for record in caplog.records
+    )
+
+
+def test_exclude_file_type_filter_keeps_non_matching_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exclude file-type filters should only remove matching file types."""
+    py_file: Path = tmp_path / "example.py"
+    py_file.write_text("x", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    cfg: FrozenConfig = make_frozen_config(
+        files=["."],
+        exclude_file_types={"markdown"},
+    )
+
+    rel: list[str] = [p.as_posix() for p in resolve_selected(cfg)]
+
+    assert rel == ["example.py"]
