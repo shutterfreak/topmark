@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_probe.py
-#   file_relpath : tests/resolver/test_probe.py
+#   file_relpath : tests/resolution/test_probe.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
