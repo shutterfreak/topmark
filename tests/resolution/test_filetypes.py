@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_filetypes.py
-#   file_relpath : tests/resolver/test_filetypes.py
+#   file_relpath : tests/resolution/test_filetypes.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

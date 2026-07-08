@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_discovery.py
-#   file_relpath : tests/resolver/test_discovery.py
+#   file_relpath : tests/resolution/test_discovery.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
