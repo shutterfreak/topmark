@@ -79,7 +79,7 @@ class PreInsertViewAdapter:
         return (
             f"<PreInsertViewAdapter lines={type(self.lines).__name__} "
             f"newline_style={self.newline_style!r} "
-            f"file_type={getattr(self.file_type, 'name', None)!r}>"
+            f"file_type={getattr(self.file_type, 'qualified_key', None)!r}>"
         )
 
 
