@@ -45,15 +45,15 @@ from topmark.core.logging import get_logger
 from topmark.core.outcomes import NO_REASON_PROVIDED
 from topmark.core.outcomes import OUTCOME_ORDER
 from topmark.core.outcomes import Outcome
-from topmark.pipeline.status import ComparisonStatus  # temporary
-from topmark.pipeline.status import ContentStatus  # temporary
-from topmark.pipeline.status import FsStatus  # temporary
-from topmark.pipeline.status import GenerationStatus  # temporary
-from topmark.pipeline.status import HeaderStatus  # temporary
-from topmark.pipeline.status import PlanStatus  # temporary
-from topmark.pipeline.status import ResolveStatus  # temporary
-from topmark.pipeline.status import StripStatus  # temporary
-from topmark.pipeline.status import WriteStatus  # temporary
+from topmark.pipeline.status import ComparisonStatus
+from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.status import StripStatus
+from topmark.pipeline.status import WriteStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -396,24 +396,28 @@ def map_bucket(
 
     # 4) Strip mapping (strip pipelines may omit comparer; do not depend on comparison)
     if intent == ResultActionIntent.STRIP:
-        if ctx.status.strip == StripStatus.READY:
-            return ret(
-                debug_tag="strip:ready",
-                outcome=Outcome.STRIPPED if apply else Outcome.WOULD_STRIP,
-                reason=ctx.status.strip.value,
-            )
-        if ctx.status.strip == StripStatus.NOT_NEEDED:
-            return ret(
-                debug_tag="strip:not-needed",
-                outcome=Outcome.UNCHANGED,
-                reason=ctx.status.strip.value,
-            )
-        if ctx.status.strip == StripStatus.FAILED:
-            return ret(
-                debug_tag="strip:failed",
-                outcome=Outcome.ERROR,
-                reason=ctx.status.strip.value,
-            )
+        # STRIP intent is inferred only for non-pending strip states. The current
+        # state space therefore leaves READY, NOT_NEEDED, and FAILED here.
+        match ctx.status.strip:
+            case StripStatus.READY:
+                return ret(
+                    debug_tag="strip:ready",
+                    outcome=Outcome.STRIPPED if apply else Outcome.WOULD_STRIP,
+                    reason=ctx.status.strip.value,
+                )
+            case StripStatus.NOT_NEEDED:
+                return ret(
+                    debug_tag="strip:not-needed",
+                    outcome=Outcome.UNCHANGED,
+                    reason=ctx.status.strip.value,
+                )
+            case _:
+                # The only remaining current state is StripStatus.FAILED.
+                return ret(
+                    debug_tag="strip:failed",
+                    outcome=Outcome.ERROR,
+                    reason=ctx.status.strip.value,
+                )
 
     # 5) Malformed header that TopMark cannot safely interpret
     if ctx.status.header == HeaderStatus.MALFORMED:
@@ -437,14 +441,10 @@ def map_bucket(
 
     header_lbl: str = ctx.status.header.value
     comparison_lbl: str = ctx.status.comparison.value
-    strip_lbl: str = ctx.status.strip.value
 
-    # Helper for constructing the most specific reason for a detected change.
-    def changed_reason_for(current_intent: ResultActionIntent) -> str:
-        """Return the most specific human-facing reason for a detected change."""
-        if current_intent == ResultActionIntent.STRIP:
-            return f"{header_lbl}, {strip_lbl}"
-        return f"{header_lbl}, {comparison_lbl}"
+    # Strip intent is handled exhaustively above because every non-pending
+    # StripStatus is terminal for outcome classification. From here onward,
+    # only insert, update, or still-unknown intent can remain.
 
     # 7) Comparison/write outcomes
     if ctx.status.comparison == ComparisonStatus.UNCHANGED:
@@ -457,25 +457,23 @@ def map_bucket(
     # Compute the Outcome value for a change (only meaningful when change is intended/detected).
     outcome_if_changed: Outcome
     if apply:
-        if intent == ResultActionIntent.STRIP:
-            outcome_if_changed = Outcome.STRIPPED
-        elif intent == ResultActionIntent.INSERT:
-            outcome_if_changed = Outcome.INSERTED
-        elif intent == ResultActionIntent.UPDATE:
-            outcome_if_changed = Outcome.UPDATED
-        else:
-            outcome_if_changed = Outcome.CHANGED
+        match intent:
+            case ResultActionIntent.INSERT:
+                outcome_if_changed = Outcome.INSERTED
+            case ResultActionIntent.UPDATE:
+                outcome_if_changed = Outcome.UPDATED
+            case _:
+                outcome_if_changed = Outcome.CHANGED
     else:
-        if intent == ResultActionIntent.STRIP:
-            outcome_if_changed = Outcome.WOULD_STRIP
-        elif intent == ResultActionIntent.INSERT:
-            outcome_if_changed = Outcome.WOULD_INSERT
-        elif intent == ResultActionIntent.UPDATE:
-            outcome_if_changed = Outcome.WOULD_UPDATE
-        else:
-            outcome_if_changed = Outcome.WOULD_CHANGE
+        match intent:
+            case ResultActionIntent.INSERT:
+                outcome_if_changed = Outcome.WOULD_INSERT
+            case ResultActionIntent.UPDATE:
+                outcome_if_changed = Outcome.WOULD_UPDATE
+            case _:
+                outcome_if_changed = Outcome.WOULD_CHANGE
 
-    reason_if_changed: str = changed_reason_for(intent)
+    reason_if_changed: str = f"{header_lbl}, {comparison_lbl}"
     logger.debug(
         "Outcome if changed: '%s', reason if changed: '%s'",
         outcome_if_changed.value,
@@ -499,13 +497,9 @@ def map_bucket(
     # Changed comparison: map to the appropriate change outcome.
     if ctx.status.comparison == ComparisonStatus.CHANGED:
         return ret(
-            debug_tag="changed:strip"
-            if intent == ResultActionIntent.STRIP
-            else (
-                "changed:header"
-                if intent in (ResultActionIntent.INSERT, ResultActionIntent.UPDATE)
-                else "changed:generic"
-            ),
+            debug_tag="changed:header"
+            if intent in (ResultActionIntent.INSERT, ResultActionIntent.UPDATE)
+            else "changed:generic",
             outcome=outcome_if_changed,
             reason=reason_if_changed,
         )
@@ -515,31 +509,11 @@ def map_bucket(
     # steps (planner/writer) may not have run.
     if not apply:
         if intent in (ResultActionIntent.INSERT, ResultActionIntent.UPDATE):
-            if ctx.outcome.effective_would_add_or_update:
-                return ret(
-                    debug_tag="would-change:header",
-                    outcome=outcome_if_changed,
-                    reason=header_lbl,
-                )
             return ret(
-                debug_tag="would-change:header-fallthrough",
+                debug_tag="would-change:header",
                 outcome=outcome_if_changed,
                 reason=header_lbl,
             )
-        if intent == ResultActionIntent.STRIP:
-            if ctx.outcome.effective_would_strip:
-                # Prefer the strip axis label for summaries.
-                return ret(
-                    debug_tag="would-strip",
-                    outcome=outcome_if_changed,
-                    reason=StripStatus.READY.value,
-                )
-            if ctx.status.strip == StripStatus.NOT_NEEDED:
-                return ret(
-                    debug_tag="unchanged:strip-not-needed",
-                    outcome=Outcome.UNCHANGED,
-                    reason=ctx.status.strip.value,
-                )
         if ctx.status.plan == PlanStatus.PREVIEWED:
             return ret(
                 debug_tag="preview:plan",

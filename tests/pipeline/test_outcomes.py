@@ -123,6 +123,18 @@ def test_map_bucket_prioritizes_read_filesystem_errors(
     assert bucket.reason == fs_status.value
 
 
+def test_map_bucket_hard_link_duplicate_is_skipped_before_resolution(tmp_path: Path) -> None:
+    """Hard-link blocking should remain a skip even when resolution did not run."""
+    ctx: ProcessingContext = _make_context(tmp_path)
+    ctx.status.fs = FsStatus.HARD_LINK_DUPLICATE
+    ctx.status.resolve = ResolveStatus.PENDING
+
+    bucket: ResultBucket = map_bucket(ctx, apply=True)
+
+    assert bucket.outcome is Outcome.SKIPPED
+    assert bucket.reason == FsStatus.HARD_LINK_DUPLICATE.value
+
+
 def test_map_bucket_write_permission_is_error_only_in_apply_mode(tmp_path: Path) -> None:
     """Write permission failures should be errors for apply-mode writes."""
     ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
@@ -327,6 +339,32 @@ def test_map_bucket_write_failure_overrides_change(tmp_path: Path) -> None:
     assert bucket.reason == WriteStatus.FAILED.value
 
 
+def test_map_bucket_dry_run_header_intent_does_not_require_comparison(
+    tmp_path: Path,
+) -> None:
+    """Dry-run header classification should work before comparison completes."""
+    ctx: ProcessingContext = _make_context(tmp_path)
+    ctx.status.header = HeaderStatus.MISSING
+
+    bucket: ResultBucket = map_bucket(ctx, apply=False)
+
+    assert bucket.outcome is Outcome.WOULD_INSERT
+    assert bucket.reason == HeaderStatus.MISSING.value
+
+
+def test_map_bucket_apply_written_without_concrete_intent_is_generic_change(
+    tmp_path: Path,
+) -> None:
+    """Defensive apply classification should preserve a completed generic change."""
+    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    ctx.status.write = WriteStatus.WRITTEN
+
+    bucket: ResultBucket = map_bucket(ctx, apply=True)
+
+    assert bucket.outcome is Outcome.CHANGED
+    assert bucket.reason == (f"{HeaderStatus.PENDING.value}, {ComparisonStatus.PENDING.value}")
+
+
 def test_map_bucket_dry_run_plan_preview_maps_generic_pending_intent(
     tmp_path: Path,
 ) -> None:
@@ -349,6 +387,28 @@ def test_map_bucket_no_fields_is_unchanged(tmp_path: Path) -> None:
 
     assert bucket.outcome is Outcome.UNCHANGED
     assert bucket.reason == GenerationStatus.NO_FIELDS.value
+
+
+def test_map_bucket_no_fields_remains_unchanged_in_apply_mode(tmp_path: Path) -> None:
+    """No generated fields should remain unchanged when mutation is requested."""
+    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    ctx.status.generation = GenerationStatus.NO_FIELDS
+
+    bucket: ResultBucket = map_bucket(ctx, apply=True)
+
+    assert bucket.outcome is Outcome.UNCHANGED
+    assert bucket.reason == GenerationStatus.NO_FIELDS.value
+
+
+def test_map_bucket_plan_preview_is_dry_run_only(tmp_path: Path) -> None:
+    """A preview without a writer result should not claim an applied change."""
+    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=True)
+    ctx.status.plan = PlanStatus.PREVIEWED
+
+    bucket: ResultBucket = map_bucket(ctx, apply=True)
+
+    assert bucket.outcome is Outcome.PENDING
+    assert bucket.reason == NO_REASON_PROVIDED
 
 
 @pytest.mark.parametrize(
