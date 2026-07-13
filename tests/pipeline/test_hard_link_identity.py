@@ -108,6 +108,23 @@ def test_hard_link_triplet_blocks_all_selected_paths(tmp_path: Path) -> None:
     assert {result.status.fs for result in results} == {FsStatus.HARD_LINK_DUPLICATE}
 
 
+def test_hard_link_with_unselected_sibling_is_processed_normally(tmp_path: Path) -> None:
+    """A hard link is safe when no other path to its storage is selected."""
+    selected: Path = tmp_path / "selected.py"
+    unselected: Path = tmp_path / "unselected.py"
+    selected.write_text("print('hello')\n", encoding="utf-8")
+    _link_or_skip(selected, unselected)
+
+    results: list[ProcessingContext] = _run_check(
+        [selected],
+        make_frozen_config(field_values={"project": "HardLinkTest"}),
+    )
+
+    assert [result.path for result in results] == [selected]
+    assert results[0].status.fs == FsStatus.OK
+    assert results[0].is_halted is False
+
+
 def test_hard_link_blocks_do_not_stop_unrelated_files(tmp_path: Path) -> None:
     """Unrelated selected files continue through the normal pipeline."""
     first: Path = tmp_path / "a.py"
