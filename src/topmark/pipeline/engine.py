@@ -377,7 +377,7 @@ def iter_steps_for_files(
             logger.error("Encoding error while reading %s: %s", path, e)
             execution_state.exit_code = execution_state.exit_code or ExitCode.ENCODING_ERROR
             continue
-        except Exception as e:  # pragma: no cover
+        except Exception as e:
             logger.exception("Unexpected error processing %s: %s", path, e)
             execution_state.exit_code = execution_state.exit_code or ExitCode.PIPELINE_ERROR
             continue
