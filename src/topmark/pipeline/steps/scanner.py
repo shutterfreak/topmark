@@ -17,10 +17,9 @@ defined within that header.
 
 The scanner itself is file format agnostic and relies on the HeaderProcessor to handle
 format-specific parsing. It operates on a ProcessingContext that already exposes the file
-image via `ctx.image` (see ``FileImageView``). The scanner updates the context with a
+image via ``ctx.views.image`` (see ``FileImageView``). The scanner updates the context with a
 [`topmark.pipeline.views.HeaderView`][] that contains the header range, extracted lines,
-a reconstructed header block and parsed key-value fields. Legacy ``existing_header_*`` fields
-are kept in sync during the migration.
+a reconstructed header block, and parsed key-value fields.
 """
 
 from __future__ import annotations
@@ -57,8 +56,10 @@ class ScannerStep(BaseStep):
     a `HeaderView`. Leaves unrelated axes untouched.
 
     Preconditions:
-      - `ctx.image` is available (typically set by ReaderStep).
+      - The context is not halted.
+      - `ctx.views.image` is available (set by ReaderStep).
       - `ctx.header_processor` is set.
+      - ReaderStep set `ContentStatus.OK`.
 
     Axes written:
       - header
@@ -97,7 +98,7 @@ class ScannerStep(BaseStep):
             ctx: The processing context for the current file.
 
         Returns:
-            True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the scanner step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -121,13 +122,14 @@ class ScannerStep(BaseStep):
             ctx: Processing context with the file image and a header processor.
 
         Raises:
-            RuntimeError: If header processor or file type are not defined, or if the exclusive
-                start and end indexes are undefined or invalid.
+            RuntimeError: If the header processor is not defined, or if the exclusive start and
+                end indexes are undefined or invalid.
 
         Mutations:
             ProcessingContext: The same context updated with:
-            - ``ctx.header``: a ``HeaderView`` containing range/lines/block/mapping
-            - ``ctx.status.header``: one of {MISSING, EMPTY, DETECTED, MALFORMED}
+            - ``ctx.views.header``: a ``HeaderView`` containing range/lines/block/mapping
+            - ``ctx.status.header``: one of {MISSING, EMPTY, DETECTED, MALFORMED,
+              MALFORMED_SOME_FIELDS, MALFORMED_ALL_FIELDS}
         """
         logger.debug(
             "Scanning file %s of type %s for header fields",
@@ -241,7 +243,7 @@ class ScannerStep(BaseStep):
         )
 
         if header_view.error_count > 0:
-            # At least one header fleid line errored
+            # At least one header field line errored
             reason = (
                 f"Header markers present at line {s_excl + 1} and {e_excl + 1}, "
                 f"total: {total_count}, "
@@ -305,55 +307,69 @@ class ScannerStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected header status value.
         """
         st: HeaderStatus = ctx.status.header
 
-        # May proceed to next step (always):
-        if st == HeaderStatus.DETECTED:
-            ctx.hint(
-                axis=Axis.HEADER,
-                code=KnownCode.HEADER_DETECTED,
-                cluster=Cluster.PENDING,
-                message="TopMark header detected",
-            )
-            pass  # detected; normal path
-        elif st == HeaderStatus.MISSING:
-            ctx.hint(
-                axis=Axis.HEADER,
-                code=KnownCode.HEADER_MISSING,
-                cluster=Cluster.PENDING,
-                message="no TopMark header detected",
-            )
+        match st:
+            # May proceed to next step (always):
+            case HeaderStatus.DETECTED:
+                ctx.hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_DETECTED,
+                    cluster=Cluster.PENDING,
+                    message="TopMark header detected",
+                )
 
-        elif st == HeaderStatus.EMPTY:
-            ctx.hint(
-                axis=Axis.HEADER,
-                code=KnownCode.HEADER_EMPTY,
-                cluster=Cluster.PENDING,
-                message="empty TopMark header",
-            )
-        # May proceed to next step (policy):
-        elif st == HeaderStatus.MALFORMED_ALL_FIELDS:
-            ctx.hint(
-                axis=Axis.HEADER,
-                code=KnownCode.HEADER_MALFORMED,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="some header fields malformed",
-            )
-        elif st == HeaderStatus.MALFORMED_SOME_FIELDS:
-            ctx.hint(
-                axis=Axis.HEADER,
-                code=KnownCode.HEADER_MALFORMED,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="all header fields malformed",
-            )
-        # Stop processing:
-        elif st == HeaderStatus.MALFORMED:
-            ctx.hint(
-                axis=Axis.HEADER,
-                code=KnownCode.HEADER_MALFORMED,
-                cluster=Cluster.SKIPPED,
-                message="malformed TopMark header",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+            case HeaderStatus.MISSING:
+                ctx.hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MISSING,
+                    cluster=Cluster.PENDING,
+                    message="no TopMark header detected",
+                )
+
+            case HeaderStatus.EMPTY:
+                ctx.hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_EMPTY,
+                    cluster=Cluster.PENDING,
+                    message="empty TopMark header",
+                )
+
+            # May proceed to next step (policy):
+            case HeaderStatus.MALFORMED_ALL_FIELDS:
+                ctx.hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MALFORMED,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="all header fields malformed",
+                )
+
+            case HeaderStatus.MALFORMED_SOME_FIELDS:
+                ctx.hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MALFORMED,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="some header fields malformed",
+                )
+
+            # Stop processing:
+            case HeaderStatus.MALFORMED:
+                ctx.hint(
+                    axis=Axis.HEADER,
+                    code=KnownCode.HEADER_MALFORMED,
+                    cluster=Cluster.SKIPPED,
+                    message="malformed TopMark header",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case HeaderStatus.PENDING:  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected HeaderStatus found: {st!r}")

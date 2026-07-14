@@ -326,6 +326,7 @@ ______________________________________________________________________
   failures so later pipeline steps no longer continue after a terminal filesystem classification.
 - Fixed reader-owned mixed-line-ending refusals so authoritative full-file detection halts the
   pipeline consistently with its terminal content status, diagnostic, and hint.
+- Corrected scanner hints so all-invalid and partly-invalid header fields are described accurately.
 
 ### Documentation - Unreleased
 
