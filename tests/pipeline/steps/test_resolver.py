@@ -29,15 +29,28 @@ from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_resolver
 from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.diagnostic.model import DiagnosticLevel
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
 from topmark.pipeline.context.model import ProcessingContext
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.steps import resolver as resolver_module
+from topmark.pipeline.steps.resolver import ResolverStep
 from topmark.processors.base import HeaderProcessor
+from topmark.resolution.filetypes import probe_resolution_for_path
+from topmark.resolution.probe import ResolutionProbeReason
+from topmark.resolution.probe import ResolutionProbeResult
+from topmark.resolution.probe import ResolutionProbeStatus
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
     from collections.abc import Mapping
     from pathlib import Path
+
+    import pytest
 
     from tests.conftest import EffectiveRegistries
     from topmark.config.model import FrozenConfig
@@ -119,10 +132,22 @@ def test_resolve_python_file_resolves_with_processor(
 
     assert ctx.status.resolve == ResolveStatus.RESOLVED
 
-    # The resolver must identify a processor; otherwise the reader step would be ill-defined.
-    assert ctx.file_type is not None
-    assert ctx.file_type.local_key == "python"
+    # The resolver must attach the canonical registry objects; otherwise the reader
+    # step would be ill-defined.
+    assert ctx.resolution_probe is not None
+    assert ctx.resolution_probe.status == ResolutionProbeStatus.RESOLVED
+    assert ctx.resolution_probe.selected_file_type is not None
+    assert ctx.resolution_probe.selected_file_type.qualified_key == py_ft.qualified_key
+    assert ctx.resolution_probe.selected_processor is not None
+    assert ctx.file_type is py_ft
     assert ctx.header_processor is not None
+    assert (
+        ctx.resolution_probe.selected_processor.qualified_key == ctx.header_processor.qualified_key
+    )
+    assert ctx.header_processor.file_type is py_ft
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    assert ctx.diagnostic_hints.items == []
 
 
 # --- Additional targeted resolver tests ---
@@ -147,6 +172,19 @@ def test_resolve_unknown_extension_marked_unsupported(
     assert ctx.status.resolve == ResolveStatus.UNSUPPORTED
     assert ctx.file_type is None
     assert ctx.header_processor is None
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "ResolverStep"
+    assert ctx.halt_state.reason_code == "No file type associated with this file."
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (DiagnosticLevel.INFO, "No file type associated with this file."),
+    ]
+    assert len(ctx.diagnostic_hints.items) == 1
+    hint = ctx.diagnostic_hints.items[0]
+    assert hint.axis == Axis.RESOLVE
+    assert hint.code == KnownCode.DISCOVERY_UNSUPPORTED.value
+    assert hint.cluster == Cluster.SKIPPED.value
+    assert hint.message == "file type is not supported"
+    assert hint.terminal is True
 
 
 def test_resolve_sets_skip_when_no_processor_registered(
@@ -178,6 +216,20 @@ def test_resolve_sets_skip_when_no_processor_registered(
     assert ctx.file_type is not None
     assert ctx.header_processor is None
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "ResolverStep"
+    reason = "No header processor registered for file type 'python'."
+    assert ctx.halt_state.reason_code == reason
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (DiagnosticLevel.INFO, reason),
+    ]
+    assert len(ctx.diagnostic_hints.items) == 1
+    hint = ctx.diagnostic_hints.items[0]
+    assert hint.axis == Axis.RESOLVE
+    assert hint.code == KnownCode.DISCOVERY_NO_PROCESSOR.value
+    assert hint.cluster == Cluster.SKIPPED.value
+    assert hint.message == "no header processor registered"
+    assert hint.terminal is True
 
 
 def test_resolve_respects_skip_processing_filetype(
@@ -209,6 +261,113 @@ def test_resolve_respects_skip_processing_filetype(
     assert ctx.file_type is not None and ctx.file_type.local_key == ft_name
     assert ctx.header_processor is None
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "ResolverStep"
+    reason = (
+        "File type 'docs' (namespace: pytest) recognized; "
+        "headers are not supported for this format."
+    )
+    assert ctx.halt_state.reason_code == reason
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (DiagnosticLevel.INFO, reason),
+    ]
+    assert len(ctx.diagnostic_hints.items) == 1
+    hint = ctx.diagnostic_hints.items[0]
+    assert hint.axis == Axis.RESOLVE
+    assert hint.code == KnownCode.DISCOVERY_UNSUPPORTED.value
+    assert hint.cluster == Cluster.SKIPPED.value
+    assert hint.message == "headers not supported for this type"
+    assert hint.terminal is True
+
+
+def test_resolver_step_declares_first_step_lifecycle_contract(tmp_path: Path) -> None:
+    """Resolver owns only the resolve axis and is unconditionally eligible to run."""
+    ctx: ProcessingContext = make_pipeline_context(
+        tmp_path / "source.py",
+        mutable_config_from_defaults().freeze(),
+    )
+    step = ResolverStep()
+
+    assert step.primary_axis == Axis.RESOLVE
+    assert step.axes_written == (Axis.RESOLVE,)
+    assert step.may_proceed(ctx) is True
+
+
+def test_resolver_reuses_valid_context_probe(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An existing probe is the shared resolution snapshot and must not be recomputed."""
+    file = tmp_path / "source.py"
+    file_type = make_file_type(local_key="python", extensions=[".py"])
+    processor = HeaderProcessor()
+
+    with effective_registries({"python": file_type}, {"python": processor}):
+        cfg = mutable_config_from_defaults().freeze()
+        ctx = make_pipeline_context(file, cfg)
+        probe = probe_resolution_for_path(file)
+        ctx.resolution_probe = probe
+
+        def fail_if_recomputed(
+            path: Path,
+            *,
+            include_file_types: Collection[str] | None = None,
+            exclude_file_types: Collection[str] | None = None,
+        ) -> ResolutionProbeResult:
+            del path, include_file_types, exclude_file_types
+            raise AssertionError("existing resolution probe was recomputed")
+
+        monkeypatch.setattr(resolver_module, "probe_resolution_for_path", fail_if_recomputed)
+        ResolverStep()(ctx)
+
+    assert ctx.resolution_probe is probe
+    assert ctx.status.resolve == ResolveStatus.RESOLVED
+    assert ctx.file_type is file_type
+    assert ctx.header_processor is not None
+    assert ctx.halt_state is None
+
+
+def test_resolver_forwards_effective_file_type_filters_when_creating_probe(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Probe creation receives the context's canonical include and exclude filters."""
+    file = tmp_path / "source.ext"
+    included = make_file_type(local_key="included", extensions=[".ext"])
+    excluded = make_file_type(local_key="excluded", extensions=[".ext"])
+    calls: list[tuple[Path, Collection[str] | None, Collection[str] | None]] = []
+
+    with effective_registries({"included": included, "excluded": excluded}, {}):
+        draft = mutable_config_from_defaults()
+        draft.include_file_types = {included.qualified_key}
+        draft.exclude_file_types = {excluded.qualified_key}
+        cfg = draft.freeze()
+        ctx = make_pipeline_context(file, cfg)
+
+        def record_probe(
+            path: Path,
+            *,
+            include_file_types: Collection[str] | None = None,
+            exclude_file_types: Collection[str] | None = None,
+        ) -> ResolutionProbeResult:
+            calls.append((path, include_file_types, exclude_file_types))
+            return ResolutionProbeResult(
+                path=path,
+                status=ResolutionProbeStatus.UNSUPPORTED,
+                reason=ResolutionProbeReason.NO_CANDIDATES,
+                candidates=(),
+                selected_file_type=None,
+                selected_processor=None,
+            )
+
+        monkeypatch.setattr(resolver_module, "probe_resolution_for_path", record_probe)
+        ResolverStep()(ctx)
+
+    assert calls == [(file, cfg.include_file_types, cfg.exclude_file_types)]
+    assert ctx.resolution_probe is not None
+    assert ctx.status.resolve == ResolveStatus.UNSUPPORTED
 
 
 def test_resolve_can_use_content_gate_when_allowed(

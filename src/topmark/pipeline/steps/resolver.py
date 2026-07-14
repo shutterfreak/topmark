@@ -92,7 +92,7 @@ def apply_probe_resolution_to_context(
         return
 
     file_type: FileType | None = Registry.get_filetype(probe.selected_file_type.qualified_key)
-    if file_type is not None:
+    if file_type is not None:  # pragma: no branch - probe uses the effective registry.
         ctx.file_type = file_type
         logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.qualified_key)
 
@@ -129,7 +129,7 @@ def apply_probe_resolution_to_context(
     processor: HeaderProcessor | None = Registry.resolve_processor(
         probe.selected_file_type.qualified_key
     )
-    if processor is None:
+    if processor is None:  # pragma: no cover - defensive against post-probe registry drift.
         logger.info(
             "No header processor registered for file type '%s' (file '%s')",
             probe.selected_file_type.local_key,
@@ -155,7 +155,7 @@ def apply_probe_resolution_to_context(
 
 
 class ResolverStep(BaseStep):
-    """Resolve file type and attach a header processor (no I/O).
+    """Resolve file type and attach a header processor.
 
     This step evaluates name rules (extensions, filenames, patterns) and, if
     allowed by the file type's content gate, optional content probes to select
@@ -231,36 +231,46 @@ class ResolverStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unknown resolve status.
         """
         st: ResolveStatus = ctx.status.resolve
 
-        # May proceed to next step:
-        if st == ResolveStatus.RESOLVED:
-            # Implies file_type and header_processor are defined
-            pass  # healthy, no hint
-        # Stop processing:
-        elif st == ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED:
-            ctx.hint(
-                axis=Axis.RESOLVE,
-                code=KnownCode.DISCOVERY_NO_PROCESSOR,
-                cluster=Cluster.SKIPPED,
-                message="no header processor registered",
-                terminal=True,
-            )
-        elif st == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED:
-            ctx.hint(
-                axis=Axis.RESOLVE,
-                code=KnownCode.DISCOVERY_UNSUPPORTED,
-                cluster=Cluster.SKIPPED,
-                message="headers not supported for this type",
-                terminal=True,
-            )
-        elif st == ResolveStatus.UNSUPPORTED:
-            ctx.hint(
-                axis=Axis.RESOLVE,
-                code=KnownCode.DISCOVERY_UNSUPPORTED,
-                cluster=Cluster.SKIPPED,
-                message="file type is not supported",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+        match st:
+            # May proceed to next step:
+            case ResolveStatus.RESOLVED:
+                # Implies file_type and header_processor are defined
+                pass  # healthy, no hint
+
+            # Stop processing:
+            case ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED:
+                ctx.hint(
+                    axis=Axis.RESOLVE,
+                    code=KnownCode.DISCOVERY_NO_PROCESSOR,
+                    cluster=Cluster.SKIPPED,
+                    message="no header processor registered",
+                    terminal=True,
+                )
+            case ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED:
+                ctx.hint(
+                    axis=Axis.RESOLVE,
+                    code=KnownCode.DISCOVERY_UNSUPPORTED,
+                    cluster=Cluster.SKIPPED,
+                    message="headers not supported for this type",
+                    terminal=True,
+                )
+            case ResolveStatus.UNSUPPORTED:
+                ctx.hint(
+                    axis=Axis.RESOLVE,
+                    code=KnownCode.DISCOVERY_UNSUPPORTED,
+                    cluster=Cluster.SKIPPED,
+                    message="file type is not supported",
+                    terminal=True,
+                )
+            case ResolveStatus.PENDING:  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected ResolveStatus found: {st!r}")
