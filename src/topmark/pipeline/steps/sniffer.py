@@ -348,10 +348,9 @@ class SnifferStep(BaseStep):
     ) -> bool:
         """Determine if processing can proceed to the read step.
 
-        Processing can proceed if:
-        - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-        - A file type is present (ctx.file_type is not None)
-        - A header processor is available (ctx.header_processor is not None)
+        Processing can proceed when the resolver completed successfully and no
+        earlier step requested a halt. A normal ``RESOLVED`` outcome guarantees
+        the file-type and processor attachments consumed by later steps.
 
         Note:
             The file system status (`ctx.status.fs`) is not strictly required here,
@@ -363,8 +362,8 @@ class SnifferStep(BaseStep):
             ctx: The processing context for the current file.
 
         Returns:
-            True if `ctx.status.resolve == RESOLVED`, `ctx.file_type` and `ctx.header_processor`
-            are set.
+            True if the context is not halted and ``ctx.status.resolve`` is
+            ``RESOLVED``.
         """
         if ctx.is_halted:
             return False
@@ -414,7 +413,9 @@ class SnifferStep(BaseStep):
         # Apply mode: check write permission upfront
         if apply is True and not os.access(ctx.path, os.W_OK):
             ctx.status.fs = FsStatus.NO_WRITE_PERMISSION
-            ctx.diagnostics.add_error("Permission denied: cannot write to file")
+            reason = "Permission denied: cannot write to file"
+            ctx.diagnostics.add_error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
             return
 
         if st.st_size == 0:
@@ -452,6 +453,8 @@ class SnifferStep(BaseStep):
             if fs_status is not None:
                 # Final state
                 ctx.status.fs = fs_status
+                if fs_status in {FsStatus.BINARY, FsStatus.UNICODE_DECODE_ERROR}:
+                    ctx.request_halt(reason=fs_status.value, at_step=self)
                 return
         except FileNotFoundError:
             ctx.status.fs = FsStatus.NOT_FOUND
@@ -484,85 +487,101 @@ class SnifferStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected filesystem status value.
         """
         st: FsStatus = ctx.status.fs
 
-        # May proceed to next step (always):
-        if st == FsStatus.OK:
-            # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-            pass  # healthy, no hint
-        # May proceed to next step (policy):
-        elif st == FsStatus.EMPTY:
-            # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.CONTENT_EMPTY_FILE,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="empty file",
-            )
-        elif st == FsStatus.BOM_BEFORE_SHEBANG:
-            # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.FS_BOM_BEFORE_SHEBANG,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="UTF-8 BOM before shebang",
-            )
-        elif st == FsStatus.MIXED_LINE_ENDINGS:
-            # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.CONTENT_SKIPPED_MIXED,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="mixed line endings",
-            )
-        # Stop processing:
-        elif st == FsStatus.NOT_FOUND:
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.FS_NOT_FOUND,
-                cluster=Cluster.SKIPPED,
-                message="file not found",
-                terminal=True,
-            )
-        elif st == FsStatus.NO_READ_PERMISSION:
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.FS_UNREADABLE,
-                cluster=Cluster.SKIPPED,
-                message="permission denied",
-                terminal=True,
-            )
-        elif st == FsStatus.UNREADABLE:
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.FS_UNREADABLE,
-                cluster=Cluster.SKIPPED,
-                message="read error",
-                terminal=True,
-            )
-        elif st == FsStatus.NO_WRITE_PERMISSION:
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.FS_UNWRITABLE,
-                cluster=Cluster.SKIPPED,
-                message="no write permission",
-                terminal=True,
-            )
-        elif st == FsStatus.BINARY:
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.CONTENT_NOT_SUPPORTED,
-                cluster=Cluster.SKIPPED,
-                message="binary file",
-                terminal=True,
-            )
-        elif st == FsStatus.UNICODE_DECODE_ERROR:
-            ctx.hint(
-                axis=Axis.FS,
-                code=KnownCode.CONTENT_ENCODING_ERROR,
-                cluster=Cluster.SKIPPED,
-                message="Unicode decode error",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+        match st:
+            # May proceed to next step (always):
+            case FsStatus.OK:
+                # Implies ctx.status.resolve == ResolveStatus.RESOLVED
+                pass  # healthy, no hint
+
+            # May proceed to next step (policy):
+            case FsStatus.EMPTY:
+                # Implies ctx.status.resolve == ResolveStatus.RESOLVED
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.CONTENT_EMPTY_FILE,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="empty file",
+                )
+            case FsStatus.BOM_BEFORE_SHEBANG:
+                # Implies ctx.status.resolve == ResolveStatus.RESOLVED
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.FS_BOM_BEFORE_SHEBANG,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="UTF-8 BOM before shebang",
+                )
+            case FsStatus.MIXED_LINE_ENDINGS:
+                # Implies ctx.status.resolve == ResolveStatus.RESOLVED
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.CONTENT_SKIPPED_MIXED,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="mixed line endings",
+                )
+
+            # Stop processing:
+            case FsStatus.NOT_FOUND:
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.FS_NOT_FOUND,
+                    cluster=Cluster.SKIPPED,
+                    message="file not found",
+                    terminal=True,
+                )
+            case FsStatus.NO_READ_PERMISSION:
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.FS_UNREADABLE,
+                    cluster=Cluster.SKIPPED,
+                    message="permission denied",
+                    terminal=True,
+                )
+            case FsStatus.UNREADABLE:
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.FS_UNREADABLE,
+                    cluster=Cluster.SKIPPED,
+                    message="read error",
+                    terminal=True,
+                )
+            case FsStatus.NO_WRITE_PERMISSION:
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.FS_UNWRITABLE,
+                    cluster=Cluster.SKIPPED,
+                    message="no write permission",
+                    terminal=True,
+                )
+            case FsStatus.BINARY:
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.CONTENT_NOT_SUPPORTED,
+                    cluster=Cluster.SKIPPED,
+                    message="binary file",
+                    terminal=True,
+                )
+            case FsStatus.UNICODE_DECODE_ERROR:
+                ctx.hint(
+                    axis=Axis.FS,
+                    code=KnownCode.CONTENT_ENCODING_ERROR,
+                    cluster=Cluster.SKIPPED,
+                    message="Unicode decode error",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case FsStatus.HARD_LINK_DUPLICATE:  # pragma: no cover - Engine-owned state.
+                # Engine-level hard-link identity guard owns this status and its hint.
+                pass
+            case FsStatus.PENDING:  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected FsStatus found: {st!r}")
