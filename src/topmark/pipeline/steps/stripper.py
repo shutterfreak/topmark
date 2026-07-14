@@ -132,7 +132,7 @@ class StripperStep(BaseStep):
         self,
         ctx: ProcessingContext,
     ) -> bool:
-        """Return True when content is processable and a processor is available.
+        """Return True when the context is unhalted and content is processable.
 
         Requires:
           - `content == OK`
@@ -141,7 +141,7 @@ class StripperStep(BaseStep):
             ctx: The processing context for the current file.
 
         Returns:
-            True if processing can proceed to the build step, False otherwise.
+            True if processing can proceed to the strip step, False otherwise.
         """
         if ctx.is_halted:
             return False
@@ -246,14 +246,14 @@ class StripperStep(BaseStep):
             return
 
         if diag.kind is StripDiagKind.MALFORMED_REFUSED:
-            ctx.status.strip = StripStatus.NOT_NEEDED
+            ctx.status.strip = StripStatus.FAILED
             reason = diag.reason or "Malformed header detected; removal refused by policy."
             ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
             return
 
         if diag.kind is StripDiagKind.ERROR:
-            ctx.status.strip = StripStatus.NOT_NEEDED
+            ctx.status.strip = StripStatus.FAILED
             reason = diag.reason or "Error while analyzing header for stripping."
             ctx.diagnostics.add_error(reason)
             ctx.request_halt(reason=reason, at_step=self)
@@ -397,32 +397,44 @@ class StripperStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If an unexpected strip status is found.
         """
         apply: bool = ctx.run_options.apply_changes is True
         st: StripStatus = ctx.status.strip
 
-        # May proceed to next step (always):
-        if st == StripStatus.READY:
-            ctx.hint(
-                axis=Axis.STRIP,
-                code=KnownCode.STRIP_READY,
-                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                message="header removal available",
-            )
-        elif st == StripStatus.NOT_NEEDED:
-            ctx.hint(
-                axis=Axis.STRIP,
-                code=KnownCode.STRIP_NONE,
-                cluster=Cluster.UNCHANGED,
-                message="no header to remove",
-            )
-        # Stop processing:
-        elif st == StripStatus.FAILED:
-            ctx.hint(
-                axis=Axis.STRIP,
-                code=KnownCode.STRIP_FAILED,
-                cluster=Cluster.ERROR,
-                message="failed to prepare header removal",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+        match st:
+            # May proceed to next step (always):
+            case StripStatus.READY:
+                ctx.hint(
+                    axis=Axis.STRIP,
+                    code=KnownCode.STRIP_READY,
+                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                    message="header removal available",
+                )
+            case StripStatus.NOT_NEEDED:
+                ctx.hint(
+                    axis=Axis.STRIP,
+                    code=KnownCode.STRIP_NONE,
+                    cluster=Cluster.UNCHANGED,
+                    message="no header to remove",
+                )
+
+            # Stop processing:
+            case StripStatus.FAILED:
+                ctx.hint(
+                    axis=Axis.STRIP,
+                    code=KnownCode.STRIP_FAILED,
+                    cluster=Cluster.ERROR,
+                    message="failed to prepare header removal",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case StripStatus.PENDING:  # pragma: no cover - BaseStep owns pending handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected StripStatus found: {st!r}")
