@@ -31,12 +31,18 @@ ______________________________________________________________________
 - **uv** (install and keep it on your `PATH`)
 - **nox** (installed as part of the project extras / QA workflow)
 
+The tracked `.python-version` selects Python 3.14, the newest supported version, as the default
+local development and canonical QA interpreter. The full supported range remains Python 3.10-3.14.
+
 Optional (for local testing across multiple versions):
 
 ```bash
-pyenv install 3.14.2 3.13.11 3.12.12 3.11.14 3.10.19
-pyenv local 3.14.2 3.13.11 3.12.12 3.11.14 3.10.19
+pyenv install 3.14.6 3.13.14 3.12.13 3.11.15 3.10.20
+pyenv local 3.14.6 3.13.14 3.12.13 3.11.15 3.10.20
 ```
+
+All official Python releases are available from the official
+[Python downloads page](https://www.python.org/downloads/).
 
 ______________________________________________________________________
 
@@ -248,7 +254,7 @@ ______________________________________________________________________
 Run strict **Pyright** type checks via `nox`:
 
 ```bash
-nox -s qa -p 3.13
+nox -s qa -p 3.14
 ```
 
 Or run all verification checks (format, lint, links, docs):

@@ -33,14 +33,15 @@ runs:
     - name: Set up uv
       uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
       with:
-        version: "0.10.x"
+        version: "0.11.x"
+        python-version: ${{ inputs.python-version }}
         enable-cache: false
 
     - name: Cache uv
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/uv
-        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'noxfile.py') }}
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.python-version', 'pyproject.toml', 'uv.lock', 'noxfile.py') }}
         restore-keys: |
           ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
 

@@ -65,8 +65,8 @@ import nox
 PYPROJECT: Final[dict[str, Any]] = nox.project.load_toml("pyproject.toml")
 PYTHONS: Final[list[str]] = nox.project.python_versions(PYPROJECT)
 
-# Canonical single-version checks use the second most recent supported Python version.
-CANONICAL_PYTHON: Final[str] = PYTHONS[-2] if len(PYTHONS) > 1 else PYTHONS[0]
+# Canonical single-version checks use the most recent supported Python version.
+CANONICAL_PYTHON: Final[str] = PYTHONS[-1] if len(PYTHONS) > 1 else PYTHONS[0]
 
 CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1]}"
 
@@ -395,7 +395,7 @@ def test_entrypoints(session: nox.Session) -> None:
 @nox.session(python=CANONICAL_PYTHON)
 def coverage(session: nox.Session) -> None:
     """Run tests with coverage and generate reports."""
-    session.install("-e", DEPS_DEV)
+    session.install("-e", DEPS_QA)
 
     session.run(
         "pytest",
