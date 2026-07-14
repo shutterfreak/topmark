@@ -8,10 +8,7 @@
 #
 # topmark:header:end
 
-"""Unit tests for the `builder` pipeline step.
-
-These tests validate built-in field generation before rendering/comparison.
-"""
+"""Direct contracts for the builder pipeline step."""
 
 from __future__ import annotations
 
@@ -24,8 +21,17 @@ from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_builder
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.model import MutableConfig
+from topmark.diagnostic.model import DiagnosticLevel
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import GenerationStatus
+from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.steps import builder as builder_module
+from topmark.pipeline.steps.builder import BuilderStep
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -34,6 +40,40 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.hints import Hint
+
+
+def _builder_config(
+    *,
+    header_fields: list[str],
+    field_values: dict[str, str] | None = None,
+) -> FrozenConfig:
+    """Return a coherent effective config with explicit builder inputs."""
+    config: MutableConfig = mutable_config_from_defaults()
+    config.header_fields = header_fields
+    config.field_values = field_values or {}
+    return config.freeze()
+
+
+def _builder_context(path: Path, cfg: FrozenConfig) -> ProcessingContext:
+    """Return an unhalted post-scanner context accepted by the builder."""
+    ctx: ProcessingContext = make_pipeline_context(path, cfg)
+    ctx.status.fs = FsStatus.OK
+    ctx.status.content = ContentStatus.OK
+    ctx.status.header = HeaderStatus.MISSING
+    return ctx
+
+
+def _only_hint(ctx: ProcessingContext) -> Hint:
+    """Return the context's sole hint."""
+    assert len(ctx.diagnostic_hints.items) == 1
+    return ctx.diagnostic_hints.items[0]
+
+
+def _policy_refuses(ctx: ProcessingContext) -> bool:
+    """Return a deterministic builder-stage policy refusal."""
+    _: ProcessingContext = ctx
+    return False
 
 
 def _build_for_path(path: Path, cfg: FrozenConfig) -> ProcessingContext:
@@ -46,9 +86,213 @@ def _build_for_path(path: Path, cfg: FrozenConfig) -> ProcessingContext:
     Returns:
         The processed context after running the builder step.
     """
-    ctx: ProcessingContext = make_pipeline_context(path, cfg)
-    ctx.status.content = ContentStatus.OK
-    return run_builder(ctx)
+    return run_builder(_builder_context(path, cfg))
+
+
+def test_builder_declares_only_the_generation_axis_and_consumes_no_views() -> None:
+    """Builder output is generation state derived without consuming pipeline views."""
+    step = BuilderStep()
+
+    assert step.primary_axis is Axis.GENERATION
+    assert step.axes_written == (Axis.GENERATION,)
+    assert step.consumes_views == frozenset()
+
+
+def test_builder_generates_complete_builtins_and_ordered_selection_for_empty_file(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Readable zero-byte input still produces metadata and selected custom fields."""
+    monkeypatch.chdir(tmp_path)
+    file_path: Path = tmp_path / "empty.py"
+    file_path.write_text("", encoding="utf-8", newline="")
+    cfg: FrozenConfig = _builder_config(
+        header_fields=["owner", "file_relpath", "file"],
+        field_values={"owner": "TopMark", "unselected": "not rendered"},
+    )
+    ctx: ProcessingContext = _builder_context(file_path, cfg)
+    ctx.status.fs = FsStatus.EMPTY
+
+    run_builder(ctx)
+
+    assert ctx.status.generation is GenerationStatus.GENERATED
+    assert ctx.views.build is not None
+    assert ctx.views.build.builtins == {
+        "file": "empty.py",
+        "file_relpath": "empty.py",
+        "file_abspath": file_path.resolve().as_posix(),
+        "relpath": ".",
+        "abspath": tmp_path.resolve().as_posix(),
+    }
+    assert ctx.views.build.selected == {
+        "owner": "TopMark",
+        "file_relpath": "empty.py",
+        "file": "empty.py",
+    }
+    assert ctx.views.build.selected is not None
+    assert list(ctx.views.build.selected) == ["owner", "file_relpath", "file"]
+    assert ctx.views.image is None
+    assert ctx.diagnostics.items == []
+    assert ctx.halt_state is None
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_builder_preserves_derived_builtins_while_configured_overrides_win(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Configured built-in values affect selection, not the derived mapping."""
+    monkeypatch.chdir(tmp_path)
+    file_path: Path = tmp_path / "source.py"
+    file_path.write_text("print('hello')\n", encoding="utf-8", newline="")
+    cfg: FrozenConfig = _builder_config(
+        header_fields=["file", "project", "abspath"],
+        field_values={
+            "abspath": "configured/directory",
+            "file": "configured.py",
+            "project": "TopMark",
+            "unselected": "not rendered",
+        },
+    )
+
+    ctx: ProcessingContext = _build_for_path(file_path, cfg)
+
+    assert ctx.status.generation is GenerationStatus.GENERATED
+    assert ctx.views.build is not None
+    assert ctx.views.build.builtins is not None
+    assert ctx.views.build.builtins["file"] == "source.py"
+    assert ctx.views.build.builtins["abspath"] == tmp_path.resolve().as_posix()
+    assert ctx.views.build.selected == {
+        "file": "configured.py",
+        "project": "TopMark",
+        "abspath": "configured/directory",
+    }
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (DiagnosticLevel.WARNING, "Redefined built-in fields: abspath, file")
+    ]
+    assert ctx.halt_state is None
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_builder_reports_unknown_requested_field_and_keeps_known_selection(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """An unknown request is diagnosed without discarding known generated fields."""
+    monkeypatch.chdir(tmp_path)
+    file_path: Path = tmp_path / "source.py"
+    file_path.write_text("print('hello')\n", encoding="utf-8", newline="")
+    cfg: FrozenConfig = _builder_config(
+        header_fields=["file", "unknown", "project"],
+        field_values={"project": "TopMark"},
+    )
+
+    ctx: ProcessingContext = _build_for_path(file_path, cfg)
+
+    assert ctx.status.generation is GenerationStatus.GENERATED
+    assert ctx.views.build is not None
+    assert ctx.views.build.selected == {"file": "source.py", "project": "TopMark"}
+    assert ctx.views.build.selected is not None
+    assert list(ctx.views.build.selected) == ["file", "project"]
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (DiagnosticLevel.ERROR, "Unknown header field: unknown")
+    ]
+    assert ctx.halt_state is None
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_builder_maps_no_configured_fields_without_creating_a_view(tmp_path: Path) -> None:
+    """No requested fields produce a non-terminal no-fields outcome."""
+    file_path: Path = tmp_path / "source.py"
+    file_path.write_text("print('hello')\n", encoding="utf-8", newline="")
+    cfg: FrozenConfig = _builder_config(header_fields=[])
+
+    ctx: ProcessingContext = _build_for_path(file_path, cfg)
+
+    assert ctx.status.generation is GenerationStatus.NO_FIELDS
+    assert ctx.views.build is None
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (DiagnosticLevel.INFO, "No header fields specified.")
+    ]
+    assert ctx.halt_state is None
+    hint: Hint = _only_hint(ctx)
+    assert (hint.axis, hint.code, hint.cluster, hint.message, hint.terminal) == (
+        Axis.GENERATION,
+        KnownCode.GENERATION_NO_FIELDS.value,
+        Cluster.BLOCKED_POLICY.value,
+        "no header fields configured",
+        False,
+    )
+
+
+def test_builder_maps_policy_refusal_before_generating_fields(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Builder-stage policy refusal skips generation and owns the terminal halt."""
+    file_path: Path = tmp_path / "source.py"
+    file_path.write_text("print('hello')\n", encoding="utf-8", newline="")
+    cfg: FrozenConfig = _builder_config(header_fields=["file"])
+    ctx: ProcessingContext = _builder_context(file_path, cfg)
+    ctx.status.header = HeaderStatus.DETECTED
+    monkeypatch.setattr(builder_module, "check_permitted_by_policy", _policy_refuses)
+
+    run_builder(ctx)
+
+    assert ctx.status.generation is GenerationStatus.SKIPPED
+    assert ctx.views.build is None
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (DiagnosticLevel.INFO, "header field generation skipped by policy")
+    ]
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "BuilderStep"
+    assert ctx.halt_state.reason_code == "header field generation skipped by policy"
+    hint: Hint = _only_hint(ctx)
+    assert (hint.axis, hint.code, hint.cluster, hint.message, hint.terminal) == (
+        Axis.GENERATION,
+        KnownCode.PLAN_SKIP.value,
+        Cluster.BLOCKED_POLICY.value,
+        "header field generation skipped",
+        True,
+    )
+
+
+def test_builder_uses_logical_stdin_path_but_materialized_content_directory(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Stdin metadata separates the logical header path from actual content storage."""
+    monkeypatch.chdir(tmp_path)
+    content_path: Path = tmp_path / "materialized" / "stdin-content.py"
+    content_path.parent.mkdir()
+    content_path.write_text("print('hello')\n", encoding="utf-8", newline="")
+    logical_path = "logical/input.py"
+    cfg: FrozenConfig = _builder_config(
+        header_fields=["file", "file_relpath", "file_abspath", "relpath", "abspath"]
+    )
+    ctx: ProcessingContext = _builder_context(content_path, cfg)
+    ctx.run_options = RunOptions(
+        pipeline_kind="check",
+        apply_changes=False,
+        stdin_mode=True,
+        stdin_filename=logical_path,
+    )
+
+    run_builder(ctx)
+
+    assert ctx.status.generation is GenerationStatus.GENERATED
+    assert ctx.views.build is not None
+    assert ctx.views.build.builtins == {
+        "file": "input.py",
+        "file_relpath": "logical/input.py",
+        "file_abspath": (tmp_path / logical_path).resolve().as_posix(),
+        "relpath": "logical",
+        "abspath": content_path.parent.resolve().as_posix(),
+    }
+    assert ctx.views.build.selected == ctx.views.build.builtins
+    assert ctx.diagnostics.items == []
+    assert ctx.halt_state is None
+    assert ctx.diagnostic_hints.items == []
 
 
 def test_builder_generates_path_fields_from_matching_filesystem_spelling(
