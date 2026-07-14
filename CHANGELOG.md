@@ -329,6 +329,7 @@ ______________________________________________________________________
 - Corrected scanner hints so all-invalid and partly-invalid header fields are described accurately.
 - Completed renderer state for reachable empty builder selections so all-unknown configured field
   lists produce a coherent empty render instead of a generic pending-state halt.
+- Classified processor-refused and processor-error strip attempts as failed instead of unchanged.
 
 ### Documentation - Unreleased
 
