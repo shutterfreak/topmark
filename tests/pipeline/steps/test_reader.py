@@ -790,7 +790,11 @@ def test_reader_maps_pre_insert_advisory_result(
         )
 
     file: Path = tmp_path / "advisory.reader"
-    file.write_text("body\n", encoding="utf-8")
+    file.write_text(
+        "body\n",
+        encoding="utf-8",
+        newline="",
+    )
     ctx: ProcessingContext = _resolved_context(
         file,
         effective_registries,
@@ -820,7 +824,11 @@ def test_reader_ignores_supported_pre_insert_checker_failure(
         raise ValueError("checker failure at test boundary")
 
     file: Path = tmp_path / "checker_failure.reader"
-    file.write_text("body\n", encoding="utf-8")
+    file.write_text(
+        "body\n",
+        encoding="utf-8",
+        newline="",
+    )
     ctx: ProcessingContext = _resolved_context(
         file,
         effective_registries,
@@ -850,7 +858,11 @@ def test_reader_treats_empty_pre_insert_result_as_no_advisory(
         return InsertCheckResult()
 
     file: Path = tmp_path / "empty_advisory.reader"
-    file.write_text("body\n", encoding="utf-8")
+    file.write_text(
+        "body\n",
+        encoding="utf-8",
+        newline="",
+    )
     ctx: ProcessingContext = _resolved_context(
         file,
         effective_registries,
