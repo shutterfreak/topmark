@@ -322,6 +322,8 @@ ______________________________________________________________________
 - Fixed the Python runtime compatibility guard so it rejects unsupported interpreter versions above
   the declared supported range in addition to unsupported older versions, keeping runtime validation
   aligned with the project's `requires-python` metadata and supported Python-version policy.
+- Fixed terminal sniffer outcomes for binary files, invalid UTF-8, and apply-mode write-permission
+  failures so later pipeline steps no longer continue after a terminal filesystem classification.
 
 ### Documentation - Unreleased
 
