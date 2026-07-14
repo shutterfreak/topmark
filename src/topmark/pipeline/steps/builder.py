@@ -19,8 +19,8 @@ those keys listed in [`FrozenConfig.header_fields`][topmark.config.model.FrozenC
 Outputs:
   * `ctx.views.build.builtins`: the derived built-in field mapping.
   * `ctx.views.build.selected`: the filtered/merged mapping to be rendered by the renderer.
-  * `ctx.status.generation`: set to `GENERATED` (or `NO_FIELDS` when no fields are
-    configured).
+  * `ctx.status.generation`: set to `GENERATED`, `NO_FIELDS` when no fields are
+    configured, or `SKIPPED` when policy refuses generation.
 
 Notes:
   This step does **not** render text. The renderer consumes `ctx.views.build.selected`
@@ -64,7 +64,7 @@ class BuilderStep(BaseStep):
       - generation
 
     Sets:
-      - GenerationStatus: {PENDING, GENERATED, NO_FIELDS}
+      - GenerationStatus: {PENDING, GENERATED, NO_FIELDS, SKIPPED}
     """
 
     def __init__(self) -> None:
@@ -263,7 +263,7 @@ class BuilderStep(BaseStep):
 
         # Populate BuilderView with builtins and selected field mappings
         ctx.views.build = BuilderView(builtins=builtin_fields, selected=result)
-        # Populate RenderView with mapping only; lines/block are filled by renderer
+        # Record successful field generation; text rendering remains renderer-owned.
         ctx.status.generation = GenerationStatus.GENERATED
 
         logger.debug(
@@ -291,28 +291,41 @@ class BuilderStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected generation status value.
         """
         st: GenerationStatus = ctx.status.generation
 
-        # May proceed to next step (always):
-        if st == GenerationStatus.GENERATED:
-            pass  # expected path; silent
-        # May proceed to next step (render empty header):
-        elif st == GenerationStatus.NO_FIELDS:
-            ctx.hint(
-                axis=Axis.GENERATION,
-                code=KnownCode.GENERATION_NO_FIELDS,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="no header fields configured",
-                terminal=False,
-            )
-        # Stop processing:
-        elif st == GenerationStatus.SKIPPED:
-            ctx.hint(
-                axis=Axis.GENERATION,
-                code=KnownCode.PLAN_SKIP,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="header field generation skipped",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+        match st:
+            # May proceed to next step (always):
+            case GenerationStatus.GENERATED:
+                pass  # expected path; silent
+
+            # May proceed to next step (render empty header):
+            case GenerationStatus.NO_FIELDS:
+                ctx.hint(
+                    axis=Axis.GENERATION,
+                    code=KnownCode.GENERATION_NO_FIELDS,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="no header fields configured",
+                    terminal=False,
+                )
+
+            # Stop processing:
+            case GenerationStatus.SKIPPED:
+                ctx.hint(
+                    axis=Axis.GENERATION,
+                    code=KnownCode.PLAN_SKIP,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="header field generation skipped",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case GenerationStatus.PENDING:  # pragma: no cover - BaseStep owns pending handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected GenerationStatus found: {st!r}")
