@@ -327,6 +327,8 @@ ______________________________________________________________________
 - Fixed reader-owned mixed-line-ending refusals so authoritative full-file detection halts the
   pipeline consistently with its terminal content status, diagnostic, and hint.
 - Corrected scanner hints so all-invalid and partly-invalid header fields are described accurately.
+- Completed renderer state for reachable empty builder selections so all-unknown configured field
+  lists produce a coherent empty render instead of a generic pending-state halt.
 
 ### Documentation - Unreleased
 

@@ -61,7 +61,7 @@ class RendererStep(BaseStep):
       - render
 
     Sets:
-      - RenderStatus: {PENDING, RENDERED}
+      - RenderStatus: {PENDING, RENDERED, SKIPPED}
     """
 
     def __init__(self) -> None:
@@ -85,7 +85,7 @@ class RendererStep(BaseStep):
         """Determine if processing can proceed to the render step.
 
         Processing can proceed if:
-        - The header was successfully generated (ctx.status.generation is RENDERED or GENERATED)
+        - Field generation completed with ``GENERATED`` or ``NO_FIELDS``.
 
         Args:
             ctx: The processing context for the current file.
@@ -120,10 +120,10 @@ class RendererStep(BaseStep):
         Mutations:
             ProcessingContext: The same context with ``ctx.views.render`` populated depending on
             the generation status:
-                * ``NO_FIELDS`` - no-op; sets ``ctx.views.render
-                  = RenderView(lines=None, block=None)``.
+                * ``NO_FIELDS`` - renders a markers-only header when allowed by policy; otherwise
+                  sets ``ctx.views.render = RenderView(lines=None, block=None)`` and skips.
                 * ``GENERATED`` - sets ``ctx.views.render.lines`` and ``ctx.views.render.block``.
-                If the selected mapping is empty, produces an empty render defensively.
+                  If the selected mapping is empty, produces a completed empty render defensively.
                 * any other status - returns unchanged.
 
         Notes:
@@ -181,6 +181,7 @@ class RendererStep(BaseStep):
 
         # Defensive: if mapping is empty, produce an empty render
         if not fields:
+            ctx.status.render = RenderStatus.RENDERED
             ctx.views.render = RenderView(lines=[], block="")
             return
 
@@ -211,12 +212,25 @@ class RendererStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected render status value.
         """
         st: RenderStatus = ctx.status.render
 
-        # May proceed to next step (always):
-        if st == RenderStatus.RENDERED:
-            pass  # normal; no hint
-        elif st == RenderStatus.SKIPPED:
-            pass  # already halted by run()
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+        match st:
+            # May proceed to next step:
+            case RenderStatus.RENDERED:
+                pass  # normal; no hint
+
+            # Stop processing:
+            case RenderStatus.SKIPPED:
+                pass  # already halted by run()
+
+            # States owned outside this step:
+            case RenderStatus.PENDING:  # pragma: no cover - BaseStep owns pending handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected RenderStatus found: {st!r}")
