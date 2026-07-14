@@ -143,13 +143,13 @@ rather than a replacement for GitHub CI.
 Run the full default test suite through nox on the canonical Python version:
 
 ```bash
-nox -s qa -p 3.13
+nox -s qa -p 3.14
 ```
 
 Generate the canonical local coverage report:
 
 ```bash
-nox -s coverage -p 3.13
+nox -s coverage -p 3.14
 ```
 
 Inspect the Python metadata consumed by CI:
@@ -167,7 +167,7 @@ pytest -m dev_validation
 Or run the same marker selection through nox:
 
 ```bash
-nox -s qa -p 3.13 -- -m dev_validation
+nox -s qa -p 3.14 -- -m dev_validation
 ```
 
 Run slow property tests only when intentionally investigating property-test behavior:
@@ -192,9 +192,9 @@ make test PYTEST_PAR="-n auto"
 make coverage PYTEST_PAR="-n auto"
 make release-check PYTEST_PAR="-n auto"
 nox -s pre_pr -- -n auto
-nox -s qa -p 3.13 -- -n auto
-nox -s qa_api -p 3.13 -- -n auto
-nox -s coverage -p 3.13 -- -n auto
+nox -s qa -p 3.14 -- -n auto
+nox -s qa_api -p 3.14 -- -n auto
+nox -s coverage -p 3.14 -- -n auto
 nox -s release_check -- -n auto
 ```
 
@@ -216,7 +216,7 @@ TOPMARK_VALIDATE=1 topmark registry processors --output-format json
 # or:
 pytest -m dev_validation
 # or run the QA session and select the marker:
-nox -s qa -p 3.13 -- -m dev_validation
+nox -s qa -p 3.14 -- -m dev_validation
 ```
 
 Runtime validation is intended for development and debugging. It should remain lightweight and must
@@ -254,11 +254,11 @@ Common mappings are:
 | Need                                              | Preferred command                  |
 | ------------------------------------------------- | ---------------------------------- |
 | Run the recommended local pre-PR gate             | `make pre-pr`                      |
-| Run the main quality gate on the canonical Python | `nox -s qa -p 3.13`                |
-| Generate canonical coverage data                  | `nox -s coverage -p 3.13`          |
-| Run local pytest in parallel                      | `nox -s qa -p 3.13 -- -n auto`     |
+| Run the main quality gate on the canonical Python | `nox -s qa -p 3.14`                |
+| Generate canonical coverage data                  | `nox -s coverage -p 3.14`          |
+| Run local pytest in parallel                      | `nox -s qa -p 3.14 -- -n auto`     |
 | Print CI Python metadata                          | `nox -s print_python_matrix`       |
-| Run a marker-specific test subset                 | `nox -s qa -p 3.13 -- -m <marker>` |
+| Run a marker-specific test subset                 | `nox -s qa -p 3.14 -- -m <marker>` |
 | Build documentation                               | `nox -s docs`                      |
 | Validate documentation links                      | `nox -s links`                     |
 | Run release checks                                | `nox -s release_check`             |

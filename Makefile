@@ -22,15 +22,18 @@ PUBLIC_API_JSON := tests/api/public_api_snapshot.json
 # Simple tool presence checks
 .PHONY: check-venv
 check-venv:
-	@command -v $(NOX) >/dev/null 2>&1 || (echo "❌ nox not found. Install with: pipx install nox" && exit 1)
+	@command -v $(NOX) >/dev/null 2>&1 || \
+		(echo "❌ nox not found. Install with: pipx install nox" && exit 1)
 
 .PHONY: check-lychee
 check-lychee:
-	@command -v lychee >/dev/null 2>&1 || (echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
+	@command -v lychee >/dev/null 2>&1 || \
+		(echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
 
 .PHONY: check-uv
 check-uv:
-	@command -v $(UV) >/dev/null 2>&1 || (echo "❌ uv not found. Install uv and ensure it is on PATH." && exit 1)
+	@$(UV) --version >/dev/null 2>&1 || \
+		(echo "❌ uv is unavailable or cannot run. Install uv and ensure it is on PATH." && exit 1)
 
 .PHONY: help
 help:
@@ -131,7 +134,7 @@ JOBS ?= 5
 
 # We can find the versions by asking Nox (which now knows them from the TOML)
 # This keeps the Makefile clean.
-RELEASE_PYTHONS := $(shell $(NOX) -l | awk '{print $$1}' | grep '^qa_api-' | cut -d'-' -f2 | sort -V)
+RELEASE_PYTHONS = $(shell $(NOX) -l | awk '{print $$1}' | grep '^qa_api-' | cut -d'-' -f2 | sort -V)
 
 .PHONY: release-full
 release-full: check-venv check-lychee

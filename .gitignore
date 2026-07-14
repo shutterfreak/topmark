@@ -45,9 +45,6 @@ constraints*.txt
 # ruff
 .ruff_cache/
 
-# pyenv - Python versions
-.python-version
-
 # pytest
 .cache/
 .pytest_cache/

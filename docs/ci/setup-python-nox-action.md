@@ -45,6 +45,10 @@ ______________________________________________________________________
 
 The action intentionally does not hard-code TopMark's canonical Python version internally.
 
+`actions/setup-python` resolves selectors such as `3.x` to a concrete installed interpreter. The
+action passes that resolved version to `setup-uv`, ensuring `UV_PYTHON` identifies the interpreter
+that is actually available to subsequent `uv pip --system` commands.
+
 Workflows are expected to pass:
 
 - the resolved canonical Python version for project-validation jobs;
@@ -152,8 +156,8 @@ nox -s print_python_matrix
 Typical local validation commands remain:
 
 ```bash
-nox -s qa -p 3.13
-nox -s coverage -p 3.13
+nox -s qa -p 3.14
+nox -s coverage -p 3.14
 ```
 
 The concrete canonical Python version shown above is expected to move when the supported Python

@@ -69,6 +69,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Promoted Python 3.14 to the canonical local-development, QA, documentation, artifact-build, and
+  release-tooling interpreter while retaining the Python 3.10-3.14 support matrix; added a tracked
+  `.python-version`, refreshed documented patch releases, and updated CI to uv 0.11.x.
 - Migrated public API `check()` and `strip()` result packaging to consume durable `ProcessingResult`
   snapshots after context reduction, using reduced detail snapshots for public diff exposure while
   preserving existing API DTO behavior.
@@ -252,6 +255,13 @@ ______________________________________________________________________
 
 ### Fixed - Unreleased
 
+- Hardened the Makefile uv availability check to execute `uv --version`, detecting stale or broken
+  command shims, and deferred release-matrix discovery so uv-only targets do not require nox while
+  parsing the Makefile.
+- Excluded ignored `docs/_drafts/` directories at any nesting depth from documentation-hygiene
+  scans.
+- Installed documentation dependencies in the isolated coverage environment so documentation-tool
+  tests collect consistently with the full QA suite.
 - Fixed post-1.0.1 documentation hygiene violations.
 - Trapped underscored option spellings consistently and suggested hyphenated alternatives.
 - Improved CLI validation diagnostic formatting.

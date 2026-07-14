@@ -224,8 +224,8 @@ nox -s format_check
 nox -s lint
 nox -s docstring_links
 nox -s docs
-nox -s qa -p 3.13
-nox -s coverage -p 3.13
+nox -s qa -p 3.14
+nox -s coverage -p 3.14
 ```
 
 The `filesystem-tests` job runs the same canonical `qa` session on macOS and Windows. Linux QA is
@@ -244,8 +244,8 @@ workflow, for example:
 make pre-pr PYTEST_PAR="-n auto"
 make test PYTEST_PAR="-n auto"
 nox -s pre_pr -- -n auto
-nox -s qa -p 3.13 -- -n auto
-nox -s coverage -p 3.13 -- -n auto
+nox -s qa -p 3.14 -- -n auto
+nox -s coverage -p 3.14 -- -n auto
 nox -s release_check -- -n auto
 ```
 
@@ -253,7 +253,7 @@ CI intentionally keeps pytest invocations serial inside each job. Job-level matr
 already validates supported Python versions and platform behavior, while serial per-job pytest logs
 keep coverage reports and release-gate failures easier to diagnose.
 
-The concrete `3.13` commands shown here reflect the current canonical Python version. That value is
+The concrete `3.14` commands shown here reflect the current canonical Python version. That value is
 resolved from project metadata and is expected to move when the supported Python range moves.
 
 Run link checks with:
@@ -266,7 +266,7 @@ nox -s links_site
 Run the API snapshot check with:
 
 ```bash
-nox -s api_snapshot -p 3.13
+nox -s api_snapshot -p 3.14
 ```
 
 CI uses the resolved canonical Python value for this session rather than hard-coding the version in

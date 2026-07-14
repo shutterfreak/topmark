@@ -82,7 +82,13 @@ def _style(text: object, style: str) -> str:
 
 # Default Markdown paths to process.
 # The docs-hygiene scan covers documentation sources recursively and top-level Markdown files.
-DOCS_PATHS: Final[tuple[str, ...]] = ("docs", ".")
+DOCS_PATHS: Final[tuple[str, ...]] = (
+    "docs",
+    ".",
+)
+
+# Draft documentation is intentionally absent from the published documentation tree.
+DOCS_EXCLUDED_DIR_NAMES: Final[frozenset[str]] = frozenset({"_drafts"})
 
 # Reference-style links accepted by the checker:
 #   1) Full reference form:            [Text][pkg.mod.Object]
@@ -280,6 +286,23 @@ class Diagnostic:
         return f"{_style(location, 'bold')}: {label}: {self.message}"
 
 
+def _is_excluded_docs_path(path: Path) -> bool:
+    """Return whether ``path`` is below an excluded directory within ``docs/``.
+
+    Args:
+        path: Markdown file candidate.
+
+    Returns:
+        True when the file is below an excluded documentation directory.
+    """
+    try:
+        docs_relative_path: Path = path.resolve().relative_to(DOCS_DIR.resolve())
+    except ValueError:
+        return False
+
+    return any(part in DOCS_EXCLUDED_DIR_NAMES for part in docs_relative_path.parts[:-1])
+
+
 def iter_markdown_files(paths: Sequence[str] | None) -> list[Path]:
     """Expand input paths into a de-duplicated, lexicographically sorted list of Markdown files.
 
@@ -287,7 +310,7 @@ def iter_markdown_files(paths: Sequence[str] | None) -> list[Path]:
         paths: File or directory paths to scan.
 
     Returns:
-        Markdown source files to scan.
+        Markdown source files to scan, excluding draft directories under ``docs/``.
     """
     todo: list[Path] = []
     use_paths: Sequence[str] = paths or DOCS_PATHS
@@ -304,7 +327,7 @@ def iter_markdown_files(paths: Sequence[str] | None) -> list[Path]:
     seen: set[Path] = set()
     out: list[Path] = []
     for f in sorted(todo):
-        if f not in seen:
+        if f not in seen and not _is_excluded_docs_path(f):
             seen.add(f)
             out.append(f)
     return out
