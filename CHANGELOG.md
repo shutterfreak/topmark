@@ -324,6 +324,8 @@ ______________________________________________________________________
   aligned with the project's `requires-python` metadata and supported Python-version policy.
 - Fixed terminal sniffer outcomes for binary files, invalid UTF-8, and apply-mode write-permission
   failures so later pipeline steps no longer continue after a terminal filesystem classification.
+- Fixed reader-owned mixed-line-ending refusals so authoritative full-file detection halts the
+  pipeline consistently with its terminal content status, diagnostic, and hint.
 
 ### Documentation - Unreleased
 

@@ -10,19 +10,12 @@
 
 r"""File reader step for the TopMark pipeline.
 
-This step determines whether the target is a UTF-8 text file, detects the
-newline convention (LF, CRLF, or CR), and loads the file image (lines) while preserving
-original line endings. It updates the processing context with the detected
-newline style, whether the file ends with a newline, and exposes the file image for subsequent
-steps via a view (see `ctx.views.image`).
-
-Implementation details:
-  * Uses an incremental UTF-8 decoder to avoid false negatives when multibyte
-    sequences span chunk boundaries during the binary/text sniff.
-  * Detects CRLF robustly across read chunk boundaries by carrying a 1-byte tail,
-    preferring CRLF over LF and CR when both appear.
-  * If no newline is observed during sniffing (e.g., single-line files), defaults
-    to "\n" and proceeds, rather than skipping the file.
+This step loads the authoritative full UTF-8 text image while preserving physical
+line endings. It updates the processing context with full-file newline facts,
+whether the file ends with a newline, decoded emptiness facts, and the image used
+by subsequent steps (see `ctx.views.image`). The preceding sniffer owns bounded
+binary and strict UTF-8 classification; direct reader invocation is retained as a
+focused test seam once resolver attachments are present.
 """
 
 from __future__ import annotations
@@ -58,21 +51,12 @@ def _newline_histogram(
     lines: list[str],
 ) -> dict[str, int]:
     hist: dict[str, int] = dict.fromkeys(STANDARD_NEWLINES, 0)
-    for ln in lines[:-1]:
+    for ln in lines:
         if ln.endswith("\r\n"):
             hist["\r\n"] += 1
         elif ln.endswith("\n"):
             hist["\n"] += 1
         elif ln.endswith("\r"):
-            hist["\r"] += 1
-    # Last line may or may not end with a newline
-    if lines:
-        last: str = lines[-1]
-        if last.endswith("\r\n"):
-            hist["\r\n"] += 1
-        elif last.endswith("\n"):
-            hist["\n"] += 1
-        elif last.endswith("\r"):
             hist["\r"] += 1
     return hist
 
@@ -154,10 +138,9 @@ class ReaderStep(BaseStep):
     ) -> bool:
         """Determine if processing can proceed to the read step.
 
-        Processing can proceed if:
-        - The file was successfully resolved (ctx.status.resolve is RESOLVED)
-        - A file type is present (ctx.file_type is not None)
-        - A header processor is available (ctx.header_processor is not None)
+        Processing can proceed when no earlier step has requested a halt. Normal
+        production entry has a resolved file type and header processor; `run()`
+        retains explicit consistency guards for those resolver-owned attachments.
 
         Notes:
         - The file system status (`ctx.status.fs`) states are set by the SnifferStep:
@@ -165,8 +148,9 @@ class ReaderStep(BaseStep):
             - controlled by policy
             - errors
         - The file system status (`ctx.status.fs`) is not strictly required here, to allow tests
-          to skip the sniffer and invoke the reader directly. In such cases, ReaderStep is the
-          definitive authority for content checks (existence, permissions, binary/text, etc).
+          to skip the sniffer and invoke the reader directly. The reader remains authoritative
+          for the full text image and read failures, but not for sniffer-owned binary or strict
+          UTF-8 classification.
 
         Args:
             ctx: The processing context for the current file.
@@ -183,7 +167,7 @@ class ReaderStep(BaseStep):
         """Loads file lines and detects newline style.
 
         This function preserves native newline conventions and records them
-        in ``ctx.newline_style``.vIt assumes the sniffer has already performed existence,
+        in ``ctx.newline_style``. It assumes the sniffer has already performed existence,
         permission, binary, BOM/shebang, and mixed-newlines policy checks.
 
         Args:
@@ -377,10 +361,12 @@ class ReaderStep(BaseStep):
                 lf: int = ctx.newline_hist.get("\n", 0)
                 crlf: int = ctx.newline_hist.get("\r\n", 0)
                 cr: int = ctx.newline_hist.get("\r", 0)
-                ctx.diagnostics.add_error(
+                reason = (
                     f"Mixed line endings detected (LF={lf}, CRLF={crlf}, CR={cr}). "
                     "Strict policy refuses to process mixed files."
                 )
+                ctx.diagnostics.add_error(reason)
+                ctx.request_halt(reason=reason, at_step=self)
                 return
 
             ctx.status.content = ContentStatus.OK
@@ -461,52 +447,67 @@ class ReaderStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected content status value.
         """
         st: ContentStatus = ctx.status.content
 
-        # May proceed to next step (always):
-        if st == ContentStatus.OK:
-            pass  # healthy, no hint
-        # Stop processing (policy):
-        elif st == ContentStatus.SKIPPED_MIXED_LINE_ENDINGS:
-            ctx.hint(
-                axis=Axis.CONTENT,
-                code=KnownCode.CONTENT_SKIPPED_MIXED,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="policy: mixed line endings",
-                terminal=True,
-            )
-        elif st == ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG:
-            ctx.hint(
-                axis=Axis.CONTENT,
-                code=KnownCode.CONTENT_SKIPPED_BOM_SHEBANG,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="policy: BOM before shebang",
-                terminal=True,
-            )
-        elif st == ContentStatus.SKIPPED_REFLOW:
-            ctx.hint(
-                axis=Axis.CONTENT,
-                code=KnownCode.CONTENT_SKIPPED_REFLOW,
-                cluster=Cluster.BLOCKED_POLICY,
-                message="policy: would reflow contet",
-                terminal=True,
-            )
-        # Stop processing:
-        elif st == ContentStatus.UNSUPPORTED:  # NOTE: Currently not used
-            ctx.hint(
-                axis=Axis.CONTENT,
-                code=KnownCode.CONTENT_NOT_SUPPORTED,
-                cluster=Cluster.SKIPPED,
-                message="unsupported content (binary/decode)",
-                terminal=True,
-            )
-        elif st == ContentStatus.UNREADABLE:
-            ctx.hint(
-                axis=Axis.CONTENT,
-                code=KnownCode.CONTENT_UNREADABLE,
-                cluster=Cluster.SKIPPED,
-                message="cannot read content",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+        match st:
+            # May proceed to next step (always):
+            case ContentStatus.OK:
+                pass  # healthy, no hint
+
+            # Stop processing (policy):
+            case ContentStatus.SKIPPED_MIXED_LINE_ENDINGS:
+                ctx.hint(
+                    axis=Axis.CONTENT,
+                    code=KnownCode.CONTENT_SKIPPED_MIXED,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="policy: mixed line endings",
+                    terminal=True,
+                )
+            case ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG:
+                ctx.hint(
+                    axis=Axis.CONTENT,
+                    code=KnownCode.CONTENT_SKIPPED_BOM_SHEBANG,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="policy: BOM before shebang",
+                    terminal=True,
+                )
+            case ContentStatus.SKIPPED_REFLOW:
+                ctx.hint(
+                    axis=Axis.CONTENT,
+                    code=KnownCode.CONTENT_SKIPPED_REFLOW,
+                    cluster=Cluster.BLOCKED_POLICY,
+                    message="policy: would reflow content",
+                    terminal=True,
+                )
+
+            # Stop processing:
+            case (
+                ContentStatus.UNSUPPORTED
+            ):  # NOTE: ReaderStep does not currently produce UNSUPPORTED.
+                ctx.hint(
+                    axis=Axis.CONTENT,
+                    code=KnownCode.CONTENT_NOT_SUPPORTED,
+                    cluster=Cluster.SKIPPED,
+                    message="unsupported content (binary/decode)",
+                    terminal=True,
+                )
+            case ContentStatus.UNREADABLE:
+                ctx.hint(
+                    axis=Axis.CONTENT,
+                    code=KnownCode.CONTENT_UNREADABLE,
+                    cluster=Cluster.SKIPPED,
+                    message="cannot read content",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case ContentStatus.PENDING:  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected ContentStatus found: {st!r}")

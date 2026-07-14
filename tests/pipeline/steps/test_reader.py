@@ -37,19 +37,74 @@ from tests.helpers.pipeline import materialize_image_lines
 from tests.helpers.pipeline import run_reader
 from tests.helpers.pipeline import run_resolver
 from tests.helpers.pipeline import run_sniffer
+from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.diagnostic.model import DiagnosticLevel
+from topmark.filetypes.model import InsertCapability
+from topmark.filetypes.model import InsertCheckResult
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.steps.reader import ReaderStep
+from topmark.pipeline.steps.reader import _newline_histogram  # pyright: ignore[reportPrivateUsage]
+from topmark.processors.base import HeaderProcessor
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from typing import NoReturn
 
+    from tests.conftest import EffectiveRegistries
     from topmark.config.model import FrozenConfig
     from topmark.diagnostic.model import Diagnostic
+    from topmark.filetypes.model import InsertChecker
+    from topmark.filetypes.model import PreInsertContextView
     from topmark.pipeline.context.model import ProcessingContext
+    from topmark.pipeline.hints import Hint
+
+
+def _resolved_context(
+    file: Path,
+    effective_registries: EffectiveRegistries,
+    *,
+    checker: InsertChecker | None = None,
+) -> ProcessingContext:
+    """Resolve a reader fixture against one explicit file type and processor."""
+    file_type = make_file_type(
+        local_key="reader",
+        description="Reader test file",
+        extensions=[".reader"],
+        pre_insert_checker=checker,
+    )
+    with effective_registries(
+        {file_type.local_key: file_type},
+        {file_type.local_key: HeaderProcessor()},
+    ):
+        ctx: ProcessingContext = make_pipeline_context(
+            file,
+            mutable_config_from_defaults().freeze(),
+        )
+        return run_resolver(ctx)
+
+
+def _assert_terminal_content_hint(
+    ctx: ProcessingContext,
+    *,
+    code: KnownCode,
+    cluster: Cluster,
+    message: str,
+) -> None:
+    """Assert one terminal reader hint with the expected stable fields."""
+    assert len(ctx.diagnostic_hints.items) == 1
+    hint: Hint = ctx.diagnostic_hints.items[0]
+    assert hint.axis == Axis.CONTENT
+    assert hint.code == code.value
+    assert hint.cluster == cluster.value
+    assert hint.message == message
+    assert hint.terminal is True
 
 
 def test_read_sets_skip_on_mixed_newlines_strict(tmp_path: Path) -> None:
@@ -578,3 +633,282 @@ def test_read_handles_very_large_single_line_no_newline(tmp_path: Path) -> None:
 
     assert isinstance(lines, list) and len(lines) == 1
     assert lines[0].endswith("\n") is False
+
+
+def test_newline_histogram_counts_only_physical_terminators() -> None:
+    """CRLF is one terminator and an unterminated final line adds no count."""
+    terminated: list[str] = ["first\r\n", "middle\n", "last\r"]
+
+    assert _newline_histogram([]) == {"\n": 0, "\r\n": 0, "\r": 0}
+    assert _newline_histogram(terminated) == {"\n": 1, "\r\n": 1, "\r": 1}
+    assert _newline_histogram([*terminated, "tail\u2028content"]) == {
+        "\n": 1,
+        "\r\n": 1,
+        "\r": 1,
+    }
+
+
+def test_reader_healthy_direct_path_owns_full_image_facts(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """The reader's direct seam creates the authoritative full text image and facts."""
+    file: Path = tmp_path / "healthy.reader"
+    file.write_bytes(b"alpha\r\nbeta\r\ntail")
+    ctx: ProcessingContext = _resolved_context(file, effective_registries)
+    step = ReaderStep()
+
+    ctx = step(ctx)
+
+    assert step.primary_axis == Axis.CONTENT
+    assert step.axes_written == (Axis.CONTENT,)
+    assert ctx.status.content == ContentStatus.OK
+    assert materialize_image_lines(ctx) == ["alpha\r\n", "beta\r\n", "tail"]
+    assert ctx.ends_with_newline is False
+    assert ctx.newline_hist == {"\r\n": 2}
+    assert ctx.dominant_newline == "\r\n"
+    assert ctx.dominance_ratio == 1.0
+    assert ctx.newline_style == "\r\n"
+    assert ctx.mixed_newlines is False
+    assert ctx.is_effectively_empty is False
+    assert ctx.is_logically_empty is False
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_reader_gate_accepts_only_an_unhalted_direct_context(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """The direct-reader seam remains available until an earlier step halts."""
+    file: Path = tmp_path / "gate.reader"
+    file.write_text("content\n", encoding="utf-8")
+    ctx: ProcessingContext = _resolved_context(file, effective_registries)
+    step = ReaderStep()
+
+    assert step.may_proceed(ctx) is True
+
+    ctx.request_halt(reason="earlier halt", at_step=step)
+    assert step.may_proceed(ctx) is False
+
+
+def test_reader_direct_path_discovers_and_strips_bom(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """BOM normalization does not depend on the bounded sniffer populating its fact."""
+    file: Path = tmp_path / "bom.reader"
+    file.write_text("\ufeffbody\n", encoding="utf-8", newline="")
+    ctx: ProcessingContext = _resolved_context(file, effective_registries)
+
+    ctx = run_reader(ctx)
+
+    assert ctx.status.content == ContentStatus.OK
+    assert ctx.leading_bom is True
+    assert materialize_image_lines(ctx) == ["body\n"]
+    assert ctx.newline_hist == {"\n": 1}
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_reader_direct_path_reconciles_true_empty_file(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """A zero-byte file receives a valid zero-line image and empty content facts."""
+    file: Path = tmp_path / "empty.reader"
+    file.touch()
+    ctx: ProcessingContext = _resolved_context(file, effective_registries)
+
+    ctx = run_reader(ctx)
+
+    assert ctx.status.fs == FsStatus.EMPTY
+    assert ctx.status.content == ContentStatus.OK
+    assert materialize_image_lines(ctx) == []
+    assert ctx.ends_with_newline is False
+    assert ctx.newline_hist == {}
+    assert ctx.dominant_newline is None
+    assert ctx.dominance_ratio is None
+    assert ctx.mixed_newlines is False
+    assert ctx.is_effectively_empty is True
+    assert ctx.is_logically_empty is True
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_reader_full_image_mixed_newlines_are_terminal(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """A reader-owned mixed-newline refusal has coherent terminal state."""
+    file: Path = tmp_path / "mixed.reader"
+    file.write_bytes(b"alpha\r\nbeta\n")
+    ctx: ProcessingContext = _resolved_context(file, effective_registries)
+
+    ctx = run_reader(ctx)
+
+    assert ctx.status.content == ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
+    assert materialize_image_lines(ctx) == ["alpha\r\n", "beta\n"]
+    assert ctx.ends_with_newline is True
+    assert ctx.newline_hist == {"\n": 1, "\r\n": 1}
+    assert ctx.dominant_newline == "\r\n"
+    assert ctx.dominance_ratio == 0.5
+    assert ctx.mixed_newlines is True
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "ReaderStep"
+    assert "Mixed line endings detected" in ctx.halt_state.reason_code
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (
+            DiagnosticLevel.ERROR,
+            "Mixed line endings detected (LF=1, CRLF=1, CR=0). "
+            "Strict policy refuses to process mixed files.",
+        )
+    ]
+    _assert_terminal_content_hint(
+        ctx,
+        code=KnownCode.CONTENT_SKIPPED_MIXED,
+        cluster=Cluster.BLOCKED_POLICY,
+        message="policy: mixed line endings",
+    )
+
+
+def test_reader_maps_pre_insert_advisory_result(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """A checker result populates advisory fields without replacing planner authority."""
+
+    def _checker(ctx: PreInsertContextView) -> InsertCheckResult:
+        assert list(ctx.lines) == ["body\n"]
+        return InsertCheckResult(
+            capability=InsertCapability.OK,
+            reason="safe test insertion",
+            origin="tests.reader",
+        )
+
+    file: Path = tmp_path / "advisory.reader"
+    file.write_text(
+        "body\n",
+        encoding="utf-8",
+        newline="",
+    )
+    ctx: ProcessingContext = _resolved_context(
+        file,
+        effective_registries,
+        checker=_checker,
+    )
+
+    ctx = run_reader(ctx)
+
+    assert ctx.status.content == ContentStatus.OK
+    assert ctx.pre_insert_capability == InsertCapability.OK
+    assert ctx.pre_insert_reason == "safe test insertion"
+    assert ctx.pre_insert_origin == "tests.reader"
+    assert materialize_image_lines(ctx) == ["body\n"]
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_reader_ignores_supported_pre_insert_checker_failure(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """An extensible checker failure cannot discard a successfully loaded image."""
+
+    def _checker(ctx: PreInsertContextView) -> InsertCheckResult:
+        del ctx
+        raise ValueError("checker failure at test boundary")
+
+    file: Path = tmp_path / "checker_failure.reader"
+    file.write_text(
+        "body\n",
+        encoding="utf-8",
+        newline="",
+    )
+    ctx: ProcessingContext = _resolved_context(
+        file,
+        effective_registries,
+        checker=_checker,
+    )
+
+    ctx = run_reader(ctx)
+
+    assert ctx.status.content == ContentStatus.OK
+    assert materialize_image_lines(ctx) == ["body\n"]
+    assert ctx.pre_insert_capability == InsertCapability.UNEVALUATED
+    assert ctx.pre_insert_reason is None
+    assert ctx.pre_insert_origin is None
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_reader_treats_empty_pre_insert_result_as_no_advisory(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """An empty checker result preserves the healthy image and advisory defaults."""
+
+    def _checker(ctx: PreInsertContextView) -> InsertCheckResult:
+        assert list(ctx.lines) == ["body\n"]
+        return InsertCheckResult()
+
+    file: Path = tmp_path / "empty_advisory.reader"
+    file.write_text(
+        "body\n",
+        encoding="utf-8",
+        newline="",
+    )
+    ctx: ProcessingContext = _resolved_context(
+        file,
+        effective_registries,
+        checker=_checker,
+    )
+
+    ctx = run_reader(ctx)
+
+    assert ctx.status.content == ContentStatus.OK
+    assert materialize_image_lines(ctx) == ["body\n"]
+    assert ctx.pre_insert_capability == InsertCapability.UNEVALUATED
+    assert ctx.pre_insert_reason is None
+    assert ctx.pre_insert_origin is None
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_reader_maps_open_failure_to_terminal_unreadable(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A deterministic read failure maps to coherent unreadable reader state."""
+    file: Path = tmp_path / "unreadable.reader"
+    file.write_text("body\n", encoding="utf-8")
+    ctx: ProcessingContext = _resolved_context(file, effective_registries)
+
+    def _fail_open(path: Path, *args: object, **kwargs: object) -> NoReturn:
+        del path, args, kwargs
+        raise OSError("read failure at test boundary")
+
+    monkeypatch.setattr(Path, "open", _fail_open)
+    ctx = run_reader(ctx)
+
+    assert ctx.status.content == ContentStatus.UNREADABLE
+    assert ctx.views.image is None
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "ReaderStep"
+    assert "read failure at test boundary" in ctx.halt_state.reason_code
+    assert len(ctx.diagnostics.items) == 1
+    assert ctx.diagnostics.items[0].level == DiagnosticLevel.ERROR
+    assert "Error reading file:" in ctx.diagnostics.items[0].message
+    _assert_terminal_content_hint(
+        ctx,
+        code=KnownCode.CONTENT_UNREADABLE,
+        cluster=Cluster.SKIPPED,
+        message="cannot read content",
+    )
