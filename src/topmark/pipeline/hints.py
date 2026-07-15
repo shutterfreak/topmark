@@ -221,6 +221,7 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
     PLAN_UPDATE = "plan:update"
     PLAN_REMOVE = "plan:remove"
     PLAN_SKIP = "plan:skip"
+    PLAN_PREVIEW = "plan:preview"
     PLAN_BLOCKED_POLICY = "plan:blocked_policy"
     PLAN_FAILED = "plan:failed"
     # Write
