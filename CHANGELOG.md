@@ -330,6 +330,10 @@ ______________________________________________________________________
 - Completed renderer state for reachable empty builder selections so all-unknown configured field
   lists produce a coherent empty render instead of a generic pending-state halt.
 - Classified processor-refused and processor-error strip attempts as failed instead of unchanged.
+- Fixed planner preview hints to use the stable `plan:preview` code and `would_change`
+  classification, and strengthened planner regression contracts for processor and checker handoff,
+  strip-result preservation, BOM and logical-empty normalization, structured edits, diagnostics,
+  halt ownership, and exact status-to-hint mapping.
 
 ### Documentation - Unreleased
 

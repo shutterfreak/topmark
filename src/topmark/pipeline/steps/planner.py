@@ -27,12 +27,12 @@ Inputs:
 Outputs:
   * ``ctx.views.updated`` ([`UpdatedView`][topmark.pipeline.views.UpdatedView]) -
     updated file image (sequence/iterable).
-  * ``ctx.status.write`` - write outcome (SKIPPED/REPLACED/INSERTED/REMOVED/PREVIEWED/FAILED).
+  * ``ctx.status.plan`` - plan outcome (SKIPPED/REPLACED/INSERTED/REMOVED/PREVIEWED/FAILED).
 
 Behavior:
   * **Strip fast-path**: if ``status.strip == READY``, keep the precomputed image in
-    ``ctx.views.updated``, reattach BOM if needed, mark write=REMOVED (or PREVIEWED).
-  * **Already up-to-date**: if ``status.comparison == UNCHANGED``, set write=SKIPPED and
+    ``ctx.views.updated``, reattach BOM if needed, mark plan=REMOVED (or PREVIEWED).
+  * **Already up-to-date**: if ``status.comparison == UNCHANGED``, set plan=SKIPPED and
     mirror the original image into ``ctx.views.updated``.
   * **Replace**: if a header range is known, splice rendered header lines over that range.
   * **Insert (text-based)**: prefer character-offset insertion when supported.
@@ -276,26 +276,28 @@ class PlannerStep(BaseStep):
         Behavior by case:
         - **Strip fast-path**: When ``status.strip == READY``, keep the precomputed
             ``ctx.views.updated.lines``, reattach a BOM if the reader saw one, and mark
-            ``write=REMOVED`` (or ``PREVIEWED`` when not applying).
+            ``plan=REMOVED`` (or ``PREVIEWED`` when not applying).
         - **Already up-to-date**: When ``status.comparison == UNCHANGED``, do nothing,
-            set ``write=SKIPPED``, and mirror the original image into ``ctx.views.updated``.
+            set ``plan=SKIPPED``, and mirror the original image into ``ctx.views.updated``.
         - **Replace**: If a header range is known (``ctx.views.header.range``), splice
             the rendered header lines (``ctx.views.render.lines``) over that range; reattach BOM
-            if needed; if the result equals the original, set ``write=SKIPPED``; otherwise
-            ``write=REPLACED`` (or ``PREVIEWED``).
+            if needed; if the result equals the original, set ``plan=SKIPPED``; otherwise
+            ``plan=REPLACED`` (or ``PREVIEWED``).
         - **Insert (text-based)**: If the processor provides a character offset, insert
             the rendered header text there (after optional ``prepare_header_for_insertion_text``),
-            reattach BOM if needed; if identical to original, ``SKIPPED``; else ``INSERTED``.
+            reattach BOM if needed; if identical to original, ``plan=SKIPPED``; else
+            ``plan=INSERTED``.
         - **Insert (line-based fallback)**: Use ``compute_insertion_anchor`` (line index),
             optionally adjust whitespace via ``prepare_header_for_insertion``, reattach BOM
-            if needed; set ``INSERTED`` unless the result is identical, in which case ``SKIPPED``.
+            if needed; set ``plan=INSERTED`` unless the result is identical, in which case
+            ``plan=SKIPPED``.
 
         Args:
             ctx: The processing context.
 
         Notes:
             This function performs no I/O; it only populates ``ctx.views.updated`` and
-            ``ctx.status.write`` for downstream patch/apply steps.
+            ``ctx.status.plan`` for downstream patch/apply steps.
         """
         logger.debug("ctx: %s", ctx)
         logger.debug("ctx.run_options.apply_changes = %s", ctx.run_options.apply_changes)
@@ -604,7 +606,6 @@ class PlannerStep(BaseStep):
 
                 if new_text == original_text:
                     ctx.views.updated = UpdatedView(lines=original_lines)
-                    # ctx.status.write = WriteStatus.SKIPPED
                     ctx.status.plan = PlanStatus.SKIPPED
                     logger.trace("Updater: text-based insertion yields no changes for %s", ctx.path)
                     return
@@ -711,79 +712,89 @@ class PlannerStep(BaseStep):
         self,
         ctx: ProcessingContext,
     ) -> None:
-        """Attach update hints (non-binding).
+        """Attach plan hints (non-binding).
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If an unknown plan status reaches this exhaustive dispatcher.
         """
         apply: bool = ctx.run_options.apply_changes is True
         ft: FileType | None = ctx.file_type
         checker: InsertChecker | None = ft.pre_insert_checker if ft else None
         st: PlanStatus = ctx.status.plan
 
-        # May proceed to next step (always):
-        if st == PlanStatus.INSERTED:
-            ctx.hint(
-                axis=Axis.PLAN,
-                code=KnownCode.PLAN_INSERT,
-                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                message="header will be inserted" if apply else "header would be inserted",
-            )
-        elif st == PlanStatus.REPLACED:
-            ctx.hint(
-                axis=Axis.PLAN,
-                code=KnownCode.PLAN_UPDATE,
-                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                message="header will be replaced" if apply else "header would be replaced",
-            )
-        elif st == PlanStatus.REMOVED:
-            ctx.hint(
-                axis=Axis.PLAN,
-                code=KnownCode.PLAN_REMOVE,
-                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                message="header will be removed" if apply else "header would be removed",
-            )
-        elif st == PlanStatus.SKIPPED:
-            if ctx.status.content != ContentStatus.OK and not allow_insert_into_empty_like(ctx):
-                msg: str = f"Could not update file (status: {ctx.status.content.value})."
-            elif ctx.status.header in {
-                HeaderStatus.MALFORMED_ALL_FIELDS,
-                HeaderStatus.MALFORMED_SOME_FIELDS,
-            }:
-                # TODO: enable updating based on future policy:
-                msg = "Existing header has malformed fields; TopMark will not update it."
-            elif checker is not None and ctx.pre_insert_capability != InsertCapability.OK:
-                pre_insert_reason: str = (
-                    ctx.pre_insert_reason or "pre-insert check refused insertion"
+        match st:
+            # May proceed to next step (always):
+            case PlanStatus.INSERTED:
+                ctx.hint(
+                    axis=Axis.PLAN,
+                    code=KnownCode.PLAN_INSERT,
+                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                    message="header will be inserted" if apply else "header would be inserted",
                 )
-                origin: str = ctx.pre_insert_origin or __name__
-                msg = f"{pre_insert_reason} (origin: {origin})"
-            else:
-                msg = "no update needed"
-            ctx.hint(
-                axis=Axis.PLAN,
-                code=KnownCode.PLAN_SKIP,
-                cluster=Cluster.SKIPPED,
-                message=msg,
-                terminal=True,
-            )
-        # Stop processing:
-        elif st == PlanStatus.PREVIEWED:
-            # TODO: stop processing of proceed to next step?
-            ctx.hint(
-                axis=Axis.PLAN,
-                code="previewed",
-                # code=KnownCode.,
-                # cluster=Cluster,
-                message="previewed changes",
-                terminal=True,
-            )
-        elif st == PlanStatus.FAILED:
-            ctx.hint(
-                axis=Axis.PLAN,
-                code=KnownCode.PLAN_FAILED,
-                cluster=Cluster.SKIPPED,
-                message="failed to compute update",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+            case PlanStatus.REPLACED:
+                ctx.hint(
+                    axis=Axis.PLAN,
+                    code=KnownCode.PLAN_UPDATE,
+                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                    message="header will be replaced" if apply else "header would be replaced",
+                )
+            case PlanStatus.REMOVED:
+                ctx.hint(
+                    axis=Axis.PLAN,
+                    code=KnownCode.PLAN_REMOVE,
+                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                    message="header will be removed" if apply else "header would be removed",
+                )
+            case PlanStatus.SKIPPED:
+                if ctx.status.content != ContentStatus.OK and not allow_insert_into_empty_like(ctx):
+                    msg: str = f"Could not update file (status: {ctx.status.content.value})."
+                elif ctx.status.header in {
+                    HeaderStatus.MALFORMED_ALL_FIELDS,
+                    HeaderStatus.MALFORMED_SOME_FIELDS,
+                }:
+                    # TODO: enable updating based on future policy:
+                    msg = "Existing header has malformed fields; TopMark will not update it."
+                elif checker is not None and ctx.pre_insert_capability != InsertCapability.OK:
+                    pre_insert_reason: str = (
+                        ctx.pre_insert_reason or "pre-insert check refused insertion"
+                    )
+                    origin: str = ctx.pre_insert_origin or __name__
+                    msg = f"{pre_insert_reason} (origin: {origin})"
+                else:
+                    msg = "no update needed"
+                ctx.hint(
+                    axis=Axis.PLAN,
+                    code=KnownCode.PLAN_SKIP,
+                    cluster=Cluster.SKIPPED,
+                    message=msg,
+                    terminal=True,
+                )
+
+            # Stop processing:
+            case PlanStatus.PREVIEWED:
+                ctx.hint(
+                    axis=Axis.PLAN,
+                    code=KnownCode.PLAN_PREVIEW,
+                    cluster=Cluster.WOULD_CHANGE,
+                    message="previewed changes",
+                    terminal=True,
+                )
+            case PlanStatus.FAILED:
+                ctx.hint(
+                    axis=Axis.PLAN,
+                    code=KnownCode.PLAN_FAILED,
+                    cluster=Cluster.SKIPPED,
+                    message="failed to compute update",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case PlanStatus.PENDING:  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected PlanStatus found: {st!r}")
