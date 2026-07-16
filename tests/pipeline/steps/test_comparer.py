@@ -8,14 +8,7 @@
 #
 # topmark:header:end
 
-"""Unit tests for the `comparer` pipeline step (fast-path behavior).
-
-These tests validate that when a prior step (e.g., `stripper`) precomputes a full
-updated file image in `ctx.updated_file_lines`, the comparer:
-  * Compares original vs updated lines directly, and
-  * Sets `ComparisonStatus` to CHANGED or UNCHANGED accordingly,
-without requiring any header generation/rendering.
-"""
+"""Unit contracts for comparer readiness, classification, diagnostics, and hints."""
 
 from __future__ import annotations
 
@@ -33,19 +26,28 @@ from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.diagnostic.model import DiagnosticLevel
+from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import Hint
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import ResolveStatus
+from topmark.pipeline.steps.comparer import ComparerStep
 from topmark.pipeline.views import BuilderView
 from topmark.pipeline.views import EditView
+from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import ListFileImageView
 from topmark.pipeline.views import PlanEditKind
 from topmark.pipeline.views import PlannedEdit
 from topmark.pipeline.views import RenderView
 from topmark.pipeline.views import UpdatedView
+from topmark.pipeline.views import ViewSlot
 from topmark.processors.base import HeaderProcessor
+from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,6 +55,123 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import FileImageView
+
+
+def _make_comparer_context(
+    path: Path,
+    *,
+    image_lines: list[str] | None = None,
+    rendered: bool = False,
+) -> ProcessingContext:
+    """Create a minimal context for focused comparer contracts."""
+    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+    ctx: ProcessingContext = make_pipeline_context(path, cfg)
+    if image_lines is not None:
+        ctx.views.image = ListFileImageView(image_lines)
+    if rendered:
+        ctx.views.render = RenderView(lines=[], block="")
+        ctx.status.render = RenderStatus.RENDERED
+    return ctx
+
+
+def _assert_hint(
+    ctx: ProcessingContext,
+    *,
+    code: KnownCode,
+    cluster: Cluster,
+    message: str,
+    terminal: bool,
+) -> None:
+    """Assert the exact normalized sole comparer hint."""
+    assert len(ctx.diagnostic_hints.items) == 1
+    hint: Hint = ctx.diagnostic_hints.items[0]
+    assert hint.axis is Axis.COMPARISON
+    assert hint.code == code.value
+    assert hint.cluster == cluster.value
+    assert hint.message == message
+    assert hint.terminal is terminal
+
+
+def test_comparer_declares_comparison_axis_and_all_consumed_views() -> None:
+    """Comparer metadata should match the statuses and views read by the step."""
+    step = ComparerStep()
+
+    assert step.primary_axis is Axis.COMPARISON
+    assert step.axes_written == (Axis.COMPARISON,)
+    assert step.consumes_views == frozenset(
+        {
+            ViewSlot.IMAGE,
+            ViewSlot.HEADER,
+            ViewSlot.BUILD,
+            ViewSlot.RENDER,
+            ViewSlot.UPDATED,
+            ViewSlot.EDIT,
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    ("render_status", "updated_lines", "expected"),
+    [
+        (RenderStatus.RENDERED, None, True),
+        (RenderStatus.PENDING, [], True),
+        (RenderStatus.PENDING, None, False),
+    ],
+)
+def test_comparer_readiness_requires_rendered_or_present_updated_lines(
+    tmp_path: Path,
+    render_status: RenderStatus,
+    updated_lines: list[str] | None,
+    expected: bool,
+) -> None:
+    """Empty updated lines count as present, while a missing payload does not."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "ready.py")
+    ctx.status.render = render_status
+    ctx.views.updated = UpdatedView(lines=updated_lines)
+
+    assert ComparerStep().may_proceed(ctx) is expected
+
+
+def test_comparer_call_gates_pending_context_and_emits_no_hint(tmp_path: Path) -> None:
+    """BaseStep should halt a gated comparer whose primary axis remains pending."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "gated.py")
+    ctx.views.updated = UpdatedView(lines=None)
+
+    result: ProcessingContext = ComparerStep()(ctx)
+
+    assert result is ctx
+    assert ctx.status.comparison is ComparisonStatus.PENDING
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "ComparerStep did not set state."
+    assert ctx.diagnostic_hints.items == []
+
+
+def test_comparer_call_accepts_empty_updated_image(tmp_path: Path) -> None:
+    """A present empty updated image should run and compare as unchanged."""
+    ctx: ProcessingContext = _make_comparer_context(
+        tmp_path / "empty-updated.py",
+        image_lines=[],
+    )
+    ctx.views.updated = UpdatedView(lines=[])
+
+    ComparerStep()(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.UNCHANGED
+    assert ctx.halt_state is None
+
+
+def test_comparer_call_preserves_an_earlier_specific_halt(tmp_path: Path) -> None:
+    """A pre-existing halt should not be replaced by the pending-axis fallback."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "halted.py", rendered=True)
+    step = ComparerStep()
+    ctx.request_halt(reason="earlier specific halt", at_step=step)
+
+    step(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.PENDING
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.reason_code == "earlier specific halt"
+    assert ctx.diagnostic_hints.items == []
 
 
 def test_comparer_precomputed_lines_set_changed(tmp_path: Path) -> None:
@@ -158,6 +277,66 @@ def test_comparer_uses_single_edit_metadata_without_materializing_images(
     assert len(ctx.views.edit.edits) == 1
 
 
+def test_comparer_accepts_zero_width_insertion_at_image_boundary(tmp_path: Path) -> None:
+    """A structured insertion may validly start and end at EOF."""
+    ctx: ProcessingContext = _make_comparer_context(
+        tmp_path / "insert.py",
+        image_lines=["body\n"],
+    )
+    ctx.views.updated = UpdatedView(lines=["body\n", "added\n"])
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.INSERT,
+                old_start=1,
+                old_end=1,
+                new_lines=("added\n",),
+            ),
+        )
+    )
+
+    ComparerStep()(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+
+
+@pytest.mark.parametrize(
+    "edits",
+    [
+        (),
+        (
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=1,
+                new_lines=("same\n",),
+            ),
+            PlannedEdit(
+                kind=PlanEditKind.INSERT,
+                old_start=1,
+                old_end=1,
+                new_lines=("extra\n",),
+            ),
+        ),
+    ],
+)
+def test_comparer_empty_or_multiple_edits_fall_back_to_full_image_comparison(
+    tmp_path: Path,
+    edits: tuple[PlannedEdit, ...],
+) -> None:
+    """Only exactly one structured edit is authoritative for the fast path."""
+    ctx: ProcessingContext = _make_comparer_context(
+        tmp_path / "edit-count.py",
+        image_lines=["same\n"],
+    )
+    ctx.views.updated = UpdatedView(lines=["same\n"])
+    ctx.views.edit = EditView(edits=edits)
+
+    ComparerStep()(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.UNCHANGED
+
+
 def test_comparer_invalid_single_edit_metadata_falls_back_to_full_image_comparison(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -254,6 +433,18 @@ def test_comparer_skips_and_halts_for_malformed_headers(
     ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
     ctx.views.render = RenderView(lines=[], block="")
+    ctx.views.image = ListFileImageView(lines=["body\n"])
+    ctx.views.updated = UpdatedView(lines=["changed\n"])
+    ctx.views.edit = EditView(
+        edits=(
+            PlannedEdit(
+                kind=PlanEditKind.REPLACE,
+                old_start=0,
+                old_end=1,
+                new_lines=("changed\n",),
+            ),
+        )
+    )
     ctx.status.render = RenderStatus.RENDERED
     ctx.status.header = header_status
     ctx.file_type = make_file_type(
@@ -274,7 +465,133 @@ def test_comparer_skips_and_halts_for_malformed_headers(
     assert ctx.halt_state is not None
     assert ctx.halt_state.step_name == "ComparerStep"
     assert ctx.halt_state.reason_code == reason
-    assert any(reason in d.message for d in ctx.diagnostics.items)
+    assert [(d.level, d.message) for d in ctx.diagnostics.items] == [
+        (DiagnosticLevel.WARNING, reason)
+    ]
+    _assert_hint(
+        ctx,
+        code=KnownCode.COMPARE_SKIPPED,
+        cluster=Cluster.SKIPPED,
+        message="comparison skipped",
+        terminal=True,
+    )
+
+
+@pytest.mark.parametrize(
+    ("existing_mapping", "expected_mapping", "existing_block", "rendered_block", "expected"),
+    [
+        ({"project": "old"}, {"project": "new"}, "same", "same", ComparisonStatus.CHANGED),
+        (
+            {"project": "TopMark"},
+            {"project": "TopMark"},
+            "same",
+            "same",
+            ComparisonStatus.UNCHANGED,
+        ),
+        (
+            {"project": "TopMark"},
+            {"project": "TopMark"},
+            None,
+            "different",
+            ComparisonStatus.UNCHANGED,
+        ),
+    ],
+)
+def test_comparer_semantic_mapping_and_available_block_contracts(
+    tmp_path: Path,
+    existing_mapping: dict[str, str],
+    expected_mapping: dict[str, str],
+    existing_block: str | None,
+    rendered_block: str | None,
+    expected: ComparisonStatus,
+) -> None:
+    """Mappings decide semantics; formatting requires both exact blocks."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "semantic.py", rendered=True)
+    ctx.status.generation = GenerationStatus.GENERATED
+    ctx.views.header = HeaderView(
+        range=(0, 0),
+        lines=None,
+        block=existing_block,
+        mapping=existing_mapping,
+    )
+    ctx.views.build = BuilderView(builtins=None, selected=expected_mapping)
+    ctx.views.render = RenderView(lines=[], block=rendered_block)
+
+    ComparerStep()(ctx)
+
+    assert ctx.status.comparison is expected
+    assert ctx.diagnostics.items == []
+
+
+@pytest.mark.parametrize(
+    ("status", "apply_changes", "code", "cluster", "message", "terminal"),
+    [
+        (
+            ComparisonStatus.CHANGED,
+            True,
+            KnownCode.COMPARE_CHANGED,
+            Cluster.CHANGED,
+            "differences detected",
+            False,
+        ),
+        (
+            ComparisonStatus.CHANGED,
+            False,
+            KnownCode.COMPARE_WOULD_CHANGE,
+            Cluster.WOULD_CHANGE,
+            "differences detected",
+            False,
+        ),
+        (
+            ComparisonStatus.UNCHANGED,
+            False,
+            KnownCode.COMPARE_UNCHANGED,
+            Cluster.UNCHANGED,
+            "no differences detected",
+            False,
+        ),
+        (
+            ComparisonStatus.SKIPPED,
+            False,
+            KnownCode.COMPARE_SKIPPED,
+            Cluster.SKIPPED,
+            "comparison skipped",
+            True,
+        ),
+    ],
+)
+def test_comparer_emits_normalized_hint_for_completed_status(
+    tmp_path: Path,
+    status: ComparisonStatus,
+    apply_changes: bool,
+    code: KnownCode,
+    cluster: Cluster,
+    message: str,
+    terminal: bool,
+) -> None:
+    """Each completed comparison status should emit its exact advisory payload."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "hint.py")
+    ctx.status.comparison = status
+    ctx.run_options = RunOptions(apply_changes=apply_changes)
+
+    ComparerStep().hint(ctx)
+
+    _assert_hint(
+        ctx,
+        code=code,
+        cluster=cluster,
+        message=message,
+        terminal=terminal,
+    )
+
+
+def test_comparer_pending_status_emits_no_hint(tmp_path: Path) -> None:
+    """Pending comparison must not emit a misleading completed-state hint."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "pending-hint.py")
+
+    ComparerStep().hint(ctx)
+
+    assert ctx.diagnostic_hints.items == []
 
 
 def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
@@ -359,3 +676,9 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     assert ctx.status.comparison is ComparisonStatus.CHANGED, (
         "Comparer must flag formatting-only difference as CHANGED"
     )
+    assert [(d.level, d.message) for d in ctx.diagnostics.items] == [
+        (
+            DiagnosticLevel.INFO,
+            "Header fields unchanged, rendered header block text differs → formatting change",
+        )
+    ]
