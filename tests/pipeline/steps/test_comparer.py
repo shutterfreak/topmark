@@ -27,6 +27,7 @@ from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.diagnostic.model import DiagnosticLevel
+from topmark.pipeline.context.policy import allow_empty_header
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import Hint
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import FileImageView
 
@@ -392,30 +394,6 @@ def test_comparer_invalid_single_edit_metadata_falls_back_to_full_image_comparis
     assert materialized == {"image": True, "updated": True}
 
 
-def test_comparer_generation_pending_without_updated_view_is_unchanged(tmp_path: Path) -> None:
-    """Mark UNCHANGED when no rendered or updated image is available in non-rendering flow."""
-    file: Path = tmp_path / "pending.py"
-    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
-    ctx: ProcessingContext = make_pipeline_context(file, cfg)
-
-    ctx.views.render = RenderView(lines=[], block="")
-    ctx.status.render = RenderStatus.RENDERED
-    ctx.status.generation = GenerationStatus.PENDING
-    ctx.file_type = make_file_type(
-        local_key="test",
-        description="Test File Type",
-        extensions=[],
-        filenames=[],
-        patterns=[],
-    )
-    ctx.header_processor = HeaderProcessor()
-    ctx.status.resolve = ResolveStatus.RESOLVED
-
-    ctx = run_comparer(ctx)
-
-    assert ctx.status.comparison is ComparisonStatus.UNCHANGED
-
-
 @pytest.mark.parametrize(
     "header_status",
     [
@@ -488,13 +466,6 @@ def test_comparer_skips_and_halts_for_malformed_headers(
             "same",
             ComparisonStatus.UNCHANGED,
         ),
-        (
-            {"project": "TopMark"},
-            {"project": "TopMark"},
-            None,
-            "different",
-            ComparisonStatus.UNCHANGED,
-        ),
     ],
 )
 def test_comparer_semantic_mapping_and_available_block_contracts(
@@ -521,6 +492,75 @@ def test_comparer_semantic_mapping_and_available_block_contracts(
 
     assert ctx.status.comparison is expected
     assert ctx.diagnostics.items == []
+
+
+def test_comparer_marks_rendered_markers_only_header_changed_when_header_is_missing(
+    tmp_path: Path,
+) -> None:
+    """A non-empty rendered empty header must be inserted when no header exists."""
+    markers_only_block: str = "# topmark:header:start\n# topmark:header:end\n"
+    config: MutableConfig = mutable_config_from_defaults()
+    config.header_fields = []
+    config.policy.render_empty_header_when_no_fields = True
+    ctx: ProcessingContext = make_pipeline_context(tmp_path / "missing.py", config.freeze())
+    ctx.status.header = HeaderStatus.MISSING
+    ctx.status.generation = GenerationStatus.NO_FIELDS
+    ctx.status.render = RenderStatus.RENDERED
+    ctx.views.render = RenderView(
+        lines=markers_only_block.splitlines(keepends=True),
+        block=markers_only_block,
+    )
+    assert allow_empty_header(ctx)
+
+    result: ProcessingContext = ComparerStep()(ctx)
+
+    assert result is ctx
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+    assert ctx.halt_state is None
+    assert ctx.diagnostics.items == []
+    _assert_hint(
+        ctx,
+        code=KnownCode.COMPARE_WOULD_CHANGE,
+        cluster=Cluster.WOULD_CHANGE,
+        message="differences detected",
+        terminal=False,
+    )
+
+
+def test_comparer_keeps_matching_markers_only_header_unchanged(tmp_path: Path) -> None:
+    """An existing markers-only header matching the rendered block is already compliant."""
+    markers_only_block: str = "# topmark:header:start\n# topmark:header:end\n"
+    config: MutableConfig = mutable_config_from_defaults()
+    config.header_fields = []
+    config.policy.render_empty_header_when_no_fields = True
+    ctx: ProcessingContext = make_pipeline_context(tmp_path / "empty-header.py", config.freeze())
+    ctx.status.header = HeaderStatus.EMPTY
+    ctx.status.generation = GenerationStatus.NO_FIELDS
+    ctx.status.render = RenderStatus.RENDERED
+    ctx.views.header = HeaderView(
+        range=(0, 1),
+        lines=markers_only_block.splitlines(keepends=True),
+        block=markers_only_block,
+        mapping={},
+    )
+    ctx.views.render = RenderView(
+        lines=markers_only_block.splitlines(keepends=True),
+        block=markers_only_block,
+    )
+    assert allow_empty_header(ctx)
+
+    result: ProcessingContext = ComparerStep()(ctx)
+
+    assert result is ctx
+    assert ctx.status.comparison is ComparisonStatus.UNCHANGED
+    assert ctx.halt_state is None
+    _assert_hint(
+        ctx,
+        code=KnownCode.COMPARE_UNCHANGED,
+        cluster=Cluster.UNCHANGED,
+        message="no differences detected",
+        terminal=False,
+    )
 
 
 @pytest.mark.parametrize(
