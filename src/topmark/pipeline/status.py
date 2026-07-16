@@ -341,7 +341,7 @@ class PatchStatus(BaseStatus):
     """Represents the status of patch (diff) generation in the pipeline.
 
     Indicates whether a unified diff was generated, skipped because content
-    is unchanged or an updated image was unavailable, or failed to generate.
+    is unchanged, or failed to generate for content known to have changed.
     """
 
     PENDING = (

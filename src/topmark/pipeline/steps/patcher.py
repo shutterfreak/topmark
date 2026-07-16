@@ -10,15 +10,18 @@
 
 """Patch (diff) generation step for the TopMark pipeline (view-based).
 
-This step compares the original file image (``ctx.image``) with the pipeline's
-updated image (``ctx.views.updated``) and produces a unified diff suitable for CLI/CI
-consumption. It mutates only the processing context and performs no I/O.
+This step uses the original file image (``ctx.views.image``) plus either one
+structured edit or the pipeline's updated image (``ctx.views.updated``) to produce
+a unified diff suitable for CLI/CI consumption. It mutates only the processing
+context and performs no I/O.
 
 Inputs:
   * ``ctx.views.image`` - [`FileImageView`][topmark.pipeline.views.FileImageView] carrying the
     original file image view.
-  * ``ctx.views.updated`` - [`UpdatedView`][topmark.pipeline.views.UpdatedView] carrinyng the
-    updated file image (or ``None``)).
+  * ``ctx.views.updated`` - optional [`UpdatedView`][topmark.pipeline.views.UpdatedView]
+    carrying the updated file image.
+  * ``ctx.views.edit`` - optional [`EditView`][topmark.pipeline.views.EditView]
+    carrying structured edit metadata.
 
 Outputs:
   * ``ctx.views.diff`` - [`DiffView`][topmark.pipeline.views.DiffView] carrying the
@@ -73,10 +76,7 @@ def _apply_single_edit(
         list[str] | None: Updated lines when the edit span is valid, otherwise
         ``None``.
     """
-    if not _is_valid_single_edit(
-        original_line_count=len(original_lines),
-        edit=edit,
-    ):
+    if edit.old_start < 0 or edit.old_end < edit.old_start or edit.old_end > len(original_lines):
         return None
 
     return [
@@ -84,27 +84,6 @@ def _apply_single_edit(
         *edit.new_lines,
         *original_lines[edit.old_end :],
     ]
-
-
-def _is_valid_single_edit(
-    *,
-    original_line_count: int,
-    edit: PlannedEdit,
-) -> bool:
-    """Return True when a single edit span is valid for the original image.
-
-    Args:
-        original_line_count: Number of lines in the original image.
-        edit: Planned edit metadata to validate.
-
-    Returns:
-        bool: True when the edit span can be applied safely.
-    """
-    return (
-        edit.old_start >= 0
-        and edit.old_end >= edit.old_start
-        and edit.old_end <= original_line_count
-    )
 
 
 def _render_difflib_unified_diff(
@@ -177,20 +156,16 @@ def _render_structured_patch_lines(
         return None
 
     edit: PlannedEdit = edit_view.edits[0]
-    if not _is_valid_single_edit(
-        original_line_count=len(current_lines),
+    applied_lines: list[str] | None = _apply_single_edit(
+        original_lines=current_lines,
         edit=edit,
-    ):
+    )
+    if applied_lines is None:
         return None
 
-    if expected_updated_lines is not None:
-        applied_lines: list[str] | None = _apply_single_edit(
-            original_lines=current_lines,
-            edit=edit,
-        )
-        if applied_lines != list(expected_updated_lines):
-            logger.debug("structured diff metadata did not match updated image; falling back")
-            return None
+    if expected_updated_lines is not None and applied_lines != list(expected_updated_lines):
+        logger.debug("structured diff metadata did not match updated image; falling back")
+        return None
 
     return render_structured_unified_diff(
         original_lines=current_lines,
@@ -205,16 +180,17 @@ def _render_structured_patch_lines(
 
 
 class PatcherStep(BaseStep):
-    """Produce a unified diff between original and updated file images.
+    """Produce a unified diff between the original image and planned content.
 
     Generates a unified diff (CLI/CI friendly) when comparison indicates a
-    change and an updated image is present. Normalizes `ComparisonStatus` to
-    `UNCHANGED` if computed diff is empty.
+    change and either one usable structured edit or an updated image is present.
+    Normalizes `ComparisonStatus` to `UNCHANGED` if the computed diff is empty.
 
     This step does not print; the CLI or API decides how to display diffs.
 
     Axes written:
       - comparison  (normalization only; no new comparisons are computed here)
+      - patch
 
     Sets/normalizes:
       - PatchStatus: {PENDING, GENERATED, SKIPPED, FAILED}
@@ -222,7 +198,7 @@ class PatcherStep(BaseStep):
           PATCH_GENERATED: patch generated and available
           PATCH_SKIPPED: no patch needed (unchanged)
           PATCH_FAILED: change detected but patch generation failed
-      - ComparisonStatus: {PENDING, CHANGED, UNCHANGED, SKIPPED, CANNOT_COMPARE}
+      - ComparisonStatus: {CHANGED, UNCHANGED}
     """
 
     def __init__(self) -> None:
@@ -272,7 +248,9 @@ class PatcherStep(BaseStep):
         """Generate and attach a unified diff to the processing context (view-based).
 
         The step runs only after comparison. If the comparison status is
-        ``UNCHANGED`` or if no updated image is present, the diff is omitted.
+        ``UNCHANGED``, the diff is omitted. A changed comparison requires either
+        one usable structured edit or an updated image; otherwise patch generation
+        fails.
 
         Unified diff file labels use the shared human-facing display path policy,
         including the logical ``--stdin-filename`` in STDIN content mode.
@@ -338,13 +316,13 @@ class PatcherStep(BaseStep):
 
             # We only generate a fallback diff when we have an updated image.
             if updated_lines is None:
-                logger.debug(
-                    "Patch skipped for %s: comparison=%s but no updated image present",
-                    ctx.path,
-                    ctx.status.comparison.value,
+                reason: str = (
+                    "Cannot generate patch: comparison detected changes but no updated image "
+                    "or usable structured edit is available."
                 )
                 ctx.views.diff = DiffView(text=None)
-                ctx.status.patch = PatchStatus.SKIPPED
+                ctx.status.patch = PatchStatus.FAILED
+                ctx.diagnostics.add_error(reason)
                 return
 
             #  Render the generic difflib unified diff fallback.
@@ -374,11 +352,15 @@ class PatcherStep(BaseStep):
             )
 
         # Join exactly as produced by the selected backend. Do not introduce CRLF conversions.
-        ctx.views.diff = DiffView(text="".join(patch_lines))
-        if not ctx.views.diff or not ctx.views.diff.text:
-            logger.error("ComparisonStatus == CHANGED but no diff generated: PatchStatus == FAILED")
+        patch_text: str = "".join(patch_lines)
+        if not patch_text:
+            ctx.views.diff = DiffView(text=None)
             ctx.status.patch = PatchStatus.FAILED
+            ctx.diagnostics.add_error(
+                "Patch generation produced empty diff text for changed content."
+            )
         else:
+            ctx.views.diff = DiffView(text=patch_text)
             ctx.status.patch = PatchStatus.GENERATED
 
         return
@@ -391,32 +373,44 @@ class PatcherStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected patcher status value.
         """
         apply: bool = ctx.run_options.apply_changes is True
         st: PatchStatus = ctx.status.patch
 
-        # May proceed to next step (always):
-        if st == PatchStatus.GENERATED:
-            ctx.hint(
-                axis=Axis.PATCH,
-                code=KnownCode.PATCH_GENERATED,
-                cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                message="patch generated",
-            )
-        elif st == PatchStatus.SKIPPED:
-            ctx.hint(
-                axis=Axis.PATCH,
-                code=KnownCode.PATCH_SKIPPED,
-                cluster=Cluster.UNCHANGED,
-                message="no patch needed (unchanged)",
-            )
-        # Stop processing:
-        elif st == PatchStatus.FAILED:
-            ctx.hint(
-                axis=Axis.PATCH,
-                code=KnownCode.PATCH_FAILED,
-                cluster=Cluster.ERROR,
-                message="change detected but patch generation failed",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+        match st:
+            # May proceed to next step (always):
+            case PatchStatus.GENERATED:
+                ctx.hint(
+                    axis=Axis.PATCH,
+                    code=KnownCode.PATCH_GENERATED,
+                    cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
+                    message="patch generated",
+                )
+            case PatchStatus.SKIPPED:
+                ctx.hint(
+                    axis=Axis.PATCH,
+                    code=KnownCode.PATCH_SKIPPED,
+                    cluster=Cluster.UNCHANGED,
+                    message="no patch needed (unchanged)",
+                )
+
+            # Stop processing:
+            case PatchStatus.FAILED:
+                ctx.hint(
+                    axis=Axis.PATCH,
+                    code=KnownCode.PATCH_FAILED,
+                    cluster=Cluster.ERROR,
+                    message="change detected but patch generation failed",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case PatchStatus.PENDING:  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected PatchStatus found: {st!r}")

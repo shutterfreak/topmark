@@ -338,6 +338,8 @@ ______________________________________________________________________
   instead of being released before its single-edit fast path can consume it.
 - Fixed comparer fallback behavior so a non-empty rendered markers-only header is classified as a
   change when the file has no existing header, allowing the planner to insert it.
+- Fixed patch generation without an updated image or usable structured edit so a confirmed change
+  reports a failed patch with an error diagnostic instead of an unchanged-style skipped hint.
 
 ### Documentation - Unreleased
 
