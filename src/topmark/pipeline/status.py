@@ -365,7 +365,7 @@ class PatchStatus(BaseStatus):
 class WriteStatus(BaseStatus):
     """Represents the status of the header write operation in the pipeline.
 
-    Used to indicate whether the header was written, previewed, skipped, or failed.
+    Used to indicate whether output was written, skipped, or failed.
     """
 
     PENDING = (
