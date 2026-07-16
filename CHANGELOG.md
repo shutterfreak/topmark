@@ -336,6 +336,8 @@ ______________________________________________________________________
   halt ownership, and exact status-to-hint mapping.
 - Fixed pruning-aware strip comparison so structured edit metadata remains available to the comparer
   instead of being released before its single-edit fast path can consume it.
+- Fixed comparer fallback behavior so a non-empty rendered markers-only header is classified as a
+  change when the file has no existing header, allowing the planner to insert it.
 
 ### Documentation - Unreleased
 

@@ -12,8 +12,8 @@
 
 The comparer rejects malformed headers first. It then prefers one valid structured
 edit as proof of change, falls back to full-image comparison when an updated image
-is available, supports non-rendering flows whose generation remains pending, and
-finally compares semantic header mappings followed by exact block formatting.
+is available, and finally compares semantic header mappings followed by exact block
+content when the current content is known.
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ComparisonStatus
-from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
@@ -113,9 +112,9 @@ class ComparerStep(BaseStep):
         admitted, malformed headers are skipped first. A single in-bounds structured
         edit then proves a change without materializing full images. Otherwise an
         available updated image is compared with the current image. If neither path
-        applies, pending generation represents a non-rendering unchanged flow;
-        generated flows compare header/build mappings and, when both blocks exist,
-        exact header/render text for formatting drift.
+        applies, rendered flows compare header/build mappings and exact header/render
+        text when the existing content is known. A missing header is known empty text,
+        so a non-empty rendered block is classified as an insertion change.
 
         Args:
             ctx: The processing context carrying statuses and comparison views.
@@ -181,17 +180,6 @@ class ComparerStep(BaseStep):
             )
             return
 
-        # Non-rendering workflows may leave generation pending.
-        if ctx.status.generation == GenerationStatus.PENDING:
-            logger.debug(
-                "comparer: generation=%s; no generation and no precomputed output "
-                "for %s -> UNCHANGED",
-                ctx.status.generation.value,
-                ctx.path,
-            )
-            ctx.status.comparison = ComparisonStatus.UNCHANGED
-            return
-
         # Dict-wise comparison using views.
         header_view: HeaderView | None = ctx.views.header
         builder_view: BuilderView | None = ctx.views.build
@@ -209,22 +197,30 @@ class ComparerStep(BaseStep):
         logger.trace("Existing header dict: %s", existing_dict)
         logger.trace("Expected header dict: %s", expected_dict)
 
-        # Formatting fallback: compare rendered vs existing block text.
+        # Block fallback: compare rendered vs known existing block text.
         # If field content is equal but formatting/order/spacing differs, optionally
-        # mark as CHANGED so the CLI can propose a formatting update. This relies on
-        # comparing the exact rendered block to the existing block captured by the
-        # scanner. Only applies when we actually detected a header and have a render.
+        # mark as CHANGED so the CLI can propose a formatting update. A missing header
+        # has known empty content, allowing a rendered markers-only block to be compared
+        # without treating absent views in other states as empty.
         render_view: RenderView | None = ctx.views.render
+        existing_block: str | None = (
+            ""
+            if ctx.status.header == HeaderStatus.MISSING
+            else header_view.block
+            if header_view
+            else None
+        )
         if (
             ctx.status.comparison == ComparisonStatus.UNCHANGED
-            and header_view
-            and header_view.block is not None
+            and existing_block is not None
             and render_view
             and render_view.block is not None
-        ) and header_view.block != render_view.block:
-            ctx.diagnostics.add_info(
-                "Header fields unchanged, rendered header block text differs → formatting change",
-            )
+        ) and existing_block != render_view.block:
+            if header_view and header_view.block is not None:
+                ctx.diagnostics.add_info(
+                    "Header fields unchanged, rendered header block text differs "
+                    "→ formatting change",
+                )
             ctx.status.comparison = ComparisonStatus.CHANGED
 
         logger.debug(
