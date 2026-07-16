@@ -56,7 +56,7 @@ class BaseStep:
     """
 
     name: str
-    primary_axis: Axis | None  # new: axis this step "represents" in summaries
+    primary_axis: Axis | None
     axes_written: tuple[Axis, ...] = ()
     consumes_views: frozenset[ViewSlot] = field(default_factory=frozenset[ViewSlot])
 
@@ -76,19 +76,16 @@ class BaseStep:
         Returns:
              The same context instance after mutation/hints.
         """
-        # unified bookkeeping
-        # ctx.steps[self.name] = ctx.steps.get(self.name, 0) + 1
         ctx.steps.append(self)
-        logger.info("BaseStep: Pipeline status before may_proceed(): : %s", ctx.steps)
+        logger.info("BaseStep: Pipeline status before may_proceed(): %s", ctx.steps)
 
         if self.may_proceed(ctx):
-            logger.info("BaseStep:   Pipeline step %s - running", self.name)
+            logger.info("BaseStep: 🟢 Pipeline step %s - running", self.name)
             self.run(ctx)
-            self._request_halt_if_primary_axis_pending(ctx)
-
         else:
-            logger.info("BaseStep: ⚠️ Pipeline step %s may not proceed", self.name)
-            self._request_halt_if_primary_axis_pending(ctx)
+            logger.info("BaseStep: ⛔️ Pipeline step %s may not proceed", self.name)
+
+        self._request_halt_if_primary_axis_pending(ctx)
 
         self.hint(ctx)
         return ctx
