@@ -334,6 +334,8 @@ ______________________________________________________________________
   classification, and strengthened planner regression contracts for processor and checker handoff,
   strip-result preservation, BOM and logical-empty normalization, structured edits, diagnostics,
   halt ownership, and exact status-to-hint mapping.
+- Fixed pruning-aware strip comparison so structured edit metadata remains available to the comparer
+  instead of being released before its single-edit fast path can consume it.
 
 ### Documentation - Unreleased
 

@@ -8,28 +8,12 @@
 #
 # topmark:header:end
 
-"""Header comparer step for the TopMark pipeline (view-based).
+"""Classify differences between the current and expected file/header views.
 
-This step assigns a `ComparisonStatus` by comparing the *existing* header (from `HeaderView`)
-with the *expected* header produced by the renderer (from RenderView). The comparer prefers a
-**semantic (dict-wise) comparison** of header fields and falls back to a
-**formatting comparison** when content is equal but layout differs. In `strip`
-pipelines (or when an update has already produced a full image), it can perform a
-full-file comparison.
-
-Summary of behavior:
-  • If `ctx.views.updated` carries an updated image, compare full file images.
-  • If `generation` is `PENDING` (pipelines that don't render), set `UNCHANGED`.
-  • Else, compare dicts: `ctx.views.header.mapping` vs `ctx.views.build.selected`:
-      - If dicts differ → `CHANGED`.
-      - If dicts equal but *rendered block* differs from existing block
-        (ordering/spacing/affixes/newlines), treat this as a **formatting
-        change** → `CHANGED`.
-  • Otherwise → `UNCHANGED`.
-
-This contract keeps CLI summaries consistent: content changes and pure formatting
-drifts both show up as "would update header", whereas true matches land in
-"up-to-date".
+The comparer rejects malformed headers first. It then prefers one valid structured
+edit as proof of change, falls back to full-image comparison when an updated image
+is available, supports non-rendering flows whose generation remains pending, and
+finally compares semantic header mappings followed by exact block formatting.
 """
 
 from __future__ import annotations
@@ -63,17 +47,17 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 class ComparerStep(BaseStep):
-    """Compare existing vs expected header content/format.
+    """Classify current versus expected content on the comparison axis.
 
-    Prefers semantic (field-mapping) comparison and falls back to formatting
-    comparison when dictionaries match but layout differs. In strip-mode or when
-    an updated image exists, can compare full file images.
+    The step consumes current, header, build, render, structured-edit, and updated
+    views. It writes only `ComparisonStatus` and may add comparer diagnostics,
+    hints, or a malformed-header halt.
 
     Axes written:
       - comparison
 
     Sets:
-      - ComparisonStatus: {PENDING, CHANGED, UNCHANGED, SKIPPED, CANNOT_COMPARE}
+      - ComparisonStatus: {CHANGED, UNCHANGED, SKIPPED}
     """
 
     def __init__(self) -> None:
@@ -88,6 +72,7 @@ class ComparerStep(BaseStep):
                     ViewSlot.BUILD,
                     ViewSlot.RENDER,
                     ViewSlot.UPDATED,
+                    ViewSlot.EDIT,
                 }
             ),
         )
@@ -96,29 +81,25 @@ class ComparerStep(BaseStep):
         self,
         ctx: ProcessingContext,
     ) -> bool:
-        """Return True if comparison can run.
+        """Return whether a non-halted context has comparison-ready output.
 
-        Conditions:
-          * Resolve succeeded, file type and header processor exist; and
-          * One of:
-            - Generation is `GENERATED` or `NO_FIELDS`; or
-            - Policy allows empty-file processing; or
-            - An updated image is already present (strip/update fast path).
+        A rendered result is ready. An updated view is ready when its ``lines``
+        payload is present, including an empty sequence. Resolution, generation,
+        and empty-file policy are owned by earlier steps and are not re-evaluated
+        here.
 
         Args:
             ctx: The processing context for the current file.
 
         Returns:
-            True if processing can proceed to the build step, False otherwise.
+            True if comparison can run, False otherwise.
         """
         if ctx.is_halted:
             return False
 
-        # Check pipelines:
+        # Rendering workflows:
         rendered_ready: bool = ctx.status.render == RenderStatus.RENDERED
-        # Strip pipelines:
-        # strip_ready   = ctx.status.strip == StripStatus.READY
-        # Check and strip pipelines:
+        # Workflows with a precomputed updated image, including strip:
         updated_ready: bool = ctx.views.updated is not None and ctx.views.updated.lines is not None
         return rendered_ready or updated_ready
 
@@ -126,28 +107,22 @@ class ComparerStep(BaseStep):
         self,
         ctx: ProcessingContext,
     ) -> None:
-        """Compare existing vs expected header and set `ctx.status.comparison`.
+        """Set comparison status using the ordered view-based decision tree.
 
-        The step runs only when header generation has completed or when there are no
-        header fields to generate. In other cases it returns the context unchanged.
-
-        Decision tree:
-        1. **Precomputed image**: If `ctx.updated_file_lines` exists (e.g., `strip`), set
-            `UNCHANGED` iff `file_lines == updated_file_lines`; else `CHANGED`.
-        2. **No generation**: If `generation == PENDING`, set `UNCHANGED`.
-        3. **Dict-wise content**: Compare `existing_header_dict` vs `expected_header_dict`.
-            - Different → `CHANGED`.
-            - Equal → proceed to (4).
-        4. **Formatting fallback**: If we have both `existing_header_block` and
-            `expected_header_lines`, compare exact block text. If blocks differ (order,
-            alignment, spacing, affixes, newline style), set `CHANGED`; otherwise `UNCHANGED`.
+        `may_proceed()` admits a rendered result or an updated-lines payload. Once
+        admitted, malformed headers are skipped first. A single in-bounds structured
+        edit then proves a change without materializing full images. Otherwise an
+        available updated image is compared with the current image. If neither path
+        applies, pending generation represents a non-rendering unchanged flow;
+        generated flows compare header/build mappings and, when both blocks exist,
+        exact header/render text for formatting drift.
 
         Args:
-            ctx: The processing context carrying file state, statuses, and dictionaries.
+            ctx: The processing context carrying statuses and comparison views.
 
         Mutations:
-            ProcessingContext: The same context, with `status.comparison` updated to ``CHANGED``
-                or ``UNCHANGED`` when applicable.
+            ProcessingContext: `status.comparison`, diagnostics, and halt state as
+                required by the selected branch.
         """
         logger.debug("ctx: %s", ctx)
 
@@ -192,7 +167,7 @@ class ComparerStep(BaseStep):
         # metadata, fall back to direct full-image comparison.
         updated_view: UpdatedView | None = ctx.views.updated
         if updated_view and updated_view.lines is not None:
-            # 1) Full file image comparison (strip step or similar)
+            # Full file image comparison (strip step or similar)
             current_lines: list[str] = ctx.materialize_image_lines()
             updated_lines: list[str] = ctx.materialize_updated_lines()
             if current_lines == updated_lines:
@@ -206,8 +181,7 @@ class ComparerStep(BaseStep):
             )
             return
 
-        # 2) If generation status is PENDING, mark as UNCHANGED for pipelines that don't render
-        # (e.g., 'strip')
+        # Non-rendering workflows may leave generation pending.
         if ctx.status.generation == GenerationStatus.PENDING:
             logger.debug(
                 "comparer: generation=%s; no generation and no precomputed output "
@@ -218,7 +192,7 @@ class ComparerStep(BaseStep):
             ctx.status.comparison = ComparisonStatus.UNCHANGED
             return
 
-        # 3) Dict-wise comparison using views
+        # Dict-wise comparison using views.
         header_view: HeaderView | None = ctx.views.header
         builder_view: BuilderView | None = ctx.views.build
         existing_dict: Mapping[str, str] = (
@@ -235,7 +209,7 @@ class ComparerStep(BaseStep):
         logger.trace("Existing header dict: %s", existing_dict)
         logger.trace("Expected header dict: %s", expected_dict)
 
-        # 4) Formatting fallback: compare rendered vs existing block text
+        # Formatting fallback: compare rendered vs existing block text.
         # If field content is equal but formatting/order/spacing differs, optionally
         # mark as CHANGED so the CLI can propose a formatting update. This relies on
         # comparing the exact rendered block to the existing block captured by the
@@ -270,39 +244,53 @@ class ComparerStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected comparison status value.
         """
         st: ComparisonStatus = ctx.status.comparison
 
-        # May proceed to next step (always):
-        if st == ComparisonStatus.CHANGED:
-            if ctx.run_options.apply_changes is True:
+        match st:
+            # May proceed to next step (always):
+            case ComparisonStatus.CHANGED:
+                if ctx.run_options.apply_changes is True:
+                    ctx.hint(
+                        axis=Axis.COMPARISON,
+                        code=KnownCode.COMPARE_CHANGED,
+                        cluster=Cluster.CHANGED,
+                        message="differences detected",
+                    )
+                else:
+                    ctx.hint(
+                        axis=Axis.COMPARISON,
+                        code=KnownCode.COMPARE_WOULD_CHANGE,
+                        cluster=Cluster.WOULD_CHANGE,
+                        message="differences detected",
+                    )
+            case ComparisonStatus.UNCHANGED:
                 ctx.hint(
                     axis=Axis.COMPARISON,
-                    code=KnownCode.COMPARE_CHANGED,
-                    cluster=Cluster.CHANGED,
-                    message="differences detected",
+                    code=KnownCode.COMPARE_UNCHANGED,
+                    cluster=Cluster.UNCHANGED,
+                    message="no differences detected",
                 )
-            else:
+
+            # Stop processing:
+            case ComparisonStatus.SKIPPED:
                 ctx.hint(
                     axis=Axis.COMPARISON,
-                    code=KnownCode.COMPARE_WOULD_CHANGE,
-                    cluster=Cluster.WOULD_CHANGE,
-                    message="differences detected",
+                    code=KnownCode.COMPARE_SKIPPED,
+                    cluster=Cluster.SKIPPED,
+                    message="comparison skipped",
+                    terminal=True,
                 )
-        elif st == ComparisonStatus.UNCHANGED:
-            ctx.hint(
-                axis=Axis.COMPARISON,
-                code=KnownCode.COMPARE_UNCHANGED,
-                cluster=Cluster.UNCHANGED,
-                message="no differences detected",
-            )
-        # Stop processing:
-        elif st == ComparisonStatus.SKIPPED:
-            ctx.hint(
-                axis=Axis.COMPARISON,
-                code=KnownCode.COMPARE_SKIPPED,
-                cluster=Cluster.SKIPPED,
-                message="comparison skipped",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+
+            # States owned outside this step:
+            case (
+                ComparisonStatus.PENDING
+            ):  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected ComparisonStatus found: {st!r}")

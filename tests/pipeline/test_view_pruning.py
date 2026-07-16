@@ -15,10 +15,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.pipeline.pipelines import Pipeline
+from topmark.pipeline.steps.comparer import ComparerStep
 from topmark.pipeline.views import BuilderView
 from topmark.pipeline.views import DiffView
+from topmark.pipeline.views import EditView
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import ListFileImageView
+from topmark.pipeline.views import PlanEditKind
+from topmark.pipeline.views import PlannedEdit
 from topmark.pipeline.views import RenderView
 from topmark.pipeline.views import UpdatedView
 from topmark.pipeline.views import Views
@@ -156,6 +160,24 @@ def test_release_consumed_releases_diff_unless_caller_keeps_it() -> None:
     assert views.diff.text is None
 
 
+def test_pruning_retains_structured_edit_for_comparer_fast_path() -> None:
+    """Comparer consumer metadata must preserve a stripper-produced edit payload."""
+    edit = PlannedEdit(
+        kind=PlanEditKind.REMOVE,
+        old_start=0,
+        old_end=1,
+        new_lines=(),
+    )
+    views = Views(edit=EditView(edits=(edit,)))
+
+    views.release_consumed(
+        remaining_view_consumers=set(ComparerStep().consumes_views),
+    )
+
+    assert views.edit is not None
+    assert views.edit.edits == (edit,)
+
+
 def test_pipeline_steps_declare_expected_view_consumers() -> None:
     """Verify the expected consumes_views declarations used by lifecycle pruning.
 
@@ -188,6 +210,7 @@ def test_pipeline_steps_declare_expected_view_consumers() -> None:
                 ViewSlot.BUILD,
                 ViewSlot.RENDER,
                 ViewSlot.UPDATED,
+                ViewSlot.EDIT,
             }
         ),
         "PlannerStep": frozenset(
