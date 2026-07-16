@@ -26,6 +26,13 @@ from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.pipelines import PipelineDefinition
 from topmark.pipeline.pipelines import PipelineSelection
 from topmark.pipeline.pipelines import select_pipeline
+from topmark.pipeline.steps.prober import ProberStep
+
+
+def test_probe_pipeline_contains_only_prober_step() -> None:
+    """The probe pipeline is resolution-only and delegates solely to ProberStep."""
+    assert len(PROBE_PIPELINE) == 1
+    assert isinstance(PROBE_PIPELINE[0], ProberStep)
 
 
 @pytest.mark.parametrize(
