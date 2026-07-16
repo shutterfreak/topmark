@@ -31,9 +31,12 @@ if TYPE_CHECKING:
 class ProberStep(BaseStep):
     """Run resolution probing and stop the probe pipeline.
 
-    This step is intended for the probe pipeline. It records the full resolution
-    explanation on `ctx.resolution_probe`, mirrors the effective resolution
-    outcome onto the normal resolve axis, and halts after successful resolution.
+    This step is intended for the resolution-only probe pipeline. It retains the
+    full explanation on `ctx.resolution_probe` and uses the shared resolver
+    mapping to update the effective file type, processor, and resolve status.
+    Every completed probe outcome is terminal: unsuccessful or partial outcomes
+    receive their specific halt from the shared mapping, while successful
+    resolution receives this step's explicit completion halt.
 
     Axes written:
       - resolve
@@ -70,7 +73,12 @@ class ProberStep(BaseStep):
         self,
         ctx: ProcessingContext,
     ) -> None:
-        """Resolve and store probe-visible diagnostic details.
+        """Resolve, retain probe details, and make every outcome terminal.
+
+        The shared mapping deliberately leaves successful resolution unhalted so
+        normal processing pipelines can continue. ProberStep adds the successful
+        completion halt because the probe pipeline ends after resolution; all
+        other outcomes already carry a more specific shared-helper halt.
 
         Args:
             ctx: Processing context representing the file being probed.
@@ -89,7 +97,7 @@ class ProberStep(BaseStep):
         self,
         ctx: ProcessingContext,
     ) -> None:
-        """Advise about probe resolution outcome.
+        """Emit no generic hint because probe output is the explanation surface.
 
         Args:
             ctx: The processing context.
