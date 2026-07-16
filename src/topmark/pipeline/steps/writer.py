@@ -11,8 +11,8 @@
 """Writer step for committing updated content to a sink.
 
 This step is the canonical place where TopMark writes results to a destination
-(filesystem, stdout, or dry-run). It avoids implementation drift between the CLI
-and public API.
+(filesystem or stdout). Dry-run pipelines do not execute this step. It avoids
+implementation drift between the CLI and public API.
 
 This step is responsible for the final I/O after all other steps have computed
 `ctx.views.updated` and selected the intended `PlanStatus` (INSERTED, REPLACED, REMOVED,
@@ -30,7 +30,6 @@ Sinks
   only when available; Windows falls back to best-effort path-based permission handling and skips
   directory `fsync()`.
 - StdoutSink: streams the updated content to stdout (stdin-content mode).
-- NullSink: no-op (dry-run).
 
 The step respects
 [`WriterStep.may_proceed()`][topmark.pipeline.steps.writer.WriterStep.may_proceed]
@@ -131,28 +130,12 @@ def _write_stdout_lines(
     return bytes_written
 
 
-# TODO: currently `_normalize_eof` isn't applied by InplaceFileSink / AtomicFileSink. Verify
-# whether we still need to add this "no trailing newline" semantics for file writes in the real
-# sinks (likely by adjusting what ctx.iter_updated_lines() yields).
-# def _normalize_eof(text: str, ctx: ProcessingContext) -> str:
-#     """Normalize end-of-file newline according to the original file policy.
-#
-#     If the original file did not end with a newline, remove a trailing newline
-#     from ``text`` using the detected newline style.
-#     """
-#     nl: str = ctx.newline_style or "\n"
-#     if ctx.ends_with_newline is False and text.endswith(nl):
-#         return text[: -len(nl)]
-#     return text
-
-
 class WriteSink(Protocol):
     """Behavioral protocol for writer-step sinks.
 
     Sink implementations encapsulate the final destination-specific I/O for a
-    processing context, such as writing to disk, emitting to stdout, or performing
-    a dry-run no-op. The protocol intentionally exposes only behavior and does
-    not require shared sink state.
+    processing context, such as writing to disk or emitting to stdout. The protocol
+    intentionally exposes only behavior and does not require shared sink state.
     """
 
     def write(
@@ -163,8 +146,7 @@ class WriteSink(Protocol):
         """Write the updated content for ``ctx`` to the target sink.
 
         Implementations perform the final write operation for a processed file,
-        such as writing to disk, emitting to stdout, or performing no operation
-        in dry-run mode.
+        such as writing to disk or emitting to stdout.
 
         Args:
             ctx: Context that holds updated content and write status.
@@ -189,25 +171,6 @@ class WriteResult:
 
     status: WriteStatus
     bytes_written: int = 0
-
-
-class NullSink:
-    """Dry-run sink: does not write anything."""
-
-    def write(
-        self,
-        *,
-        ctx: ProcessingContext,
-    ) -> WriteResult:
-        """No-op write for dry-run mode.
-
-        Args:
-            ctx: Processing context for the current file.
-
-        Returns:
-            The current ``ctx.status.write`` echoed back with zero bytes written.
-        """
-        return WriteResult(status=ctx.status.write, bytes_written=0)
 
 
 class StdoutSink:
@@ -410,26 +373,20 @@ def _select_sink(
       * If `ctx.run_options.output_target == OutputTarget.STDOUT` → `StdoutSink`
         (emit updated content to standard output). This path ignores `apply_changes`
         because it does not mutate the filesystem.
-      * Else (target is file):
-          - If `ctx.run_options.apply_changes` is falsy → `NullSink` (preview/no-write).
-          - Otherwise select the file sink by strategy:
-            · `FileWriteStrategy.INPLACE`   → `InplaceFileSink`
-            · `FileWriteStrategy.ATOMIC`    → `AtomicFileSink` (default)
+      * Else (target is an apply-mode file operation), select the file sink by strategy:
+          - `FileWriteStrategy.INPLACE` → `InplaceFileSink`
+          - `FileWriteStrategy.ATOMIC` or no strategy → `AtomicFileSink` (default)
 
     Notes:
       * Output target is configured and set at config resolution.
       * The *destination* (stdout vs file) is orthogonal to the *write strategy*.
-      * `apply_changes` only matters for file targets; it is ignored for stdout.
+      * `WriterStep.may_proceed()` rejects non-apply file operations before sink selection.
+      * `apply_changes` is ignored for stdout because stdout does not mutate the source file.
     """
     # Destination: stdout takes precedence and ignores apply_changes.
     if ctx.run_options.output_target == OutputTarget.STDOUT:
         logger.info("--> Writer selected StdoutSink")
         return StdoutSink()
-
-    # Destination: file. Respect preview mode (no on-disk mutation).
-    if not ctx.run_options.apply_changes:
-        logger.debug("Selected NULL sink (apply_changes=False, file target)")
-        return NullSink()
 
     # Apply to file using the configured strategy (default: atomic).
     if ctx.run_options.file_write_strategy == FileWriteStrategy.INPLACE:
@@ -442,7 +399,7 @@ def _select_sink(
 
 
 class WriterStep(BaseStep):
-    """Commit updated content to a sink (filesystem/stdout/null).
+    """Commit updated content to a filesystem or stdout sink.
 
     Applies policy gates and the intended write action (insert/replace/remove)
     to produce a final write result. Performs the only I/O in the pipeline.
@@ -472,12 +429,11 @@ class WriterStep(BaseStep):
     ) -> bool:
         """Return True if the writer is allowed to commit changes.
 
-        The writer should only run when:
-          * The pipeline has not requested an early halt (``ctx.flow.halt`` is False);
-          * The caller explicitly enabled applying changes (``run_options.apply_changes`` is True);
-          * The updater selected a concrete write action (``INSERTED``/``REPLACED``/``REMOVED``);
-          * We have an updated image to write and the engine deemed the change safe
-            (``ctx.views.updated.lines`` is present and ``can_change(ctx) is True``).
+        The writer should only run when the pipeline is not halted and an updated
+        image exists. Stdout accepts preview or concrete plan states independently
+        of filesystem feasibility. File output additionally requires apply mode, a
+        concrete ``INSERTED``/``REPLACED``/``REMOVED`` plan, and
+        ``can_change(ctx) is True``.
 
         Policy and intent have already been enforced by the updater. Re-checking
         header/comparison/strip intent here can drift from the authoritative
@@ -529,8 +485,8 @@ class WriterStep(BaseStep):
     ) -> None:
         """Writer step: commit updates to the selected sink.
 
-        This step executes only when `may_proceed()` returns `True`.
-        Otherwise it converts a preview status to a non-mutating terminal status.
+        This step executes only when `may_proceed()` returns `True`. It consumes the
+        planner-owned updated image without normalizing BOM or final-newline policy.
 
         Args:
             ctx: The processing context with update intent.
@@ -540,15 +496,6 @@ class WriterStep(BaseStep):
             sink failures prevent writing.
         """
         logger.debug("ctx: %s", ctx)
-
-        # In preview mode we normally skip writes. However, when the configured
-        # destination is STDOUT, previewing means "emit the updated content".
-        if (
-            ctx.status.plan == PlanStatus.PREVIEWED
-            and ctx.run_options.output_target != OutputTarget.STDOUT
-        ):
-            ctx.status.write = WriteStatus.SKIPPED
-            return
 
         # --- Policy enforcement (centralized + file-type-specific when configured) ---
         pol: FrozenPolicy = ctx.get_effective_policy()
@@ -570,12 +517,6 @@ class WriterStep(BaseStep):
             ctx.diagnostics.add_info("Skipped by policy: header_mutation_mode=add_only")
             return
 
-        # Defensive: nothing to write if updater did not produce an updated image
-        updated_view: UpdatedView | None = ctx.views.updated
-        if updated_view is None or updated_view.lines is None:
-            ctx.diagnostics.add_info("File unchanged - nothing to write.")
-            return
-
         sink: WriteSink = _select_sink(ctx)
         result: WriteResult = sink.write(ctx=ctx)
 
@@ -590,34 +531,47 @@ class WriterStep(BaseStep):
 
         Args:
             ctx: The processing context.
+
+        Raises:
+            RuntimeError: If the context contains an unexpected write status value.
         """
         st: WriteStatus = ctx.status.write
-        # May proceed to next step (always):
-        if st == WriteStatus.WRITTEN:
-            ctx.hint(
-                axis=Axis.WRITE,
-                code=KnownCode.WRITE_WRITTEN,
-                cluster=Cluster.CHANGED,
-                message="changes written",
-            )
-        elif st == WriteStatus.SKIPPED:
-            if ctx.status.plan in {PlanStatus.INSERTED, PlanStatus.REPLACED}:
-                msg: str = "write skipped (policy)"
-            else:
-                msg = "write skipped"
-            ctx.hint(
-                axis=Axis.WRITE,
-                code=KnownCode.WRITE_SKIPPED,
-                cluster=Cluster.SKIPPED,
-                message=msg,
-            )
-        # Stop processing:
-        elif st == WriteStatus.FAILED:
-            ctx.hint(
-                axis=Axis.WRITE,
-                code=KnownCode.WRITE_FAILED,
-                cluster=Cluster.ERROR,
-                message="write failed",
-                terminal=True,
-            )
-        # BaseStep.__call__() handles PENDING state (step did not complete)
+
+        match st:
+            # May proceed to next step (always):
+            case WriteStatus.WRITTEN:
+                ctx.hint(
+                    axis=Axis.WRITE,
+                    code=KnownCode.WRITE_WRITTEN,
+                    cluster=Cluster.CHANGED,
+                    message="changes written",
+                )
+            case WriteStatus.SKIPPED:
+                if ctx.status.plan in {PlanStatus.INSERTED, PlanStatus.REPLACED}:
+                    msg: str = "write skipped (policy)"
+                else:
+                    msg = "write skipped"
+                ctx.hint(
+                    axis=Axis.WRITE,
+                    code=KnownCode.WRITE_SKIPPED,
+                    cluster=Cluster.SKIPPED,
+                    message=msg,
+                )
+
+            # Stop processing:
+            case WriteStatus.FAILED:
+                ctx.hint(
+                    axis=Axis.WRITE,
+                    code=KnownCode.WRITE_FAILED,
+                    cluster=Cluster.ERROR,
+                    message="write failed",
+                    terminal=True,
+                )
+
+            # States owned outside this step:
+            case WriteStatus.PENDING:  # pragma: no cover - BaseStep owns pending-state handling.
+                # BaseStep.__call__() handles PENDING state (step did not complete)
+                pass
+
+            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
+                raise RuntimeError(f"Unexpected WriteStatus found: {st!r}")

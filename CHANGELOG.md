@@ -637,6 +637,10 @@ ______________________________________________________________________
   command-layer JSON collector parity.
 - Added shared captured-console test helpers for exercising console-backed machine emitters with the
   standard console implementation instead of custom protocol doubles.
+- Strengthened writer-step and sink regression contracts for lifecycle gating, sink selection,
+  streaming, exact planner-owned output, permission and identity preservation, policy refusals,
+  diagnostics, hints, and failure cleanup; removed unreachable dry-run and defensive writer paths
+  plus stale EOF-normalization residue without changing supported output behavior.
 
 ### Notes - Unreleased
 
