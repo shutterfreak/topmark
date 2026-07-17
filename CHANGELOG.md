@@ -343,6 +343,18 @@ ______________________________________________________________________
   change when the file has no existing header, allowing the planner to insert it.
 - Fixed patch generation without an updated image or usable structured edit so a confirmed change
   reports a failed patch with an error diagnostic instead of an unchanged-style skipped hint.
+- Made shebang-aware processor insertion tolerate an invalid file-type encoding-line regular
+  expression by retaining the safe post-shebang anchor instead of raising a regex compilation error.
+- Classified nested or dangling TopMark marker streams as malformed across the complete file so an
+  earlier valid pair cannot mask ambiguous content and automatic stripping refuses it
+  conservatively.
+- Kept XML character-offset insertion after complete `DOCTYPE` declarations with quoted text or
+  arbitrarily long internal subsets, while treating an unclosed `DOCTYPE` conservatively instead of
+  skipping later root content. This observably changes header placement for affected documents, but
+  restores the documented contract rather than introducing a supported-behavior break: earlier
+  versions could insert the header inside an internal subset, before its closing `]>`. Complete
+  legacy header blocks in that location can now be removed with their wrappers intact and reinserted
+  after the `DOCTYPE`.
 
 ### Documentation - Unreleased
 
@@ -681,6 +693,10 @@ ______________________________________________________________________
   probe runtime migration. The current benchmark corpus remains effectively flat because it measures
   single-file check/strip processing rather than cumulative probe orchestration or public streaming
   output.
+- XML files previously processed with a `DOCTYPE` internal subset may contain a TopMark header
+  inside that subset. Strip and reinsert the header with this release to restore valid placement
+  after the complete `DOCTYPE`; the legacy block wrapper is removed without changing the surrounding
+  declaration.
 
 ______________________________________________________________________
 

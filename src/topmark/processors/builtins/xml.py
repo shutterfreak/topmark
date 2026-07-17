@@ -16,15 +16,12 @@ It delegates header processing to the core pipeline dispatcher.
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 from typing import ClassVar
 
 from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.processors.base import HeaderProcessor
-from topmark.processors.mixins import BlockCommentMixin
-from topmark.processors.mixins import XmlPositionalMixin
 from topmark.processors.types import StripDiagnostic
 from topmark.processors.types import StripHeaderResult
 
@@ -35,8 +32,57 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor):
-    """Header processor for XML/HTML-like formats (uses XmlPositionalMixin).
+def _find_doctype_end(text: str, start: int) -> int | None:
+    """Return the exclusive end of a simple DOCTYPE declaration.
+
+    The scan ignores ``>`` inside quoted identifiers and inside an internal
+    subset. It intentionally remains a small positioning helper rather than an
+    XML parser.
+    """
+    subset_depth = 0
+    quote: str | None = None
+    for index in range(start + len("<!DOCTYPE"), len(text)):
+        char: str = text[index]
+        if quote is not None:
+            if char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+        elif char == "[":
+            subset_depth += 1
+        elif char == "]" and subset_depth:
+            subset_depth -= 1
+        elif char == ">" and subset_depth == 0:
+            return index + 1
+    return None
+
+
+def _consume_ascii_whitespace(text: str, offset: int) -> int:
+    """Return the offset after XML's supported leading ASCII whitespace."""
+    suffix: str = text[offset:]
+    return offset + len(suffix) - len(suffix.lstrip("\t \r\n"))
+
+
+def _ends_with_xml_prolog(text: str) -> bool:
+    """Return whether ``text`` ends immediately after a declaration or DOCTYPE."""
+    trimmed: str = text.rstrip("\t \r\n")
+    without_leading: str = trimmed.lstrip("\ufeff\t \r\n")
+    if without_leading.startswith("<?xml") and trimmed.endswith("?>"):
+        return True
+
+    doctype_start: int = trimmed.upper().rfind("<!DOCTYPE")
+    return doctype_start >= 0 and _find_doctype_end(trimmed, doctype_start) == len(trimmed)
+
+
+def _standard_line_index(text: str, offset: int) -> int:
+    """Translate a character offset for CR, LF, and CRLF input to a line index."""
+    prefix: str = text[:offset]
+    return prefix.count("\n") + prefix.count("\r") - prefix.count("\r\n")
+
+
+class XmlHeaderProcessor(HeaderProcessor):
+    """Header processor for XML/HTML-like formats.
 
     This processor uses the **character-offset** strategy for placement:
     `get_header_insertion_index()` returns `NO_LINE_ANCHOR` and
@@ -101,10 +147,7 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         if text.startswith("\ufeff"):
             offset += 1
 
-        # Leading ASCII whitespace
-        m: re.Match[str] | None = re.match(r"[\t \r\n]*", text[offset:])
-        if m:
-            offset += m.end()
+        offset = _consume_ascii_whitespace(text, offset)
 
         # XML declaration
         if text[offset : offset + 5] == "<?xml":
@@ -115,18 +158,15 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
                 )
                 return offset  # malformed; be conservative
             offset = end_decl + 2
-            # Whitespace after declaration
-            m = re.match(r"[\t \r\n]*", text[offset:])
-            if m:
-                offset += m.end()
-            # Optional DOCTYPE (best-effort: up to next '>')
+            offset = _consume_ascii_whitespace(text, offset)
+            # Optional DOCTYPE (best-effort, including a simple internal subset)
             if text[offset : offset + 9].upper() == "<!DOCTYPE":
-                end_doc: int = text.find(">", offset)
-                if end_doc != -1:
-                    offset = end_doc + 1
-                m = re.match(r"[\t \r\n]*", text[offset:])
-                if m:
-                    offset += m.end()
+                doctype_start: int = offset
+                end_doc: int | None = _find_doctype_end(text, offset)
+                if end_doc is None:
+                    return doctype_start
+                offset = end_doc
+                offset = _consume_ascii_whitespace(text, offset)
 
         # Return current offset; padding handled in prepare_header_for_insertion_text
         logger.debug(
@@ -187,16 +227,14 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
 
         # Ensure the rendered block itself ends with exactly one newline
         block: str = rendered_header_text
-        if not (block.endswith("\n") or block.endswith("\r\n")):
+        if not (block.endswith("\n") or block.endswith("\r")):
             block = block + newline_style
-
-        # Determine if the char immediately before insert_offset is an EOL
-        prev_char_is_eol: bool = False
 
         # --- Leading padding (after prolog/doctype, always for XML-like) ---
         # Add a single blank line *only* when inserting after a prolog/doctype and
         # the previous logical line is not already a policy-blank.
         add_leading_blank: bool = False
+        prev_char_is_eol: bool = False
         if insert_offset > 0:
             # Determine previous logical line boundaries (CRLF-safe)
             i: int = insert_offset - 1
@@ -209,44 +247,10 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
                 sol -= 1
             prev_line: str = original_text[sol : i + 1]
 
-            # Heuristic: consider "after_prolog" when the previous line *is* a decl/doctype
-            # (trim EOLs for matching). We do not rely on a sliding window substring test.
-            prev_line_stripped: str = prev_line.rstrip("\r\n")
-
-            # after_prolog: bool = prev_line_stripped.startswith(
-            #     "<?xml"
-            # ) or prev_line_stripped.upper().startswith("<!DOCTYPE")
-
-            # after prev_line_stripped is computed:
-            after_prolog: bool = prev_line_stripped.startswith(
-                "<?xml"
-            ) or prev_line_stripped.upper().startswith("<!DOCTYPE")
-            if not after_prolog and prev_line_stripped.endswith(">"):
-                # look back up to 3 lines above for a DOCTYPE opener
-                scan_sol: int = sol
-                look_back = 0
-                while scan_sol > 0 and look_back < 3:
-                    # jump to previous line start
-                    scan_sol -= 1
-                    while scan_sol > 0 and original_text[scan_sol - 1] not in ("\n", "\r"):
-                        scan_sol -= 1
-                    lb_line = original_text[scan_sol:sol].rstrip("\r\n")
-                    if lb_line.upper().startswith("<!DOCTYPE"):
-                        after_prolog = True
-                        break
-                    # prepare next iteration
-                    sol = scan_sol
-                    look_back += 1
-
-            # Determine if the char immediately before insert_offset is an EOL
-
-            if insert_offset > 0:
-                c: str = original_text[insert_offset - 1]
-                if c in ("\n", "\r"):
-                    prev_char_is_eol = True
-                elif insert_offset >= 2 and original_text[insert_offset - 2] == "\r" and c == "\n":
-                    # CRLF pair: treat as EOL
-                    prev_char_is_eol = True
+            # Internal subsets have no useful fixed maximum length, so inspect the
+            # complete prefix rather than relying on a bounded line look-back.
+            after_prolog: bool = _ends_with_xml_prolog(original_text[:insert_offset])
+            prev_char_is_eol: bool = original_text[insert_offset - 1] in ("\n", "\r")
 
             if after_prolog and not is_pure_spacer(prev_line, policy):
                 add_leading_blank = True
@@ -326,23 +330,8 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
             )
             prev_is_blank: bool = is_pure_spacer(prev_line, policy)
 
-            # Detect insertion right after a prolog/doctype. Handle multi-line DOCTYPE
-            # where the previous line is the tail (e.g., "]>").
-            prev_line_stripped: str = prev_line.rstrip("\r\n")
-            after_prolog: bool = prev_line_stripped.lstrip("\ufeff \t").startswith(
-                "<?xml"
-            ) or prev_line_stripped.lstrip().upper().startswith("<!DOCTYPE")
-            if not after_prolog and prev_line_stripped.endswith(">"):
-                # Look back up to 3 lines for a DOCTYPE opener
-                back = 1
-                i = insert_index - 2
-                while back <= 3 and i >= 0 and not after_prolog:
-                    cand = original_lines[i].rstrip("\r\n")
-                    if cand.lstrip().upper().startswith("<!DOCTYPE"):
-                        after_prolog = True
-                        break
-                    i -= 1
-                    back += 1
+            # A DOCTYPE internal subset can span any number of physical lines.
+            after_prolog: bool = _ends_with_xml_prolog("".join(original_lines[:insert_index]))
 
             if after_prolog and not prev_is_blank:
                 add_leading_blank = True
@@ -385,12 +374,19 @@ class XmlHeaderProcessor(XmlPositionalMixin, BlockCommentMixin, HeaderProcessor)
         Returns:
             ``True`` if the candidate is acceptable; ``False`` otherwise.
         """
-        # First apply the base proximity rule
+        text: str = "".join(lines)
+        char_offset: int | None = self.get_header_insertion_char_offset(text)
+        # A line-only fallback anchor may point inside a multiline DOCTYPE. Use
+        # the exact XML insertion boundary when deciding whether a header is current.
+        effective_anchor: int = (
+            anchor_idx if char_offset is None else _standard_line_index(text, char_offset)
+        )
+
         return super().validate_header_location(
             lines,
             header_start_idx=header_start_idx,
             header_end_idx=header_end_idx,
-            anchor_idx=anchor_idx,
+            anchor_idx=effective_anchor,
         )
 
     def strip_header_block(

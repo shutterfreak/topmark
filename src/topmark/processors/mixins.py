@@ -8,19 +8,11 @@
 #
 # topmark:header:end
 
-"""Common mixins for header processors.
+"""Shared shebang and line-comment behavior for header processors.
 
-These mixins provide reusable, state-light behavior for:
-
-* Line-comment based processors (e.g., Pound/Slash) via ``LineCommentMixin``.
-* Positional, tag- or prolog-sensitive processors (e.g., XML/HTML) via
-  ``XmlPositionalMixin``.
-* Shebang-aware insertion rules via ``ShebangAwareMixin``.
-
-They **do not** change public behavior on their own. Processors can adopt these
-mixins to share well-tested logic and reduce duplication. Delimiter attributes
-such as ``line_prefix`` and ``block_prefix`` remain normal instance attributes so
-processor instances may override them during construction or registration.
+``LineCommentMixin`` supplies the runtime behavior shared by the pound and slash
+processors. XML positioning and block-comment padding remain format-specific and
+live on their concrete processors rather than behind generic helpers.
 """
 
 from __future__ import annotations
@@ -28,45 +20,15 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 from typing import Final
-from typing import cast
 
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Protocol
 
     from topmark.filetypes.policy import FileTypeHeaderPolicy
 
-if TYPE_CHECKING:
-
-    class _EnsureBlockPadding(Protocol):
-        """Structural callable for optional block-padding helpers."""
-
-        def __call__(
-            self,
-            rendered_lines: list[str],
-            *,
-            newline: str,
-        ) -> list[str]: ...
-
-
 _RE_SHEBANG: Final[re.Pattern[str]] = re.compile(r"^#!")
-_RE_XML_DECL: Final[re.Pattern[str]] = re.compile(r"^\s*<\?xml\b", re.IGNORECASE)
-_RE_DOCDECL: Final[re.Pattern[str]] = re.compile(r"^\s*<!DOCTYPE\b", re.IGNORECASE)
-_RE_HTML_COMMENT_OPEN: Final[re.Pattern[str]] = re.compile(r"^\s*<!--")
-_RE_BOM: Final[str] = "\ufeff"
-
-
-def _equals_affix_ignoring_space_tab(line: str, affix: str) -> bool:
-    """Return True if `line` equals `affix` when ignoring only spaces/tabs and EOLs.
-
-    This is not a blank-collapsing check. We intentionally do *not* use
-    `str.strip()` because it removes all Unicode whitespace (e.g., form-feed),
-    which should remain significant for affix equality.
-    """
-    s: str = line.rstrip("\r\n").strip(" \t")
-    return s == (affix or "")
 
 
 class ShebangAwareMixin:
@@ -232,232 +194,5 @@ class LineCommentMixin(ShebangAwareMixin):
                 if nxt != newline_style and not (nxt and nxt[0] in _nl_sentinels):
                     out = out + [newline_style]
             # else: inserting at EOF → no body follows → no spacer
-
-        return out
-
-
-# ---------------------------------------------------------------------------
-# BlockCommentMixin: helpers for block-comment based processors
-# ---------------------------------------------------------------------------
-
-
-class BlockCommentMixin:
-    """Shared helpers for block-comment processors (e.g., CSS/JS C-style).
-
-    Processors define block-comment delimiter attributes, usually during
-    construction:
-        * ``block_prefix``: the opening delimiter (e.g., ``/*`` or ``<!--``).
-        * ``block_suffix``: the closing delimiter (e.g., ``*/`` or ``-->``).
-
-    The helpers here are intentionally minimal; they can be expanded as we
-    migrate concrete processors and spot duplication opportunities.
-    """
-
-    #: Instance-level opening delimiter for block comments.
-    block_prefix: str = ""
-    #: Instance-level closing delimiter for block comments.
-    block_suffix: str = ""
-
-    def is_block_prefix(self, line: str) -> bool:
-        """Return True if line is block prefix, ignoring spaces/tabs and EOLs.
-
-        Returns True if `line` equals the configured block prefix,
-        ignoring only spaces/tabs and EOLs.
-
-        Affix equality ignores incidental surrounding spaces;
-        blank collapsing is not performed here. We intentionally do *not* use
-        `str.strip()` because it removes all Unicode whitespace (e.g., form-feed),
-        which should remain significant for affix equality.
-
-        Args:
-            line: The line to check.
-
-        Returns:
-            True if `line` equals the configured block prefix, else False.
-        """
-        return _equals_affix_ignoring_space_tab(line, self.block_prefix or "")
-
-    def is_block_suffix(self, line: str) -> bool:
-        """Return True if line is block suffix, ignoring spaces/tabs and EOLs.
-
-        Returns True if `line` equals the configured block suffix,
-        ignoring only spaces/tabs and EOLs.
-
-        Affix equality ignores incidental surrounding spaces;
-        blank collapsing is not performed here. We intentionally do *not* use
-        `str.strip()` because it removes all Unicode whitespace (e.g., form-feed),
-        which should remain significant for affix equality.
-
-        Args:
-            line: The line to check.
-
-        Returns:
-            True if `line` equals the configured block suffix, else False.
-        """
-        return _equals_affix_ignoring_space_tab(line, self.block_suffix or "")
-
-    def render_block_line(self, payload: str) -> str:
-        """Render a content line inside a block (identity for now)."""
-        return payload
-
-    def ensure_block_padding(self, rendered_lines: list[str], *, newline: str) -> list[str]:
-        r"""Ensure the block text ends with a newline.
-
-        Args:
-            rendered_lines: Lines that compose the block (including delimiters).
-            newline: Newline string to enforce at the end ("\n" or "\r\n").
-
-        Returns:
-            Possibly adjusted copy with a trailing newline present.
-        """
-        out: list[str] = list(rendered_lines)
-        if not out:
-            return out
-        last: str = out[-1]
-        if not (last.endswith("\n") or last.endswith("\r\n")):
-            out[-1] = last + newline
-        return out
-
-
-class XmlPositionalMixin:
-    """Helpers for tag-sensitive (positional) processors like XML/HTML.
-
-    This mixin offers small, composable predicates and insertion index logic
-    that respect XML declarations and document type declarations (DOCTYPE).
-    """
-
-    # ---- Prolog / declaration predicates ------------------------------------
-
-    def is_xml_declaration(self, line: str) -> bool:
-        """Return True for an XML declaration line (``<?xml ...?>``)."""
-        return bool(_RE_XML_DECL.match(line))
-
-    def is_doctype_declaration(self, line: str) -> bool:
-        """Return True for a DOCTYPE declaration line."""
-        return bool(_RE_DOCDECL.match(line))
-
-    def is_html_comment_open(self, line: str) -> bool:
-        """Return True if the line opens an HTML/XML comment block."""
-        return bool(_RE_HTML_COMMENT_OPEN.match(line))
-
-    # ---- Insertion index helpers --------------------------------------------
-
-    def find_xml_insertion_index(self, lines: Sequence[str]) -> int:
-        """Return the line index after XML declaration and DOCTYPE (if present).
-
-        Notes:
-            BOM handling is performed upstream in the reader step; this helper
-            assumes lines are already normalized. The check is purely line-based
-            and does not attempt to coalesce declaration/content that share a
-            single line (the XML processor's char-offset path covers that case).
-        """
-        i = 0
-        if i < len(lines) and self.is_xml_declaration(lines[i]):
-            i += 1
-        if i < len(lines) and self.is_doctype_declaration(lines[i]):
-            i += 1
-        return i
-
-    def compute_insertion_anchor(self, lines: list[str]) -> int:
-        """Line-based fallback: place header after XML decl and DOCTYPE (if present)."""
-        return self.find_xml_insertion_index(lines)
-
-    def prepare_header_for_insertion_text(
-        self,
-        *,
-        original_text: str,
-        insert_offset: int,
-        rendered_header_text: str,
-        newline_style: str,
-    ) -> str:
-        """Adjust whitespace so the header block sits on its own lines.
-
-        Blank detection here applies the configured policy in a text
-        (char-offset) path:
-        - Leading spacer is added only when inserting after some preamble and the
-          previous character is not already an EOL.
-        - Trailing spacer is added only when body content follows **and** the next
-          slice up to the next EOL is **not** a policy-blank (checked via
-          ``is_pure_spacer`` on the slice).
-
-        Args:
-            original_text: Full file content as a single string.
-            insert_offset: 0-based character offset where the header will be inserted.
-            rendered_header_text: Header block text (may already include newlines).
-            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
-
-        Returns:
-            Possibly modified header text to splice at ``insert_offset``.
-        """
-        policy: FileTypeHeaderPolicy | None = getattr(
-            getattr(self, "file_type", None), "header_policy", None
-        )
-        if policy is None:
-            want_leading: bool = True
-            want_trailing: bool = False
-        else:
-            want_leading = policy.pre_header_blank_after_block > 0
-            want_trailing = bool(policy.ensure_blank_after_header)
-
-        out: str = rendered_header_text
-
-        # Optional leading spacer only if inserting after some preamble and previous char
-        # isn't already a newline
-        if want_leading and insert_offset > 0:
-            prev: str = original_text[insert_offset - 1]
-            if prev not in ("\n", "\r"):
-                out = newline_style + out
-
-        # Trailing spacer only when body content follows and the next slice (up to EOL)
-        # is not a policy-blank. For text mode we approximate a line by scanning to EOL.
-        if want_trailing and insert_offset < len(original_text):
-            j: int = insert_offset
-            n: int = len(original_text)
-            while j < n and original_text[j] not in ("\n", "\r"):
-                j += 1
-            next_slice: str = original_text[insert_offset:j]
-            if not is_pure_spacer(
-                next_slice,
-                getattr(getattr(self, "file_type", None), "header_policy", None),
-            ):
-                out = out + newline_style
-
-        return out
-
-    def prepare_header_for_insertion(
-        self,
-        *,
-        original_lines: list[str],
-        insert_index: int,
-        rendered_header_lines: list[str],
-        newline_style: str,
-    ) -> list[str]:
-        """Ensure the block itself ends with a newline, no extra spacer at EOF.
-
-        For XML/HTML-like processors that also support line-based insertion,
-        we only guarantee the block terminates with the dominant newline; we do
-        not add a trailing spacer when inserting at EOF (that's handled by the
-        text path or upstream policy).
-
-        Notes:
-            Blank detection is policy-aware (STRICT/UNICODE/NONE) via `is_pure_spacer`.
-
-        Args:
-            original_lines: Original file lines.
-            insert_index: Line index where the header will be inserted.
-            rendered_header_lines: Header lines to insert.
-            newline_style: Newline style (``LF``, ``CR``, ``CRLF``).
-
-        Returns:
-            Possibly modified header lines including any added padding.
-        """
-        # Detect the dominant newline from existing lines, default to "\n"
-        out: list[str] = list(rendered_header_lines)
-
-        # If BlockCommentMixin is in the MRO, use its helper to ensure a final newline.
-        ensure_block_padding = getattr(self, "ensure_block_padding", None)
-        if callable(ensure_block_padding):
-            ensure_block_padding_fn = cast("_EnsureBlockPadding", ensure_block_padding)
-            out = ensure_block_padding_fn(out, newline=newline_style)
 
         return out

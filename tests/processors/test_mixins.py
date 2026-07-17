@@ -8,17 +8,17 @@
 #
 # topmark:header:end
 
-"""Unit tests for processor mixins (line-based and positional)."""
+"""Unit tests for the runtime-bearing line-comment processor mixin."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.registry import make_file_type
 from topmark.filetypes.policy import FileTypeHeaderPolicy
-from topmark.processors.mixins import BlockCommentMixin
 from topmark.processors.mixins import LineCommentMixin
-from topmark.processors.mixins import XmlPositionalMixin
 
 if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
@@ -57,40 +57,10 @@ def test_shebang_skip_without_bom() -> None:
     assert p.find_insertion_index(lines) == 1
 
 
-class _Xml(XmlPositionalMixin):
-    pass
-
-
-def test_xml_insertion_after_decl_and_doctype() -> None:
-    """XML insertion index sits after XML decl and DOCTYPE."""
-    x = _Xml()
-    lines: list[str] = [
-        "<?xml version='1.0' encoding='UTF-8'?>",
-        "<!DOCTYPE note SYSTEM 'Note.dtd'>",
-        "<note>",
-    ]
-    assert x.find_xml_insertion_index(lines) == 2
-
-
-def test_xml_insertion_does_not_handle_bom() -> None:
-    """Xml mixin leaves BOM handling to the reader step."""
-    x = _Xml()
-    lines: list[str] = ["\ufeff<note>", "<to>Tove</to>"]
-    assert x.find_xml_insertion_index(lines) == 0
-
-
-def test_xml_declaration_predicate() -> None:
-    """Detect XML declaration line."""
-    x = _Xml()
-    assert x.is_xml_declaration("<?xml version='1.0'?>")
-    assert not x.is_xml_declaration("<note>")
-
-
-def test_doctype_predicate() -> None:
-    """Detect DOCTYPE declaration line."""
-    x = _Xml()
-    assert x.is_doctype_declaration("<!DOCTYPE html>")
-    assert not x.is_doctype_declaration("<html>")
+@pytest.mark.parametrize("lines", [[], ["body\n"]])
+def test_line_mixin_without_shebang_uses_top_of_file(lines: list[str]) -> None:
+    """Empty and ordinary files retain the top-of-file insertion anchor."""
+    assert _LineProc().find_insertion_index(lines) == 0
 
 
 def test_line_mixin_respects_no_shebang_policy() -> None:
@@ -137,28 +107,32 @@ def test_line_mixin_skips_encoding_line_after_shebang() -> None:
     assert p.find_insertion_index(lines) == 2
 
 
-# --- BlockCommentMixin tests ------------------------------------------------
+@pytest.mark.parametrize(
+    "lines",
+    [
+        ["#!/usr/bin/env python\n"],
+        ["#!/usr/bin/env python\n", "# ordinary comment\n"],
+    ],
+)
+def test_line_mixin_keeps_shebang_anchor_without_matching_encoding_line(
+    lines: list[str],
+) -> None:
+    """An absent or nonmatching encoding line is not consumed."""
 
+    class _P(LineCommentMixin):
+        file_type: FileType
+        line_prefix = "# "
 
-class _Block(BlockCommentMixin):
-    block_prefix = "/*"
-    block_suffix = "*/"
+    processor = _P()
+    processor.file_type = make_file_type(
+        local_key="encoding-nonmatch",
+        header_policy=FileTypeHeaderPolicy(
+            supports_shebang=True,
+            encoding_line_regex=r"coding[:=]\s*([-\w.]+)",
+        ),
+    )
 
-
-def test_block_predicates() -> None:
-    """Detect block prefix/suffix by stripped equality."""
-    b = _Block()
-    assert b.is_block_prefix("  /*  ")
-    assert b.is_block_suffix("*/")
-    assert not b.is_block_prefix("<--")
-
-
-def test_block_padding_ensures_trailing_newline() -> None:
-    """Ensure block text ends with a newline."""
-    b = _Block()
-    lines = ["/*", " header ", "*/"]
-    out = b.ensure_block_padding(lines, newline="\n")
-    assert out[-1].endswith("\n")
+    assert processor.find_insertion_index(lines) == 1
 
 
 def test_line_render_header_line_uses_optional_suffix() -> None:
@@ -252,59 +226,62 @@ def test_line_prepare_header_for_insertion_preserves_user_whitespace_body() -> N
     assert out == ["# header\n", "\n"]
 
 
-def test_xml_text_insertion_padding_uses_policy() -> None:
-    """XML text insertion pads around a char-offset header according to policy."""
-
-    class _P(XmlPositionalMixin):
-        file_type: FileType
-
-    p = _P()
-    p.file_type = make_file_type(
-        local_key="xml_text_spacing",
-        extensions=[".xml"],
-        filenames=[],
-        patterns=[],
-        description="",
-        header_policy=FileTypeHeaderPolicy(
-            pre_header_blank_after_block=1,
-            ensure_blank_after_header=True,
+@pytest.mark.parametrize(
+    ("original_lines", "insert_index", "policy", "expected"),
+    [
+        (["body\n"], 0, None, ["# header\n", "\n"]),
+        ([], 0, None, ["# header\n"]),
+        (
+            ["\n", "body\n"],
+            1,
+            FileTypeHeaderPolicy(
+                pre_header_blank_after_block=1,
+                ensure_blank_after_header=True,
+            ),
+            ["# header\n", "\n"],
         ),
-    )
+        (
+            ["body\n"],
+            0,
+            FileTypeHeaderPolicy(ensure_blank_after_header=False),
+            ["# header\n"],
+        ),
+        (["\n"], 0, FileTypeHeaderPolicy(), ["# header\n"]),
+        (["\rbody"], 0, FileTypeHeaderPolicy(), ["# header\n"]),
+        (["\x85body"], 0, FileTypeHeaderPolicy(), ["# header\n"]),
+        (["\u2028body"], 0, FileTypeHeaderPolicy(), ["# header\n"]),
+        (["\u2029body"], 0, FileTypeHeaderPolicy(), ["# header\n"]),
+    ],
+)
+def test_line_padding_policy_matrix_is_non_mutating(
+    original_lines: list[str],
+    insert_index: int,
+    policy: FileTypeHeaderPolicy | None,
+    expected: list[str],
+) -> None:
+    """Shared padding handles defaults, EOF, existing separators, and sentinels."""
 
-    out: str = p.prepare_header_for_insertion_text(
-        original_text="<root><child />",
-        insert_offset=len("<root>"),
-        rendered_header_text="<!-- header -->\n",
+    class _P(LineCommentMixin):
+        file_type: FileType
+        line_prefix = "# "
+
+    processor = _P()
+    if policy is not None:
+        processor.file_type = make_file_type(
+            local_key="padding-matrix",
+            header_policy=policy,
+        )
+    rendered: list[str] = ["# header\n"]
+    original_snapshot: list[str] = list(original_lines)
+    rendered_snapshot: list[str] = list(rendered)
+
+    result: list[str] = processor.prepare_header_for_insertion(
+        original_lines=original_lines,
+        insert_index=insert_index,
+        rendered_header_lines=rendered,
         newline_style="\n",
     )
 
-    assert out == "\n<!-- header -->\n\n"
-
-
-def test_xml_text_insertion_padding_respects_existing_newline_and_blank() -> None:
-    """XML text insertion should not duplicate existing newline or exact blank body."""
-
-    class _P(XmlPositionalMixin):
-        file_type: FileType
-
-    p = _P()
-    p.file_type = make_file_type(
-        local_key="xml_existing_spacing",
-        extensions=[".xml"],
-        filenames=[],
-        patterns=[],
-        description="",
-        header_policy=FileTypeHeaderPolicy(
-            pre_header_blank_after_block=1,
-            ensure_blank_after_header=True,
-        ),
-    )
-
-    out: str = p.prepare_header_for_insertion_text(
-        original_text="<root>\n\n<child />",
-        insert_offset=len("<root>\n"),
-        rendered_header_text="<!-- header -->\n",
-        newline_style="\n",
-    )
-
-    assert out == "<!-- header -->\n"
+    assert result == expected
+    assert original_lines == original_snapshot
+    assert rendered == rendered_snapshot

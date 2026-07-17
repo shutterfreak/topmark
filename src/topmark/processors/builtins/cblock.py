@@ -33,11 +33,10 @@ from __future__ import annotations
 from typing import ClassVar
 
 from topmark.processors.base import HeaderProcessor
-from topmark.processors.mixins import BlockCommentMixin
 
 
-class CBlockHeaderProcessor(BlockCommentMixin, HeaderProcessor):
-    """Processor for C-style block comment headers (uses BlockCommentMixin)."""
+class CBlockHeaderProcessor(HeaderProcessor):
+    """Processor for C-style block comment headers."""
 
     local_key: ClassVar[str] = "cblock"
     description: ClassVar[str] = (

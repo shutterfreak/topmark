@@ -165,6 +165,10 @@ def get_base_processor_binding_registry() -> dict[str, str]:
     Returns:
         Base mapping of file type qualified key to processor qualified key.
 
+    Notes:
+        The cached dictionary is shared process-wide and must be treated as
+        read-only by callers.
+
     Raises:
         ProcessorBindingError: If a binding references an unknown file type or
             if multiple bindings target the same file type qualified key.
@@ -214,6 +218,10 @@ def get_base_processor_definition_registry() -> dict[str, ProcessorDefinition]:
 
     Returns:
         Base mapping of processor qualified key to `ProcessorDefinition`.
+
+    Notes:
+        The cached dictionary is shared process-wide and must be treated as
+        read-only by callers.
 
     Raises:
         ProcessorBindingError: If multiple built-in bindings resolve to the same
@@ -266,6 +274,12 @@ def get_base_header_processor_registry() -> dict[str, HeaderProcessor]:
 
     Returns:
         Base mapping of file type local key to bound `HeaderProcessor` instances.
+
+    Notes:
+        The cached dictionary and its bound processor instances are shared
+        process-wide compatibility state and must be treated as read-only by
+        callers. Use the composed registry resolution path when a fresh bound
+        processor is required.
 
     Raises:
         ProcessorBindingError: If a binding references an unknown file type or

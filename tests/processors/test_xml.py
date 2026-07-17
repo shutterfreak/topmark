@@ -491,27 +491,101 @@ def test_xml_strip_header_block_respects_declaration(tmp_path: Path) -> None:
     assert strip_result_2.removed_span == (1, 3)
 
 
-def test_xml_doctype_with_internal_subset(tmp_path: Path) -> None:
-    """DOCTYPE with simple internal subset (multi-line) is respected.
+def test_xml_doctype_with_long_internal_subset(tmp_path: Path) -> None:
+    """DOCTYPE with a long internal subset is respected.
 
     Confirms header insertion occurs after the declaration and the entirety of the
-    multi-line DOCTYPE, followed by a single blank line.
+    multi-line DOCTYPE without relying on a bounded line look-back.
     """
     file: Path = tmp_path / "subset.xml"
-    file.write_text(
-        '<?xml version="1.0"?>\n<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>\n<root/>\n'
-    )
+    doctype_lines: list[str] = [
+        "<!DOCTYPE root [\n",
+        "  <!ELEMENT root EMPTY>\n",
+        "  <!ENTITY one '1'>\n",
+        "  <!ENTITY two '2'>\n",
+        "  <!ENTITY three '3'>\n",
+        "  <!ENTITY four '4'>\n",
+        "]>\n",
+    ]
+    file.write_text('<?xml version="1.0"?>\n' + "".join(doctype_lines) + "<root/>\n")
     cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
     lines: list[str] = materialize_updated_lines(ctx)
 
     assert lines[0].lstrip("\ufeff").startswith("<?xml")
 
-    # header begins after declaration + doctype + one blank
+    # Header begins after declaration + complete doctype + one owned blank.
     sig: BlockSignatures = expected_block_lines_for(file)
     start_idx: int = find_line(lines, sig["start_line"])
 
-    assert start_idx == 5  # decl(0) doctype(1..3) blank(4) start(5)
+    assert lines[1:8] == doctype_lines
+    assert lines[8] == "\n"
+    assert "block_open" in sig
+    assert lines[9].rstrip("\r\n") == sig["block_open"]
+    assert start_idx == 10
+
+
+def test_xml_legacy_header_inside_internal_subset_is_removed_then_reinserted(
+    tmp_path: Path,
+) -> None:
+    """A legacy misplaced header is recoverable without damaging the DOCTYPE."""
+    file: Path = tmp_path / "legacy-subset.xml"
+    lines: list[str] = [
+        '<?xml version="1.0"?>\n',
+        "<!DOCTYPE root [\n",
+        "  <!ELEMENT root EMPTY>\n",
+        "<!--\n",
+        f"{TOPMARK_START_MARKER}\n",
+        "\n",
+        "  file: legacy-subset.xml\n",
+        "\n",
+        f"{TOPMARK_END_MARKER}\n",
+        "-->\n",
+        "\n",
+        "  <!ENTITY example 'value'>\n",
+        "]>\n",
+        "<root/>\n",
+    ]
+    original: list[str] = list(lines)
+    file.write_text("".join(lines))
+    processor: HeaderProcessor | None = resolve_processor_for_path(path=file)
+    assert processor is not None
+
+    stripped: StripHeaderResult = processor.strip_header_block(lines=lines)
+
+    assert lines == original
+    assert stripped.diagnostic.kind is StripDiagKind.REMOVED
+    assert stripped.removed_span == (3, 9)
+    assert stripped.lines == [*original[:3], *original[11:]]
+
+    file.write_text("".join(stripped.lines))
+    updated: list[str] = materialize_updated_lines(
+        run_insert(file, mutable_config_from_defaults().freeze())
+    )
+    doctype_end: int = updated.index("]>\n")
+    start_idx: int = find_line(updated, expected_block_lines_for(file)["start_line"])
+    root_idx: int = updated.index("<root/>\n")
+
+    assert updated[1:5] == [
+        "<!DOCTYPE root [\n",
+        "  <!ELEMENT root EMPTY>\n",
+        "  <!ENTITY example 'value'>\n",
+        "]>\n",
+    ]
+    assert doctype_end < start_idx < root_idx
+
+
+def test_xml_strip_without_header_is_an_identity_noop() -> None:
+    """XML-specific cleanup does not copy or annotate an absent-header result."""
+    processor = XmlHeaderProcessor()
+    lines: list[str] = ["<root/>\n"]
+
+    result: StripHeaderResult = processor.strip_header_block(lines=lines)
+
+    assert result.lines is lines
+    assert result.removed_span is None
+    assert result.diagnostic.kind is StripDiagKind.NOT_FOUND
+    assert result.diagnostic.notes == []
 
 
 def test_xml_bom_preserved_text_insert(tmp_path: Path) -> None:
