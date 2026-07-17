@@ -507,7 +507,11 @@ def test_xml_doctype_with_long_internal_subset(tmp_path: Path) -> None:
         "  <!ENTITY four '4'>\n",
         "]>\n",
     ]
-    file.write_text('<?xml version="1.0"?>\n' + "".join(doctype_lines) + "<root/>\n")
+    file.write_text(
+        '<?xml version="1.0"?>\n' + "".join(doctype_lines) + "<root/>\n",
+        encoding="utf-8",
+        newline="",
+    )
     cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx: ProcessingContext = run_insert(file, cfg)
     lines: list[str] = materialize_updated_lines(ctx)
@@ -547,7 +551,7 @@ def test_xml_legacy_header_inside_internal_subset_is_removed_then_reinserted(
         "<root/>\n",
     ]
     original: list[str] = list(lines)
-    file.write_text("".join(lines))
+    file.write_text("".join(lines), encoding="utf-8", newline="")
     processor: HeaderProcessor | None = resolve_processor_for_path(path=file)
     assert processor is not None
 
@@ -558,7 +562,7 @@ def test_xml_legacy_header_inside_internal_subset_is_removed_then_reinserted(
     assert stripped.removed_span == (3, 9)
     assert stripped.lines == [*original[:3], *original[11:]]
 
-    file.write_text("".join(stripped.lines))
+    file.write_text("".join(stripped.lines), encoding="utf-8", newline="")
     updated: list[str] = materialize_updated_lines(
         run_insert(file, mutable_config_from_defaults().freeze())
     )
