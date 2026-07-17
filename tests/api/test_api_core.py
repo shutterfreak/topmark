@@ -29,6 +29,7 @@ from topmark.toml.keys import Toml
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.config.model import FrozenConfig
     from topmark.processors.base import HeaderProcessor
 
 
@@ -41,6 +42,26 @@ def test_api_check_empty_dir(tmp_path: Path) -> None:
     assert r.files == ()
     assert r.summary == {}
     assert r.had_errors is False
+
+
+def test_check_accepts_frozen_config_without_mutating_it(
+    tmp_path: Path,
+    default_frozen_config: FrozenConfig,
+) -> None:
+    """FrozenConfig is a public seed input and remains immutable across a run."""
+    target: Path = tmp_path / "sample.py"
+    target.write_text("print('hello')\n", encoding="utf-8")
+    before: FrozenConfig = default_frozen_config.thaw().freeze()
+
+    result: api.RunResult = api.check(
+        [target],
+        config=default_frozen_config,
+        include_file_types=["python"],
+        report="all",
+    )
+
+    assert result.files[0].path == target
+    assert default_frozen_config == before
 
 
 def test_apply_check_writes_when_needed(

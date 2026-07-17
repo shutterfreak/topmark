@@ -14,10 +14,13 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import cast
 
 import pytest
 
 from topmark import api
+from topmark.api.collectors import CollectedContentRun
+from topmark.api.collectors import CollectedProbeRun
 from topmark.api.collectors import ContentRunCollector
 from topmark.api.collectors import ProbeRunCollector
 from topmark.api.collectors import collect_content_stream
@@ -156,10 +159,10 @@ def test_content_collector_rebuilds_run_result_from_events() -> None:
                 summary={
                     Outcome.WOULD_UPDATE.value: 1,
                 },
-                had_errors=False,
+                had_errors=True,
                 skipped=2,
-                written=0,
-                failed=0,
+                written=3,
+                failed=1,
                 diagnostic_totals=diagnostic_totals,
                 diagnostic_totals_all=diagnostic_totals,
             ),
@@ -177,6 +180,9 @@ def test_content_collector_rebuilds_run_result_from_events() -> None:
         Outcome.WOULD_UPDATE.value: 1,
     }
     assert collected.result.skipped == 2
+    assert collected.result.written == 3
+    assert collected.result.failed == 1
+    assert collected.result.had_errors is True
     assert collected.result.diagnostics == diagnostics
     assert collected.result.diagnostic_totals == diagnostic_totals
     assert collected.result.diagnostic_totals_all == diagnostic_totals
@@ -209,9 +215,69 @@ def test_content_collector_rejects_out_of_order_file_events() -> None:
         )
 
 
+def test_probe_collector_rejects_out_of_order_file_events() -> None:
+    """Probe collectors enforce zero-based consecutive file indexes."""
+    with pytest.raises(ValueError, match="Expected file-result index 0"):
+        collect_probe_stream(
+            (
+                _probe_run_started(),
+                _probe_file_event(index=1),
+                _probe_run_completed(),
+            )
+        )
+
+
+def test_content_collector_accepts_empty_complete_stream_and_overrides() -> None:
+    """Empty complete streams preserve ordered paths and producer-owned metadata."""
+    paths = (Path("z.py"), Path("a.py"))
+    started = api.RunStartedEvent(
+        kind="run_started",
+        command="check",
+        selected_count=2,
+        paths=paths,
+    )
+    diagnostics: dict[str, list[DiagnosticEntry]] = {}
+    bucket_summary: dict[str, int] = {"producer-owned": 0}
+
+    collected: CollectedContentRun = collect_content_stream(
+        (
+            started,
+            _content_run_completed(summary={}),
+        ),
+        command="check",
+        diagnostics=diagnostics,
+        bucket_summary=bucket_summary,
+    )
+
+    assert collected.selected_paths == paths
+    assert collected.result.files == ()
+    assert collected.result.summary == {}
+    assert collected.result.diagnostics is diagnostics
+    assert collected.result.bucket_summary is bucket_summary
+
+
+def test_probe_collector_accepts_empty_complete_stream() -> None:
+    """Probe collectors accept a start/completion pair with an empty summary."""
+    collected: CollectedProbeRun = collect_probe_stream(
+        (
+            api.RunStartedEvent(
+                kind="run_started",
+                command="probe",
+                selected_count=0,
+                paths=(),
+            ),
+            _probe_run_completed(summary={}),
+        )
+    )
+
+    assert collected.selected_paths == ()
+    assert collected.result.files == ()
+    assert collected.result.summary == {}
+
+
 def test_probe_collector_rebuilds_probe_result_from_events() -> None:
     """Probe collectors aggregate status summaries and diagnostic totals."""
-    probe_result = _probe_file_result()
+    probe_result: api.ProbeFileResult = _probe_file_result()
     diagnostic_totals = DiagnosticTotals(info=0, warning=0, error=0, total=0)
 
     collected: CollectedProbeRun = collect_probe_stream(
@@ -387,6 +453,48 @@ def test_probe_collector_rejects_mismatched_command() -> None:
         ValueError,
         match="Expected 'probe' stream event, got 'check'",
     ):
+        collector.consume(event)
+
+
+@pytest.mark.parametrize(
+    "collector",
+    [ContentRunCollector("check"), ProbeRunCollector()],
+)
+def test_collectors_reject_unsupported_event_objects(
+    collector: ContentRunCollector | ProbeRunCollector,
+) -> None:
+    """Untyped objects are rejected instead of disappearing from the stream."""
+
+    class UnsupportedEvent:
+        command: str = "check"
+        kind: str = "file_result"
+
+    with pytest.raises(TypeError, match="Unsupported .* stream event"):
+        if isinstance(collector, ContentRunCollector):
+            collector.consume(cast("ContentStreamEvent", UnsupportedEvent()))
+        else:
+            collector.consume(cast("ProbeStreamEvent", UnsupportedEvent()))
+
+
+@pytest.mark.parametrize(
+    "collector",
+    [ContentRunCollector("check"), ProbeRunCollector()],
+)
+def test_collectors_reject_event_class_kind_mismatch(
+    collector: ContentRunCollector | ProbeRunCollector,
+) -> None:
+    """Event DTO classes and their stable kind discriminators must agree."""
+    command: PipelineKindLiteral = (
+        "check" if isinstance(collector, ContentRunCollector) else "probe"
+    )
+    event = api.RunStartedEvent(
+        kind="file_result",  # pyright: ignore[reportArgumentType]
+        command=command,
+        selected_count=0,
+        paths=(),
+    )
+
+    with pytest.raises(ValueError, match="RunStartedEvent kind must be 'run_started'"):
         collector.consume(event)
 
 

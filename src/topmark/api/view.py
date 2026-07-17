@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Sequence
 
+    from topmark.api.types import DiagnosticLevelLiteral
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.result import ProbeMatchSnapshot
@@ -301,13 +302,13 @@ def collect_diagnostic_totals(
     total_error: int = 0
     for result in results:
         for diagnostic in _diagnostic_entries_for_result(result):
-            match diagnostic["level"]:
-                case "info":
-                    total_info += 1
-                case "warning":
-                    total_warn += 1
-                case "error":
-                    total_error += 1
+            level: DiagnosticLevelLiteral = diagnostic["level"]
+            if level == "info":
+                total_info += 1
+            elif level == "warning":
+                total_warn += 1
+            else:
+                total_error += 1
     total: int = total_info + total_warn + total_error
     return DiagnosticTotals(
         info=total_info,

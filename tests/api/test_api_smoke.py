@@ -14,12 +14,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import topmark.core.outcomes
 from topmark import api
+from topmark.core.outcomes import Outcome
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from topmark.api.types import FileTypeInfo
+    from topmark.api.types import ProcessorInfo
     from topmark.version.types import VersionInfo
 
 
@@ -28,6 +30,15 @@ def test_version_is_nonempty_string() -> None:
     v_info: VersionInfo = api.get_version_info()
     v: str = v_info.version_text
     assert isinstance(v, str) and v.strip(), "version() must return a non-empty string"
+
+
+def test_get_version_text_is_convenience_string_form() -> None:
+    """get_version_text() mirrors the non-SemVer structured version view."""
+    version_text: str = api.get_version_text()
+
+    assert isinstance(version_text, str)
+    assert version_text.strip()
+    assert version_text == api.get_version_info(semver=False).version_text
 
 
 def test_list_filetypes_includes_python() -> None:
@@ -44,6 +55,43 @@ def test_list_processors_is_nonempty() -> None:
     assert procs and all("qualified_key" in p for p in procs), "processors list should not be empty"
 
 
+def test_registry_helpers_return_detached_primitive_metadata() -> None:
+    """Registry helpers project identities, tuples, policies, and delimiters."""
+    filetypes_before: list[FileTypeInfo] = api.list_filetypes()
+    processors_before: list[ProcessorInfo] = api.list_processors()
+
+    python: FileTypeInfo = next(item for item in filetypes_before if item["local_key"] == "python")
+    assert python["qualified_key"] == f"{python['namespace']}:{python['local_key']}"
+    assert isinstance(python["extensions"], tuple)
+    assert isinstance(python["filenames"], tuple)
+    assert isinstance(python["patterns"], tuple)
+    assert python["bound"] is True
+    assert set(python["policy"]) == {
+        "blank_collapse_extra",
+        "blank_collapse_mode",
+        "encoding_line_regex",
+        "ensure_blank_after_header",
+        "pre_header_blank_after_block",
+        "supports_shebang",
+    }
+
+    processor: ProcessorInfo = processors_before[0]
+    assert processor["qualified_key"] == (f"{processor['namespace']}:{processor['local_key']}")
+    for delimiter in (
+        "line_indent",
+        "line_prefix",
+        "line_suffix",
+        "block_prefix",
+        "block_suffix",
+    ):
+        assert isinstance(processor[delimiter], str)
+
+    filetypes_before[0]["description"] = "detached test value"
+    processors_before[0]["description"] = "detached test value"
+    assert api.list_filetypes()[0]["description"] != "detached test value"
+    assert api.list_processors()[0]["description"] != "detached test value"
+
+
 def test_strip_dry_run_reports_would_strip(repo_py_with_header: Path) -> None:
     """api.commands.pipeline.strip() reports 'WOULD_STRIP' on supported file without header."""
     r: api.RunResult = api.strip(
@@ -52,7 +100,7 @@ def test_strip_dry_run_reports_would_strip(repo_py_with_header: Path) -> None:
         include_file_types=["python"],
     )
     # At least one file (with_header.py) should be reported as would_change
-    assert topmark.core.outcomes.Outcome.WOULD_STRIP in r.summary
+    assert Outcome.WOULD_STRIP in r.summary
     assert r.written == 0 and r.failed == 0
 
 
@@ -79,4 +127,4 @@ def test_strip_apply_then_check_is_unchanged(repo_py_with_header: Path) -> None:
 
     # Accept either: would_change (header would be re-inserted) or unchanged
     # depending on project defaults. Assert at least one bucket is present.
-    assert topmark.core.outcomes.Outcome.WOULD_INSERT in r_check.summary
+    assert Outcome.WOULD_INSERT in r_check.summary

@@ -200,6 +200,9 @@ ______________________________________________________________________
 - Centralized pipeline lifecycle enforcement in `BaseStep`, making halt ownership a `run()`-phase
   responsibility and treating `hint()` as diagnostic-only. Steps whose primary status axis remains
   `PENDING` after execution are now halted consistently by the shared lifecycle wrapper.
+- Clarified the compatible public API type contract for `check()`, `strip()`, `probe()`, and their
+  streaming counterparts by including the already-supported immutable `FrozenConfig` input in all
+  six signatures.
 
 ### Removed - Unreleased
 

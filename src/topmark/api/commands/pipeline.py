@@ -15,7 +15,8 @@ the CLI commands (`topmark probe`, `topmark check`, `topmark strip`) without Cli
 
 Call styles:
 - Discovery mode: pass `config=None` to discover and merge config layers.
-- Seeded mode: pass a plain mapping via `config=` to skip discovery and use that seed.
+- Seeded mode: pass a plain mapping or immutable `FrozenConfig` via `config=` to
+  skip discovery and use that seed.
 
 Notes:
 - These functions choose the concrete pipeline, build execution-only run options,
@@ -69,6 +70,7 @@ if TYPE_CHECKING:
     from topmark.api.types import PublicPolicy
     from topmark.api.types import PublicReportScopeLiteral
     from topmark.api.types import RunResult
+    from topmark.config.model import FrozenConfig
     from topmark.pipeline.kinds import PipelineKindLiteral
     from topmark.pipeline.pipelines import PipelineSelection
     from topmark.pipeline.result import ProcessingResult
@@ -229,7 +231,7 @@ def _iter_probe_events(
 def _run_probe_pipeline(
     paths: Iterable[Path | str],
     *,
-    config: Mapping[str, object] | None,
+    config: Mapping[str, object] | FrozenConfig | None,
     policy: PublicPolicy | None,
     policy_by_type: Mapping[str, PublicPolicy] | None,
     include_file_types: Sequence[str] | None,
@@ -292,7 +294,7 @@ def _run_content_pipeline(
     pipeline_kind: PipelineKindLiteral,
     apply: bool,
     diff: bool,
-    config: Mapping[str, object] | None,
+    config: Mapping[str, object] | FrozenConfig | None,
     policy: PublicPolicy | None,
     policy_by_type: Mapping[str, PublicPolicy] | None,
     include_file_types: Sequence[str] | None,
@@ -376,7 +378,7 @@ def check(
     *,
     apply: bool = False,
     diff: bool = False,
-    config: Mapping[str, object] | None = None,
+    config: Mapping[str, object] | FrozenConfig | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
@@ -452,7 +454,7 @@ def stream_check(
     *,
     apply: bool = False,
     diff: bool = False,
-    config: Mapping[str, object] | None = None,
+    config: Mapping[str, object] | FrozenConfig | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
@@ -493,7 +495,7 @@ def strip(
     *,
     apply: bool = False,
     diff: bool = False,
-    config: Mapping[str, object] | None = None,
+    config: Mapping[str, object] | FrozenConfig | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
@@ -568,7 +570,7 @@ def stream_strip(
     *,
     apply: bool = False,
     diff: bool = False,
-    config: Mapping[str, object] | None = None,
+    config: Mapping[str, object] | FrozenConfig | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
@@ -607,7 +609,7 @@ def stream_strip(
 def probe(
     paths: Iterable[Path | str],
     *,
-    config: Mapping[str, object] | None = None,
+    config: Mapping[str, object] | FrozenConfig | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
@@ -668,7 +670,7 @@ def probe(
 def stream_probe(
     paths: Iterable[Path | str],
     *,
-    config: Mapping[str, object] | None = None,
+    config: Mapping[str, object] | FrozenConfig | None = None,
     policy: PublicPolicy | None = None,
     policy_by_type: Mapping[str, PublicPolicy] | None = None,
     include_file_types: Sequence[str] | None = None,
