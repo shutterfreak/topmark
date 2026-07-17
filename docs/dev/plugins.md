@@ -268,9 +268,11 @@ discovery.
 A processor class must define a stable processor identity:
 
 - `namespace`: identifies the producer
-- `key`: local processor identifier within that namespace
+- `local_key`: local processor identifier within that namespace
 
-The qualified processor identity is `<namespace>:<key>`.
+The qualified processor identity is `<namespace>:<local_key>`. Both values must be lowercase
+registry tokens, and the `topmark` namespace is reserved for processor classes implemented in
+TopMark's built-in modules.
 
 To register a processor class for a file type at runtime, use the composed registry layer:
 
@@ -279,26 +281,40 @@ To register a processor class for a file type at runtime, use the composed regis
 from __future__ import annotations
 
 from topmark.processors.base import HeaderProcessor
+from topmark.registry.processors import HeaderProcessorRegistry
 from topmark.registry.registry import Registry
 
 
 class MyLangHeaderProcessor(HeaderProcessor):
     """Example processor for MyLang."""
     namespace = "my_plugin"
-    key = "my_lang"
-
-    # Implement required HeaderProcessor methods here
-    ...
+    local_key = "my_lang"
+    line_prefix = "#"
 
 
-Registry.register_processor("my_plugin:my_lang", MyLangHeaderProcessor)
+processor_definition = HeaderProcessorRegistry.register(
+    processor_class=MyLangHeaderProcessor,
+)
+Registry.bind(
+    file_type_id="my_plugin:my_lang",
+    processor_key=processor_definition.qualified_key,
+)
 ```
 
-At registration time, TopMark resolves the file type identifier through the composed runtime file
-type registry and then binds the processor to that resolved
-\[`FileType`\][topmark.filetypes.model.FileType] object. Qualified identifiers are recommended
-because a local file type identifier may become ambiguous once multiple namespaces define similarly
-named file types.
+`HeaderProcessor` supplies the standard marker parsing, field rendering, line-based placement, and
+strip behavior. A plugin processor normally declares its comment affixes and overrides only the
+format-specific hooks it needs. Override `get_header_insertion_index()` for a different line anchor.
+For character-offset placement, return `NO_LINE_ANCHOR` from that method and implement
+`get_header_insertion_char_offset()`; do not mix line indexes and character offsets. Override
+`get_header_bounds()`, `parse_fields()`, or the insertion-preparation hooks only when the format's
+syntax cannot use the base behavior.
+
+During `Registry.bind(...)`, TopMark resolves the file type identifier through the composed runtime
+file type registry and records a binding from that file type's qualified key to the registered
+processor definition. Runtime resolution later constructs a fresh processor instance bound to the
+exact resolved \[`FileType`\][topmark.filetypes.model.FileType] object. Qualified identifiers are
+recommended because a local file type identifier may become ambiguous once multiple namespaces
+define similarly named file types.
 
 Important:
 
@@ -320,10 +336,10 @@ A typical advanced integration flow is:
 1. expose file types through the \[`topmark.filetypes`\][topmark.filetypes] entry point group;
 1. let TopMark discover those file types lazily;
 1. register processor classes explicitly through
-   \[`HeaderProcessorRegistry.register(...)`\][topmark.registry.processors.HeaderProcessorRegistry.register],
-   \[`Registry.bind(...)`\][topmark.registry.registry.Registry.bind], or
-   \[`HeaderProcessorRegistry.register(...)`\][topmark.registry.processors.HeaderProcessorRegistry.register]
-   during controlled initialization.
+   \[`HeaderProcessorRegistry.register(...)`\][topmark.registry.processors.HeaderProcessorRegistry.register];
+1. bind the returned processor definition through
+   \[`Registry.bind(...)`\][topmark.registry.registry.Registry.bind] during controlled
+   initialization.
 
 This keeps built-in registry construction deterministic and avoids module-import side effects.
 
@@ -389,7 +405,8 @@ These modules are useful for advanced TopMark integrations and registry extensio
 
 - \[`topmark.filetypes.instances`\][topmark.filetypes.instances] - base file type discovery
 - \[`topmark.processors.instances`\][topmark.processors.instances] - base processor binding
-  inventory and registry construction
+  inventory and registry construction; its cached dictionaries and legacy bound instances are shared
+  internal state and must be treated as read-only
 - \[`topmark.resolution.filetypes`\][topmark.resolution.filetypes] - shared scoring-based file-type
   resolver operating on selected processing paths
 - \[`topmark.registry.filetypes`\][topmark.registry.filetypes] - composed file type registry view

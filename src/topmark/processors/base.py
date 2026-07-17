@@ -244,10 +244,6 @@ class HeaderProcessor:
         """
         super().__init_subclass__(**kwargs)
 
-        # Skip validation for the abstract base itself.
-        if cls is HeaderProcessor:
-            return
-
         owner: Final[str] = owner_label(cls)
 
         namespace: str
@@ -458,8 +454,8 @@ class HeaderProcessor:
             # allow incidental indentation before the prefix
             leading_ws_len: int = len(cleaned) - len(cleaned.lstrip())
             head: str = cleaned[leading_ws_len:]
-            if head.startswith(self.line_prefix):
-                cleaned = cleaned[:leading_ws_len] + head.removeprefix(self.line_prefix)
+            # The enclosing condition already proves that `head` starts with the prefix.
+            cleaned = cleaned[:leading_ws_len] + head.removeprefix(self.line_prefix)
         elif self.line_prefix and not cleaned.strip().startswith(self.line_prefix):
             # Prefix configured but not present-leave the line as-is; parser tolerates.
             pass
@@ -801,10 +797,15 @@ class HeaderProcessor:
             if policy.encoding_line_regex and len(file_lines) > index:
                 src = policy.encoding_line_regex
                 # Compile on first use or when the pattern string changes
-                if self._encoding_pattern is None or self._encoding_pattern_src != src:
-                    self._encoding_pattern = re.compile(src)
+                if self._encoding_pattern_src != src:
+                    try:
+                        self._encoding_pattern = re.compile(src)
+                    except re.error:
+                        self._encoding_pattern = None
                     self._encoding_pattern_src = src
-                if self._encoding_pattern.search(file_lines[index]):
+                if self._encoding_pattern is not None and self._encoding_pattern.search(
+                    file_lines[index]
+                ):
                     index += 1
 
         # If a shebang block exists and the next line is a *policy-blank*, consume exactly one.
@@ -985,16 +986,46 @@ class HeaderProcessor:
                     end=e_max,
                     reason=reason,
                 )
-            elif e0 == s0:
-                # Exclusive end: cover the single offending line for consistent diagnostics.
-                reason = "start and end marker on the same line"
-                logger.debug(reason)
+        # Validate the complete marker stream, not only its first pair. Multiple
+        # non-overlapping complete headers remain deterministic, while nested or
+        # dangling markers make the overall shape malformed.
+        open_start: int | None = None
+        for marker_idx, marker_line in enumerate(buf):
+            has_start: bool = TOPMARK_START_MARKER in marker_line
+            has_end: bool = TOPMARK_END_MARKER in marker_line
+            if has_start and has_end:
                 return HeaderBounds(
                     kind=BoundsKind.MALFORMED,
-                    start=s0,
-                    end=e0 + 1,
-                    reason=reason,
+                    start=marker_idx,
+                    end=marker_idx + 1,
+                    reason="start and end marker on the same line",
                 )
+            if has_start:
+                if open_start is not None:
+                    return HeaderBounds(
+                        kind=BoundsKind.MALFORMED,
+                        start=open_start,
+                        end=marker_idx + 1,
+                        reason="start marker before previous header ended",
+                    )
+                open_start = marker_idx
+            if has_end:
+                if open_start is None:
+                    return HeaderBounds(
+                        kind=BoundsKind.MALFORMED,
+                        start=None,
+                        end=marker_idx + 1,
+                        reason="end marker without preceding start",
+                    )
+                open_start = None
+
+        if open_start is not None:
+            return HeaderBounds(
+                kind=BoundsKind.MALFORMED,
+                start=open_start,
+                end=None,
+                reason="start marker without matching end",
+            )
 
         # --- Policy-aware detection near computed anchor -----------------------
         anchor_idx: int = self.compute_insertion_anchor(buf)
@@ -1103,6 +1134,19 @@ class HeaderProcessor:
             else:  # BoundsKind.NONE
                 span = None
                 # fall through to the permissive scan you already have
+
+            if span is None:
+                # A complete header can be structurally valid but outside the normal
+                # insertion window (for example, a legacy XML header inside a DOCTYPE).
+                # Preserve the collector's wrapper-aware span before falling back to
+                # substring matching for older single-line comment forms.
+                legacy_candidates: list[tuple[int, int]]
+                if self.block_prefix and self.block_suffix:
+                    legacy_candidates = self._collect_bounds_block_comments(lines)
+                else:
+                    legacy_candidates = self._collect_bounds_line_comments(lines)
+                if legacy_candidates:
+                    span = legacy_candidates[0]
 
             if span is None:
                 # Permissive scan: accept directive substrings inside single-line
@@ -1261,80 +1305,6 @@ class HeaderProcessor:
 
             i = end_idx + 1
         return results
-
-    def _get_bounds_line_comments(self, lines: list[str]) -> tuple[int | None, int | None]:
-        """Identify bounds of the first line-comment TopMark header.
-
-        Scans for the first occurrence of ``TOPMARK_START_MARKER`` and the next
-        ``TOPMARK_END_MARKER`` using the processor's configured line affixes. This
-        helper does no placement validation; callers should apply policy checks.
-
-        Args:
-            lines: Full file content split into lines.
-
-        Returns:
-            A tuple ``(start_index, end_index)`` where both are 0-based line indices of the
-            directive lines (inclusive), or ``(None, None)`` when no pair is found.
-        """
-        start_index: int | None = None
-        end_index: int | None = None
-
-        for i, line in enumerate(lines):
-            if self.line_has_directive(line, TOPMARK_START_MARKER):
-                start_index = i
-                logger.debug("Header start marker found at line %d", i + 1)
-                break
-
-        index: int = 0 if start_index is None else start_index + 1
-        for j in range(index, len(lines)):
-            if self.line_has_directive(lines[j], TOPMARK_END_MARKER):
-                end_index = j
-                logger.debug("Header end marker found at line %d", j + 1)
-                break
-
-        return start_index, end_index
-
-    def _get_bounds_block_comments(self, lines: list[str]) -> tuple[int | None, int | None]:
-        """Identify the bounds of a block-comment-wrapped header (e.g. HTML, XML, Markdown).
-
-        Args:
-            lines: The lines in which a comment block is to be found.
-
-        Returns:
-            A tuple `(start_index, end_index)` representing the inclusive lines to include,
-            or `(None, None)` if not found or malformed.
-        """
-        block_prefix_index: int | None = None
-        header_start_index: int | None = None
-        header_end_index: int | None = None
-        block_suffix_index: int | None = None
-
-        for i, line in enumerate(lines):
-            # Affix equality ignores incidental surrounding spaces;
-            # blank collapsing is not performed here.
-            normalized: str = line.rstrip("\r\n").strip(" \t")
-            if self.block_prefix and normalized == self.block_prefix and block_prefix_index is None:
-                block_prefix_index = i
-                logger.debug("Block prefix found at line %d", i + 1)
-            if self.line_has_directive(line, TOPMARK_START_MARKER) and header_start_index is None:
-                header_start_index = i
-                logger.debug("Header start marker found at line %d", i + 1)
-            if self.line_has_directive(line, TOPMARK_END_MARKER):
-                header_end_index = i
-                logger.debug("Header end marker found at line %d", i + 1)
-            if self.block_suffix and normalized == self.block_suffix:
-                block_suffix_index = i
-                logger.debug("Block suffix found at line %d", i + 1)
-
-        if header_start_index is None or header_end_index is None:
-            return None, None
-
-        # If a block comment wrapper is used, return its full span
-        if block_prefix_index is not None and block_suffix_index is not None:
-            return block_prefix_index, block_suffix_index
-
-        # Fallback: return just the header markers
-        return header_start_index, header_end_index
 
     def prepare_header_for_insertion(
         self,

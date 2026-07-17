@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import re
 
+import pytest
+
 from tests.helpers.registry import make_file_type
 from topmark.core.constants import STANDARD_NEWLINE_RE
 from topmark.filetypes.policy import FileTypeHeaderPolicy
@@ -39,6 +41,64 @@ def test_xml_char_offset_empty_document_is_start() -> None:
     processor = XmlHeaderProcessor()
 
     assert processor.get_header_insertion_char_offset("") == 0
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("\ufeff", 1),
+        ("\ufeff \t\r\n", 5),
+        (" \t\r\n<root/>", 4),
+    ],
+)
+def test_xml_char_offset_preserves_bom_and_leading_ascii_whitespace(
+    text: str,
+    expected: int,
+) -> None:
+    """BOM-only and leading-whitespace inputs anchor after preserved preamble text."""
+    assert XmlHeaderProcessor().get_header_insertion_char_offset(text) == expected
+
+
+@pytest.mark.parametrize("newline", ["\r", "\n", "\r\n"])
+def test_xml_char_offset_handles_supported_newline_styles(newline: str) -> None:
+    """Declaration and root offsets are character-correct for CR, LF, and CRLF."""
+    processor = XmlHeaderProcessor()
+    text: str = f'<?xml version="1.0"?>{newline}<root/>'
+
+    assert processor.get_header_insertion_char_offset(text) == text.index("<root/>")
+
+
+def test_xml_char_offset_nonleading_declaration_is_not_skipped() -> None:
+    """A declaration after root content is handled conservatively as body text."""
+    processor = XmlHeaderProcessor()
+    text: str = "<root/>\n<?xml version='1.0'?>"
+
+    assert processor.get_header_insertion_char_offset(text) == 0
+
+
+def test_xml_char_offset_unclosed_doctype_stops_at_doctype_start() -> None:
+    """Malformed DOCTYPE content is not skipped or split speculatively."""
+    processor = XmlHeaderProcessor()
+    text: str = '<?xml version="1.0"?>\n<!DOCTYPE root [\n<root/>'
+
+    assert processor.get_header_insertion_char_offset(text) == text.index("<!DOCTYPE")
+
+
+@pytest.mark.parametrize(
+    "doctype",
+    [
+        '<!DOCTYPE root SYSTEM "urn:example>a">',
+        "<!DOCTYPE root [\n  <!ELEMENT root EMPTY>\n]>",
+    ],
+)
+def test_xml_char_offset_skips_complete_doctype_without_stopping_at_inner_gt(
+    doctype: str,
+) -> None:
+    """Quoted and internal-subset greater-than signs do not end the DOCTYPE."""
+    processor = XmlHeaderProcessor()
+    text = f'<?xml version="1.0"?>\n{doctype}\n<root/>'
+
+    assert processor.get_header_insertion_char_offset(text) == text.index("<root/>")
 
 
 def test_xml_char_offset_skips_bom_leading_space_decl_and_doctype() -> None:
@@ -74,6 +134,22 @@ def test_xml_prepare_text_insertion_adds_single_leading_blank_after_prolog() -> 
 
     assert block.startswith("\n<!-- header -->\n")
     assert block.endswith("\n\n")
+
+
+def test_xml_prepare_text_insertion_preserves_crlf_padding() -> None:
+    """Text insertion keeps CRLF for both owned separators around the header."""
+    processor = XmlHeaderProcessor()
+    original = '<?xml version="1.0"?>\r\n<root/>\r\n'
+    offset: int = original.index("<root/>")
+
+    block: str = processor.prepare_header_for_insertion_text(
+        original_text=original,
+        insert_offset=offset,
+        rendered_header_text="<!-- header -->\r\n",
+        newline_style="\r\n",
+    )
+
+    assert block == "\r\n<!-- header -->\r\n\r\n"
 
 
 def test_xml_prepare_text_insertion_splits_single_line_prolog_with_blank() -> None:
@@ -128,6 +204,31 @@ def test_xml_prepare_line_insertion_after_multiline_doctype_adds_leading_blank()
     lines: list[str] = processor.prepare_header_for_insertion(
         original_lines=original_lines,
         insert_index=4,
+        rendered_header_lines=["<!-- header -->\n"],
+        newline_style="\n",
+    )
+
+    assert lines == ["\n", "<!-- header -->\n", "\n"]
+
+
+def test_xml_prepare_line_insertion_handles_long_internal_subset() -> None:
+    """Line padding recognizes a DOCTYPE opener beyond any fixed look-back window."""
+    processor = XmlHeaderProcessor()
+    original_lines: list[str] = [
+        '<?xml version="1.0"?>\n',
+        "<!DOCTYPE root [\n",
+        "  <!ELEMENT root EMPTY>\n",
+        "  <!ENTITY one '1'>\n",
+        "  <!ENTITY two '2'>\n",
+        "  <!ENTITY three '3'>\n",
+        "  <!ENTITY four '4'>\n",
+        "]>\n",
+        "<root/>\n",
+    ]
+
+    lines: list[str] = processor.prepare_header_for_insertion(
+        original_lines=original_lines,
+        insert_index=8,
         rendered_header_lines=["<!-- header -->\n"],
         newline_style="\n",
     )

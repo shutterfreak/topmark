@@ -475,6 +475,10 @@ ______________________________________________________________________
 ## Caching and invalidation
 
 Base registries are cached because construction and plugin discovery should happen once per process.
+The processor base-registry helpers return their shared cached dictionaries directly; callers must
+treat those dictionaries, and the legacy bound instances they contain, as read-only. Fresh runtime
+processors are constructed through composed registry resolution rather than by mutating base cache
+values.
 
 Composed effective views are also cached for fast repeated access.
 

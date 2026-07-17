@@ -40,6 +40,7 @@ from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
+from topmark.processors.builtins.cblock import CBlockHeaderProcessor
 from topmark.processors.types import StripDiagKind
 from topmark.runtime.model import RunOptions
 
@@ -355,3 +356,21 @@ def test_cblock_not_at_top_insertion_single_leading_blank(tmp_path: Path) -> Non
     # 4) Original content that was after insert_index must still follow
     #    (accounting for: prelude(0), blank(1), header block(~N lines), blank)
     assert out[-1].rstrip("\r\n") == "SELECT 1;"
+
+
+def test_cblock_existing_separators_are_not_duplicated() -> None:
+    """C-block padding preserves existing leading and trailing blank lines."""
+    processor = CBlockHeaderProcessor()
+    original: list[str] = ["\n", "\n", "body\n"]
+    rendered: list[str] = ["/*\n", "*/\n"]
+
+    prepared: list[str] = processor.prepare_header_for_insertion(
+        original_lines=original,
+        insert_index=1,
+        rendered_header_lines=rendered,
+        newline_style="\n",
+    )
+
+    assert prepared == rendered
+    assert original == ["\n", "\n", "body\n"]
+    assert rendered == ["/*\n", "*/\n"]
