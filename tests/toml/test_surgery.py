@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pytest
 import tomlkit
+from tomlkit.exceptions import ParseError as TomlkitParseError
 
 from topmark.core.errors import TomlParseError
 from topmark.core.errors import TomlSurgeryError
@@ -160,6 +161,53 @@ def test_set_root_flag_rejects_invalid_toml() -> None:
         )
 
 
+def test_set_root_flag_chains_parse_error() -> None:
+    """The public parse error should retain tomlkit's original failure."""
+    with pytest.raises(TomlParseError) as exc_info:
+        set_root_flag("[config\n", for_pyproject=False, root=True)
+
+    assert isinstance(exc_info.value.__cause__, TomlkitParseError)
+
+
+@pytest.mark.parametrize("for_pyproject", [False, True])
+def test_set_root_flag_is_semantically_idempotent_and_preserves_comments(
+    for_pyproject: bool,
+) -> None:
+    """Repeated edits should keep one owned root and unrelated presentation."""
+    source: str = "# preamble\n\n[other]\nvalue = 1 # retained\n"
+
+    first: str = set_root_flag(source, for_pyproject=for_pyproject, root=True)
+    second: str = set_root_flag(first, for_pyproject=for_pyproject, root=True)
+
+    assert tomlkit.parse(second).unwrap() == tomlkit.parse(first).unwrap()
+    assert second.count("root = true") == 1
+    assert "# preamble" in second
+    assert "value = 1 # retained" in second
+
+
+@pytest.mark.parametrize("for_pyproject", [False, True])
+def test_set_root_flag_disable_removes_legacy_and_owned_root_only(
+    for_pyproject: bool,
+) -> None:
+    """Disabling should migrate legacy root away without deleting other keys."""
+    if for_pyproject:
+        source = (
+            "[tool.topmark]\nroot = true\nkeep = 1\n\n"
+            "[tool.topmark.config]\nroot = true\nstrict = false\n"
+        )
+    else:
+        source = "root = true\nkeep = 1\n\n[config]\nroot = true\nstrict = false\n"
+
+    result: str = set_root_flag(source, for_pyproject=for_pyproject, root=False)
+    parsed: tomlkit.TOMLDocument = tomlkit.parse(result)
+    owner = parsed["tool"]["topmark"] if for_pyproject else parsed
+
+    assert "root" not in owner
+    assert "root" not in owner["config"]
+    assert owner["keep"] == 1
+    assert owner["config"]["strict"] is False
+
+
 def test_nest_toml_under_section_wraps_plain_keys() -> None:
     """Plain keyed content should be nested under the requested section."""
     result: str = nest_toml_under_section(
@@ -234,6 +282,13 @@ def test_nest_toml_under_section_rejects_empty_section_keys() -> None:
         )
 
 
+@pytest.mark.parametrize("section_keys", ["", ".", "tool.", ".tool", "tool..topmark"])
+def test_nest_toml_under_section_rejects_any_empty_segment(section_keys: str) -> None:
+    """Dotted wrapper paths must not silently discard empty components."""
+    with pytest.raises(ValueError, match="no empty components"):
+        nest_toml_under_section('project = "Demo"\n', section_keys)
+
+
 def test_nest_toml_under_section_rejects_invalid_toml() -> None:
     """Invalid input TOML should raise a TOML parse error."""
     with pytest.raises(TomlParseError, match="Error parsing TOML document"):
@@ -241,3 +296,81 @@ def test_nest_toml_under_section_rejects_invalid_toml() -> None:
             "[files\n",
             "tool.topmark",
         )
+
+
+def test_nest_toml_under_section_preserves_header_like_strings_and_comments() -> None:
+    """Only real table headers should be qualified."""
+    source: str = (
+        '# [commented] and """ is still only a comment\npattern = "[quoted]"\n'
+        'example = """\n[not-a-table]\n"""\n\n'
+        "[files] # real\ninclude = []\n"
+        "# postamble [also-not-a-table]\n"
+    )
+
+    result: str = nest_toml_under_section(source, "tool.topmark")
+
+    assert "# [commented]" in result
+    assert 'pattern = "[quoted]"' in result
+    assert "\n[not-a-table]\n" in result
+    assert "[tool.topmark.files] # real" in result
+    assert result.index("# [commented]") < result.index("# postamble")
+    _assert_valid_toml(result)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("", "[tool.topmark]"),
+        ("# comment", "[tool.topmark]\n\n# comment"),
+        ("value = 1", "[tool.topmark]\nvalue = 1"),
+    ],
+)
+def test_nest_toml_under_section_preserves_final_newline_state(
+    source: str,
+    expected: str,
+) -> None:
+    """Empty, comment-only, and minimal documents should have deterministic EOFs."""
+    result: str = nest_toml_under_section(source, "tool.topmark")
+
+    assert result == expected
+    _assert_valid_toml(result)
+
+
+def test_nest_toml_under_section_preserves_crlf_consistently() -> None:
+    """Wrapper and rewritten table headers should use the input CRLF style."""
+    source: str = "# comment\r\n\r\n[files]\r\ninclude = []\r\n"
+
+    result: str = nest_toml_under_section(source, "tool.topmark")
+
+    assert result.startswith("[tool.topmark]\r\n\r\n# comment")
+    assert "[tool.topmark.files]\r\n" in result
+    assert "\n" not in result.replace("\r\n", "")
+    _assert_valid_toml(result)
+
+
+def test_nest_toml_under_section_mixed_wrapper_is_not_treated_as_idempotent() -> None:
+    """A wrapper plus unrelated top-level content is nested again as a whole."""
+    source: str = "[tool.topmark]\nvalue = 1\n\n[other]\nvalue = 2\n"
+
+    result: str = nest_toml_under_section(source, "tool.topmark")
+    parsed: tomlkit.TOMLDocument = tomlkit.parse(result)
+
+    assert result != source
+    assert parsed["tool"]["topmark"]["tool"]["topmark"]["value"] == 1
+    assert parsed["tool"]["topmark"]["other"]["value"] == 2
+
+
+def test_nest_toml_under_section_chains_invalid_input_parse_error() -> None:
+    """Malformed input should retain its tomlkit parse cause."""
+    with pytest.raises(TomlParseError) as exc_info:
+        nest_toml_under_section("[files\n", "tool.topmark")
+
+    assert isinstance(exc_info.value.__cause__, TomlkitParseError)
+
+
+def test_nest_toml_under_section_rejects_wrapper_that_cannot_render_as_toml() -> None:
+    """A syntactically incompatible requested wrapper should fail conservatively."""
+    with pytest.raises(TomlSurgeryError, match="Cannot nest TOML document") as exc_info:
+        nest_toml_under_section("value = 1\n", "not a bare key")
+
+    assert isinstance(exc_info.value.__cause__, TomlkitParseError)

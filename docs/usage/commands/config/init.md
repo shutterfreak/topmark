@@ -63,6 +63,17 @@ ______________________________________________________________________
 
 You can safely edit the generated file to match your project's needs.
 
+Human-facing TEXT and Markdown output starts from the annotated bundled template. TopMark applies
+narrow text edits so its comments, layout, newline style, and final-newline state survive when
+possible. In plain output, `--root` enables `root = true` under `[config]`; with `--pyproject`, the
+same setting is emitted under `[tool.topmark.config]` after the complete template is nested beneath
+`[tool.topmark]`. This presentation-preserving path is intentionally distinct from the structural
+TOML editing helpers used for generated configuration documents.
+
+If the packaged template cannot be read, TopMark logs the resource error, renders a parseable
+fallback from its centralized built-in defaults, and shows a warning in human-facing output. The
+fallback remains usable but does not contain the annotated template's full commentary and layout.
+
 ______________________________________________________________________
 
 ## Input applicability
@@ -102,6 +113,10 @@ Notes:
 
 - Specify `--pyproject` if you want to add the configuration to your project's `pyproject.toml`.
   This nests the example TOML under a `[tool.topmark]` table.
+
+  `config init` emits a complete fragment; it does not inspect or merge an existing
+  `pyproject.toml`. Before appending, ensure that the destination does not already define
+  `[tool.topmark]` or the emitted child tables.
 
 - When choosing `json` or `ndjson`, TopMark parses and resolves the bundled starter template before
   emitting the machine-readable snapshot. This preserves template semantics, including TOML-authored

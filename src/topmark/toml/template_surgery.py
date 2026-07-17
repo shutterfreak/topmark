@@ -33,6 +33,7 @@ for human-facing output.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Final
@@ -59,6 +60,39 @@ _ROOT_LINE: Final[str] = "root = true"
 logger: TopmarkLogger = get_logger(__name__)
 
 
+def _newline_for(toml_text: str) -> str:
+    """Return the document's existing newline style, defaulting to LF."""
+    first_lf: int = toml_text.find("\n")
+    if first_lf > 0 and toml_text[first_lf - 1] == "\r":
+        return "\r\n"
+    return "\n"
+
+
+def _line_body(line: str) -> str:
+    """Return one split line without its newline sequence."""
+    return line.removesuffix("\n").removesuffix("\r")
+
+
+def _is_real_header(line: str, header: str) -> bool:
+    """Recognize one exact table header with optional indentation/comment."""
+    return (
+        re.fullmatch(
+            rf"[ \t]*{re.escape(header)}[ \t]*(?:#.*)?",
+            _line_body(line),
+        )
+        is not None
+    )
+
+
+def _finish_edit(original: str, lines: list[str]) -> TemplateEditResult:
+    """Join edited lines while retaining the original final-newline state."""
+    text: str = "".join(lines)
+    original_has_final_newline: bool = original.endswith(("\n", "\r"))
+    if text and not original_has_final_newline:
+        text = text.removesuffix("\n").removesuffix("\r")
+    return TemplateEditResult(text=text, changed=text != original)
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class TemplateEditResult:
     """Result of applying a text edit to the template.
@@ -77,10 +111,9 @@ def ensure_pyproject_header(toml_text: str) -> TemplateEditResult:
     lines: list[str] = toml_text.splitlines(keepends=True)
 
     # IMPORTANT: avoid false positives from inline documentation mentioning "[tool.topmark]".
-    # We must only treat *actual table headers* as present. Detection therefore checks for a line
-    # that starts with `[tool.topmark]` (and is not a comment), rather than searching the raw text.
+    # We must only treat the exact table header as present, not a comment mention or child table.
     for line in lines:
-        if line.startswith(_TOOL_TOPMARK_HEADER):
+        if _is_real_header(line, _TOOL_TOPMARK_HEADER):
             logger.debug("ensure_pyproject_header(): '%s' already present.", _TOOL_TOPMARK_HEADER)
             return TemplateEditResult(text=toml_text, changed=False)
 
@@ -104,14 +137,22 @@ def ensure_pyproject_header(toml_text: str) -> TemplateEditResult:
         insert_at,
     )
 
-    header_line = _TOOL_TOPMARK_HEADER + "\n"
-    spacer = "\n"  # keep a visual gap between the header and the banner/comments
+    newline: str = _newline_for(toml_text)
+    original_has_final_newline: bool = toml_text.endswith(("\n", "\r"))
+    if insert_at > 0 and not lines[insert_at - 1].endswith(("\n", "\r")):
+        lines[insert_at - 1] += newline
 
-    lines.insert(insert_at, header_line)
-    lines.insert(insert_at + 1, spacer)
+    has_following_content: bool = insert_at < len(lines)
+    header_line: str = _TOOL_TOPMARK_HEADER
+    if has_following_content or original_has_final_newline:
+        header_line += newline
+    block: list[str] = [header_line]
+    if has_following_content:
+        block.append(newline)
+    lines[insert_at:insert_at] = block
 
     # Idempotent: if a real ``[tool.topmark]`` header is already present, no changes are made.
-    return TemplateEditResult(text="".join(lines), changed=True)
+    return _finish_edit(toml_text, lines)
 
 
 def set_root_flag_in_template_text(
@@ -159,26 +200,25 @@ def set_root_flag_in_template_text(
     """
     lines: list[str] = toml_text.splitlines(keepends=True)
 
+    newline: str = _newline_for(toml_text)
+    original_has_final_newline: bool = toml_text.endswith(("\n", "\r"))
+
     def _is_comment(line: str) -> bool:
         return line.lstrip().startswith("#")
 
-    def _is_real_header(line: str, header: str) -> bool:
-        # Must be an actual table header line, not a mention in a comment.
-        return (not _is_comment(line)) and line.startswith(header)
-
     def _uncomment_exact_header(line: str, header: str) -> str | None:
-        stripped: str = line.lstrip()
+        body: str = _line_body(line)
+        stripped: str = body.lstrip()
         if stripped != f"# {header}":
             return None
-        indent: str = line[: len(line) - len(stripped)]
-        newline = "\n" if line.endswith("\n") else ""
-        return f"{indent}{header}{newline}"
+        indent: str = body[: len(body) - len(stripped)]
+        line_ending: str = line[len(body) :]
+        return f"{indent}{header}{line_ending}"
 
     def _find_section_end(start_idx: int) -> int:
         idx: int = start_idx + 1
         while idx < len(lines):
-            stripped: str = lines[idx].lstrip()
-            if stripped.startswith("[") and not stripped.startswith("#"):
+            if re.match(r"[ \t]*\[", _line_body(lines[idx])) and not _is_comment(lines[idx]):
                 break
             idx += 1
         return idx
@@ -231,11 +271,16 @@ def set_root_flag_in_template_text(
                         insert_at += 1
                     break
 
-        block: list[str] = [target_header + "\n", _ROOT_LINE + "\n"]
-        if insert_at < len(lines) and lines[insert_at].strip() != "":
-            block.append("\n")
+        if insert_at > 0 and not lines[insert_at - 1].endswith(("\n", "\r")):
+            lines[insert_at - 1] += newline
+        has_following_content: bool = insert_at < len(lines)
+        block: list[str] = [target_header + newline, _ROOT_LINE]
+        if has_following_content or original_has_final_newline:
+            block[-1] += newline
+        if has_following_content and lines[insert_at].strip() != "":
+            block.append(newline)
         lines[insert_at:insert_at] = block
-        return TemplateEditResult(text="".join(lines), changed=True)
+        return _finish_edit(toml_text, lines)
 
     if target_header_idx is None:
         return TemplateEditResult(text=toml_text, changed=False)
@@ -254,7 +299,7 @@ def set_root_flag_in_template_text(
             if i in root_idxs:
                 continue
             new_lines.append(line)
-        return TemplateEditResult(text="".join(new_lines), changed=True)
+        return _finish_edit(toml_text, new_lines)
 
     if root_idxs:
         if len(root_idxs) == 1:
@@ -266,7 +311,7 @@ def set_root_flag_in_template_text(
             if i in root_idxs and i != keep_idx:
                 continue
             new_lines.append(line)
-        return TemplateEditResult(text="".join(new_lines), changed=True)
+        return _finish_edit(toml_text, new_lines)
 
     section_end = _find_section_end(target_header_idx)
     example_idx: int | None = _find_commented_root_example(target_header_idx, section_end)
@@ -279,12 +324,18 @@ def set_root_flag_in_template_text(
         while insert_at < len(lines) and lines[insert_at].strip() == "":
             insert_at += 1
 
-    lines.insert(insert_at, _ROOT_LINE + "\n")
+    if insert_at > 0 and not lines[insert_at - 1].endswith(("\n", "\r")):
+        lines[insert_at - 1] += newline
+    has_following_content = insert_at < len(lines)
+    root_line: str = _ROOT_LINE
+    if has_following_content or original_has_final_newline:
+        root_line += newline
+    lines.insert(insert_at, root_line)
     # Ensure a blank line after, unless we already have one.
     if insert_at + 1 < len(lines) and lines[insert_at + 1].strip() != "":
-        lines.insert(insert_at + 1, "\n")
+        lines.insert(insert_at + 1, newline)
 
-    return TemplateEditResult(text="".join(lines), changed=True)
+    return _finish_edit(toml_text, lines)
 
 
 def validate_toml_for_config_init(
@@ -324,13 +375,7 @@ def validate_toml_for_config_init(
 
     def _has_real_header(header: str) -> bool:
         # Only count actual table headers, not comment mentions.
-        for line in toml_text.splitlines():
-            s: str = line.lstrip()
-            if not s or s.startswith("#"):
-                continue
-            if s.startswith(header):
-                return True
-        return False
+        return any(_is_real_header(line, header) for line in toml_text.splitlines())
 
     if for_pyproject:
         # We expect actual tool/topmark tables in the parsed document.

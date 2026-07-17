@@ -34,27 +34,15 @@ Notes:
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
-from typing import TYPE_CHECKING
 from typing import cast
 
 import tomlkit
 from tomlkit.exceptions import ParseError as TomlkitParseError
 from tomlkit.items import Item
-from tomlkit.items import Key
 from tomlkit.items import Table
 
 from topmark.core.errors import TomlParseError
 from topmark.core.errors import TomlSurgeryError
-
-if TYPE_CHECKING:
-    from tomlkit.container import Container
-
-
-# Alias for items in tomlkit's document body, matching the type used in stubs.
-# At runtime, the second element may be any Item subclass (including comments,
-# whitespace, and containers), but the stubs treat them uniformly as Item.
-_TomlkitBodyItem = tuple[Key | None, Item]
 
 # --- Lossless TOML AST surgery (tomlkit structure-preserving) ---
 
@@ -204,7 +192,7 @@ def nest_toml_under_section(
         final section table (for example `[tool.topmark]`).
 
     Raises:
-        ValueError: If `section_keys` is empty or only contains dots.
+        ValueError: If `section_keys` is empty, dot-only, or contains an empty segment.
         TomlParseError: If the TOML document cannot be parsed.
         TomlSurgeryError: If structural nesting invariants are violated while
             checking or applying the requested wrapper path.
@@ -217,28 +205,18 @@ def nest_toml_under_section(
 
     # 2. Split and validate the section path.
 
-    keys: list[str] = [k for k in section_keys.split(".") if k]
-    if not keys:
-        raise ValueError("section_keys must contain at least one non-empty component")
+    keys: list[str] = section_keys.split(".")
+    if not keys or any(not key for key in keys):
+        raise ValueError(
+            "section_keys must contain at least one non-empty component and no empty components"
+        )
 
     # 3. Idempotency guard: if the document already represents exactly the
     # requested wrapper, do not wrap again.
     def _container_keys(container: tomlkit.TOMLDocument | Table) -> list[str]:
-        """Return stringified keys for a TOML container.
-
-        tomlkit's typing for mapping-style container access is incomplete, so
-        this helper performs a small runtime probe rather than relying on `Any`.
-        """
-        keys_attr: object = getattr(container, "keys", None)
-        if not callable(keys_attr):
-            return []
-
-        raw_keys: object = keys_attr()
-        if not isinstance(raw_keys, Iterable):
-            return []
-
-        iterable_keys: Iterable[object] = cast("Iterable[object]", raw_keys)
-        return [str(key) for key in iterable_keys]
+        """Return keys from a successfully parsed tomlkit mapping container."""
+        # TOMLDocument and Table both implement the supported mapping API.
+        return [str(key) for key in container]
 
     def _only_keyed_table_at_level(container: tomlkit.TOMLDocument | Table, expected: str) -> bool:
         keys_list: list[str] = _container_keys(container)
@@ -246,8 +224,7 @@ def nest_toml_under_section(
             return False
         if keys_list[0] != expected:
             return False
-        if expected not in container:
-            return False
+        # Iteration just established that this supported mapping contains the key.
         return isinstance(container[expected], Table)
 
     already_nested: bool = True
@@ -256,12 +233,8 @@ def nest_toml_under_section(
         if not _only_keyed_table_at_level(cur, k):
             already_nested = False
             break
-        nxt: Item | Container = cur[k]
-        if not isinstance(nxt, Table):
-            raise TomlSurgeryError(
-                message=f"Expected '{k}' to be a TOML table while checking nesting"
-            )
-        cur = nxt
+        # `_only_keyed_table_at_level` established this supported tomlkit invariant.
+        cur = cast("Table", cur[k])
 
     if already_nested:
         return doc.as_string()
@@ -270,6 +243,8 @@ def nest_toml_under_section(
     # usage: preserve the preamble before the first keyed entry, then inject the
     # wrapper header and prefix all real table headers with the dotted path.
     lines: list[str] = toml_doc.splitlines(keepends=True)
+    newline: str = "\r\n" if "\r\n" in toml_doc else "\n"
+    original_has_final_newline: bool = toml_doc.endswith(("\n", "\r"))
 
     def _is_comment_or_blank(line: str) -> bool:
         stripped: str = line.lstrip()
@@ -278,15 +253,15 @@ def nest_toml_under_section(
     header_re: re.Pattern[str] = re.compile(r"^(\s*)(\[\[?)([^\[\]]+?)(\]\]?)(\s*(?:#.*)?)$")
 
     def _prefix_header_line(line: str) -> str:
-        no_newline: str = line[:-1] if line.endswith("\n") else line
-        newline = "\n" if line.endswith("\n") else ""
+        no_newline: str = line.removesuffix("\n").removesuffix("\r")
+        line_ending: str = line[len(no_newline) :]
         match: re.Match[str] | None = header_re.match(no_newline)
         if match is None:
             return line
 
         indent, opener, name, closer, suffix = match.groups()
         qualified_name: str = f"{section_keys}.{name.strip()}"
-        return f"{indent}{opener}{qualified_name}{closer}{suffix}{newline}"
+        return f"{indent}{opener}{qualified_name}{closer}{suffix}{line_ending}"
 
     first_keyed_idx: int = len(lines)
     for i, line in enumerate(lines):
@@ -298,14 +273,44 @@ def nest_toml_under_section(
     body_lines: list[str] = lines[first_keyed_idx:]
 
     wrapped_body_lines: list[str] = []
+    multiline_delimiter: str | None = None
     for line in body_lines:
         stripped: str = line.lstrip()
+        delimiter_count: int = 0
+        if multiline_delimiter is not None:
+            delimiter_count = line.count(multiline_delimiter)
+            wrapped_body_lines.append(line)
+            if delimiter_count % 2 == 1:
+                multiline_delimiter = None
+            continue
+
         if stripped.startswith("[") and not stripped.startswith("#"):
             wrapped_body_lines.append(_prefix_header_line(line))
         else:
             wrapped_body_lines.append(line)
 
-    wrapper_header: str = f"[{section_keys}]\n"
-    wrapper_gap: str = "\n" if preamble_lines and preamble_lines[0].strip() != "" else ""
+        # TOML multiline strings are the only valid context where a physical
+        # line resembling a table header is not a header.
+        if not stripped.startswith("#"):
+            for delimiter in ('"""', "'''"):
+                if line.count(delimiter) % 2 == 1:
+                    multiline_delimiter = delimiter
+                    break
 
-    return "".join([wrapper_header, wrapper_gap, *preamble_lines, *wrapped_body_lines])
+    has_content: bool = bool(lines)
+    wrapper_header: str = f"[{section_keys}]"
+    if has_content or original_has_final_newline:
+        wrapper_header += newline
+    wrapper_gap: str = newline if preamble_lines and preamble_lines[0].strip() != "" else ""
+
+    result: str = "".join([wrapper_header, wrapper_gap, *preamble_lines, *wrapped_body_lines])
+    if result and not original_has_final_newline:
+        result = result.removesuffix("\n").removesuffix("\r")
+
+    try:
+        tomlkit.parse(result)
+    except TomlkitParseError as exc:
+        raise TomlSurgeryError(
+            message=f"Cannot nest TOML document under [{section_keys}]: {exc}"
+        ) from exc
+    return result
