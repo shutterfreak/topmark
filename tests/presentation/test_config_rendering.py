@@ -161,6 +161,78 @@ def test_build_config_init_human_report_applies_root_before_pyproject_nesting() 
     assert report.error is None
 
 
+@pytest.mark.parametrize(
+    ("for_pyproject", "root"),
+    [(False, False), (False, True), (True, False), (True, True)],
+)
+def test_build_config_init_human_report_preserves_template_for_all_shapes(
+    for_pyproject: bool,
+    root: bool,
+) -> None:
+    """The four human starter variants should be parseable and deterministic."""
+    first: ConfigInitHumanReport = build_config_init_human_report(
+        for_pyproject=for_pyproject,
+        root=root,
+        verbosity_level=0,
+        styled=False,
+    )
+    second: ConfigInitHumanReport = build_config_init_human_report(
+        for_pyproject=for_pyproject,
+        root=root,
+        verbosity_level=0,
+        styled=False,
+    )
+
+    assert first.toml_text == second.toml_text
+    assert first.error is None
+    assert "# TopMark configuration" in first.toml_text
+    assert "# Files configuration" in first.toml_text
+    parsed: tomlkit.TOMLDocument = tomlkit.parse(first.toml_text)
+    config = parsed["tool"]["topmark"]["config"] if for_pyproject else parsed["config"]
+    if root:
+        assert config["root"] is True
+    else:
+        assert "root" not in config
+    assert first.toml_text.count("\nroot = true\n") == int(root)
+    assert first.toml_text.count("[tool.topmark]\n") == int(for_pyproject)
+
+
+def test_build_config_init_human_report_orders_edit_nesting_and_validation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Plain root editing must precede pyproject nesting and final validation."""
+    calls: list[str] = []
+    original_edit = shared_config.set_root_flag_in_template_text
+    original_nest = shared_config.nest_toml_under_section
+    original_validate = shared_config.validate_toml_for_config_init
+
+    def recording_edit(*args: object, **kwargs: object) -> object:
+        calls.append("edit")
+        return original_edit(*args, **kwargs)  # type: ignore[arg-type]
+
+    def recording_nest(*args: object, **kwargs: object) -> str:
+        calls.append("nest")
+        return original_nest(*args, **kwargs)  # type: ignore[arg-type]
+
+    def recording_validate(*args: object, **kwargs: object) -> None:
+        calls.append("validate")
+        original_validate(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(shared_config, "set_root_flag_in_template_text", recording_edit)
+    monkeypatch.setattr(shared_config, "nest_toml_under_section", recording_nest)
+    monkeypatch.setattr(shared_config, "validate_toml_for_config_init", recording_validate)
+
+    report: ConfigInitHumanReport = build_config_init_human_report(
+        for_pyproject=True,
+        root=True,
+        verbosity_level=0,
+        styled=False,
+    )
+
+    assert calls == ["edit", "nest", "validate"]
+    assert tomlkit.parse(report.toml_text)["tool"]["topmark"]["config"]["root"] is True
+
+
 def test_build_config_defaults_human_report_can_render_root_pyproject_defaults() -> None:
     """Config defaults preparation should render copyable pyproject-root TOML."""
     report: ConfigDefaultsHumanReport = build_config_defaults_human_report(

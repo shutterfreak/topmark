@@ -355,6 +355,9 @@ ______________________________________________________________________
   versions could insert the header inside an internal subset, before its closing `]>`. Complete
   legacy header blocks in that location can now be removed with their wrappers intact and reinserted
   after the `DOCTYPE`.
+- Preserved LF/CRLF style and final-newline state during TOML template edits, recognized exact
+  whitespace-indented TopMark table headers without comment or child-table false positives, and
+  rejected dotted nesting paths with empty components instead of silently changing their meaning.
 
 ### Documentation - Unreleased
 

@@ -181,9 +181,12 @@ def load_default_topmark_template_toml_text() -> DefaultTomlTemplateText:
         lines: list[str] = toml_text.splitlines(keepends=True)
         for i, line in enumerate(lines):
             if line.strip() == f"# {TOPMARK_END_MARKER}":
-                toml_text = "".join(lines[i + 1 :])
-                # Remove leading blank lines introduced by stripping.
-                toml_text = toml_text.lstrip("\n")
+                content_lines: list[str] = lines[i + 1 :]
+                # Remove only whole blank lines introduced by stripping, for
+                # either LF or CRLF; meaningful indentation/comments remain.
+                while content_lines and not content_lines[0].strip():
+                    content_lines.pop(0)
+                toml_text = "".join(content_lines)
                 break
     except OSError as exc:
         # Fallback: the packaged annotated template is missing/unreadable.
