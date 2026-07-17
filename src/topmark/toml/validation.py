@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 from topmark.diagnostic.model import DiagnosticLevel
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Iterable
 
     from topmark.diagnostic.model import MutableDiagnosticLog
@@ -95,18 +96,11 @@ def add_toml_issues(
         log: Mutable diagnostic log receiving the TOML validation issues.
         issues: Structured TOML validation issues to record.
 
-    Raises:
-        RuntimeError: If an invalid diagnostic level was provided.
     """
+    add_by_level: dict[str, Callable[..., None]] = {
+        DiagnosticLevel.INFO: log.add_info,
+        DiagnosticLevel.WARNING: log.add_warning,
+        DiagnosticLevel.ERROR: log.add_error,
+    }
     for issue in issues:
-        msg: str = issue.message
-        lvl: DiagnosticLevel = issue.level
-        if lvl == DiagnosticLevel.INFO:
-            log.add_info(msg)
-        elif lvl == DiagnosticLevel.WARNING:
-            log.add_warning(msg)
-        elif lvl == DiagnosticLevel.ERROR:
-            log.add_error(msg)
-        else:
-            # Defensive guard
-            raise RuntimeError(f"Invalid diagnostic level {lvl}")
+        add_by_level[issue.level](issue.message)

@@ -358,6 +358,8 @@ ______________________________________________________________________
 - Preserved LF/CRLF style and final-newline state during TOML template edits, recognized exact
   whitespace-indented TopMark table headers without comment or child-table false positives, and
   rejected dotted nesting paths with empty components instead of silently changing their meaning.
+- Categorized invalid UTF-8 configuration sources as decoding failures while preserving conservative
+  ignore-and-continue loading behavior.
 
 ### Documentation - Unreleased
 

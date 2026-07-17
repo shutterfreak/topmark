@@ -130,6 +130,12 @@ scope-root selection, applicability evaluation, or layered provenance exports.
 
 ## Schema validation model
 
+For `pyproject.toml`, "whole source" means the exact `[tool.topmark]` table after extraction, not
+the entire project document. Unrelated `[project]`, `[build-system]`, and sibling `[tool.*]` content
+is outside TopMark's schema. A missing or structurally malformed `[tool.topmark]` is not a TopMark
+source; an explicitly empty table is a real empty source and therefore receives the normal
+missing-section INFO diagnostics.
+
 TopMark performs **whole-source TOML schema validation** before any layered configuration is
 deserialized:
 
