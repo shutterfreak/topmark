@@ -16,7 +16,7 @@ supported API layer for "what is available?" queries and is used by the
 human-facing reports.
 
 The functions here:
-- Ensure built-in processors are registered (idempotent).
+- Inspect the registry state currently visible through the `Registry` facade.
 - Return TypedDict-based metadata (`FileTypeInfo`, `ProcessorInfo`, `BindingInfo`).
 - Do not expose internal registry objects directly.
 

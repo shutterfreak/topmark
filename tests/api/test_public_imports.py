@@ -13,34 +13,55 @@
 from __future__ import annotations
 
 import inspect
+import subprocess
+import sys
 import types
 
 
-def test_api_all_contains_expected_symbols() -> None:
-    """__all__ exposes the expected stable symbols (at least this subset)."""
+def test_api_all_is_the_exact_supported_facade() -> None:
+    """__all__ exposes exactly the reviewed stable façade."""
     from topmark import api
 
-    # At minimum these should be present; the full list is allowed to grow.
-
-    expected_methods: set[str] = {
-        "check",
-        "probe",
-        "strip",
-        "list_filetypes",
-        "list_processors",
-        "get_version_info",
-        "get_version_text",
-    }
-    expected_types: set[str] = {
+    expected: set[str] = {
+        "ApiPipelineRun",
+        "ContentStreamEvent",
+        "DiagnosticEntry",
+        "FileResult",
+        "FileResultEvent",
+        "FileTypeInfo",
+        "Outcome",
         "ProbeCandidateInfo",
         "ProbeFileResult",
+        "ProbeFileResultEvent",
         "ProbeRunResult",
-        "FileResult",
+        "ProbeStreamEvent",
+        "ProcessorInfo",
+        "PublicStreamEvent",
+        "RunCompletedEvent",
         "RunResult",
+        "RunStartedEvent",
+        "VersionInfo",
+        "check",
+        "get_version_info",
+        "get_version_text",
+        "list_filetypes",
+        "list_processors",
+        "probe",
+        "stream_check",
+        "stream_probe",
+        "stream_strip",
+        "strip",
     }
     exported: set[str] = set(api.__all__)
-    missing: set[str] = (expected_methods | expected_types) - exported
-    assert not missing, f"Missing from api.__all__: {sorted(missing)}; have: {sorted(exported)}"
+    assert exported == expected
+    assert (
+        not {
+            "ensure_mutable_config",
+            "ContentRunCollector",
+            "to_probe_file_result",
+        }
+        & exported
+    )
 
 
 def test_api_symbols_are_callable_types_or_type_aliases() -> None:
@@ -56,3 +77,15 @@ def test_api_symbols_are_callable_types_or_type_aliases() -> None:
         # Functions are callable, DTOs are classes, and exported PEP 604 union
         # aliases are runtime types.UnionType values.
         assert callable(obj) or inspect.isclass(obj) or isinstance(obj, types.UnionType)
+
+
+def test_importing_public_api_does_not_import_click() -> None:
+    """The programmatic façade remains independent from Click."""
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import topmark.api; assert 'click' not in sys.modules",
+        ],
+        check=True,
+    )

@@ -74,6 +74,20 @@ class CollectedProbeRun:
     selected_paths: tuple[Path, ...]
 
 
+def _require_content_event(event: object) -> ContentStreamEvent:
+    """Return a supported content event or reject an untyped runtime value."""
+    if not isinstance(event, RunStartedEvent | FileResultEvent | RunCompletedEvent):
+        raise TypeError(f"Unsupported content stream event: {type(event).__name__}.")
+    return event
+
+
+def _require_probe_event(event: object) -> ProbeStreamEvent:
+    """Return a supported probe event or reject an untyped runtime value."""
+    if not isinstance(event, RunStartedEvent | ProbeFileResultEvent | RunCompletedEvent):
+        raise TypeError(f"Unsupported probe stream event: {type(event).__name__}.")
+    return event
+
+
 class ContentRunCollector:
     """Accumulate `check` or `strip` stream events into a `RunResult`.
 
@@ -103,35 +117,42 @@ class ContentRunCollector:
             This collector for fluent use.
 
         Raises:
+            TypeError: If the event is not a supported content event DTO.
             ValueError: If the event violates the expected stream order or
                 command identity.
-        """
+        """  # noqa: DOC503 - documents TypeError propagated by event validation
+        event = _require_content_event(event)
+        if isinstance(event, RunStartedEvent):
+            expected_kind = "run_started"
+        elif isinstance(event, FileResultEvent):
+            expected_kind = "file_result"
+        else:
+            expected_kind = "run_completed"
+        if event.kind != expected_kind:
+            raise ValueError(
+                f"{type(event).__name__} kind must be {expected_kind!r}, got {event.kind!r}."
+            )
         if event.command != self._command:
             raise ValueError(f"Expected {self._command!r} stream event, got {event.command!r}.")
-        match event:
-            case RunStartedEvent():
-                if self._started is not None:
-                    raise ValueError("Stream contains more than one run-start event.")
-                if self._files or self._completed is not None:
-                    raise ValueError("Run-start event must be first.")
-                self._started = event
-            case FileResultEvent():
-                if self._started is None:
-                    raise ValueError("File-result event appeared before run-start event.")
-                if self._completed is not None:
-                    raise ValueError("File-result event appeared after run-completed event.")
-                expected_index: int = len(self._files)
-                if event.index != expected_index:
-                    raise ValueError(
-                        f"Expected file-result index {expected_index}, got {event.index}."
-                    )
-                self._files.append(event.result)
-            case RunCompletedEvent():
-                if self._started is None:
-                    raise ValueError("Run-completed event appeared before run-start event.")
-                if self._completed is not None:
-                    raise ValueError("Stream contains more than one run-completed event.")
-                self._completed = event
+        if isinstance(event, RunStartedEvent):
+            if self._started is not None:
+                raise ValueError("Stream contains more than one run-start event.")
+            self._started = event
+        elif isinstance(event, FileResultEvent):
+            if self._started is None:
+                raise ValueError("File-result event appeared before run-start event.")
+            if self._completed is not None:
+                raise ValueError("File-result event appeared after run-completed event.")
+            expected_index: int = len(self._files)
+            if event.index != expected_index:
+                raise ValueError(f"Expected file-result index {expected_index}, got {event.index}.")
+            self._files.append(event.result)
+        else:  # RunCompletedEvent
+            if self._started is None:
+                raise ValueError("Run-completed event appeared before run-start event.")
+            if self._completed is not None:
+                raise ValueError("Stream contains more than one run-completed event.")
+            self._completed = event
         return self
 
     def finish(
@@ -212,35 +233,42 @@ class ProbeRunCollector:
             This collector for fluent use.
 
         Raises:
+            TypeError: If the event is not a supported probe event DTO.
             ValueError: If the event violates the expected stream order or
                 command identity.
-        """
+        """  # noqa: DOC503 - documents TypeError propagated by event validation
+        event = _require_probe_event(event)
+        if isinstance(event, RunStartedEvent):
+            expected_kind = "run_started"
+        elif isinstance(event, ProbeFileResultEvent):
+            expected_kind = "file_result"
+        else:
+            expected_kind = "run_completed"
+        if event.kind != expected_kind:
+            raise ValueError(
+                f"{type(event).__name__} kind must be {expected_kind!r}, got {event.kind!r}."
+            )
         if event.command != "probe":
             raise ValueError(f"Expected 'probe' stream event, got {event.command!r}.")
-        match event:
-            case RunStartedEvent():
-                if self._started is not None:
-                    raise ValueError("Stream contains more than one run-start event.")
-                if self._files or self._completed is not None:
-                    raise ValueError("Run-start event must be first.")
-                self._started = event
-            case ProbeFileResultEvent():
-                if self._started is None:
-                    raise ValueError("File-result event appeared before run-start event.")
-                if self._completed is not None:
-                    raise ValueError("File-result event appeared after run-completed event.")
-                expected_index: int = len(self._files)
-                if event.index != expected_index:
-                    raise ValueError(
-                        f"Expected file-result index {expected_index}, got {event.index}."
-                    )
-                self._files.append(event.result)
-            case RunCompletedEvent():
-                if self._started is None:
-                    raise ValueError("Run-completed event appeared before run-start event.")
-                if self._completed is not None:
-                    raise ValueError("Stream contains more than one run-completed event.")
-                self._completed = event
+        if isinstance(event, RunStartedEvent):
+            if self._started is not None:
+                raise ValueError("Stream contains more than one run-start event.")
+            self._started = event
+        elif isinstance(event, ProbeFileResultEvent):
+            if self._started is None:
+                raise ValueError("File-result event appeared before run-start event.")
+            if self._completed is not None:
+                raise ValueError("File-result event appeared after run-completed event.")
+            expected_index: int = len(self._files)
+            if event.index != expected_index:
+                raise ValueError(f"Expected file-result index {expected_index}, got {event.index}.")
+            self._files.append(event.result)
+        else:  # RunCompletedEvent
+            if self._started is None:
+                raise ValueError("Run-completed event appeared before run-start event.")
+            if self._completed is not None:
+                raise ValueError("Stream contains more than one run-completed event.")
+            self._completed = event
         return self
 
     def finish(
