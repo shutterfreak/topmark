@@ -10,8 +10,13 @@
 
 """Plugin-facing structural contracts for TopMark integrations.
 
-This module contains protocols used by integrations that want to register file
-types or header processors without importing TopMark's internal base classes.
+This module retains historical structural vocabulary for integrations that
+describe file types or header processors without importing TopMark's internal
+base classes. The current supported plugin and registry extension points accept
+concrete [`FileType`][topmark.filetypes.model.FileType] instances and
+[`HeaderProcessor`][topmark.processors.base.HeaderProcessor] subclasses; these
+protocols are not registry admission guards and have no canonical TopMark
+implementation.
 
 Use this module for structural contracts. Stable public value types and literal
 aliases belong in [`topmark.api.types`][topmark.api.types]. Symbols exported by
@@ -45,10 +50,10 @@ if TYPE_CHECKING:
 class PublicFileType(Protocol):
     """Minimal plugin-facing structural contract for a file type.
 
-    These attributes provide the discovery metadata TopMark needs to recognize
-    files and determine whether a header can be managed. Instances are
-    registered via the public registry and may be recognized but unsupported
-    (`skip_processing`) to enable reporting without modification.
+    These attributes describe the historical integration metadata used to
+    recognize files and determine whether a header can be managed. The current
+    registry accepts concrete `FileType` instances rather than arbitrary
+    structural implementations of this protocol.
 
     Attributes:
         name: Stable identifier (for example, ``"jsonc"``). Must be unique.
@@ -79,9 +84,9 @@ class PublicFileType(Protocol):
 class PublicHeaderProcessor(Protocol):
     """Minimal plugin-facing structural contract for a header processor.
 
-    Implementors expose comment delimiters and are attached to a file type
-    during registration. At bind time, the registry sets `file_type` on the
-    processor instance.
+    Implementors expose comment delimiters and a mutable file-type binding. The
+    current registry accepts `HeaderProcessor` subclasses rather than arbitrary
+    structural implementations of this protocol.
 
     Attributes:
         description: Short human description for UI/logs.
