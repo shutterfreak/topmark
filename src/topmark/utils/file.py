@@ -58,8 +58,8 @@ def compute_relpath(file_path: Path, root_path: Path) -> Path:
     # Ensure the file_path is resolved to its absolute path
     resolved_path: Path = file_path.resolve()
 
-    # Determine root directory for relative path computation
-    resolved_root: Path = (root_path or Path.cwd()).resolve()
+    # Resolve the required root without requiring it to exist.
+    resolved_root: Path = root_path.resolve()
 
     try:
         # Direct subpath case
