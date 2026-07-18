@@ -19,6 +19,7 @@ from typing import cast
 
 import pytest
 
+import topmark.utils.path as path_utils
 from tests.helpers.paths import symlink_or_skip
 from topmark.config.resolution.synthetic import BUILTIN_DEFAULTS_TOML_SOURCE
 from topmark.config.resolution.synthetic import BUNDLED_TEMPLATE_TOML_SOURCE
@@ -65,6 +66,18 @@ def test_canonicalize_existing_path_requires_existing_path(tmp_path: Path) -> No
         canonicalize_existing_path(path)
 
 
+def test_canonicalize_existing_relative_directory_returns_absolute_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Relative directory inputs should resolve to their absolute identity."""
+    directory: Path = tmp_path / "Project" / "Sources"
+    directory.mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+
+    assert canonicalize_existing_path(Path("Project/Sources")) == directory.resolve()
+
+
 def test_canonical_processing_path_uses_symlink_target_identity(tmp_path: Path) -> None:
     """Processing identity should collapse symlink spelling to the target path."""
     target: Path = tmp_path / "real" / "source.py"
@@ -73,6 +86,86 @@ def test_canonical_processing_path_uses_symlink_target_identity(tmp_path: Path) 
     link: Path = symlink_or_skip(tmp_path / "links" / "source-link.py", target)
 
     assert canonical_processing_path(link) == target.resolve()
+
+
+def test_canonical_processing_path_delegates_to_existing_path_canonicalization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The named processing adapter should retain canonicalization semantics."""
+    source: Path = tmp_path / "source.py"
+    canonical: Path = tmp_path / "Canonical.py"
+    calls: list[Path] = []
+
+    def record(path: Path) -> Path:
+        calls.append(path)
+        return canonical
+
+    monkeypatch.setattr(
+        path_utils,
+        "canonicalize_existing_path",
+        record,
+    )
+
+    assert canonical_processing_path(source) == canonical
+    assert calls == [source]
+
+
+def test_canonicalize_existing_path_returns_resolved_path_when_inspection_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Directory inspection errors should preserve already-resolved identity."""
+    path: Path = tmp_path / "Project" / "source.py"
+    path.parent.mkdir()
+    path.write_text("", encoding="utf-8")
+    resolved: Path = path.resolve()
+
+    def inspection_denied(self: Path) -> object:
+        raise PermissionError("inspection denied")
+
+    monkeypatch.setattr(
+        Path,
+        "iterdir",
+        inspection_denied,
+    )
+
+    assert canonicalize_existing_path(path) == resolved
+
+
+def test_canonicalize_existing_path_propagates_unexpected_inspection_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Only filesystem inspection failures should trigger conservative fallback."""
+    path: Path = tmp_path / "source.py"
+    path.write_text("", encoding="utf-8")
+
+    def unexpected_failure(self: Path) -> object:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(
+        Path,
+        "iterdir",
+        unexpected_failure,
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        canonicalize_existing_path(path)
+
+
+def test_canonicalize_existing_path_recovers_directory_entry_casing_when_observable(
+    tmp_path: Path,
+) -> None:
+    """Case-insensitive filesystems should return spelling stored in directory entries."""
+    stored: Path = tmp_path / "MixedCase" / "Source.PY"
+    stored.parent.mkdir()
+    stored.write_text("", encoding="utf-8")
+    alternate: Path = tmp_path / "mixedcase" / "source.py"
+    if not alternate.exists():
+        pytest.skip("canonical casing is not observable on this case-sensitive filesystem")
+
+    assert canonicalize_existing_path(alternate) == stored.resolve()
 
 
 # ---- path POSIX rendering tests ----

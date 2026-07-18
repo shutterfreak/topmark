@@ -41,9 +41,6 @@ def canonicalize_existing_path(path: Path) -> Path:
     resolved: Path = path.resolve(strict=True)
 
     parts: tuple[str, ...] = resolved.parts
-    if not parts:
-        return resolved
-
     current: Path = Path(parts[0])
 
     for part in parts[1:]:
