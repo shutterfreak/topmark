@@ -36,6 +36,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
+from topmark.core.formats import is_machine_format
+from topmark.core.machine.errors import unsupported_machine_readable_format
 from topmark.core.machine.serializers import serialize_json_envelope
 from topmark.core.machine.serializers import serialize_ndjson
 from topmark.version.machine.envelopes import iter_version_ndjson_records
@@ -74,15 +76,19 @@ def serialize_version(
 
     Raises:
         ValueError: If `fmt` is not JSON or NDJSON.
-    """
+    """  # noqa: DOC503 - raises ValueError via exception factory helper
+    if not is_machine_format(fmt):
+        raise unsupported_machine_readable_format(fmt)
+
     if fmt == OutputFormat.JSON:
         return serialize_version_json(meta=meta, semver=semver)
 
     if fmt == OutputFormat.NDJSON:
         return serialize_version_ndjson(meta=meta, semver=semver)
 
-    # Defensive guard
-    raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
+    # Defensive guard: reached only if a new machine-readable OutputFormat is
+    # added without updating this serializer dispatch.
+    raise unsupported_machine_readable_format(fmt)  # pragma: no cover
 
 
 def serialize_version_json(

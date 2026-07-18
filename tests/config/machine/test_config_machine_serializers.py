@@ -51,21 +51,30 @@ def _default_config() -> FrozenConfig:
     return mutable_config_from_defaults().freeze()
 
 
-@pytest.mark.parametrize("fmt", [OutputFormat.TEXT, OutputFormat.MARKDOWN])
+@pytest.mark.parametrize(
+    "fmt",
+    [
+        OutputFormat.TEXT,
+        OutputFormat.MARKDOWN,
+    ],
+)
 def test_config_serializers_reject_human_output_formats(fmt: OutputFormat) -> None:
     """Config machine serializers should fail closed for human formats."""
     config: FrozenConfig = _default_config()
     resolved_toml: ResolvedTopmarkTomlSources = _empty_resolved_toml_sources()
 
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+    expected_message: str = f"Unsupported machine-readable output format: {fmt!r}"
+
+    with pytest.raises(ValueError) as exc_info:
         serialize_config(
             meta=_machine_meta(),
             config=config,
             fmt=fmt,
             resolved_toml=resolved_toml,
         )
+    assert str(exc_info.value) == expected_message
 
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+    with pytest.raises(ValueError) as exc_info:
         serialize_config_check(
             meta=_machine_meta(),
             config=config,
@@ -74,13 +83,15 @@ def test_config_serializers_reject_human_output_formats(fmt: OutputFormat) -> No
             ok=True,
             fmt=fmt,
         )
+    assert str(exc_info.value) == expected_message
 
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+    with pytest.raises(ValueError) as exc_info:
         serialize_config_diagnostics(
             meta=_machine_meta(),
             config=config,
             fmt=fmt,
         )
+    assert str(exc_info.value) == expected_message
 
 
 def test_config_diagnostics_ndjson_streams_counts_before_diagnostics() -> None:

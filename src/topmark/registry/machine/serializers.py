@@ -29,6 +29,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.formats import OutputFormat
+from topmark.core.formats import is_machine_format
 from topmark.core.machine.errors import unsupported_machine_readable_format
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
@@ -71,6 +72,9 @@ def serialize_filetypes(
     Raises:
         ValueError: If `fmt` is not JSON or NDJSON.
     """  # noqa: DOC503 - raises ValueError via exception factory helper
+    if not is_machine_format(fmt):
+        raise unsupported_machine_readable_format(fmt)
+
     if fmt == OutputFormat.JSON:
         return serialize_filetypes_json(
             meta=meta,
@@ -83,7 +87,9 @@ def serialize_filetypes(
             show_details=show_details,
         )
 
-    raise unsupported_machine_readable_format(fmt)
+    # Defensive guard: reached only if a new machine-readable OutputFormat is
+    # added without updating this serializer dispatch.
+    raise unsupported_machine_readable_format(fmt)  # pragma: no cover
 
 
 def serialize_filetypes_json(
@@ -155,6 +161,9 @@ def serialize_processors(
     Raises:
         ValueError: If `fmt` is not JSON or NDJSON.
     """  # noqa: DOC503 - raises ValueError via exception factory helper
+    if not is_machine_format(fmt):
+        raise unsupported_machine_readable_format(fmt)
+
     if fmt == OutputFormat.JSON:
         return serialize_processors_json(
             meta=meta,
@@ -167,7 +176,9 @@ def serialize_processors(
             show_details=show_details,
         )
 
-    raise unsupported_machine_readable_format(fmt)
+    # Defensive guard: reached only if a new machine-readable OutputFormat is
+    # added without updating this serializer dispatch.
+    raise unsupported_machine_readable_format(fmt)  # pragma: no cover
 
 
 def serialize_processors_json(
@@ -238,6 +249,9 @@ def serialize_bindings(
     Raises:
         ValueError: If `fmt` is not JSON or NDJSON.
     """  # noqa: DOC503 - raises ValueError via exception factory helper
+    if not is_machine_format(fmt):
+        raise unsupported_machine_readable_format(fmt)
+
     if fmt == OutputFormat.JSON:
         return serialize_bindings_json(
             meta=meta,
@@ -250,7 +264,9 @@ def serialize_bindings(
             show_details=show_details,
         )
 
-    raise unsupported_machine_readable_format(fmt)
+    # Defensive guard: reached only if a new machine-readable OutputFormat is
+    # added without updating this serializer dispatch.
+    raise unsupported_machine_readable_format(fmt)  # pragma: no cover
 
 
 def serialize_bindings_json(

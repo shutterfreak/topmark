@@ -36,9 +36,19 @@ def _machine_meta() -> MetaPayload:
     "serializer",
     [serialize_filetypes, serialize_processors, serialize_bindings],
 )
+@pytest.mark.parametrize(
+    "fmt",
+    [
+        OutputFormat.TEXT,
+        OutputFormat.MARKDOWN,
+    ],
+)
 def test_registry_serializers_reject_human_output_formats(
     serializer: Callable[..., str | Iterator[str]],
+    fmt: OutputFormat,
 ) -> None:
     """Registry serializers should not silently accept human formats."""
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
-        serializer(fmt=OutputFormat.TEXT, meta=_machine_meta(), show_details=False)
+    with pytest.raises(ValueError) as exc_info:
+        serializer(fmt=fmt, meta=_machine_meta(), show_details=False)
+
+    assert str(exc_info.value) == f"Unsupported machine-readable output format: {fmt!r}"

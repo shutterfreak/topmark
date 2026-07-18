@@ -40,14 +40,23 @@ def _machine_meta() -> MetaPayload:
     )
 
 
-def test_version_serializer_rejects_human_output_format() -> None:
+@pytest.mark.parametrize(
+    "fmt",
+    [
+        OutputFormat.TEXT,
+        OutputFormat.MARKDOWN,
+    ],
+)
+def test_version_serializer_rejects_human_output_formats(fmt: OutputFormat) -> None:
     """Version machine serializer should fail closed for human formats."""
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+    with pytest.raises(ValueError) as exc_info:
         serialize_version(
             meta=_machine_meta(),
-            fmt=OutputFormat.TEXT,
+            fmt=fmt,
             semver=False,
         )
+
+    assert str(exc_info.value) == f"Unsupported machine-readable output format: {fmt!r}"
 
 
 def test_version_ndjson_emits_diagnostic_after_semver_fallback(

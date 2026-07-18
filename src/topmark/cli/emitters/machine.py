@@ -24,7 +24,6 @@ from topmark.config.machine.serializers import serialize_config
 from topmark.config.machine.serializers import serialize_config_check
 from topmark.config.machine.serializers import serialize_config_diagnostics
 from topmark.core.formats import OutputFormat
-from topmark.core.formats import is_machine_format
 from topmark.core.machine.serializers import iter_ndjson_strings
 from topmark.core.machine.serializers import serialize_json_object
 from topmark.pipeline.machine.envelopes import build_probe_results_stream_json_envelope
@@ -219,12 +218,7 @@ def emit_config_machine(
     Raises:
         ValueError: If `fmt` is not a supported machine-readable format, or
             if show_config_layers is `True` but resolved_toml is `None`.
-
-
-    """
-    if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
-
+    """  # noqa: DOC502 - documents ValueError propagated from the serializer
     serialized: str | Iterator[str] = serialize_config(
         meta=meta,
         config=config,
@@ -262,10 +256,7 @@ def emit_config_diagnostics_machine(
 
     Raises:
         ValueError: if `fmt` is not a supported machine-readable format.
-    """
-    if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
-
+    """  # noqa: DOC502 - documents ValueError propagated from the serializer
     serialized: str | Iterator[str] = serialize_config_diagnostics(
         meta=meta,
         config=config,
@@ -312,10 +303,7 @@ def emit_config_check_machine(
 
     Raises:
         ValueError: if `fmt` is not a supported machine-readable format.
-    """
-    if not is_machine_format(fmt):
-        raise ValueError(f"Unsupported machine-readable output format: {fmt!r}")
-
+    """  # noqa: DOC502 - documents ValueError propagated from the serializer
     serialized: str | Iterator[str] = serialize_config_check(
         meta=meta,
         config=config,
