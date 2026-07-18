@@ -36,6 +36,22 @@ Use this section if you need details on functions, classes, or constants availab
 
 ## Stable public API
 
+### Version metadata
+
+Use `topmark.api.get_version_text()` for the canonical runtime PEP 440 string. Use
+`topmark.api.get_version_info(semver=...)` when an integration also needs the effective format or
+conversion context. Its immutable `VersionInfo` result has three stable fields:
+
+- `version_text`: the selected version string;
+- `version_format`: `"pep440"` or `"semver"`;
+- `err`: the retained conversion exception, or `None`.
+
+When SemVer-compatible output is requested but the installed package version is outside TopMark's
+supported conversion subset, `get_version_info()` returns the original PEP 440 string with
+`version_format="pep440"` and retains the `ValueError` in `err`. The `topmark.version` package owns
+this internal domain behavior but is not a barrel-style public import surface; integrations should
+continue importing these helpers and `VersionInfo` from `topmark.api`.
+
 ### Streaming event contracts
 
 TopMark exposes public event DTOs and streaming entry points for integrations that want to consume

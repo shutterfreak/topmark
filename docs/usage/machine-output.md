@@ -1159,7 +1159,7 @@ ______________________________________________________________________
 ### NDJSON shape for [`version`](../usage/commands/version.md)
 
 ```jsonc
-{"kind":"version","meta":{ /* MetaPayload */ },"version_info":{ "version":"<package version>", "version_format":"pep440" }}
+{"kind":"version","meta":{ /* MetaPayload */ },"version":{ "version":"<package version>", "version_format":"pep440" }}
 ```
 
 The NDJSON `version` record kind is defined in
@@ -1178,6 +1178,8 @@ Notes:
 - `version_format` may be `"pep440"` or `"semver"` depending on `--semver`.
 - PEP 440 output is the canonical packaging version form used by Python packaging tools.
 - If SemVer conversion is requested and fails, TopMark falls back to PEP 440 output.
+- JSON retains only the documented fallback payload. NDJSON emits the `version` record first and
+  then a `warning` diagnostic record with `domain="version"` containing the conversion message.
 - The machine envelope `kind` for this command is `version`, while the JSON payload container key is
   `version_info`.
 - For development builds between release tags, the reported version may include SCM-derived

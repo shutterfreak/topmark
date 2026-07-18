@@ -75,14 +75,14 @@ topmark version --semver
 The table below illustrates how TopMark maps common PEP 440 versions to their SemVer-compatible
 equivalents when using `--semver`:
 
-| Release type        | PEP 440                 | SemVer                            |
-| ------------------- | ----------------------- | --------------------------------- |
-| Final release       | `1.0.0`                 | `1.0.0`                           |
-| Release candidate   | `1.0.0rc1`              | `1.0.0-rc.1`                      |
-| Alpha (a / alpha)   | `1.0.0a2`               | `1.0.0-alpha.2`                   |
-| Beta (b / beta)     | `1.0.0b3`               | `1.0.0-beta.3`                    |
-| Development release | `1.0.0.dev6`            | `1.0.0-dev.6`                     |
-| Dev after alpha tag | `1.0.0a1.dev3+gabc1234` | project-specific SemVer rendering |
+| Release type        | PEP 440                 | SemVer                         |
+| ------------------- | ----------------------- | ------------------------------ |
+| Final release       | `1.0.0`                 | `1.0.0`                        |
+| Release candidate   | `1.0.0rc1`              | `1.0.0-rc.1`                   |
+| Alpha (a / alpha)   | `1.0.0a2`               | `1.0.0-alpha.2`                |
+| Beta (b / beta)     | `1.0.0b3`               | `1.0.0-beta.3`                 |
+| Development release | `1.0.0.dev6`            | `1.0.0-dev.6`                  |
+| Dev after alpha tag | `1.0.0a1.dev3+gabc1234` | `1.0.0-alpha.1.dev.3+gabc1234` |
 
 Notes:
 
@@ -91,11 +91,12 @@ Notes:
 - Pre-releases are mapped to SemVer using a dash and dot separator (for example `1.0.0a2` ->
   `1.0.0-alpha.2`).
 - Development releases (`.devN`) are mapped to `-dev.N` (for example `1.0.0.dev6` -> `1.0.0-dev.6`).
-- Development versions with local build metadata (for example commit identifiers) may require a
-  project-specific SemVer rendering.
-- If a version cannot be converted cleanly, TopMark falls back to the original PEP 440 string.
-- Legacy dashed prerelease tags remain accepted for compatibility but are normalized internally to
-  canonical PEP 440 prerelease forms.
+- Development releases after a prerelease append `.dev.N` to the SemVer-compatible prerelease
+  segment. Supported local metadata is preserved in its original segment order.
+- Conversion intentionally accepts only the narrower canonical subset emitted by TopMark; it is not
+  a general PEP 440 parser. If conversion fails, TopMark falls back to the original PEP 440 string.
+- Release/tag handling may accept legacy dashed prerelease tags for compatibility, but it normalizes
+  them to canonical PEP 440 before they reach this converter.
 
 ______________________________________________________________________
 
@@ -169,7 +170,7 @@ topmark version --output-format ndjson
 Produces one machine-readable NDJSON record per line:
 
 ```json
-{"kind":"version","meta":{"tool":"topmark","version":"<package version>","platform":"darwin"},"version_info":{"version":"<package version>","version_format":"pep440"}}
+{"kind":"version","meta":{"tool":"topmark","version":"<package version>","platform":"darwin"},"version":{"version":"<package version>","version_format":"pep440"}}
 ```
 
 - Each line is a self-contained machine-readable output record.
@@ -178,6 +179,8 @@ Produces one machine-readable NDJSON record per line:
 ### Notes
 
 - If SemVer conversion fails, TopMark falls back to the original PEP 440 version.
+- JSON keeps the valid fallback payload without adding an undocumented diagnostic field. NDJSON
+  emits the `version` record first, followed by a `warning` diagnostic in the `version` domain.
 - PEP 440 output is the canonical packaging-version form used by Python packaging tooling.
 - Development builds between release tags may include SCM-derived dev/local segments.
 - No ANSI color codes or human formatting are emitted in machine-readable formats.
@@ -194,16 +197,18 @@ on successful execution.
 
 Common `version` exit codes:
 
-| Scenario                      | Exit code                        |
-| ----------------------------- | -------------------------------- |
-| Version rendered successfully | `SUCCESS (0)`                    |
-| Version conversion failure    | `VERSION_CONVERSION_ERROR (100)` |
-| Invalid CLI usage             | `USAGE_ERROR (64)`               |
+| Scenario                                      | Exit code     |
+| --------------------------------------------- | ------------- |
+| Version rendered or PEP 440 fallback returned | `SUCCESS (0)` |
+| Click-owned invalid CLI usage                 | `2`           |
 
 Notes:
 
 - Click parser-level usage errors (for example, unknown commands, unknown options, or invalid option
   values) may exit with code `2` before command logic runs.
+- SemVer conversion failure is non-fatal: the command returns the original PEP 440 version and
+  exposes a human warning or, for NDJSON, a diagnostic record. The reserved
+  `VERSION_CONVERSION_ERROR (100)` code is not emitted by this fallback path.
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 - Invalid positional paths or file-processing input options are reported as CLI usage errors.

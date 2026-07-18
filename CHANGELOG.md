@@ -360,6 +360,8 @@ ______________________________________________________________________
   rejected dotted nesting paths with empty components instead of silently changing their meaning.
 - Categorized invalid UTF-8 configuration sources as decoding failures while preserving conservative
   ignore-and-continue loading behavior.
+- Rejected noncanonical leading-zero prerelease and development identifiers instead of emitting
+  invalid SemVer-compatible numeric segments.
 
 ### Documentation - Unreleased
 
@@ -504,6 +506,8 @@ ______________________________________________________________________
 - Documented CLI stream-routing ownership, including STDOUT payload ownership, STDERR
   diagnostics/signaling, machine-readable parseability, and human diff/content-to-STDOUT routing
   behavior.
+- Corrected version-command documentation to reflect successful PEP 440 fallback on SemVer
+  conversion failure and the established JSON/NDJSON fallback record shapes.
 
 ### Internal - Unreleased
 

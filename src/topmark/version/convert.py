@@ -32,13 +32,13 @@ _PEP440_RE: re.Pattern[str] = re.compile(
     (?P<minor>0|[1-9]\d*)\.
     (?P<patch>0|[1-9]\d*)
     (?:
-      (?P<pre_label>a|b|rc)(?P<pre_num>\d+)
+      (?P<pre_label>a|b|rc)(?P<pre_num>0|[1-9]\d*)
     )?
     (?:
       \.post(?P<post>\d+)
     )?
     (?:
-      \.dev(?P<dev>\d+)
+      \.dev(?P<dev>0|[1-9]\d*)
     )?
     (?:
       \+(?P<local>[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)
