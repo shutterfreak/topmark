@@ -176,29 +176,36 @@ def test_emit_machine_skips_empty_serialized_output() -> None:
         emit_config_check_machine,
     ],
 )
-def test_config_machine_emitters_reject_unsupported_output_format(
+@pytest.mark.parametrize(
+    "fmt",
+    [
+        OutputFormat.TEXT,
+        OutputFormat.MARKDOWN,
+    ],
+)
+def test_config_machine_emitters_reject_human_output_formats(
     emitter: object,
+    fmt: OutputFormat,
 ) -> None:
-    """Config machine emitters should guard against unsupported direct formats."""
+    """Config machine emitters should propagate serializer format rejection."""
     cfg: FrozenConfig = make_frozen_config()
     captured: CapturedConsole = make_captured_console()
-    unsupported_format: OutputFormat = cast("OutputFormat", "unsupported")
 
-    with pytest.raises(ValueError, match="Unsupported machine-readable output format"):
+    with pytest.raises(ValueError) as exc_info:
         if emitter is emit_config_machine:
             emit_config_machine(
                 console=captured.console,
                 meta=_machine_meta(),
                 config=cfg,
                 resolved_toml=_empty_resolved_toml_sources(),
-                fmt=unsupported_format,
+                fmt=fmt,
             )
         elif emitter is emit_config_diagnostics_machine:
             emit_config_diagnostics_machine(
                 console=captured.console,
                 meta=_machine_meta(),
                 config=cfg,
-                fmt=unsupported_format,
+                fmt=fmt,
             )
         else:
             emit_config_check_machine(
@@ -208,8 +215,10 @@ def test_config_machine_emitters_reject_unsupported_output_format(
                 resolved_toml=_empty_resolved_toml_sources(),
                 strict=True,
                 ok=True,
-                fmt=unsupported_format,
+                fmt=fmt,
             )
+
+    assert str(exc_info.value) == f"Unsupported machine-readable output format: {fmt!r}"
 
 
 # --- Path serialization contract tests ---

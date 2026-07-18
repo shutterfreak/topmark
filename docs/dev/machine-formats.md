@@ -72,6 +72,25 @@ Notes:
 - Markdown output is also independent from machine-readable formats and follows its own
   document-oriented contract.
 
+### Serializer dispatch policy
+
+Public domain serializer entry points that accept `OutputFormat` own validation and dispatch. They
+first reject values for which `is_machine_format(fmt)` is false by raising
+`unsupported_machine_readable_format(fmt)`, then explicitly dispatch the supported `JSON` and
+`NDJSON` members. This makes rejection of current human formats a reachable, tested contract.
+
+After those branches, serializers retain a fail-closed guard for a future `OutputFormat` member that
+is classified as machine-readable before the serializer implements it. That guard uses the same
+exception factory. Because no such enum member exists today, it carries a concise invariant comment
+and `# pragma: no cover`; tests must not manufacture enum states merely to execute it.
+
+CLI commands select human versus machine presentation. Machine emitters delegate format validation
+to the domain serializer, while core serializers continue to operate only on already-shaped
+JSON-compatible objects and do not acquire `OutputFormat` policy. Where pydoclint cannot infer a
+`ValueError` built by the shared exception factory, keep the public `Raises:` contract and use a
+targeted `# noqa: DOC503` with a short rationale. A façade that only documents an exception
+propagated from its delegated serializer uses the corresponding targeted `DOC502` annotation.
+
 ______________________________________________________________________
 
 ## Stream ownership
