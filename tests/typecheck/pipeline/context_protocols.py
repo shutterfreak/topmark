@@ -18,7 +18,9 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.context.protocols import SupportsPolicyEvaluation
 
-__all__ = ["verify_processing_context_protocol"]
+__all__ = [
+    "verify_processing_context_protocol",
+]
 
 
 def verify_processing_context_protocol(

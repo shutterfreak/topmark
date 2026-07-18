@@ -191,7 +191,7 @@ exclude_also = [
   "if __name__ == .__main__.:",
   "raise NotImplementedError",
   "raise AssertionError",
-  "class .*\\bProtocol\\):",
+  "class .*\\([^)]*\\bProtocol(?:\\[[^]]+\\])?[^)]*\\):",
   "@(abc\\.)?abstractmethod",
 ]
 

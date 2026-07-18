@@ -344,10 +344,12 @@ class HasPolicyConfig(Protocol):
       - `policy_by_type` maps file-type identifiers to resolved per-type
         [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
 
-    Attributes are defined as read-only properties so both immutable
-    [`FrozenConfig`][topmark.config.model.FrozenConfig] and mutable
-    [`MutableConfig`][topmark.config.model.MutableConfig] builders
-    can satisfy the protocol.
+    Attributes are defined as read-only properties so the immutable
+    [`FrozenConfig`][topmark.config.model.FrozenConfig] runtime snapshot satisfies
+    the protocol without exposing mutation. The unresolved
+    [`MutableConfig`][topmark.config.model.MutableConfig] builder intentionally does
+    not satisfy this contract: it carries `MutablePolicy` values until `freeze()`
+    resolves them.
     """
 
     @property
