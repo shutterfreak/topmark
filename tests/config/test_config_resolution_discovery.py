@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.paths import symlink_or_skip
 from tests.toml.conftest import write_toml_document
 from topmark.config.resolution.bridge import ResolvedConfigDraft
@@ -28,8 +30,6 @@ from topmark.config.resolution.bridge import resolve_toml_sources_and_build_muta
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
     from topmark.config.resolution.bridge import ResolvedConfigDraft
 
@@ -61,34 +61,90 @@ def test_same_dir_precedence_topmark_over_pyproject(
     )
     # topmark.toml should win within the same directory
     assert resolved_config.draft.align_fields is True
+    assert resolved_config.draft.config_files == [
+        proj.resolve() / "pyproject.toml",
+        proj.resolve() / "topmark.toml",
+    ]
 
 
+@pytest.mark.parametrize(
+    ("root_filename", "root_content"),
+    [
+        (
+            "topmark.toml",
+            """
+                [config]
+                root = true
+
+                [formatting]
+                align_fields = true
+            """,
+        ),
+        (
+            "pyproject.toml",
+            """
+                [tool.topmark.config]
+                root = true
+
+                [tool.topmark.formatting]
+                align_fields = true
+            """,
+        ),
+    ],
+    ids=["topmark-toml", "pyproject-toml"],
+)
 def test_root_true_stops_traversal(
     tmp_path: Path,
+    root_filename: str,
+    root_content: str,
 ) -> None:
-    """`root = true` stops discovery above that directory."""
+    """Both supported root-marker representations stop upward discovery."""
     root: Path = tmp_path / "root"
     child: Path = root / "apps" / "a"
     child.mkdir(parents=True)
 
-    # Parent *above* root that should be ignored if traversal stops
-    above: Path = tmp_path / "above"
+    # An actual ancestor above the discovery root must be ignored.
     write_toml_document(
-        path=above / "pyproject.toml",
+        path=tmp_path / "topmark.toml",
+        content="""
+            [formatting]
+            align_fields = false
+        """,
+    )
+
+    # The filename and owned config-table path are coupled representations.
+    write_toml_document(
+        path=root / root_filename,
+        content=root_content,
+    )
+
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[child]
+    )
+    # Should see settings from `root`, not from its ancestor.
+    assert resolved_config.draft.align_fields is True
+    assert resolved_config.draft.config_files == [root.resolve() / root_filename]
+
+
+def test_mixed_sources_in_different_directories_follow_root_to_nearest_precedence(
+    tmp_path: Path,
+) -> None:
+    """Mixed source formats both participate, with the nearest layer winning."""
+    parent: Path = tmp_path / "project"
+    child: Path = parent / "package"
+    child.mkdir(parents=True)
+
+    write_toml_document(
+        path=parent / "pyproject.toml",
         content="""
             [tool.topmark.formatting]
             align_fields = false
         """,
     )
-
-    # Discovery root marker declared in the `[tool.topmark]` table.
     write_toml_document(
-        path=root / "pyproject.toml",
+        path=child / "topmark.toml",
         content="""
-            [tool.topmark]
-            root = true
-
-            [tool.topmark.formatting]
+            [formatting]
             align_fields = true
         """,
     )
@@ -96,8 +152,12 @@ def test_root_true_stops_traversal(
     resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
         input_paths=[child]
     )
-    # Should see settings from `root`, not from `above`
+
     assert resolved_config.draft.align_fields is True
+    assert resolved_config.draft.config_files == [
+        parent.resolve() / "pyproject.toml",
+        child.resolve() / "topmark.toml",
+    ]
 
 
 def test_symlinked_discovery_anchor_uses_resolved_project_chain(
@@ -209,3 +269,9 @@ def test_malformed_toml_in_discovered_config_is_ignored(
         input_paths=[child]
     )
     assert resolved_config.draft.align_fields is True
+    assert [source.path for source in resolved_config.resolved.sources] == [
+        (parent / "pyproject.toml").resolve(),
+        (child / "topmark.toml").resolve(),
+    ]
+    assert resolved_config.resolved.sources[0].parsed is None
+    assert resolved_config.resolved.sources[1].parsed is not None

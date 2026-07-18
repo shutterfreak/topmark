@@ -78,10 +78,15 @@ def _load_toml_table(path: Path) -> TomlTable | None:
     except OSError as e:
         logger.error("Error loading TOML from %s: %s", path, e)
         return None
+    except UnicodeError as e:
+        logger.error("Error decoding TOML from %s as UTF-8: %s", path, e)
+        return None
     except TomlkitParseError as e:
         logger.error("Error parsing TOML from %s: %s", path, e)
         return None
-    except (TypeError, ValueError) as e:
+    except TypeError as e:
+        # `tomlkit` supports date/time values that TopMark's normalized TOML
+        # model intentionally does not accept, so this remains a real boundary.
         logger.error("Error normalizing TOML from %s: %s", path, e)
         return None
 
