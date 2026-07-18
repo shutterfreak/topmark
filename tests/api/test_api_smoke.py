@@ -16,13 +16,16 @@ from typing import TYPE_CHECKING
 
 from topmark import api
 from topmark.core.outcomes import Outcome
+from topmark.version import runtime as version_runtime
+from topmark.version.types import VersionInfo
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from pytest import MonkeyPatch
+
     from topmark.api.types import FileTypeInfo
     from topmark.api.types import ProcessorInfo
-    from topmark.version.types import VersionInfo
 
 
 def test_version_is_nonempty_string() -> None:
@@ -39,6 +42,47 @@ def test_get_version_text_is_convenience_string_form() -> None:
     assert isinstance(version_text, str)
     assert version_text.strip()
     assert version_text == api.get_version_info(semver=False).version_text
+
+
+def test_public_version_api_propagates_canonical_conversion(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """The public façade should expose deterministic canonical runtime conversion."""
+    monkeypatch.setattr(
+        version_runtime,
+        "TOPMARK_VERSION",
+        "1.2.3a4.dev5+gabc123",
+    )
+
+    assert api.get_version_text() == "1.2.3a4.dev5+gabc123"
+    assert api.get_version_info(semver=False) == VersionInfo(
+        version_text="1.2.3a4.dev5+gabc123",
+        version_format="pep440",
+        err=None,
+    )
+    assert api.get_version_info(semver=True) == VersionInfo(
+        version_text="1.2.3-alpha.4.dev.5+gabc123",
+        version_format="semver",
+        err=None,
+    )
+
+
+def test_public_version_api_preserves_semver_fallback_context(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """The public façade should retain the original version and conversion error."""
+    monkeypatch.setattr(
+        version_runtime,
+        "TOPMARK_VERSION",
+        "1.2.3.post4",
+    )
+
+    result: VersionInfo = api.get_version_info(semver=True)
+
+    assert result.version_text == "1.2.3.post4"
+    assert result.version_format == "pep440"
+    assert isinstance(result.err, ValueError)
+    assert "1.2.3.post4" in str(result.err)
 
 
 def test_list_filetypes_includes_python() -> None:

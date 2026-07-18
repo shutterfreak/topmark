@@ -20,11 +20,15 @@ from topmark.utils import version as version_utils
 from topmark.utils.version import ComputedVersion
 from topmark.utils.version import check_python_version
 from topmark.utils.version import compute_version_text
-from topmark.utils.version import convert_pep440_to_semver
+from topmark.version import runtime as version_runtime
+from topmark.version.convert import convert_pep440_to_semver
+from topmark.version.runtime import compute_version_info
 
 if TYPE_CHECKING:
     from pytest import CaptureFixture
     from pytest import MonkeyPatch
+
+    from topmark.version.types import VersionInfo
 
 
 @pytest.mark.parametrize(
@@ -93,6 +97,41 @@ def test_compute_version_text_falls_back_to_pep440_when_semver_fails(
     assert result.version_format == "pep440"
     assert isinstance(result.error, ValueError)
     assert str(result.error) == "Post-releases are not valid SemVer: '1.2.3.post4'"
+
+
+@pytest.mark.parametrize(
+    ("version", "semver"),
+    [
+        ("1.2.3rc1", False),
+        ("1.2.3rc1.dev4+gabc123", True),
+        ("1.2.3.post4", True),
+    ],
+)
+def test_legacy_and_canonical_runtime_paths_have_semantic_parity(
+    monkeypatch: MonkeyPatch,
+    version: str,
+    semver: bool,
+) -> None:
+    """The compatibility result should agree with the canonical version domain."""
+    monkeypatch.setattr(
+        version_utils,
+        "TOPMARK_VERSION",
+        version,
+    )
+    monkeypatch.setattr(
+        version_runtime,
+        "TOPMARK_VERSION",
+        version,
+    )
+
+    legacy_result: ComputedVersion = compute_version_text(semver=semver)
+    canonical_result: VersionInfo = compute_version_info(semver=semver)
+
+    assert legacy_result.version_text == canonical_result.version_text
+    assert legacy_result.version_format == canonical_result.version_format
+    assert (str(legacy_result.error) if legacy_result.error is not None else None) == (
+        str(canonical_result.err) if canonical_result.err is not None else None
+    )
 
 
 @pytest.mark.parametrize(

@@ -54,7 +54,7 @@ ______________________________________________________________________
 |   74 | IO_ERROR                 | Read/write failure (e.g., filesystem write error).                                                                                 |
 |   77 | PERMISSION_DENIED        | Insufficient permissions (read/write).                                                                                             |
 |   78 | CONFIG_ERROR             | Runtime configuration could not be loaded, resolved, or validated for execution.                                                   |
-|  100 | VERSION_CONVERSION_ERROR | Version information could not be determined or converted.                                                                          |
+|  100 | VERSION_CONVERSION_ERROR | Reserved for fatal version-conversion failures; `topmark version --semver` currently falls back successfully instead.              |
 |  255 | UNEXPECTED_ERROR         | Unhandled exception fallback.                                                                                                      |
 
 Notes:
