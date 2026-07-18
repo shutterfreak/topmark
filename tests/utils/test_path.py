@@ -154,16 +154,15 @@ def test_canonicalize_existing_path_propagates_unexpected_inspection_failure(
         canonicalize_existing_path(path)
 
 
+@pytest.mark.case_insensitive_fs
 def test_canonicalize_existing_path_recovers_directory_entry_casing_when_observable(
-    tmp_path: Path,
+    case_insensitive_fs: Path,
 ) -> None:
     """Case-insensitive filesystems should return spelling stored in directory entries."""
-    stored: Path = tmp_path / "MixedCase" / "Source.PY"
+    stored: Path = case_insensitive_fs / "MixedCase" / "Source.PY"
     stored.parent.mkdir()
     stored.write_text("", encoding="utf-8")
-    alternate: Path = tmp_path / "mixedcase" / "source.py"
-    if not alternate.exists():
-        pytest.skip("canonical casing is not observable on this case-sensitive filesystem")
+    alternate: Path = case_insensitive_fs / "mixedcase" / "source.py"
 
     assert canonicalize_existing_path(alternate) == stored.resolve()
 

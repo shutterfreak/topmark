@@ -264,8 +264,8 @@ def test_rebase_glob_patterns_cross_root_returns_original_generator_payload(
 
     assert result.patterns == original
     assert len(result.warnings) == 1
-    assert str(from_base) in result.warnings[0]
-    assert str(to_base) in result.warnings[0]
+    assert repr(from_base) in result.warnings[0]
+    assert repr(to_base) in result.warnings[0]
     assert "different drives" in result.warnings[0]
 
 
