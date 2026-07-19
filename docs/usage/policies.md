@@ -245,6 +245,30 @@ Some file-type-specific checks (notably XML) may conservatively skip mutation wh
 appear near insertion boundaries due to idempotence concerns. This is a localized safety behavior,
 not an extension of newline support.
 
+An explicit future `reject`/`preserve` policy is tracked in
+[GitHub issue #299](https://github.com/shutterfreak/topmark/issues/299), a sub-issue of
+[GitHub issue #262](https://github.com/shutterfreak/topmark/issues/262). Until that policy has
+defined and implemented end-to-end preservation semantics, mixed recognized line endings remain
+strictly rejected.
+
+______________________________________________________________________
+
+## BOM-before-shebang handling (not a policy)
+
+TopMark strictly rejects a UTF-8 BOM before a shebang. A portable executable script requires `#!` at
+byte zero, so proceeding cannot safely be treated as equivalent to preserving or repairing the
+input.
+
+This guard applies specifically when a BOM precedes a shebang. Existing support for a leading BOM
+without a shebang is unchanged: TopMark strips the BOM from its decoded in-memory image and
+preserves it when writing the file.
+
+There is currently no CLI, configuration, API, or per-file-type policy option that relaxes this
+guard. An explicit future `reject`/`remove_bom` remediation policy is tracked in
+[GitHub issue #298](https://github.com/shutterfreak/topmark/issues/298), also a sub-issue of
+[GitHub issue #262](https://github.com/shutterfreak/topmark/issues/262). Until that remediation
+contract is implemented, BOM-before-shebang files remain strictly rejected.
+
 ______________________________________________________________________
 
 ## Per-file-type policy
