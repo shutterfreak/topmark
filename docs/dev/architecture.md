@@ -453,9 +453,10 @@ text content and do not contribute to newline histograms, dominant-newline detec
 mixed-newline diagnostics.
 
 This contract is global for built-in file types. It is not currently configurable through file-type
-policy or runtime policy. XML-specific checks may still treat non-standard newline-like characters
-near XML insertion boundaries as an idempotence risk and skip mutation conservatively; that is a
-local safety guard, not extended newline support.
+policy or runtime policy. The reader likewise strictly refuses a UTF-8 BOM before a shebang; no
+runtime policy option relaxes either reader guard. XML-specific checks may still treat non-standard
+newline-like characters near XML insertion boundaries as an idempotence risk and skip mutation
+conservatively; that is a local safety guard, not extended newline support.
 
 ______________________________________________________________________
 

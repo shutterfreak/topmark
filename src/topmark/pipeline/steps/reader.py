@@ -192,31 +192,19 @@ class ReaderStep(BaseStep):
         if ctx.file_type is None:
             raise RuntimeError("File type not defined")
 
-        if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
-            # Strict default: refuse unless policy says otherwise
-            if allow_bom_before_shebang(ctx):
-                # TODO later: apply policies
-                # (remove BOM before shebang)
-                pass
-            else:
-                ctx.status.content = ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
-                reason: str = "BOM appears before shebang; policy forbids proceeding"
-                ctx.diagnostics.add_error(reason)
-                ctx.request_halt(reason=reason, at_step=self)
-                return
+        if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG and not allow_bom_before_shebang(ctx):
+            ctx.status.content = ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
+            reason: str = "BOM appears before shebang; policy forbids proceeding"
+            ctx.diagnostics.add_error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
+            return
 
-        if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
-            # Strict default: refuse unless policy says otherwise
-            if allow_mixed_line_endings(ctx):
-                # TODO later: apply policies
-                # (refine what to do when mixed line endngs are present)
-                pass
-            else:
-                ctx.status.content = ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
-                reason = "Mixed line endings refused by policy"
-                ctx.diagnostics.add_error(reason)
-                ctx.request_halt(reason=reason, at_step=self)
-                return
+        if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS and not allow_mixed_line_endings(ctx):
+            ctx.status.content = ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
+            reason = "Mixed line endings refused by policy"
+            ctx.diagnostics.add_error(reason)
+            ctx.request_halt(reason=reason, at_step=self)
+            return
 
         def _initialize_empty_file_content(
             ctx: ProcessingContext,

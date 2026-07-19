@@ -207,81 +207,43 @@ def allow_content_reflow(ctx: SupportsPolicyEvaluation) -> bool:
 
 
 def allow_mixed_line_endings(ctx: SupportsPolicyEvaluation) -> bool:
-    """Return True if policy allows proceeding despite mixed line endings.
+    """Return whether the filesystem state may pass the mixed-newline gate.
 
-    This helper is used by early pipeline steps (e.g., ReaderStep) when the
-    sniffer detected mixed line endings (`FsStatus.MIXED_LINE_ENDINGS`) and
-    the project policy has opted into tolerating them.
+    Healthy and empty files may proceed. Mixed physical line endings are
+    strictly refused because TopMark has no configurable reader-tolerance
+    policy; all other filesystem problem states are refused as well.
 
-    Policy fields:
-      - If the effective [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
-        defines `ignore_mixed_line_endings` and it is True,
-        we allow proceeding on `MIXED_LINE_ENDINGS`.
-
-    Notes:
-      - This function is forward-compatible: it uses `getattr(...)` so it returns
-        False for unknown fields on older Policy versions (safe default).
-      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_insert_into_empty_like()` governs header insertion later.
+    The named gate is retained so a future explicit handling mode can decide
+    `FsStatus.MIXED_LINE_ENDINGS` here without moving reader-policy ownership.
+    It does not expose such a mode today.
 
     Args:
         ctx: Processing context containing filesystem status and configuration.
 
     Returns:
-        `True` if we may proceed despite mixed line endings,
-        `False` otherwise.
+        `True` for `FsStatus.OK` and `FsStatus.EMPTY`; `False` otherwise.
     """
-    # Always OK to proceed if FS is healthy or empty (read can still run).
-    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
-        return True
-
-    policy: FrozenPolicy = ctx.get_effective_policy()
-
-    if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(policy, "ignore_mixed_line_endings", False))
-
-    # All other FS states should not be skipped by policy here.
-    return False
+    return ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}
 
 
 def allow_bom_before_shebang(ctx: SupportsPolicyEvaluation) -> bool:
-    """Return True if policy allows proceeding despite a BOM before the shebang.
+    """Return whether the filesystem state may pass the BOM/shebang gate.
 
-    This helper is used by early pipeline steps (e.g., ReaderStep) when the
-    sniffer detected a BOM before the shebang (`FsStatus.BOM_BEFORE_SHEBANG`)
-    and the project policy has opted into tolerating it.
+    Healthy and empty files may proceed. A UTF-8 BOM before a shebang is
+    strictly refused because TopMark has no configurable reader-tolerance
+    policy; all other filesystem problem states are refused as well.
 
-    Policy fields:
-      - If the effective [`FrozenPolicy`][topmark.config.policy.FrozenPolicy]
-        defines `ignore_bom_before_shebang` and it is True,
-        we allow proceeding on `BOM_BEFORE_SHEBANG`.
-
-    Notes:
-      - This function is forward-compatible: it uses `getattr(...)` so it returns
-        False for unknown fields on older Policy versions (safe default).
-      - We *always* allow when `FsStatus` is already OK/EMPTY; for EMPTY, your
-        existing `allow_insert_into_empty_like()` governs header insertion later.
+    The named gate is retained so a future explicit remediation mode can decide
+    `FsStatus.BOM_BEFORE_SHEBANG` here without moving reader-policy ownership.
+    It does not expose such a mode today.
 
     Args:
         ctx: Processing context containing filesystem status and configuration.
 
     Returns:
-        `True` if we may proceed despite a BOM before the shebang,
-        `False` otherwise.
+        `True` for `FsStatus.OK` and `FsStatus.EMPTY`; `False` otherwise.
     """
-    # Always OK to proceed if FS is healthy or empty (read can still run).
-    if ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}:
-        return True
-
-    policy: FrozenPolicy = ctx.get_effective_policy()
-
-    if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
-        # Newer policies may provide this flag; default False if absent.
-        return bool(getattr(policy, "ignore_bom_before_shebang", False))
-
-    # All other FS states should not be skipped by policy here.
-    return False
+    return ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}
 
 
 # ---- Mutation intent / feasibility / pipeline decision logic ----

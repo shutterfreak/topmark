@@ -133,7 +133,7 @@ def test_simple_policy_permissions_reflect_effective_policy(
 
 
 @pytest.mark.parametrize("healthy_status", [FsStatus.OK, FsStatus.EMPTY])
-def test_reader_tolerance_helpers_always_accept_healthy_filesystem_states(
+def test_reader_policy_helpers_accept_healthy_filesystem_states(
     tmp_path: Path,
     default_frozen_config: FrozenConfig,
     healthy_status: FsStatus,
@@ -157,12 +157,12 @@ def test_reader_tolerance_helpers_always_accept_healthy_filesystem_states(
         FsStatus.BINARY,
     ],
 )
-def test_reader_tolerance_helpers_default_to_deny_for_problem_states(
+def test_reader_policy_helpers_strictly_deny_problem_states(
     tmp_path: Path,
     default_frozen_config: FrozenConfig,
     fs_status: FsStatus,
 ) -> None:
-    """Unsupported or unrelated filesystem problems should remain denied by default."""
+    """Targeted and unrelated filesystem problems should be denied strictly."""
     context: ProcessingContext = make_pipeline_context(
         tmp_path / "reader-deny.py",
         default_frozen_config,
