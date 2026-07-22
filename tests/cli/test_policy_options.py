@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import command_option_names
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
@@ -69,6 +70,7 @@ def test_check_help_lists_check_only_and_shared_policy_options() -> None:
     assert CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS in option_names
     assert CliOpt.POLICY_ALLOW_REFLOW in option_names
     assert CliOpt.POLICY_ALLOW_CONTENT_PROBE in option_names
+    assert CliOpt.POLICY_BOM_BEFORE_SHEBANG in option_names
 
 
 def test_strip_help_lists_only_shared_policy_options() -> None:
@@ -84,6 +86,7 @@ def test_strip_help_lists_only_shared_policy_options() -> None:
     option_names: set[str] = command_option_names(CliCmd.STRIP)
 
     assert CliOpt.POLICY_ALLOW_CONTENT_PROBE in option_names
+    assert CliOpt.POLICY_BOM_BEFORE_SHEBANG in option_names
     assert CliOpt.POLICY_HEADER_MUTATION_MODE not in option_names
     assert CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES not in option_names
     assert CliOpt.POLICY_EMPTY_INSERT_MODE not in option_names
@@ -231,3 +234,68 @@ def test_strip_rejects_header_mutation_mode_option(tmp_path: Path) -> None:
         result,
         option_name=CliOpt.POLICY_HEADER_MUTATION_MODE,
     )
+
+
+def test_check_remove_bom_cli_token_applies_with_inplace_writer(tmp_path: Path) -> None:
+    """The kebab-case CLI token should apply exact BOM removal in-place."""
+    target: Path = tmp_path / "bom.py"
+    target.write_bytes(b"\xef\xbb\xbf#!/usr/bin/env python\nprint('ok')\n")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.CHECK,
+            CliOpt.APPLY_CHANGES,
+            CliOpt.WRITE_MODE,
+            "inplace",
+            CliOpt.POLICY_BOM_BEFORE_SHEBANG,
+            "remove-bom",
+            target.name,
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert target.read_bytes().startswith(b"#!")
+    assert not target.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_strip_remove_bom_cli_dry_run_shows_diff_and_would_change(tmp_path: Path) -> None:
+    """Strip dry-run should expose standalone BOM removal and exit WOULD_CHANGE."""
+    target: Path = tmp_path / "bom.py"
+    original: bytes = b"\xef\xbb\xbf#!/usr/bin/env python\rprint('ok')"
+    target.write_bytes(original)
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.STRIP,
+            CliOpt.RENDER_DIFF,
+            CliOpt.POLICY_BOM_BEFORE_SHEBANG,
+            "remove-bom",
+            target.name,
+        ],
+    )
+
+    assert_WOULD_CHANGE(result)
+    assert "-\ufeff#!" in result.output
+    assert "+#!" in result.output
+    assert target.read_bytes() == original
+
+
+def test_check_rejects_invalid_bom_before_shebang_cli_token(tmp_path: Path) -> None:
+    """Invalid BOM policy tokens should fail through Click enum validation."""
+    target: Path = tmp_path / "x.py"
+    target.write_text("print('ok')\n", encoding="utf-8")
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.CHECK,
+            CliOpt.POLICY_BOM_BEFORE_SHEBANG,
+            "repair",
+            target.name,
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "Invalid value" in result.output

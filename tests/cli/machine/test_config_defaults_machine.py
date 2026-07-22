@@ -43,6 +43,7 @@ from tests.helpers.ndjson import assert_ndjson_meta
 from tests.helpers.ndjson import parse_single_ndjson_record
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_mapping
 
@@ -97,6 +98,10 @@ def test_config_defaults_json_contains_known_default_sections() -> None:
     assert "fields" in config
     assert "header" in config
     assert "formatting" in config
+    policy_obj: object | None = config.get("policy")
+    assert is_mapping(policy_obj)
+    policy: dict[str, object] = as_object_dict(policy_obj)
+    assert policy["bom_before_shebang"] == "reject"
 
 
 def test_config_defaults_ndjson_emits_only_config_record() -> None:
@@ -119,3 +124,9 @@ def test_config_defaults_ndjson_emits_only_config_record() -> None:
     assert "config" in record
     assert "config_diagnostics" not in record
     assert "config_provenance" not in record
+    config_obj: object | None = record.get("config")
+    assert is_mapping(config_obj)
+    config: dict[str, object] = as_object_dict(config_obj)
+    policy_obj: object | None = config.get("policy")
+    assert is_mapping(policy_obj)
+    assert as_object_dict(policy_obj)["bom_before_shebang"] == BomBeforeShebangMode.REJECT.value

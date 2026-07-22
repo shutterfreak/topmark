@@ -243,6 +243,7 @@ def config_to_topmark_toml_table(
     # Policy serialization (global and per-type)
     policy_tbl: TomlTable = {
         Toml.KEY_POLICY_HEADER_MUTATION_MODE: config.policy.header_mutation_mode.value,
+        Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: config.policy.bom_before_shebang.value,
         Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: config.policy.allow_header_in_empty_files,
         Toml.KEY_POLICY_EMPTIES_INSERT_MODE: config.policy.empty_insert_mode.value,
         Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: config.policy.render_empty_header_when_no_fields,
@@ -256,6 +257,7 @@ def config_to_topmark_toml_table(
         policy_by_type_tbl: TomlTable = {
             ft: {
                 Toml.KEY_POLICY_HEADER_MUTATION_MODE: p.header_mutation_mode.value,
+                Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: p.bom_before_shebang.value,
                 Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: p.allow_header_in_empty_files,
                 Toml.KEY_POLICY_EMPTIES_INSERT_MODE: p.empty_insert_mode.value,
                 Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: p.render_empty_header_when_no_fields,

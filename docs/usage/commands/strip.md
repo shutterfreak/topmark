@@ -193,7 +193,7 @@ ______________________________________________________________________
 
 ## Command-specific policy options
 
-The `strip` command supports only shared runtime resolution and file-type-detection policy options.
+The `strip` command supports shared runtime resolution and BOM-remediation policy options.
 
 See also: [Policy guide](../policies.md).
 
@@ -203,8 +203,13 @@ configuration and API overlays.
 ### Shared policy
 
 - `--allow-content-probe / --no-allow-content-probe`
+- `--bom-before-shebang reject|remove-bom`
 
 Controls whether file-type detection may inspect file contents when needed.
+
+`--bom-before-shebang remove-bom` is a standalone remediation. It removes the leading BOM before a
+shebang even when no TopMark header is present; dry-run and `--diff` preview that byte change, and
+`--apply` commits it.
 
 Header insertion and update policies (such as mutation mode, empty-file behavior, or
 generated-header formatting) do not apply to `strip` and are rejected when provided.
@@ -215,8 +220,9 @@ ______________________________________________________________________
 
 - Removal policy: if a valid TopMark header is detected (policy-aware), remove the whole block. A
   permissive fallback accepts legacy single-line-wrapped markers (e.g., HTML/XML `<!-- ... -->`).
-- Newline/BOM preservation: preserved across removal. Reader normalizes in-memory; updater
-  re-attaches BOM and keeps line endings.
+- Newline/BOM preservation: preserved across normal removal. Reader normalizes in-memory; updater
+  re-attaches ordinary BOMs and keeps line endings. The explicit `remove_bom` mode is the sole
+  exception for a BOM immediately before a shebang.
 - XML/HTML processors: keep the XML declaration as the first logical line; maintains a single
   intentional blank as needed.
 - Markdown processor: ignores code fences for detection; header-like text inside fences is not

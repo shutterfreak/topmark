@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.core.logging import get_logger
@@ -226,24 +227,54 @@ def allow_mixed_line_endings(ctx: SupportsPolicyEvaluation) -> bool:
     return ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}
 
 
-def allow_bom_before_shebang(ctx: SupportsPolicyEvaluation) -> bool:
-    """Return whether the filesystem state may pass the BOM/shebang gate.
-
-    Healthy and empty files may proceed. A UTF-8 BOM before a shebang is
-    strictly refused because TopMark has no configurable reader-tolerance
-    policy; all other filesystem problem states are refused as well.
-
-    The named gate is retained so a future explicit remediation mode can decide
-    `FsStatus.BOM_BEFORE_SHEBANG` here without moving reader-policy ownership.
-    It does not expose such a mode today.
+def bom_before_shebang_mode(ctx: SupportsPolicyEvaluation) -> BomBeforeShebangMode:
+    """Return the effective explicit BOM-before-shebang handling mode.
 
     Args:
         ctx: Processing context containing filesystem status and configuration.
 
     Returns:
-        `True` for `FsStatus.OK` and `FsStatus.EMPTY`; `False` otherwise.
+        The resolved mode for the current file type.
     """
-    return ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}
+    return ctx.get_effective_policy().bom_before_shebang
+
+
+def should_remove_bom_before_shebang(ctx: SupportsPolicyEvaluation) -> bool:
+    """Return whether the detected BOM/shebang conflict must be remediated.
+
+    Args:
+        ctx: Processing context containing detection facts and resolved policy.
+
+    Returns:
+        `True` only for the detected conflict under `remove_bom` policy.
+    """
+    return (
+        ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG
+        and ctx.leading_bom
+        and ctx.has_shebang
+        and bom_before_shebang_mode(ctx) == BomBeforeShebangMode.REMOVE_BOM
+    )
+
+
+def source_lines_with_remediated_bom(
+    lines: list[str],
+    ctx: SupportsPolicyEvaluation,
+) -> list[str]:
+    """Restore the source BOM to normalized lines for edit and diff boundaries.
+
+    Args:
+        lines: Reader-normalized source lines.
+        ctx: Processing context containing detection facts and resolved policy.
+
+    Returns:
+        A copy whose first line includes the source BOM when remediation is active.
+    """
+    if not lines or not should_remove_bom_before_shebang(ctx):
+        return lines
+    restored: list[str] = lines[:]
+    if not restored[0].startswith("\ufeff"):
+        restored[0] = "\ufeff" + restored[0]
+    return restored
 
 
 # ---- Mutation intent / feasibility / pipeline decision logic ----
@@ -394,9 +425,10 @@ def can_change(ctx: SupportsPolicyEvaluation) -> bool:
        failed, and the header state must not be one of the malformed states that
        block safe mutation.
 
-    2) **Normal files**
+    2) **Normal files and explicit BOM remediation**
        For ordinary files (`FsStatus.OK`), mutation is allowed once baseline
-       feasibility is satisfied.
+       feasibility is satisfied. A detected BOM-before-shebang conflict is also
+       mutable when the effective mode is `remove_bom`.
 
     3) **Empty / empty-like files**
        For files that are considered "empty for insert", mutation is allowed only
@@ -439,6 +471,9 @@ def can_change(ctx: SupportsPolicyEvaluation) -> bool:
     # --- 2) Normal files ---------------------------------------------------------
     #
     # For regular decoded files, baseline feasibility is enough.
+    if should_remove_bom_before_shebang(ctx):
+        return True
+
     if ctx.status.fs == FsStatus.OK and not is_empty_for_insert(ctx):
         return True
 

@@ -83,6 +83,7 @@ class Toml:
     SECTION_POLICY_BY_TYPE: Final[str] = "policy_by_type"
 
     KEY_POLICY_HEADER_MUTATION_MODE: Final[str] = "header_mutation_mode"
+    KEY_POLICY_BOM_BEFORE_SHEBANG: Final[str] = "bom_before_shebang"
     KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: Final[str] = "allow_header_in_empty_files"
     KEY_POLICY_EMPTIES_INSERT_MODE: Final[str] = "empty_insert_mode"
     KEY_POLICY_ALLOW_EMPTY_HEADER: Final[str] = "render_empty_header_when_no_fields"

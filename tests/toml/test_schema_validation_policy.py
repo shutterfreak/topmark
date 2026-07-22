@@ -26,6 +26,7 @@ import pytest
 
 from tests.helpers.diagnostics import assert_warned_and_diagnosed
 from tests.toml.conftest import draft_from_topmark_toml_table
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.toml.keys import Toml
@@ -145,6 +146,47 @@ def test_policy_by_type_valid_keys_parse_and_unknown_keys_are_ignored(
         caplog=caplog,
         draft=draft,
         needle=f'Unknown key "bogus" in [{Toml.SECTION_POLICY_BY_TYPE}.python]',
+    )
+
+
+def test_bom_before_shebang_mode_parses_globally_and_per_type() -> None:
+    """Canonical BOM policy tokens should participate in normal inheritance."""
+    draft: MutableConfig = draft_from_topmark_toml_table(
+        {
+            Toml.SECTION_POLICY: {
+                Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: BomBeforeShebangMode.REMOVE_BOM.value,
+            },
+            Toml.SECTION_POLICY_BY_TYPE: {
+                "python": {
+                    Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: BomBeforeShebangMode.REJECT.value,
+                }
+            },
+        }
+    )
+
+    cfg: FrozenConfig = draft.freeze()
+    assert cfg.policy.bom_before_shebang is BomBeforeShebangMode.REMOVE_BOM
+    assert cfg.policy_by_type["topmark:python"].bom_before_shebang is BomBeforeShebangMode.REJECT
+
+
+def test_invalid_bom_before_shebang_mode_is_diagnosed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Invalid TOML mode tokens should use checked enum diagnostics."""
+    caplog.set_level("WARNING")
+    draft: MutableConfig = draft_from_topmark_toml_table(
+        {
+            Toml.SECTION_POLICY: {
+                Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: "repair",
+            }
+        }
+    )
+
+    assert draft.policy.bom_before_shebang is None
+    assert_warned_and_diagnosed(
+        caplog=caplog,
+        draft=draft,
+        needle="Invalid value for [policy].bom_before_shebang",
     )
 
 

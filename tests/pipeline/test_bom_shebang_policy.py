@@ -10,13 +10,8 @@
 
 """Tests for BOM-before-shebang policy handling in the pipeline.
 
-These tests exercise two layers:
-
-* reader.read(): detects BOM + shebang conflict for shebang-aware types and
-  marks the file as skipped with a clear diagnostic.
-* updater.update(): when a write path is taken and both `leading_bom` and
-  `has_shebang` are True, it avoids re-prepending the BOM and appends the same
-  diagnostic, so users see consistent feedback even on apply paths.
+These tests cover strict rejection, mode-aware reader continuation, normalized
+in-memory content, and planner BOM reattachment behavior.
 """
 
 from __future__ import annotations
@@ -29,8 +24,12 @@ import pytest
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import materialize_image_lines
 from tests.helpers.pipeline import run_steps
+from topmark.config.policy import BomBeforeShebangMode
+from topmark.config.policy import MutablePolicy
+from topmark.diagnostic.model import DiagnosticLevel
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.status import ContentStatus
+from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
@@ -42,6 +41,7 @@ from topmark.pipeline.views import UpdatedView
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
 
 # --- File fixtures ---------------------------------------------------------
@@ -137,6 +137,33 @@ def test_reader_allows_shebang_without_bom_python(
     assert file_lines and file_lines[0].startswith("#!"), (
         file_lines[:2] if file_lines else "(File has no lines)"
     )
+
+
+def test_reader_remove_bom_continues_without_error_hint_or_halt(
+    bom_and_shebang_file: Path,
+    default_frozen_config: FrozenConfig,
+) -> None:
+    """Enabled remediation should keep detection while clearing blocking state."""
+    draft: MutableConfig = default_frozen_config.thaw()
+    draft.policy = MutablePolicy(bom_before_shebang=BomBeforeShebangMode.REMOVE_BOM)
+    config: FrozenConfig = draft.freeze()
+    ctx: ProcessingContext = make_pipeline_context(bom_and_shebang_file, config)
+
+    ctx = run_steps(ctx, (ResolverStep(), SnifferStep(), ReaderStep()))
+
+    assert ctx.status.fs is FsStatus.BOM_BEFORE_SHEBANG
+    assert ctx.status.content is ContentStatus.OK
+    assert ctx.leading_bom is True
+    assert ctx.has_shebang is True
+    assert ctx.is_halted is False
+    assert ctx.halt_state is None
+    assert all(d.level is not DiagnosticLevel.ERROR for d in ctx.diagnostics)
+    assert [d.level for d in ctx.diagnostics] == [
+        DiagnosticLevel.WARNING,
+        DiagnosticLevel.INFO,
+    ]
+    assert all(h.code != "fs:bom_before_shebang" for h in ctx.diagnostic_hints)
+    assert materialize_image_lines(ctx)[0].startswith("#!")
 
 
 def test_updater_suppresses_bom_reprepend_in_strip_fastpath(

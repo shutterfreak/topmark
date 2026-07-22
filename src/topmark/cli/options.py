@@ -46,6 +46,7 @@ from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.core.formats import OutputFormat
@@ -1235,6 +1236,35 @@ def shared_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     )(f)
 
     return f
+
+
+def remediation_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Attach remediation policy options shared by check and strip.
+
+    Args:
+        f: Click command function to decorate.
+
+    Returns:
+        Decorated Click command function.
+    """
+    return option_with_underscore_traps(
+        CliOpt.POLICY_BOM_BEFORE_SHEBANG,
+        ArgKey.POLICY_BOM_BEFORE_SHEBANG,
+        type=EnumChoiceParam(
+            BomBeforeShebangMode,
+            case_sensitive=False,
+            kebab_case=True,
+        ),
+        default=None,
+        help=enum_value_help_text(
+            BomBeforeShebangMode,
+            prefix="Handle a UTF-8 BOM immediately before a shebang.",
+            suffix=(
+                "'remove-bom' plans BOM removal even when no header mutation is needed. "
+                "Applies to check and strip."
+            ),
+        ),
+    )(f)
 
 
 def version_format_options(f: Callable[_P, _R]) -> Callable[_P, _R]:

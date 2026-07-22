@@ -243,6 +243,12 @@ topmark:
       description: Controls check mutation intent: insert and update headers, insert missing headers
         only, or update existing headers only. Safety gates still take precedence.
 
+    bom_before_shebang:
+      type: str
+      default: "reject"
+      enum: ["reject", "remove_bom"]
+      description: Reject a UTF-8 BOM before a shebang or plan standalone BOM removal.
+
     allow_header_in_empty_files:
       type: bool
       default: false
@@ -288,6 +294,12 @@ topmark:
         optional: true
         enum: ["all", "add_only", "update_only"]
         description: Per-file-type override for check mutation intent.
+
+      bom_before_shebang:
+        type: str
+        optional: true
+        enum: ["reject", "remove_bom"]
+        description: Per-file-type BOM-before-shebang remediation override.
       allow_header_in_empty_files:
         type: bool
         optional: true

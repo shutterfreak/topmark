@@ -485,6 +485,12 @@ These values intentionally mirror the internal `HeaderMutationMode.value`
 strings without exposing the internal enum class as part of the public API.
 """
 
+PublicBomBeforeShebangModeLiteral: TypeAlias = Literal[
+    "reject",
+    "remove_bom",
+]
+"""Public tokens for handling a UTF-8 BOM immediately before a shebang."""
+
 PublicReportScopeLiteral: TypeAlias = Literal[
     "actionable",
     "noncompliant",
@@ -640,6 +646,8 @@ class PublicPolicy(TypedDict, total=False):
             files (`"all"`, default), only add headers when no header is
             present (`"add_only"`), or only update existing headers
             (`"update_only"`).
+        bom_before_shebang: Reject a UTF-8 BOM before a shebang (`"reject"`, default) or remove
+            it as a standalone remediation (`"remove_bom"`).
         allow_header_in_empty_files: Allow inserting headers into files that are
             classified as empty under the effective `empty_insert_mode`.
         empty_insert_mode: Public token controlling which files are considered
@@ -658,6 +666,7 @@ class PublicPolicy(TypedDict, total=False):
     """
 
     header_mutation_mode: PublicHeaderMutationModeLiteral
+    bom_before_shebang: PublicBomBeforeShebangModeLiteral
     allow_header_in_empty_files: bool
     empty_insert_mode: PublicEmptyInsertModeLiteral
     render_empty_header_when_no_fields: bool

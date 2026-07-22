@@ -21,6 +21,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
+from topmark.pipeline.context.policy import should_remove_bom_before_shebang
+from topmark.pipeline.context.policy import source_lines_with_remediated_bom
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -60,6 +62,9 @@ def _reapply_bom_after_strip(
     """
     if ctx.leading_bom is False:
         # No BOM was present in the original file
+        return lines
+
+    if should_remove_bom_before_shebang(ctx):
         return lines
 
     # The file has a leading BOM
@@ -185,6 +190,21 @@ class StripperStep(BaseStep):
             return
 
         if ctx.status.header is HeaderStatus.MISSING:
+            if should_remove_bom_before_shebang(ctx):
+                original_lines: list[str] = list(ctx.iter_image_lines())
+                source_lines: list[str] = source_lines_with_remediated_bom(original_lines, ctx)
+                ctx.views.updated = UpdatedView(lines=original_lines)
+                planned_edit: PlannedEdit | None = infer_single_planned_edit(
+                    kind=PlanEditKind.REMOVE,
+                    original_lines=source_lines,
+                    updated_lines=original_lines,
+                )
+                ctx.views.edit = None if planned_edit is None else EditView(edits=(planned_edit,))
+                ctx.status.strip = StripStatus.READY
+                ctx.diagnostics.add_info(
+                    "Policy remove_bom: UTF-8 BOM removal is available; no header was present."
+                )
+                return
             ctx.status.strip = StripStatus.NOT_NEEDED
             reason = "No header to be stripped."
             ctx.diagnostics.add_info(reason)
@@ -207,7 +227,8 @@ class StripperStep(BaseStep):
                 ctx.request_halt(reason=reason, at_step=self)
             return
 
-        original_lines: list[str] = list(ctx.iter_image_lines())
+        original_lines = list(ctx.iter_image_lines())
+        source_lines = source_lines_with_remediated_bom(original_lines, ctx)
         if not original_lines:
             # Empty file
             ctx.status.strip = StripStatus.NOT_NEEDED
@@ -371,7 +392,7 @@ class StripperStep(BaseStep):
         ctx.views.updated = UpdatedView(lines=updated_lines)
         planned_edit: PlannedEdit | None = infer_single_planned_edit(
             kind=PlanEditKind.REMOVE,
-            original_lines=original_lines,
+            original_lines=source_lines,
             updated_lines=updated_lines,
         )
         ctx.views.edit = (
@@ -411,7 +432,12 @@ class StripperStep(BaseStep):
                     axis=Axis.STRIP,
                     code=KnownCode.STRIP_READY,
                     cluster=Cluster.CHANGED if apply else Cluster.WOULD_CHANGE,
-                    message="header removal available",
+                    message=(
+                        "BOM removal available"
+                        if should_remove_bom_before_shebang(ctx)
+                        and ctx.status.header is HeaderStatus.MISSING
+                        else "header removal available"
+                    ),
                 )
             case StripStatus.NOT_NEEDED:
                 ctx.hint(

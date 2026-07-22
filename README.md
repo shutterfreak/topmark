@@ -113,7 +113,8 @@ TopMark is useful when you need to:
 
 - keep license and copyright headers consistent across source and documentation files;
 - preview repository-wide changes before anything is written;
-- preserve shebangs, BOMs, newline style, and file-specific comment syntax;
+- preserve shebangs, BOMs, newline style, and file-specific comment syntax, with explicit
+  BOM-before-shebang remediation when requested;
 - configure behavior differently across nested projects or file types;
 - inspect why a file was included, excluded, or matched to a specific processor;
 - integrate header checks into CI, pre-commit, Git hooks, or custom automation;
@@ -147,8 +148,8 @@ ______________________________________________________________________
 - Layered configuration via `topmark.toml`, `pyproject.toml`, user config, explicit config files,
   and CLI overrides
 - Deterministic configuration-source identity and layered provenance reporting
-- Policy controls for insertion, update, empty-file behavior, file-type filtering, and content
-  probing
+- Policy controls for insertion, update, empty-file behavior, BOM-before-shebang remediation,
+  file-type filtering, and content probing
 - Resolution diagnostics with `topmark probe`
 - Deterministic filesystem-identity evaluation, processing-path selection, and hard-link safety
 - Layered configuration inspection with `topmark config dump --show-layers`
@@ -351,6 +352,9 @@ license = "MIT"
 
 [header]
 fields = ["file", "file_relpath", "project", "license"]
+
+[policy]
+bom_before_shebang = "reject"
 ```
 
 Generate a documented starter configuration:

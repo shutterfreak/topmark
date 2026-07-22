@@ -66,6 +66,7 @@ class ArgKey(str, Enum):
 
     # Policy
     POLICY_HEADER_MUTATION_MODE = "header_mutation_mode"
+    POLICY_BOM_BEFORE_SHEBANG = "bom_before_shebang"
     POLICY_ALLOW_HEADER_IN_EMPTY_FILES = "allow_header_in_empty_files"
     POLICY_EMPTY_INSERT_MODE = "empty_insert_mode"
     POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS = "render_empty_header_when_no_fields"

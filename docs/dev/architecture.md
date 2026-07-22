@@ -452,9 +452,9 @@ Separator (`U+2029`) are not supported physical line-ending styles. They are tre
 text content and do not contribute to newline histograms, dominant-newline detection, or
 mixed-newline diagnostics.
 
-This contract is global for built-in file types. It is not currently configurable through file-type
-policy or runtime policy. The reader likewise strictly refuses a UTF-8 BOM before a shebang; no
-runtime policy option relaxes either reader guard. XML-specific checks may still treat non-standard
+This line-ending contract is global for built-in file types and is not currently configurable. The
+separate `bom_before_shebang` runtime policy defaults to strict refusal and may select standalone
+`remove_bom` remediation for `check` and `strip`. XML-specific checks may still treat non-standard
 newline-like characters near XML insertion boundaries as an idempotence risk and skip mutation
 conservatively; that is a local safety guard, not extended newline support.
 

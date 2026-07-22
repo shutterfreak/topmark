@@ -211,6 +211,16 @@ strategy = "atomic"
 #                      (do not insert missing headers)
 header_mutation_mode = "all"
 
+# bom_before_shebang:
+#   Controls a UTF-8 BOM immediately before a shebang for shebang-aware files.
+#
+#   Supported values:
+#     "reject"     -> refuse processing and leave the file unchanged (default)
+#     "remove_bom" -> plan removal of the BOM so `#!` begins at byte zero
+#
+#   CLI equivalent values for check and strip are `reject` and `remove-bom`.
+bom_before_shebang = "reject"
+
 # allow_header_in_empty_files:
 #   Permit inserting a header into an otherwise empty file (e.g.,
 # `__init__.py`).
