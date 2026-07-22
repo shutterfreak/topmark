@@ -86,6 +86,7 @@ class CliOpt:
 
     # Policy
     POLICY_HEADER_MUTATION_MODE: Final = "--header-mutation-mode"
+    POLICY_BOM_BEFORE_SHEBANG: Final = "--bom-before-shebang"
     POLICY_ALLOW_HEADER_IN_EMPTY_FILES: Final = "--allow-header-in-empty-files"
     POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: Final = "--no-allow-header-in-empty-files"
     POLICY_EMPTY_INSERT_MODE: Final = "--empty-insert-mode"

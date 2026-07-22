@@ -26,6 +26,7 @@ import pytest
 from topmark.config.io import serializers
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.serializers import config_to_topmark_toml_table
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.resolution.synthetic import DEFAULT_CONFIG_SOURCE
 from topmark.config.types import PatternGroup
@@ -355,7 +356,10 @@ def test_config_to_toml_dict_serializes_per_type_policy_table() -> None:
     """Config export should include [policy_by_type] when per-type policies exist."""
     draft: MutableConfig = mutable_config_from_defaults()
     draft.policy_by_type = {
-        "python": MutablePolicy(allow_header_in_empty_files=True),
+        "python": MutablePolicy(
+            allow_header_in_empty_files=True,
+            bom_before_shebang=BomBeforeShebangMode.REMOVE_BOM,
+        ),
     }
 
     d: TomlTable = config_to_topmark_toml_table(draft.freeze())
@@ -365,6 +369,9 @@ def test_config_to_toml_dict_serializes_per_type_policy_table() -> None:
     python_policy = policy_by_type_tbl["topmark:python"]
     assert isinstance(python_policy, dict)
     assert python_policy[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] is True
+    assert (
+        python_policy[Toml.KEY_POLICY_BOM_BEFORE_SHEBANG] == BomBeforeShebangMode.REMOVE_BOM.value
+    )
 
 
 def test_config_to_toml_dict_rejects_invalid_files_serialization_mode() -> None:

@@ -37,6 +37,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
+from topmark.pipeline.context.policy import source_lines_with_remediated_bom
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -280,7 +281,10 @@ class PatcherStep(BaseStep):
         # ctx.status.comparison == ComparisonStatus.CHANGED:
 
         # Materialize original file lines from views once for diffing
-        current_lines: list[str] = ctx.materialize_image_lines()
+        current_lines: list[str] = source_lines_with_remediated_bom(
+            ctx.materialize_image_lines(),
+            ctx,
+        )
 
         display_path: str = get_display_path(ctx)
 

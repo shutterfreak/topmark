@@ -53,6 +53,7 @@ only reports file resolution and type support.
 """
 
 CHECK_OR_STRIP_ONLY_PIPELINE_OPTIONS: Final[tuple[str, ...]] = (
+    CliOpt.POLICY_BOM_BEFORE_SHEBANG,
     CliOpt.APPLY_CHANGES,
     CliOpt.WRITE_MODE,
     CliOpt.RENDER_DIFF,

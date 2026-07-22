@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
+from topmark.pipeline.context.policy import should_remove_bom_before_shebang
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -221,6 +222,10 @@ class ComparerStep(BaseStep):
                     "Header fields unchanged, rendered header block text differs "
                     "→ formatting change",
                 )
+            ctx.status.comparison = ComparisonStatus.CHANGED
+
+        # BOM remediation is a standalone byte mutation even when header content is compliant.
+        if should_remove_bom_before_shebang(ctx):
             ctx.status.comparison = ComparisonStatus.CHANGED
 
         logger.debug(

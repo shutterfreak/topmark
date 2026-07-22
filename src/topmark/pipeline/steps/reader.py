@@ -22,13 +22,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.core.constants import STANDARD_NEWLINES
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
 from topmark.pipeline.adapters import PreInsertViewAdapter
-from topmark.pipeline.context.policy import allow_bom_before_shebang
 from topmark.pipeline.context.policy import allow_content_reflow
 from topmark.pipeline.context.policy import allow_mixed_line_endings
+from topmark.pipeline.context.policy import bom_before_shebang_mode
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -192,12 +193,16 @@ class ReaderStep(BaseStep):
         if ctx.file_type is None:
             raise RuntimeError("File type not defined")
 
-        if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG and not allow_bom_before_shebang(ctx):
-            ctx.status.content = ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
-            reason: str = "BOM appears before shebang; policy forbids proceeding"
-            ctx.diagnostics.add_error(reason)
-            ctx.request_halt(reason=reason, at_step=self)
-            return
+        if ctx.status.fs == FsStatus.BOM_BEFORE_SHEBANG:
+            if bom_before_shebang_mode(ctx) == BomBeforeShebangMode.REJECT:
+                ctx.status.content = ContentStatus.SKIPPED_POLICY_BOM_BEFORE_SHEBANG
+                reason: str = "BOM appears before shebang; policy forbids proceeding"
+                ctx.diagnostics.add_error(reason)
+                ctx.request_halt(reason=reason, at_step=self)
+                return
+            ctx.diagnostics.add_info(
+                "Policy remove_bom: scheduled removal of the UTF-8 BOM before the shebang."
+            )
 
         if ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS and not allow_mixed_line_endings(ctx):
             ctx.status.content = ContentStatus.SKIPPED_MIXED_LINE_ENDINGS

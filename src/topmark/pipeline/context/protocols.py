@@ -68,6 +68,16 @@ class SupportsPolicyEvaluation(Protocol):
         """
         ...
 
+    @property
+    def leading_bom(self) -> bool:
+        """Whether the source began with a UTF-8 BOM."""
+        ...
+
+    @property
+    def has_shebang(self) -> bool:
+        """Whether the source begins with a shebang after BOM normalization."""
+        ...
+
     def get_effective_policy(self) -> FrozenPolicy:
         """Return the effective policy for the current file and file type."""
         ...

@@ -49,6 +49,7 @@ from topmark.config.paths import abs_path_from
 from topmark.config.paths import extend_pattern_sources
 from topmark.config.paths import pattern_source_from_config
 from topmark.config.paths import pattern_source_from_cwd
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
@@ -170,6 +171,13 @@ def mutable_config_from_layered_toml_table(
             tbl,
             Toml.KEY_POLICY_HEADER_MUTATION_MODE,
             enum_cls=HeaderMutationMode,
+            where=where,
+            diagnostics=merged_diagnostics,
+        )
+        _ = get_enum_value_checked(
+            tbl,
+            Toml.KEY_POLICY_BOM_BEFORE_SHEBANG,
+            enum_cls=BomBeforeShebangMode,
             where=where,
             diagnostics=merged_diagnostics,
         )

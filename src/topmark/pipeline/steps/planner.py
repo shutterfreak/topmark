@@ -50,6 +50,8 @@ from topmark.filetypes.model import InsertCheckResult
 from topmark.pipeline.adapters import PreInsertViewAdapter
 from topmark.pipeline.context.policy import allow_content_reflow
 from topmark.pipeline.context.policy import allow_insert_into_empty_like
+from topmark.pipeline.context.policy import should_remove_bom_before_shebang
+from topmark.pipeline.context.policy import source_lines_with_remediated_bom
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -184,12 +186,13 @@ def _prepend_bom_to_lines_if_needed(
 
     # leading_bom is True
     if ctx.has_shebang:
+        if should_remove_bom_before_shebang(ctx):
+            return lines
         # Do not re-add the BOM which was stripped in reader.read(); a valid shebang
         # must start at byte 0 on POSIX systems.
         ctx.diagnostics.add_error(
             "UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
-            "TopMark will not modify this file by default. Consider removing the BOM "
-            "or using a future '--fix-bom' option to resolve this conflict."
+            "TopMark will not modify this file by default."
         )
         return lines
 
@@ -308,6 +311,7 @@ class PlannerStep(BaseStep):
 
         # Materialize original image once (list[str]) for splice operations.
         original_lines: list[str] = list(ctx.iter_image_lines())
+        source_lines: list[str] = source_lines_with_remediated_bom(original_lines, ctx)
 
         if ctx.status.content != ContentStatus.OK and not allow_insert_into_empty_like(ctx):
             ctx.status.plan = PlanStatus.SKIPPED
@@ -516,7 +520,7 @@ class PlannerStep(BaseStep):
                 new_content if isinstance(new_content, list) else list(new_content.iter_lines())
             )
             # If replacement is identical to the original, treat as a no-op.
-            if materialized_new_lines == original_lines:
+            if materialized_new_lines == source_lines:
                 ctx.status.plan = PlanStatus.SKIPPED
                 ctx.views.updated = UpdatedView(lines=original_lines)
                 logger.trace("Updater: replacement yields no changes for %s", ctx.path)
@@ -525,7 +529,7 @@ class PlannerStep(BaseStep):
             ctx.views.updated = UpdatedView(lines=new_content)
             planned_edit: PlannedEdit | None = infer_single_planned_edit(
                 kind=PlanEditKind.REPLACE,
-                original_lines=original_lines,
+                original_lines=source_lines,
                 updated_lines=materialized_new_lines,
             )
             ctx.views.edit = (
@@ -583,7 +587,11 @@ class PlannerStep(BaseStep):
                 logger.trace("Updater (text): trimmed EOF blanks; len=%d", len(new_text))
 
                 # Prepend BOM if needed
-                if getattr(ctx, "leading_bom", False) and not new_text.startswith("\ufeff"):
+                if (
+                    ctx.leading_bom
+                    and not should_remove_bom_before_shebang(ctx)
+                    and not new_text.startswith("\ufeff")
+                ):
                     new_text = "\ufeff" + new_text
 
                 # Canonicalize logically-empty placeholder bodies (e.g. a file that was just "\n")
@@ -604,7 +612,7 @@ class PlannerStep(BaseStep):
                     )
                     new_text = "".join(new_lines_tmp)
 
-                if new_text == original_text:
+                if new_text == "".join(source_lines):
                     ctx.views.updated = UpdatedView(lines=original_lines)
                     ctx.status.plan = PlanStatus.SKIPPED
                     logger.trace("Updater: text-based insertion yields no changes for %s", ctx.path)
@@ -613,7 +621,7 @@ class PlannerStep(BaseStep):
                 ctx.views.updated = UpdatedView(lines=materialized_new_lines)
                 planned_edit = infer_single_planned_edit(
                     kind=PlanEditKind.INSERT,
-                    original_lines=original_lines,
+                    original_lines=source_lines,
                     updated_lines=materialized_new_lines,
                 )
                 ctx.views.edit = (
@@ -686,7 +694,7 @@ class PlannerStep(BaseStep):
         )
         # Prepend BOM if needed
         new_lines = _prepend_bom_to_lines_if_needed(new_lines, ctx)
-        if new_lines == original_lines:
+        if new_lines == source_lines:
             ctx.views.updated = UpdatedView(lines=original_lines)
             ctx.status.plan = PlanStatus.SKIPPED
             logger.trace("Updater: line-based insertion yields no changes for %s", ctx.path)
@@ -694,7 +702,7 @@ class PlannerStep(BaseStep):
         ctx.views.updated = UpdatedView(lines=new_lines)
         planned_edit = infer_single_planned_edit(
             kind=PlanEditKind.INSERT,
-            original_lines=original_lines,
+            original_lines=source_lines,
             updated_lines=new_lines,
         )
         ctx.views.edit = (

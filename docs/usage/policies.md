@@ -15,6 +15,7 @@ topmark:header:end
 Policies control:
 
 - whether headers may be inserted or updated
+- how a UTF-8 BOM immediately before a shebang is remediated
 - how empty files are classified
 - whether file-content probing is allowed
 - how runtime-resolution behavior interacts with safety gates
@@ -253,21 +254,30 @@ strictly rejected.
 
 ______________________________________________________________________
 
-## BOM-before-shebang handling (not a policy)
+## `bom_before_shebang`
 
-TopMark strictly rejects a UTF-8 BOM before a shebang. A portable executable script requires `#!` at
-byte zero, so proceeding cannot safely be treated as equivalent to preserving or repairing the
-input.
+Controls a UTF-8 BOM immediately before a shebang for shebang-aware file types. A portable directly
+executable script requires `#!` at byte zero.
 
-This guard applies specifically when a BOM precedes a shebang. Existing support for a leading BOM
-without a shebang is unchanged: TopMark strips the BOM from its decoded in-memory image and
-preserves it when writing the file.
+Allowed TOML/API/machine values are:
 
-There is currently no CLI, configuration, API, or per-file-type policy option that relaxes this
-guard. An explicit future `reject`/`remove_bom` remediation policy is tracked in
-[GitHub issue #298](https://github.com/shutterfreak/topmark/issues/298), also a sub-issue of
-[GitHub issue #262](https://github.com/shutterfreak/topmark/issues/262). Until that remediation
-contract is implemented, BOM-before-shebang files remain strictly rejected.
+- `reject` (default): preserve the strict refusal, blocked-policy diagnostics, reader halt, skipped
+  outcome, and unchanged bytes.
+- `remove_bom`: plan BOM removal as a standalone mutation so `EF BB BF 23 21 ...` becomes
+  `23 21 ...`. Remaining bytes are preserved except for separately planned header changes.
+
+The CLI spelling is `--bom-before-shebang reject|remove-bom`. The option applies to `check` and
+`strip`, not `probe`. In dry-run mode, a BOM-only repair is reported as a change and `--diff`
+visibly shows the first line changing from BOM-prefixed `#!` to `#!`. With `--apply`, both atomic
+and in-place writers commit the repair. Repeated runs are unchanged.
+
+`strip` removes the BOM even when no TopMark header is present. `check` removes it even when the
+header is already compliant. Global values are inherited normally and may be overridden under
+`policy_by_type`.
+
+This policy applies only when a BOM immediately precedes a shebang for a file type that supports
+shebang semantics. A leading BOM without a shebang retains the existing normalize-and-preserve
+behavior.
 
 ______________________________________________________________________
 

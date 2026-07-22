@@ -710,7 +710,7 @@ execution from starting.
 
 - Binary files
 - Mixed line endings
-- BOM before shebang
+- BOM before shebang when the effective mode is `reject`
 - Missing read/write permissions
 - Hard-linked processing targets
 - Unsupported file types
@@ -726,6 +726,12 @@ This guarantees:
 - Safe dry-runs
 - No partial writes
 - Idempotent behavior across repeated runs
+
+With `bom_before_shebang = "remove_bom"`, the filesystem status remains `BOM_BEFORE_SHEBANG` as a
+detection fact, but the sniffer emits a warning, the reader continues with `ContentStatus.OK`, and
+no blocked-policy hint or halt is retained. Comparison and planning treat BOM removal as a
+standalone change. The patcher reconstructs the BOM-bearing source first line so dry-run diffs show
+the exact removal; the writer receives the BOM-free updated image.
 
 ______________________________________________________________________
 

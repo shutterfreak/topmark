@@ -50,12 +50,17 @@ _OPTION_VALUES: dict[str, str | None] = {
     CliOpt.APPLY_CHANGES: None,
     CliOpt.WRITE_MODE: "stdout",
     CliOpt.RENDER_DIFF: None,
-    CliOpt.RESULTS_SUMMARY_MODE: "compact",
+    # --summary is a flag, takes no argv:
+    CliOpt.RESULTS_SUMMARY_MODE: None,
     CliOpt.REPORT: ReportScope.ALL,
-    CliOpt.POLICY_HEADER_MUTATION_MODE: "replace",
+    # Valid: "all", "add-only", "update-only":
+    CliOpt.POLICY_HEADER_MUTATION_MODE: "update-only",
+    # Valid: "reject", "remove-bom":
+    CliOpt.POLICY_BOM_BEFORE_SHEBANG: "remove-bom",
     CliOpt.POLICY_ALLOW_HEADER_IN_EMPTY_FILES: None,
     CliOpt.POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES: None,
-    CliOpt.POLICY_EMPTY_INSERT_MODE: "ignore",
+    # Valid: "bytes-empty", "logical-empty", "whitespace-empty":
+    CliOpt.POLICY_EMPTY_INSERT_MODE: "logical-empty",
     CliOpt.POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: None,
     CliOpt.POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS: None,
     CliOpt.POLICY_ALLOW_REFLOW: None,
@@ -64,7 +69,7 @@ _OPTION_VALUES: dict[str, str | None] = {
     CliOpt.FIELD_VALUES: "project=TopMark",
     CliOpt.ALIGN_FIELDS: None,
     CliOpt.NO_ALIGN_FIELDS: None,
-    CliOpt.RELATIVE_TO: "cwd",
+    CliOpt.RELATIVE_TO: ".",
 }
 
 

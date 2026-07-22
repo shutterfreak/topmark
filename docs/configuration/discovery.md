@@ -393,11 +393,13 @@ See also: [Policy guide](../usage/policies.md).
 ```toml
 [tool.topmark.policy]
 header_mutation_mode = "all"
+bom_before_shebang = "reject"
 allow_header_in_empty_files = false
 empty_insert_mode = "logical_empty"
 
 [tool.topmark.policy_by_type."topmark:python"]
 allow_header_in_empty_files = true
+bom_before_shebang = "remove_bom"
 ```
 
 Local keys such as `python` are also accepted when unambiguous, but the effective configuration uses
@@ -435,7 +437,7 @@ This classification is evaluated together with `allow_header_in_empty_files`:
 For `topmark check`, these policy values may also be overridden from the CLI via
 `--header-mutation-mode`, `--allow-header-in-empty-files`, `--empty-insert-mode`,
 `--render-empty-header-when-no-fields`, `--allow-reflow`, and the shared `--allow-content-probe`
-option.
+option. `check` and `strip` also accept `--bom-before-shebang reject|remove-bom`; `probe` does not.
 
 `empty_insert_mode` defines *classification only*; it does not by itself allow insertion.
 
@@ -451,6 +453,7 @@ settings.
 | Policy key                           | Description                                                                                                                                                                          |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `header_mutation_mode`               | Controls [`check`](../usage/commands/check.md) mutation intent: insert and update (`all`), insert missing headers only (`add_only`), or update existing headers only (`update_only`) |
+| `bom_before_shebang`                 | Reject the conflict by default or plan standalone BOM removal (`remove_bom`) for `check` and `strip`                                                                                 |
 | `allow_header_in_empty_files`        | Permit header insertion in empty-like files                                                                                                                                          |
 | `empty_insert_mode`                  | Defines how "empty" is interpreted (see above)                                                                                                                                       |
 | `render_empty_header_when_no_fields` | Allow inserting empty headers when no fields are defined                                                                                                                             |

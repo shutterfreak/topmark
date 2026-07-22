@@ -80,6 +80,7 @@ from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_strict_options
 from topmark.cli.options import pipeline_reporting_options
+from topmark.cli.options import remediation_policy_options
 from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
@@ -93,6 +94,7 @@ from topmark.cli.validators import validate_diff_apply_mutual_exclusion
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_machine_summary_diff_ignored
 from topmark.cli.validators import warn_if_report_scope_ignored
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import MutablePolicy
 from topmark.core.errors import ConfigValidationError
 from topmark.core.exit_codes import ExitCode
@@ -169,6 +171,7 @@ logger: TopmarkLogger = get_logger(__name__)
 @common_file_filtering_options
 @common_file_type_filtering_options
 @shared_policy_options
+@remediation_policy_options
 @common_apply_and_write_options
 @render_diff_options
 @pipeline_reporting_options
@@ -201,6 +204,7 @@ def strip_command(
     exclude_file_types: list[str],
     # policy_options (shared):
     allow_content_probe: bool | None,
+    bom_before_shebang: BomBeforeShebangMode | None,
     # common_apply_and_write_options
     apply_changes: bool,
     write_mode: str | None,
@@ -222,8 +226,8 @@ def strip_command(
     3. Lists-on-STDIN for one of the "...-from" options: ``--files-from -``,
        ``--include-from -``, or ``--exclude-from -`` (exactly one may consume STDIN).
 
-    Only shared policy options apply to `strip`. Header insertion/update policy
-    options are intentionally not exposed for this command.
+    Shared resolution and BOM-remediation policy options apply to `strip`.
+    Header insertion/update policy options are intentionally not exposed.
 
     Args:
         paths: Positional paths parsed by Click. Use ``--`` before literal
@@ -248,6 +252,7 @@ def strip_command(
         exclude_file_types: Exclude processing for the given file type identifiers.
         allow_content_probe: Shared policy override controlling whether
             file-type detection may consult file contents when needed.
+        bom_before_shebang: Check/strip remediation override (`reject` or `remove_bom`).
         apply_changes: Write changes to files; otherwise perform a dry run.
         write_mode: Whether to use safe atomic writing, faster in-place writing
             or writing to STDOUT (default: atomic writer).
@@ -331,6 +336,7 @@ def strip_command(
 
     # Store policy option values for ConfigOverrides construction.
     state.policy = MutablePolicy(
+        bom_before_shebang=bom_before_shebang,
         allow_content_probe=allow_content_probe,
     )
 

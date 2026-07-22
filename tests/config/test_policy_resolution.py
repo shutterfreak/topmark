@@ -47,6 +47,7 @@ from topmark.config.io.deserializers import mutable_config_from_layered_toml_tab
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import HeaderMutationMode
@@ -187,6 +188,7 @@ def test_mutable_config_policy_merge_global_and_per_type() -> None:
     override: MutableConfig = mutable_config_from_defaults()
     override.policy = MutablePolicy(
         header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
+        bom_before_shebang=BomBeforeShebangMode.REMOVE_BOM,
     )
     override.policy_by_type = {
         "python": MutablePolicy(
@@ -599,6 +601,7 @@ def test_frozen_policy_and_mutable_policy_field_sets_are_in_sync() -> None:
     ("field_name", "value"),
     [
         ("header_mutation_mode", HeaderMutationMode.ADD_ONLY),
+        ("bom_before_shebang", BomBeforeShebangMode.REMOVE_BOM),
         ("allow_header_in_empty_files", True),
         ("empty_insert_mode", EmptyInsertMode.WHITESPACE_EMPTY),
         ("render_empty_header_when_no_fields", True),
@@ -608,7 +611,7 @@ def test_frozen_policy_and_mutable_policy_field_sets_are_in_sync() -> None:
 )
 def test_frozen_policy_thaw_resolve_roundtrip_preserves_field(
     field_name: str,
-    value: HeaderMutationMode | EmptyInsertMode | bool,
+    value: BomBeforeShebangMode | HeaderMutationMode | EmptyInsertMode | bool,
 ) -> None:
     """Each `FrozenPolicy` field must survive a `thaw()` + `resolve()` round-trip.
 
@@ -643,6 +646,18 @@ def test_frozen_policy_thaw_resolve_roundtrip_preserves_field(
             HeaderMutationMode.ADD_ONLY,
         ),
         (
+            "bom_before_shebang",
+            BomBeforeShebangMode.REMOVE_BOM,
+            None,
+            BomBeforeShebangMode.REMOVE_BOM,
+        ),
+        (
+            "bom_before_shebang",
+            BomBeforeShebangMode.REJECT,
+            BomBeforeShebangMode.REMOVE_BOM,
+            BomBeforeShebangMode.REMOVE_BOM,
+        ),
+        (
             "header_mutation_mode",
             HeaderMutationMode.ADD_ONLY,
             HeaderMutationMode.UPDATE_ONLY,
@@ -666,9 +681,9 @@ def test_frozen_policy_thaw_resolve_roundtrip_preserves_field(
 )
 def test_mutable_policy_merge_with_per_field(
     field_name: str,
-    base_val: HeaderMutationMode | EmptyInsertMode | bool | None,
-    override_val: HeaderMutationMode | EmptyInsertMode | bool | None,
-    expected: HeaderMutationMode | EmptyInsertMode | bool | None,
+    base_val: BomBeforeShebangMode | HeaderMutationMode | EmptyInsertMode | bool | None,
+    override_val: BomBeforeShebangMode | HeaderMutationMode | EmptyInsertMode | bool | None,
+    expected: BomBeforeShebangMode | HeaderMutationMode | EmptyInsertMode | bool | None,
 ) -> None:
     """`MutablePolicy.merge_with` must honor last-wins semantics per field.
 
@@ -701,6 +716,7 @@ def test_frozen_policy_to_dict_serializes_all_toml_policy_keys() -> None:
 
     policy = FrozenPolicy(
         header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
+        bom_before_shebang=BomBeforeShebangMode.REMOVE_BOM,
         allow_header_in_empty_files=True,
         empty_insert_mode=EmptyInsertMode.WHITESPACE_EMPTY,
         render_empty_header_when_no_fields=True,
@@ -710,6 +726,7 @@ def test_frozen_policy_to_dict_serializes_all_toml_policy_keys() -> None:
 
     expected: dict[str, object] = {
         Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.UPDATE_ONLY.value,
+        Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: BomBeforeShebangMode.REMOVE_BOM.value,
         Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: True,
         Toml.KEY_POLICY_EMPTIES_INSERT_MODE: EmptyInsertMode.WHITESPACE_EMPTY.value,
         Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: True,

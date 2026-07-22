@@ -41,6 +41,7 @@ from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
@@ -493,6 +494,17 @@ def _resolve_public_header_mutation_mode(
         ) from exc
 
 
+def _resolve_public_bom_before_shebang_mode(value: str) -> BomBeforeShebangMode:
+    """Return the internal enum for a public BOM-before-shebang token."""
+    try:
+        return BomBeforeShebangMode(value)
+    except ValueError as exc:
+        raise InvalidPolicyError(
+            message=f"Invalid value for bom_before_shebang: {value!r}",
+            policy_key="bom_before_shebang",
+        ) from exc
+
+
 def _resolve_public_empty_insert_mode(
     value: str,
 ) -> EmptyInsertMode:
@@ -521,6 +533,11 @@ def _build_public_policy_overrides(
         header_mutation_mode=(
             _resolve_public_header_mutation_mode(policy["header_mutation_mode"])
             if "header_mutation_mode" in policy
+            else None
+        ),
+        bom_before_shebang=(
+            _resolve_public_bom_before_shebang_mode(policy["bom_before_shebang"])
+            if "bom_before_shebang" in policy
             else None
         ),
         allow_header_in_empty_files=(

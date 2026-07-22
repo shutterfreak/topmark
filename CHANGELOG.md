@@ -44,6 +44,10 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added the explicit `bom_before_shebang = "reject" | "remove_bom"` runtime policy, including global
+  and per-file-type TOML/API overlays, `check`/`strip` CLI overrides, machine configuration export,
+  standalone dry-run diffs, and exact atomic/in-place BOM removal while preserving strict rejection
+  as the default.
 - Added stable public streaming APIs and event DTOs for `check`, `strip`, and `probe`, together with
   reusable durable-result stream collectors and internal stream adapters that preserve the existing
   batch API, CLI, presentation, and machine-readable compatibility contracts.

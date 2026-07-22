@@ -47,6 +47,7 @@ from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
+    from topmark.config.policy import BomBeforeShebangMode
     from topmark.config.policy import EmptyInsertMode
     from topmark.config.policy import HeaderMutationMode
     from topmark.core.logging import TopmarkLogger
@@ -68,6 +69,7 @@ class PolicyOverrides:
     """
 
     header_mutation_mode: HeaderMutationMode | None = None
+    bom_before_shebang: BomBeforeShebangMode | None = None
     allow_header_in_empty_files: bool | None = None
     empty_insert_mode: EmptyInsertMode | None = None
     render_empty_header_when_no_fields: bool | None = None
@@ -156,6 +158,8 @@ def _apply_policy_overrides(dst: MutablePolicy, src: PolicyOverrides) -> None:
     """
     if src.header_mutation_mode is not None:
         dst.header_mutation_mode = src.header_mutation_mode
+    if src.bom_before_shebang is not None:
+        dst.bom_before_shebang = src.bom_before_shebang
     if src.allow_header_in_empty_files is not None:
         dst.allow_header_in_empty_files = src.allow_header_in_empty_files
     if src.empty_insert_mode is not None:

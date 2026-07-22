@@ -76,6 +76,55 @@ def test_api_invalid_empty_insert_mode_raises_invalid_policy_error(
         )
 
 
+def test_api_invalid_bom_before_shebang_mode_raises_invalid_policy_error(
+    repo_py_with_and_without_header: Path,
+) -> None:
+    """Invalid public BOM remediation values must be rejected."""
+    with pytest.raises(InvalidPolicyError):
+        _ = api.check(
+            [repo_py_with_and_without_header / "src"],
+            apply=False,
+            include_file_types=["python"],
+            policy=unsafe_public_policy({"bom_before_shebang": "repair"}),
+        )
+
+
+@pytest.mark.parametrize(
+    ("global_mode", "type_mode", "expect_removed"),
+    [
+        ("reject", "remove_bom", True),
+        ("remove_bom", "reject", False),
+    ],
+)
+def test_api_bom_policy_by_type_overrides_global_in_both_directions(
+    tmp_path: Path,
+    global_mode: str,
+    type_mode: str,
+    expect_removed: bool,
+) -> None:
+    """Per-type API overlays should override the global BOM mode both ways."""
+    target: Path = tmp_path / "bom.py"
+    original: bytes = b"\xef\xbb\xbf#!/usr/bin/env python\nprint('ok')\n"
+    target.write_bytes(original)
+
+    result: api.RunResult = api.strip(
+        [target],
+        apply=True,
+        include_file_types=["python"],
+        policy=unsafe_public_policy({"bom_before_shebang": global_mode}),
+        policy_by_type={
+            "python": unsafe_public_policy({"bom_before_shebang": type_mode}),
+        },
+    )
+
+    if expect_removed:
+        assert result.written == 1
+        assert target.read_bytes() == original[3:]
+    else:
+        assert result.written == 0
+        assert target.read_bytes() == original
+
+
 @pytest.mark.parametrize("policy_file_type_id", ["python", "topmark:python"])
 def test_api_policy_by_type_overrides_global_policy_for_matching_file_type(
     repo_py_with_and_without_header: Path,

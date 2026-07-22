@@ -65,10 +65,15 @@ ______________________________________________________________________
 - `--apply` and `--diff` are mutually exclusive. Use `--diff` to preview changes or `--apply` to
   write them.
 - Preserves the file's original newline style (LF/CRLF/CR).
-- Preserves a leading UTF-8 BOM if present.
+- Preserves a leading UTF-8 BOM unless `bom_before_shebang = "remove_bom"` remediates a BOM directly
+  before a shebang.
 - Places headers according to file-type policy (shebang and PEP 263 in Python; XML
   declaration/DOCTYPE in XML/HTML; no insertion inside Markdown fenced code).
 - Idempotent: re-running on already-correct files results in **no changes**.
+
+`--bom-before-shebang reject|remove-bom` overrides the remediation policy for this run. The
+`remove-bom` mode is standalone: dry-run reports `WOULD_CHANGE (3)` and `--diff` shows BOM removal
+even when the header is already compliant; `--apply` writes the BOM-free bytes.
 
 ### STDIN modes
 

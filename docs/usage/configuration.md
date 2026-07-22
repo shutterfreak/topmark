@@ -161,9 +161,11 @@ identities.
 ```toml
 [policy]
 header_mutation_mode = "add_only"
+bom_before_shebang = "reject"
 
 [policy_by_type."topmark:python"]
 header_mutation_mode = "update_only"
+bom_before_shebang = "remove_bom"
 
 [policy_by_type.markdown]
 allow_content_probe = false
@@ -173,6 +175,7 @@ In this example:
 
 - the global default policy uses `add_only`
 - Python files override this with `update_only`
+- Python files also remediate a BOM immediately before a shebang
 - Markdown files disable runtime content probing
 
 ______________________________________________________________________

@@ -17,21 +17,24 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.helpers.pipeline import make_pipeline_context
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import PolicyRegistry
-from topmark.pipeline.context.policy import allow_bom_before_shebang
 from topmark.pipeline.context.policy import allow_content_reflow
 from topmark.pipeline.context.policy import allow_empty_header
 from topmark.pipeline.context.policy import allow_insert_into_empty_like
 from topmark.pipeline.context.policy import allow_mixed_line_endings
+from topmark.pipeline.context.policy import bom_before_shebang_mode
 from topmark.pipeline.context.policy import can_change
 from topmark.pipeline.context.policy import check_permitted_by_policy
 from topmark.pipeline.context.policy import effective_would_add_or_update
 from topmark.pipeline.context.policy import effective_would_strip
 from topmark.pipeline.context.policy import is_empty_for_insert
 from topmark.pipeline.context.policy import is_empty_for_insert_unchanged_by_default
+from topmark.pipeline.context.policy import should_remove_bom_before_shebang
+from topmark.pipeline.context.policy import source_lines_with_remediated_bom
 from topmark.pipeline.context.policy import would_add_or_update
 from topmark.pipeline.context.policy import would_change
 from topmark.pipeline.context.policy import would_strip
@@ -146,7 +149,7 @@ def test_reader_policy_helpers_accept_healthy_filesystem_states(
     context.status.fs = healthy_status
 
     assert allow_mixed_line_endings(context) is True
-    assert allow_bom_before_shebang(context) is True
+    assert bom_before_shebang_mode(context) is BomBeforeShebangMode.REJECT
 
 
 @pytest.mark.parametrize(
@@ -170,7 +173,36 @@ def test_reader_policy_helpers_strictly_deny_problem_states(
     context.status.fs = fs_status
 
     assert allow_mixed_line_endings(context) is False
-    assert allow_bom_before_shebang(context) is False
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected"),
+    [
+        (BomBeforeShebangMode.REJECT, False),
+        (BomBeforeShebangMode.REMOVE_BOM, True),
+    ],
+)
+def test_bom_before_shebang_remediation_uses_effective_mode(
+    tmp_path: Path,
+    default_frozen_config: FrozenConfig,
+    mode: BomBeforeShebangMode,
+    expected: bool,
+) -> None:
+    """The remediation predicate should combine detection facts and resolved policy."""
+    context: ProcessingContext = make_pipeline_context(
+        tmp_path / "bom-policy.py",
+        default_frozen_config,
+    )
+    _set_global_policy(context, FrozenPolicy(bom_before_shebang=mode))
+    context.status.fs = FsStatus.BOM_BEFORE_SHEBANG
+    context.leading_bom = True
+    context.has_shebang = True
+
+    assert bom_before_shebang_mode(context) is mode
+    assert should_remove_bom_before_shebang(context) is expected
+    assert source_lines_with_remediated_bom(["#!python\n"], context) == (
+        ["\ufeff#!python\n"] if expected else ["#!python\n"]
+    )
 
 
 @pytest.mark.parametrize(

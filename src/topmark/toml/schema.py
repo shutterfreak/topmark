@@ -448,6 +448,7 @@ def _suggest_key(
 _POLICY_KEYS: Final[frozenset[str]] = frozenset(
     {
         Toml.KEY_POLICY_HEADER_MUTATION_MODE,
+        Toml.KEY_POLICY_BOM_BEFORE_SHEBANG,
         Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
         Toml.KEY_POLICY_EMPTIES_INSERT_MODE,
         Toml.KEY_POLICY_ALLOW_EMPTY_HEADER,

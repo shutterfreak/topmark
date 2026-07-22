@@ -86,6 +86,7 @@ from topmark.cli.options import common_text_output_quiet_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import config_strict_options
 from topmark.cli.options import pipeline_reporting_options
+from topmark.cli.options import remediation_policy_options
 from topmark.cli.options import render_diff_options
 from topmark.cli.options import shared_policy_options
 from topmark.cli.state import TopmarkCliState
@@ -99,6 +100,7 @@ from topmark.cli.validators import validate_diff_apply_mutual_exclusion
 from topmark.cli.validators import validate_stdin_dash_requires_piped_input
 from topmark.cli.validators import warn_if_machine_summary_diff_ignored
 from topmark.cli.validators import warn_if_report_scope_ignored
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
 from topmark.core.errors import ConfigValidationError
@@ -183,6 +185,7 @@ logger: TopmarkLogger = get_logger(__name__)
 @common_file_filtering_options
 @common_file_type_filtering_options
 @check_policy_options
+@remediation_policy_options
 @shared_policy_options
 @common_apply_and_write_options
 @render_diff_options
@@ -221,6 +224,7 @@ def check_command(
     empty_insert_mode: EmptyInsertMode | None,
     render_empty_header_when_no_fields: bool | None,
     allow_reflow: bool | None,
+    bom_before_shebang: BomBeforeShebangMode | None,
     # policy_options (shared):
     allow_content_probe: bool | None,
     # common_apply_and_write_options
@@ -280,6 +284,7 @@ def check_command(
             configured.
         allow_reflow: Check-only override controlling whether content reflow is
             allowed during header insertion or update.
+        bom_before_shebang: Check/strip remediation override (`reject` or `remove_bom`).
         allow_content_probe: Shared policy override controlling whether
             file-type detection may consult file contents when needed.
         apply_changes: Write changes to files; otherwise perform a dry run.
@@ -372,6 +377,7 @@ def check_command(
         empty_insert_mode=empty_insert_mode,
         render_empty_header_when_no_fields=render_empty_header_when_no_fields,
         allow_reflow=allow_reflow,
+        bom_before_shebang=bom_before_shebang,
         allow_content_probe=allow_content_probe,
     )
 

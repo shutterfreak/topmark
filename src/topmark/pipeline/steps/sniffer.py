@@ -41,8 +41,11 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import allow_insert_into_empty_like
+from topmark.pipeline.context.policy import bom_before_shebang_mode
+from topmark.pipeline.context.policy import should_remove_bom_before_shebang
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -252,10 +255,16 @@ def _sniff_stream(
         )
         supports_shebang: bool = bool(policy and getattr(policy, "supports_shebang", False))
         if shebang_after_bom and supports_shebang:
-            ctx.diagnostics.add_error(
-                "Policy: UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
-                "TopMark will not modify this file by default."
-            )
+            if bom_before_shebang_mode(ctx) == BomBeforeShebangMode.REMOVE_BOM:
+                ctx.diagnostics.add_warning(
+                    "UTF-8 BOM appears before the shebang; policy remove_bom will remove it "
+                    "so '#!' begins at byte 0."
+                )
+            else:
+                ctx.diagnostics.add_error(
+                    "Policy: UTF-8 BOM appears before the shebang; POSIX requires '#!' at byte 0. "
+                    "TopMark will not modify this file by default."
+                )
             return FsStatus.BOM_BEFORE_SHEBANG
 
         # Newline counting on prefix and subsequent chunks (bounded),
@@ -510,12 +519,13 @@ class SnifferStep(BaseStep):
                 )
             case FsStatus.BOM_BEFORE_SHEBANG:
                 # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-                ctx.hint(
-                    axis=Axis.FS,
-                    code=KnownCode.FS_BOM_BEFORE_SHEBANG,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="UTF-8 BOM before shebang",
-                )
+                if not should_remove_bom_before_shebang(ctx):
+                    ctx.hint(
+                        axis=Axis.FS,
+                        code=KnownCode.FS_BOM_BEFORE_SHEBANG,
+                        cluster=Cluster.BLOCKED_POLICY,
+                        message="UTF-8 BOM before shebang",
+                    )
             case FsStatus.MIXED_LINE_ENDINGS:
                 # Implies ctx.status.resolve == ResolveStatus.RESOLVED
                 ctx.hint(

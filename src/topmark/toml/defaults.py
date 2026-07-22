@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
+from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.core.constants import EXAMPLE_TOPMARK_TOML_NAME
 from topmark.core.constants import EXAMPLE_TOPMARK_TOML_PACKAGE
@@ -97,6 +98,7 @@ def _build_default_layered_config_toml() -> TomlTable:
         },
         Toml.SECTION_POLICY: {
             Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.ALL.value,
+            Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: BomBeforeShebangMode.REJECT.value,
             Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: False,
             Toml.KEY_POLICY_EMPTIES_INSERT_MODE: "logical_empty",
         },

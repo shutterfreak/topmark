@@ -30,6 +30,7 @@ TOML mapping:
     ```toml
     [policy]
     header_mutation_mode = "all"
+    bom_before_shebang = "reject"
     allow_header_in_empty_files = false
     empty_insert_mode = "logical_empty"
     allow_content_probe = true
@@ -89,6 +90,18 @@ class EmptyInsertMode(str, Enum):
     WHITESPACE_EMPTY = "whitespace_empty"
 
 
+class BomBeforeShebangMode(str, Enum):
+    """How TopMark handles a UTF-8 BOM immediately before a shebang.
+
+    Attributes:
+        REJECT: Refuse processing and leave the file unchanged (default).
+        REMOVE_BOM: Plan removal of the BOM so the shebang begins at byte zero.
+    """
+
+    REJECT = "reject"
+    REMOVE_BOM = "remove_bom"
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class FrozenPolicy:
     """Immutable, runtime policy used by processing steps.
@@ -97,6 +110,8 @@ class FrozenPolicy:
         header_mutation_mode: Defines how headers may be mutated: process all files if (`ALL`,
             default); only add headers when no header present (ADD_ONLY); only update existing
             headers (`UPDATE_ONLY`).
+        bom_before_shebang: Reject a UTF-8 BOM before a shebang by default, or remove it as a
+            standalone remediation.
         allow_header_in_empty_files: Allow inserting headers into files that are
             classified as empty under `empty_insert_mode`.
         empty_insert_mode: Defines which files are considered "empty" for
@@ -111,6 +126,7 @@ class FrozenPolicy:
     """
 
     header_mutation_mode: HeaderMutationMode = HeaderMutationMode.ALL
+    bom_before_shebang: BomBeforeShebangMode = BomBeforeShebangMode.REJECT
     allow_header_in_empty_files: bool = False
     empty_insert_mode: EmptyInsertMode = EmptyInsertMode.LOGICAL_EMPTY
     render_empty_header_when_no_fields: bool = False
@@ -126,6 +142,7 @@ class FrozenPolicy:
         """
         return MutablePolicy(
             header_mutation_mode=self.header_mutation_mode,
+            bom_before_shebang=self.bom_before_shebang,
             allow_header_in_empty_files=self.allow_header_in_empty_files,
             empty_insert_mode=self.empty_insert_mode,
             render_empty_header_when_no_fields=self.render_empty_header_when_no_fields,
@@ -156,6 +173,8 @@ class MutablePolicy:
     Attributes:
         header_mutation_mode: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
             `None` means "inherit".
+        bom_before_shebang: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
         allow_header_in_empty_files: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
             `None` means "inherit".
         empty_insert_mode: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
@@ -170,6 +189,7 @@ class MutablePolicy:
     """
 
     header_mutation_mode: HeaderMutationMode | None = None
+    bom_before_shebang: BomBeforeShebangMode | None = None
     allow_header_in_empty_files: bool | None = None
     empty_insert_mode: EmptyInsertMode | None = None
     render_empty_header_when_no_fields: bool | None = None
@@ -191,6 +211,10 @@ class MutablePolicy:
             header_mutation_mode=overlay(
                 override=other.header_mutation_mode,
                 current=self.header_mutation_mode,
+            ),
+            bom_before_shebang=overlay(
+                override=other.bom_before_shebang,
+                current=self.bom_before_shebang,
             ),
             allow_header_in_empty_files=overlay(
                 override=other.allow_header_in_empty_files,
@@ -228,6 +252,11 @@ class MutablePolicy:
                 base.header_mutation_mode
                 if self.header_mutation_mode is None
                 else self.header_mutation_mode
+            ),
+            bom_before_shebang=(
+                base.bom_before_shebang
+                if self.bom_before_shebang is None
+                else self.bom_before_shebang
             ),
             allow_header_in_empty_files=(
                 base.allow_header_in_empty_files
@@ -283,6 +312,11 @@ class MutablePolicy:
                 key=Toml.KEY_POLICY_HEADER_MUTATION_MODE,
                 enum_cls=HeaderMutationMode,
             ),
+            bom_before_shebang=opt_enum(
+                tbl,
+                key=Toml.KEY_POLICY_BOM_BEFORE_SHEBANG,
+                enum_cls=BomBeforeShebangMode,
+            ),
             allow_header_in_empty_files=opt_bool(
                 tbl,
                 key=Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
@@ -319,6 +353,7 @@ def policy_to_dict(policy: FrozenPolicy) -> dict[str, object]:
     """
     out: dict[str, object] = {}
     out[Toml.KEY_POLICY_HEADER_MUTATION_MODE] = policy.header_mutation_mode.value  # StrEnum
+    out[Toml.KEY_POLICY_BOM_BEFORE_SHEBANG] = policy.bom_before_shebang.value  # StrEnum
     out[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] = policy.allow_header_in_empty_files
     out[Toml.KEY_POLICY_EMPTIES_INSERT_MODE] = policy.empty_insert_mode.value  # StrEnum
     out[Toml.KEY_POLICY_ALLOW_EMPTY_HEADER] = policy.render_empty_header_when_no_fields
