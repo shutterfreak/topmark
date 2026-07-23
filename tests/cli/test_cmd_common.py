@@ -19,6 +19,7 @@ import click
 import pytest
 
 import topmark.cli.cmd_common as cmd_common
+from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.cmd_common import PreparedCliConfig
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
@@ -211,19 +212,19 @@ def test_build_run_options_routes_mutating_stdin_to_stdout() -> None:
     ("write_mode", "expected_strategy"),
     [
         pytest.param(
-            FileWriteStrategy.ATOMIC.value,
+            CliWriteMode.ATOMIC,
             FileWriteStrategy.ATOMIC,
             id="atomic",
         ),
         pytest.param(
-            FileWriteStrategy.INPLACE.value,
+            CliWriteMode.INPLACE,
             FileWriteStrategy.INPLACE,
             id="inplace",
         ),
     ],
 )
 def test_build_run_options_honors_explicit_file_write_modes(
-    write_mode: str,
+    write_mode: CliWriteMode,
     expected_strategy: FileWriteStrategy,
 ) -> None:
     """Explicit write modes should select file output and the requested strategy."""
@@ -238,6 +239,21 @@ def test_build_run_options_honors_explicit_file_write_modes(
 
     assert run_options.output_target is OutputTarget.FILE
     assert run_options.file_write_strategy is expected_strategy
+
+
+def test_build_run_options_maps_stdout_cli_mode_to_output_target() -> None:
+    """The CLI-only stdout mode should map onto the runtime output target."""
+    pipeline: PipelineSelection = select_pipeline("check", apply=True, diff=False)
+
+    run_options: RunOptions = build_run_options(
+        pipeline=pipeline,
+        write_mode=CliWriteMode.STDOUT,
+        stdin_mode=False,
+        stdin_filename=None,
+    )
+
+    assert run_options.output_target is OutputTarget.STDOUT
+    assert run_options.file_write_strategy is None
 
 
 def test_resolve_human_console_reuses_stdout_console_when_not_reserved() -> None:

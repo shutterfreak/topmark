@@ -29,6 +29,7 @@ from typing import NoReturn
 
 import click
 
+from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import resolve_color_mode
 from topmark.cli.emitters.machine import emit_config_diagnostics_machine
@@ -184,7 +185,7 @@ def build_file_resolution(
 def build_run_options(
     *,
     pipeline: PipelineSelection,
-    write_mode: str | None,
+    write_mode: CliWriteMode | None,
     stdin_mode: bool,
     stdin_filename: str | None,
     prune_views: bool = True,
@@ -217,13 +218,13 @@ def build_run_options(
     output_target: OutputTarget | None = None
     file_write_strategy: FileWriteStrategy | None = None
 
-    if (stdin_mode and pipeline.definition.mutates) or write_mode == OutputTarget.STDOUT.value:
+    if (stdin_mode and pipeline.definition.mutates) or write_mode is CliWriteMode.STDOUT:
         output_target = OutputTarget.STDOUT
         file_write_strategy = None
-    elif write_mode == FileWriteStrategy.ATOMIC.value:
+    elif write_mode is CliWriteMode.ATOMIC:
         output_target = OutputTarget.FILE
         file_write_strategy = FileWriteStrategy.ATOMIC
-    elif write_mode == FileWriteStrategy.INPLACE.value:
+    elif write_mode is CliWriteMode.INPLACE:
         output_target = OutputTarget.FILE
         file_write_strategy = FileWriteStrategy.INPLACE
 

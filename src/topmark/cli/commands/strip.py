@@ -121,6 +121,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
+    from topmark.cli.cli_types import CliWriteMode
     from topmark.cli.cmd_common import PreparedCliConfig
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
@@ -207,7 +208,7 @@ def strip_command(
     bom_before_shebang: BomBeforeShebangMode | None,
     # common_apply_and_write_options
     apply_changes: bool,
-    write_mode: str | None,
+    write_mode: CliWriteMode | None,
     # render_diff_options:
     diff: bool,
     # pipeline_reporting_options

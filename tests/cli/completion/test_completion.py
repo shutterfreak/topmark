@@ -32,6 +32,7 @@ import click
 import pytest
 from click.shell_completion import CompletionItem
 
+from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
@@ -83,16 +84,18 @@ def test_output_format_completion_lists_all_values() -> None:
 # adapt if enum values change
 @pytest.mark.parametrize("prefix", ["t", "m", "j", "n"])
 # adapt if enum values change
-def test_output_format_completion_filters_by_prefix(prefix: str) -> None:
-    """Completion should be filtered by the typed prefix (case-insensitive)."""
+def test_output_format_completion_filters_by_prefix(
+    prefix: str,
+) -> None:
+    """Completion should be filtered by the exact lowercase typed prefix."""
     items: list[CompletionItem] = _complete(prefix)
     values: set[str] = _values(items)
 
     # All suggested values must start with the prefix
-    assert all(v.lower().startswith(prefix.lower()) for v in values)
+    assert all(v.startswith(prefix) for v in values)
 
     # At least one known enum value starting with the prefix should appear (when applicable)
-    expected: set[str] = {v for v in _enum_values(OutputFormat) if v.lower().startswith(prefix)}
+    expected: set[str] = {v for v in _enum_values(OutputFormat) if v.startswith(prefix)}
     if expected:
         assert expected & values
 
@@ -101,6 +104,14 @@ def test_output_format_completion_handles_nonmatching_prefix() -> None:
     """Non-matching prefixes should yield an empty suggestion list."""
     items: list[CompletionItem] = _complete("zzz")
     assert _values(items) == set()
+
+
+@pytest.mark.parametrize("prefix", ["J", "Json", "JSON"])
+def test_output_format_completion_rejects_non_lowercase_prefix(
+    prefix: str,
+) -> None:
+    """Rejected case variants should not advertise lowercase output formats."""
+    assert _values(_complete(prefix)) == set()
 
 
 def test_output_format_completion_works_across_commands() -> None:
@@ -132,8 +143,14 @@ def test_output_format_completion_works_across_commands() -> None:
         pytest.param(
             BomBeforeShebangMode,
             "REMOVE-",
-            ["remove-bom"],
-            id="bom-case-insensitive-prefix",
+            [],
+            id="bom-uppercase-prefix",
+        ),
+        pytest.param(
+            BomBeforeShebangMode,
+            "Remove-",
+            [],
+            id="bom-mixed-case-prefix",
         ),
         pytest.param(
             BomBeforeShebangMode,
@@ -167,6 +184,33 @@ def test_kebab_case_policy_completion_matches_accepted_cli_values(
     )
     items: list[CompletionItem] = choice_type.shell_complete(
         click.Context(cli), click.Option(["--policy-mode"]), prefix
+    )
+
+    assert [item.value for item in items] == expected
+
+
+@pytest.mark.parametrize(
+    ("prefix", "expected"),
+    [
+        pytest.param("", ["atomic", "inplace", "stdout"], id="empty"),
+        pytest.param("inp", ["inplace"], id="lowercase"),
+        pytest.param("INP", [], id="uppercase"),
+        pytest.param("Inp", [], id="mixed-case"),
+        pytest.param("in_", [], id="underscore"),
+        pytest.param("zzz", [], id="unrelated"),
+    ],
+)
+def test_write_mode_choice_completion_matches_strict_parser(
+    prefix: str,
+    expected: list[str],
+) -> None:
+    """The typed CLI choice should complete only accepted lowercase write modes."""
+    choice_type: EnumChoiceParam[CliWriteMode] = EnumChoiceParam(CliWriteMode)
+    option = click.Option([CliOpt.WRITE_MODE], type=choice_type)
+    items: list[CompletionItem] = choice_type.shell_complete(
+        click.Context(cli),
+        option,
+        prefix,
     )
 
     assert [item.value for item in items] == expected

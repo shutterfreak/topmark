@@ -43,6 +43,8 @@ ______________________________________________________________________
 > - `--files-from FILE` is treated as an explicit input source for `check`, `strip`, and `probe`.
 > - Invalid `FileType.filenames` rules are rejected during file-type construction.
 > - Multiword enum-valued CLI arguments now require kebab-case; snake_case CLI aliases are rejected.
+> - Finite-choice CLI option values now require exact lowercase spelling; uppercase and mixed-case
+>   aliases are rejected.
 > - Public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
 
 ### Added - Unreleased
@@ -211,10 +213,16 @@ ______________________________________________________________________
   streaming counterparts by including the already-supported immutable `FrozenConfig` input in all
   six signatures.
 - Canonicalized multiword enum-valued CLI arguments to kebab-case. Values such as `add-only`,
-  `update-only`, `bytes-empty`, `logical-empty`, `whitespace-empty`, and `remove-bom` remain
-  case-insensitive, while their former snake_case CLI aliases are rejected with a deterministic
-  hyphenated suggestion. TOML, public API, configuration export, JSON/NDJSON, and Python enum values
-  remain snake_case.
+  `update-only`, `bytes-empty`, `logical-empty`, `whitespace-empty`, and `remove-bom` reject their
+  former snake_case CLI aliases with a deterministic hyphenated suggestion. TOML, public API,
+  configuration export, JSON/NDJSON, and Python enum values remain snake_case.
+- Required exact lowercase spelling for finite-choice CLI option values, including `--color`,
+  `--output-format`, `--report`, `--write-mode`, `--header-mutation-mode`, `--empty-insert-mode`,
+  and `--bom-before-shebang`. Known case-only or combined case/delimiter variants of enum values
+  receive a deterministic canonical suggestion. This CLI-only change does not alter free-form inputs
+  or TOML, public API, configuration-export, JSON/NDJSON, or Python model values. `--write-mode` now
+  converts to a private `CliWriteMode` boundary enum before runtime option assembly maps it onto the
+  existing `OutputTarget` and `FileWriteStrategy` types.
 
 ### Removed - Unreleased
 
@@ -272,6 +280,11 @@ ______________________________________________________________________
   with `add-only`, `update-only`, `bytes-empty`, `logical-empty`, `whitespace-empty`, and
   `remove-bom`. This does not change TOML, public API, configuration-export, machine-readable, or
   Python enum values, which remain snake_case.
+- Finite-choice CLI option values now require exact lowercase spelling. Replace values such as
+  `ALWAYS`, `JSON`, `ACTIONABLE`, `INPLACE`, `UPDATE-ONLY`, `LOGICAL-EMPTY`, and `REMOVE-BOM` with
+  `always`, `json`, `actionable`, `inplace`, `update-only`, `logical-empty`, and `remove-bom`.
+  Option names remain lowercase kebab-case, free-form inputs retain their case, and TOML, public
+  API, configuration-export, machine-readable, and Python enum values are unchanged.
 
 ### Fixed - Unreleased
 

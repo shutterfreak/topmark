@@ -172,8 +172,9 @@ def test_enum_value_help_text_marks_raw_string_default_and_boundary_spellings() 
         suffix="Choose carefully.",
     ) == (
         "Accepted values: 'text', 'machine-readable' (default). "
-        "Multiword CLI values require hyphens; config, API, and machine-readable output use "
-        "underscore values (machine_readable). "
+        "CLI values require exact lowercase spelling. "
+        "Multiword CLI values additionally require hyphens; config, API, and machine-readable "
+        "output use underscore values (machine_readable). "
         "Choose carefully."
     )
 

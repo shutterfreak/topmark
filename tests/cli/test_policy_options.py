@@ -13,7 +13,7 @@
 This module verifies the command-line policy surface:
 - `check` exposes check-only and shared policy options,
 - `strip` exposes only shared policy options,
-- kebab-case enum values are accepted by the CLI,
+- exact lowercase kebab-case enum values are accepted by the CLI,
 - selected policy options affect observable `check` behavior,
 - check-only policy options are rejected by `strip`.
 
@@ -89,7 +89,7 @@ def test_check_help_lists_check_only_and_shared_policy_options() -> None:
     )
     assert_rich_output_contains(
         result.output,
-        expected="Multiword CLI values require hyphens",
+        expected="Multiword CLI values additionally require hyphens",
     )
 
 
@@ -318,7 +318,16 @@ def test_check_rejects_invalid_bom_before_shebang_cli_token(tmp_path: Path) -> N
     )
 
     assert result.exit_code == 2
-    assert "Invalid value" in result.output
+    assert result.stdout == ""
+    assert_rich_output_contains(
+        result.stderr,
+        expected="Invalid value 'repair'",
+    )
+    assert_rich_output_contains(
+        result.stderr,
+        expected="Must be one of: reject, remove-bom",
+    )
+    assert "Did you mean" not in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -400,5 +409,91 @@ def test_check_rejects_snake_case_policy_tokens_with_canonical_suggestion(
     assert_rich_output_contains(result.stderr, expected="Usage: cli check")
     assert_rich_output_contains(result.stderr, expected=f"Invalid value for '{option}'")
     assert_rich_output_contains(result.stderr, expected=f"Invalid value '{snake_value}'")
+    assert_rich_output_contains(result.stderr, expected=f"Did you mean '{canonical_value}'?")
+    assert_rich_output_contains(result.stderr, expected=f"Must be one of: {choice_listing}")
+
+
+@pytest.mark.parametrize(
+    "assignment_form",
+    [False, True],
+    ids=["spaced", "assignment"],
+)
+@pytest.mark.parametrize(
+    ("option", "invalid_value", "canonical_value", "choice_listing"),
+    [
+        pytest.param(
+            CliOpt.POLICY_HEADER_MUTATION_MODE,
+            "UPDATE-ONLY",
+            "update-only",
+            "all, add-only, update-only",
+            id="header-uppercase-kebab",
+        ),
+        pytest.param(
+            CliOpt.POLICY_HEADER_MUTATION_MODE,
+            "Update_Only",
+            "update-only",
+            "all, add-only, update-only",
+            id="header-mixed-snake",
+        ),
+        pytest.param(
+            CliOpt.POLICY_EMPTY_INSERT_MODE,
+            "LOGICAL-EMPTY",
+            "logical-empty",
+            "bytes-empty, logical-empty, whitespace-empty",
+            id="empty-uppercase-kebab",
+        ),
+        pytest.param(
+            CliOpt.POLICY_EMPTY_INSERT_MODE,
+            "Logical_Empty",
+            "logical-empty",
+            "bytes-empty, logical-empty, whitespace-empty",
+            id="empty-mixed-snake",
+        ),
+        pytest.param(
+            CliOpt.POLICY_BOM_BEFORE_SHEBANG,
+            "REMOVE-BOM",
+            "remove-bom",
+            "reject, remove-bom",
+            id="bom-uppercase-kebab",
+        ),
+        pytest.param(
+            CliOpt.POLICY_BOM_BEFORE_SHEBANG,
+            "Remove_Bom",
+            "remove-bom",
+            "reject, remove-bom",
+            id="bom-mixed-snake",
+        ),
+    ],
+)
+def test_check_rejects_noncanonical_case_with_lowercase_suggestion(
+    tmp_path: Path,
+    option: str,
+    invalid_value: str,
+    canonical_value: str,
+    choice_listing: str,
+    *,
+    assignment_form: bool,
+) -> None:
+    """Case-only and combined case/delimiter errors should suggest one canonical token."""
+    target: Path = tmp_path / "CaseSensitiveInput.py"
+    target.write_text("print('ok')\n", encoding="utf-8")
+    option_args: list[str] = (
+        [f"{option}={invalid_value}"] if assignment_form else [option, invalid_value]
+    )
+
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.CHECK,
+            *option_args,
+            target.name,
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert result.stdout == ""
+    assert_rich_output_contains(result.stderr, expected="Usage: cli check")
+    assert_rich_output_contains(result.stderr, expected=f"Invalid value for '{option}'")
+    assert_rich_output_contains(result.stderr, expected=f"Invalid value '{invalid_value}'")
     assert_rich_output_contains(result.stderr, expected=f"Did you mean '{canonical_value}'?")
     assert_rich_output_contains(result.stderr, expected=f"Must be one of: {choice_listing}")

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import click
 import pytest
 
+from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import ColorMode
 from topmark.cli.state import TopmarkCliState
@@ -73,7 +74,7 @@ def test_bootstrap_cli_state_returns_existing_typed_state() -> None:
         log_level=logging.WARNING,
         prune_pipeline_views=False,
         apply_changes=True,
-        write_mode="atomic",
+        write_mode=CliWriteMode.ATOMIC,
     )
     ctx: click.Context = _make_click_context(existing)
 
@@ -115,7 +116,7 @@ def test_bootstrap_cli_state_lifts_legacy_mapping_with_known_fields() -> None:
     assert state.log_level == logging.DEBUG
     assert state.prune_pipeline_views is False
     assert state.apply_changes is True
-    assert state.write_mode == "inplace"
+    assert state.write_mode is CliWriteMode.INPLACE
 
 
 def test_bootstrap_cli_state_lifts_legacy_mapping_with_optional_defaults() -> None:
@@ -163,7 +164,11 @@ def test_bootstrap_cli_state_rejects_unsupported_context_object_type() -> None:
             "ctx.obj\\['prune_pipeline_views'\\] must be a bool",
         ),
         ("apply_changes", "true", "ctx.obj\\['apply_changes'\\] must be a bool"),
-        ("write_mode", 123, "ctx.obj\\['write_mode'\\] must be a str \\| None"),
+        (
+            "write_mode",
+            123,
+            "ctx.obj\\['write_mode'\\] must be a CliWriteMode-compatible str \\| None",
+        ),
     ],
 )
 def test_bootstrap_cli_state_rejects_invalid_legacy_field_types(
@@ -188,6 +193,14 @@ def test_bootstrap_cli_state_rejects_invalid_legacy_field_types(
     ctx: click.Context = _make_click_context(data)
 
     with pytest.raises(TypeError, match=message):
+        bootstrap_cli_state(ctx)
+
+
+def test_bootstrap_cli_state_rejects_unknown_legacy_write_mode() -> None:
+    """Legacy context mappings should accept only canonical write-mode strings."""
+    ctx: click.Context = _make_click_context({"write_mode": "sideways"})
+
+    with pytest.raises(TypeError, match="must be one of: atomic, inplace, stdout"):
         bootstrap_cli_state(ctx)
 
 

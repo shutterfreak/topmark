@@ -41,6 +41,7 @@ from click.core import ParameterSource
 from typing_extensions import NotRequired
 from typing_extensions import Unpack
 
+from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
@@ -526,10 +527,12 @@ def enum_value_help_text(
     if prefix:
         text = f"{prefix} {text}"
 
+    text += " CLI values require exact lowercase spelling."
+
     if underscore_values:
         text += (
-            " Multiword CLI values require hyphens; config, API, and machine-readable output use "
-            f"underscore values ({', '.join(underscore_values)})."
+            " Multiword CLI values additionally require hyphens; config, API, and machine-readable "
+            f"output use underscore values ({', '.join(underscore_values)})."
         )
 
     if suffix:
@@ -605,7 +608,7 @@ def common_color_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.COLOR_MODE,
         type=EnumChoiceParam(
             ColorMode,
-            case_sensitive=False,
+            case_sensitive=True,
             kebab_case=True,
         ),
         default=None,
@@ -643,7 +646,7 @@ def common_output_format_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.OUTPUT_FORMAT,
         type=EnumChoiceParam(
             OutputFormat,
-            case_sensitive=False,
+            case_sensitive=True,
             kebab_case=True,
         ),
         default=None,
@@ -890,7 +893,11 @@ def common_apply_and_write_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     f = option_with_underscore_traps(
         CliOpt.WRITE_MODE,
         ArgKey.WRITE_MODE,
-        type=click.Choice(["atomic", "inplace", "stdout"], case_sensitive=False),
+        type=EnumChoiceParam(
+            CliWriteMode,
+            case_sensitive=True,
+            kebab_case=True,
+        ),
         help=(
             "Select write strategy: 'atomic' (safe, default), "
             "'inplace' (fast, less safe), or 'stdout' (emit result to standard output)."
@@ -951,7 +958,7 @@ def pipeline_reporting_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.REPORT_SCOPE,
         type=EnumChoiceParam(
             ReportScope,
-            case_sensitive=False,
+            case_sensitive=True,
             kebab_case=True,
         ),
         default=ReportScope.ACTIONABLE,
@@ -1165,7 +1172,7 @@ def check_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.POLICY_EMPTY_INSERT_MODE,
         type=EnumChoiceParam(
             EmptyInsertMode,
-            case_sensitive=False,
+            case_sensitive=True,
             kebab_case=True,
         ),
         default=None,
@@ -1195,7 +1202,7 @@ def check_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.POLICY_HEADER_MUTATION_MODE,
         type=EnumChoiceParam(
             HeaderMutationMode,
-            case_sensitive=False,
+            case_sensitive=True,
             kebab_case=True,
         ),
         default=None,
@@ -1252,7 +1259,7 @@ def remediation_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.POLICY_BOM_BEFORE_SHEBANG,
         type=EnumChoiceParam(
             BomBeforeShebangMode,
-            case_sensitive=False,
+            case_sensitive=True,
             kebab_case=True,
         ),
         default=None,

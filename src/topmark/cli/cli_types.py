@@ -55,12 +55,26 @@ E = TypeVar("E", bound=Enum)
 # --- Custom Click parameter types and validators for TopMark CLI ---
 
 
+class CliWriteMode(str, Enum):
+    """Private CLI vocabulary for selecting the write destination and strategy.
+
+    Runtime code decomposes this Click-boundary type into the existing
+    [`OutputTarget`][topmark.config.types.OutputTarget] and
+    [`FileWriteStrategy`][topmark.config.types.FileWriteStrategy] model types.
+    """
+
+    ATOMIC = "atomic"
+    INPLACE = "inplace"
+    STDOUT = "stdout"
+
+
 class EnumChoiceParam(ParamTypeBase, Generic[E]):
     """Click parameter type that converts CLI text to an enum member.
 
-    The parameter can optionally accept case-insensitive input and present and
-    require kebab-case spellings for string-valued enum members whose internal
-    values use underscores.
+    The parameter requires case-sensitive input by default, can optionally
+    accept case-insensitive input, and can present and require kebab-case
+    spellings for string-valued enum members whose internal values use
+    underscores.
     """
 
     # Add instance variable annotations for maximum clarity
@@ -74,7 +88,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         self,
         enum_cls: type[E],
         *,
-        case_sensitive: bool = False,
+        case_sensitive: bool = True,
         kebab_case: bool = False,
     ) -> None:
         self.enum_cls = enum_cls
@@ -134,11 +148,12 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
             return lookup[key][1]
 
         suggestion: str | None = None
-        if self.kebab_case and "_" in raw_input:
-            suggested_key: str = self._normalize_input(raw_input.replace("_", "-"))
-            suggested_match: tuple[str, E] | None = lookup.get(suggested_key)
-            if suggested_match is not None:
-                suggestion = suggested_match[0]
+        suggested_input: str = raw_input.lower()
+        if self.kebab_case:
+            suggested_input = suggested_input.replace("_", "-")
+        suggested_match: tuple[str, E] | None = lookup.get(self._normalize_input(suggested_input))
+        if suggested_input != raw_input and suggested_match is not None:
+            suggestion = suggested_match[0]
 
         # Raise a BadParameter exception for invalid input.
         suggestion_text: str = f" Did you mean '{suggestion}'?" if suggestion else ""

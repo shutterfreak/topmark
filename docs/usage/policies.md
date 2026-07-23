@@ -115,9 +115,9 @@ ______________________________________________________________________
 Policy configuration keys use the same names across the CLI, API, and TOML configuration. Some
 policy options accept predefined multi-word values such as `add_only` or `whitespace_empty`.
 
-TopMark uses different spelling conventions depending on the interface: the CLI requires *hyphenated
-forms* for multiword enum values, while TOML configuration, Python API values, and machine-readable
-output use canonical underscore forms.
+TopMark uses different spelling conventions depending on the interface: finite-choice CLI values
+require exact lowercase spelling and *hyphenated forms* for multiword values, while TOML
+configuration, Python API values, and machine-readable output use canonical underscore forms.
 
 {% include-markdown "\_snippets/option-spelling.md" %}
 
