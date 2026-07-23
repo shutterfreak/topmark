@@ -58,8 +58,8 @@ E = TypeVar("E", bound=Enum)
 class EnumChoiceParam(ParamTypeBase, Generic[E]):
     """Click parameter type that converts CLI text to an enum member.
 
-    The parameter can optionally accept case-insensitive input and present or
-    accept kebab-case spellings for string-valued enum members whose internal
+    The parameter can optionally accept case-insensitive input and present and
+    require kebab-case spellings for string-valued enum members whose internal
     values use underscores.
     """
 
@@ -102,37 +102,49 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         return display
 
     def _normalize_input(self, raw: str) -> str:
-        """Normalize CLI input for lookup against enum member values.
+        """Normalize CLI input for case-sensitive or case-insensitive lookup.
 
-        When `kebab_case` is enabled, both kebab-case and snake_case inputs are
-        accepted by normalizing `-` to `_`. When `case_sensitive` is disabled,
-        the normalized input is lower-cased.
+        Delimiter spelling is deliberately preserved so kebab-case display
+        choices remain the only accepted CLI spellings. When `case_sensitive`
+        is disabled, the input is lower-cased.
         """
-        normalized: str = raw.replace("-", "_") if self.kebab_case else raw
-        return normalized if self.case_sensitive else normalized.lower()
+        return raw if self.case_sensitive else raw.lower()
 
     def convert(
         self,
-        value: str | None,
+        value: str | E | None,
         param: click.Parameter | None,
         ctx: click.Context | None,
     ) -> E | None:
         """Convert CLI text to a member of the configured enum."""
         if value is None:
             return None
+        if isinstance(value, self.enum_cls):
+            return value
+        raw_input: str = cast("str", value)
 
-        lookup: dict[str, E] = {
-            self._normalize_input(cast("str", getattr(choice, "value", str(choice)))): choice
-            for choice in cast("Iterable[E]", self.enum_cls)
-        }
+        lookup: dict[str, tuple[str, E]] = {}
+        for choice in cast("Iterable[E]", self.enum_cls):
+            raw_value: str = cast("str", getattr(choice, "value", str(choice)))
+            display_value: str = self._display_value(raw_value)
+            lookup[self._normalize_input(display_value)] = (display_value, choice)
 
-        key: str = self._normalize_input(value)
+        key: str = self._normalize_input(raw_input)
         if key in lookup:
-            return lookup[key]
+            return lookup[key][1]
+
+        suggestion: str | None = None
+        if self.kebab_case and "_" in raw_input:
+            suggested_key: str = self._normalize_input(raw_input.replace("_", "-"))
+            suggested_match: tuple[str, E] | None = lookup.get(suggested_key)
+            if suggested_match is not None:
+                suggestion = suggested_match[0]
 
         # Raise a BadParameter exception for invalid input.
+        suggestion_text: str = f" Did you mean '{suggestion}'?" if suggestion else ""
+        choices_text: str = ", ".join(self.choices)
         self._fail_noreturn(
-            f"Invalid value '{value}'. Must be one of: {', '.join(self.choices)}",
+            f"Invalid value '{raw_input}'.{suggestion_text} Must be one of: {choices_text}",
             param,
             ctx,
         )
@@ -158,7 +170,7 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         for e in cast("Iterable[E]", self.enum_cls):
             raw_value: str = cast("str", getattr(e, "value", str(e)))
             display_value: str = self._display_value(raw_value)
-            normalized_value: str = self._normalize_input(raw_value)
+            normalized_value: str = self._normalize_input(display_value)
             if normalized_value.startswith(prefix):
                 items.append(RuntimeCompletionItem(display_value))
         return items

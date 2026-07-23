@@ -34,23 +34,54 @@ class _Mode(Enum):
     APPLY = "apply"
 
 
-def test_enum_choice_param_accepts_kebab_case_and_completes_display_values() -> None:
-    """Enum choices should accept CLI spellings and complete displayed values."""
+def test_enum_choice_param_accepts_only_canonical_kebab_case() -> None:
+    """Kebab-case enum choices should accept only their displayed delimiters."""
     param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, kebab_case=True)
 
     assert param.choices == ["dry-run", "apply"]
     assert param.convert("dry-run", None, None) is _Mode.DRY_RUN
-    assert param.convert("dry_run", None, None) is _Mode.DRY_RUN
+    assert param.convert("DRY-RUN", None, None) is _Mode.DRY_RUN
     assert param.convert("APPLY", None, None) is _Mode.APPLY
+    assert param.convert(_Mode.DRY_RUN, None, None) is _Mode.DRY_RUN
     assert repr(param) == "EnumChoiceParam(_Mode)"
 
-    completions: list[CompletionItem] = param.shell_complete(
-        click.Context(click.Command("check")),
-        click.Option(["--mode"]),
-        "dry-",
+
+def test_enum_choice_param_suggests_canonical_kebab_case() -> None:
+    """A known snake-case spelling should suggest its canonical CLI token."""
+    param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, kebab_case=True)
+    option = click.Option(["--mode"])
+
+    with pytest.raises(click.BadParameter) as exc_info:
+        param.convert("dry_run", option, click.Context(click.Command("check")))
+
+    assert exc_info.value.param is option
+    assert str(exc_info.value) == (
+        "Invalid value 'dry_run'. Did you mean 'dry-run'? Must be one of: dry-run, apply"
     )
 
-    assert [item.value for item in completions] == ["dry-run"]
+
+@pytest.mark.parametrize(
+    ("prefix", "expected"),
+    [
+        pytest.param("", ["dry-run", "apply"], id="empty"),
+        pytest.param("dry-", ["dry-run"], id="kebab-prefix"),
+        pytest.param("DRY-", ["dry-run"], id="case-insensitive-prefix"),
+        pytest.param("dry_", [], id="snake-prefix"),
+        pytest.param("app", ["apply"], id="single-word-prefix"),
+        pytest.param("zzz", [], id="unrelated-prefix"),
+    ],
+)
+def test_enum_choice_param_completes_only_canonical_values(
+    prefix: str,
+    expected: list[str],
+) -> None:
+    """Completion should filter and emit only accepted display spellings."""
+    param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, kebab_case=True)
+    completions: list[CompletionItem] = param.shell_complete(
+        click.Context(click.Command("check")), click.Option(["--mode"]), prefix
+    )
+
+    assert [item.value for item in completions] == expected
 
 
 def test_enum_choice_param_returns_none_for_optional_values() -> None:
@@ -64,17 +95,32 @@ def test_enum_choice_param_reports_invalid_values_with_display_choices() -> None
     """Invalid enum input should produce Click's parameter error contract."""
     param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, kebab_case=True)
 
-    with pytest.raises(click.BadParameter, match="dry-run, apply"):
-        param.convert("unknown", None, None)
+    with pytest.raises(click.BadParameter, match="dry-run, apply") as exc_info:
+        param.convert("unknown_value", None, None)
+
+    assert "Did you mean" not in str(exc_info.value)
 
 
 def test_enum_choice_param_can_be_case_sensitive() -> None:
     """Case-sensitive enum choices should reject case-mismatched input."""
-    param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, case_sensitive=True)
+    param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, case_sensitive=True, kebab_case=True)
 
     assert param.convert("apply", None, None) is _Mode.APPLY
+    assert param.convert("dry-run", None, None) is _Mode.DRY_RUN
     with pytest.raises(click.BadParameter):
         param.convert("APPLY", None, None)
+    with pytest.raises(click.BadParameter):
+        param.convert("DRY-RUN", None, None)
+
+
+def test_enum_choice_param_without_kebab_case_preserves_snake_case() -> None:
+    """Delimiter strictness should apply only to kebab-case CLI parameters."""
+    param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode)
+
+    assert param.choices == ["dry_run", "apply"]
+    assert param.convert("DRY_RUN", None, None) is _Mode.DRY_RUN
+    with pytest.raises(click.BadParameter):
+        param.convert("dry-run", None, None)
 
 
 def test_file_type_param_accepts_existing_files_and_rejects_directories(tmp_path: Path) -> None:

@@ -25,7 +25,9 @@ ______________________________________________________________________
 > This release includes breaking changes to CLI exit-code semantics, `config check` validation
 > failures, option-like path parsing, `check`/`strip` diff-option semantics, STDOUT/STDERR output
 > routing, machine-readable processing-result serialization, filename-rule validation/normalization,
-> `--files-from` input planning for path-based commands, and public API report-scope defaults.
+> `--files-from` input planning for path-based commands, enum-valued CLI spelling, and public API
+> report-scope defaults.
+>
 > Consumers should review the **Breaking Changes** and **Notes** sections before upgrading
 > automation, CI jobs, golden tests, machine-output parsers, or plugin/custom file-type definitions.
 >
@@ -40,6 +42,7 @@ ______________________________________________________________________
 > - JSON/NDJSON `check` and `strip` result paths use POSIX `/` separators on all platforms.
 > - `--files-from FILE` is treated as an explicit input source for `check`, `strip`, and `probe`.
 > - Invalid `FileType.filenames` rules are rejected during file-type construction.
+> - Multiword enum-valued CLI arguments now require kebab-case; snake_case CLI aliases are rejected.
 > - Public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
 
 ### Added - Unreleased
@@ -207,6 +210,11 @@ ______________________________________________________________________
 - Clarified the compatible public API type contract for `check()`, `strip()`, `probe()`, and their
   streaming counterparts by including the already-supported immutable `FrozenConfig` input in all
   six signatures.
+- Canonicalized multiword enum-valued CLI arguments to kebab-case. Values such as `add-only`,
+  `update-only`, `bytes-empty`, `logical-empty`, `whitespace-empty`, and `remove-bom` remain
+  case-insensitive, while their former snake_case CLI aliases are rejected with a deterministic
+  hyphenated suggestion. TOML, public API, configuration export, JSON/NDJSON, and Python enum values
+  remain snake_case.
 
 ### Removed - Unreleased
 
@@ -259,6 +267,11 @@ ______________________________________________________________________
 - Public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
   Integrations that relied on receiving every processed file in `RunResult.files` must now pass
   `report="all"` explicitly.
+- Multiword enum-valued CLI arguments now require kebab-case. Replace snake_case CLI tokens such as
+  `add_only`, `update_only`, `bytes_empty`, `logical_empty`, `whitespace_empty`, and `remove_bom`
+  with `add-only`, `update-only`, `bytes-empty`, `logical-empty`, `whitespace-empty`, and
+  `remove-bom`. This does not change TOML, public API, configuration-export, machine-readable, or
+  Python enum values, which remain snake_case.
 
 ### Fixed - Unreleased
 

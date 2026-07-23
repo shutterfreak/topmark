@@ -75,9 +75,9 @@ ______________________________________________________________________
 Configuration keys use consistent naming across the CLI, API, and TOML configuration surfaces. Some
 options accept predefined multi-word values such as `add_only` or `whitespace_empty`.
 
-TopMark uses different spelling conventions depending on the interface: CLI examples prefer
-*hyphenated forms* for readability, while TOML configuration, Python API values, and
-machine-readable output use *canonical underscore forms*.
+TopMark uses different spelling conventions depending on the interface: the CLI requires *hyphenated
+forms* for multiword enum values, while TOML configuration, Python API values, and machine-readable
+output use *canonical underscore forms*.
 
 {% include-markdown "\_snippets/option-spelling.md" %}
 

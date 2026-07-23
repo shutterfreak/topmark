@@ -437,7 +437,9 @@ ______________________________________________________________________
 - `add_only`: insert missing headers only; existing headers are not updated
 - `update_only`: update existing headers only; missing headers are not inserted
 
-The equivalent CLI values use hyphens for the non-default modes: `add-only` and `update-only`.
+The equivalent CLI values require hyphens for the non-default modes: `add-only` and `update-only`.
+This delimiter rule applies to every multiword enum-valued CLI argument; configuration, API, and
+machine-readable values remain snake_case.
 
 This policy affects only the [`check`](../usage/commands/check.md) pipeline behavior.
 

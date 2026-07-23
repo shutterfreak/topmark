@@ -240,9 +240,9 @@ These options control how `check` classifies empty files and whether headers may
 
 `--empty-insert-mode` defines which empty or empty-like files are eligible for insertion:
 
-- `bytes_empty`: only true 0-byte files
-- `logical_empty`: true 0-byte files plus logically empty placeholders
-- `whitespace_empty`: any decoded content containing only whitespace or newlines
+- `bytes-empty`: only true 0-byte files
+- `logical-empty`: true 0-byte files plus logically empty placeholders
+- `whitespace-empty`: any decoded content containing only whitespace or newlines
 
 This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic runtime
 outcome bucketing.

@@ -489,7 +489,7 @@ def enum_value_help_text(
     configuration, Python API enum values, and machine-readable output use
     canonical underscore values when enum members are defined with underscores.
     This helper renders the CLI-facing value list, marks an optional default,
-    and appends a short underscore/canonical-value note only when needed.
+    and appends a short boundary-spelling note only when needed.
 
     Args:
         enum_cls: Enum class whose members expose string values.
@@ -528,8 +528,8 @@ def enum_value_help_text(
 
     if underscore_values:
         text += (
-            f" CLI also accepts underscore forms ({', '.join(underscore_values)}); "
-            "config, API, and machine-readable output use underscore values."
+            " Multiword CLI values require hyphens; config, API, and machine-readable output use "
+            f"underscore values ({', '.join(underscore_values)})."
         )
 
     if suffix:

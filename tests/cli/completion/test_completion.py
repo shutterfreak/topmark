@@ -35,6 +35,8 @@ from click.shell_completion import CompletionItem
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
+from topmark.config.policy import BomBeforeShebangMode
+from topmark.config.policy import EmptyInsertMode
 from topmark.core.formats import OutputFormat
 
 if TYPE_CHECKING:
@@ -110,3 +112,61 @@ def test_output_format_completion_works_across_commands() -> None:
     # Accept either empty (option not present) or the full enum set.
     enum_vals: set[str] = _enum_values(OutputFormat)
     assert values in (set(), values | enum_vals) or enum_vals <= values
+
+
+@pytest.mark.parametrize(
+    ("enum_type", "prefix", "expected"),
+    [
+        pytest.param(
+            BomBeforeShebangMode,
+            "",
+            ["reject", "remove-bom"],
+            id="bom-empty-prefix",
+        ),
+        pytest.param(
+            BomBeforeShebangMode,
+            "remove-",
+            ["remove-bom"],
+            id="bom-kebab-prefix",
+        ),
+        pytest.param(
+            BomBeforeShebangMode,
+            "REMOVE-",
+            ["remove-bom"],
+            id="bom-case-insensitive-prefix",
+        ),
+        pytest.param(
+            BomBeforeShebangMode,
+            "remove_",
+            [],
+            id="bom-snake-prefix",
+        ),
+        pytest.param(
+            EmptyInsertMode,
+            "logical-",
+            ["logical-empty"],
+            id="empty-insert-kebab-prefix",
+        ),
+        pytest.param(
+            EmptyInsertMode,
+            "logical_",
+            [],
+            id="empty-insert-snake-prefix",
+        ),
+    ],
+)
+def test_kebab_case_policy_completion_matches_accepted_cli_values(
+    enum_type: type[BomBeforeShebangMode | EmptyInsertMode],
+    prefix: str,
+    expected: list[str],
+) -> None:
+    """Policy completion should expose only canonical accepted CLI spellings."""
+    choice_type: EnumChoiceParam[BomBeforeShebangMode | EmptyInsertMode] = EnumChoiceParam(
+        enum_type,
+        kebab_case=True,
+    )
+    items: list[CompletionItem] = choice_type.shell_complete(
+        click.Context(cli), click.Option(["--policy-mode"]), prefix
+    )
+
+    assert [item.value for item in items] == expected
