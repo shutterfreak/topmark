@@ -18,15 +18,17 @@ topmark:header:end
 > topmark check --header-mutation-mode=add-only
 > ```
 >
-> Multiword enum values at the CLI boundary require hyphens:
+> Finite-choice CLI values require their exact documented lowercase spelling. Multiword values
+> additionally require hyphens:
 >
 > ```bash
 > topmark check --header-mutation-mode=add-only
 > ```
 >
-> Snake-case CLI aliases such as `add_only`, `update_only`, `logical_empty`, and `remove_bom` are
-> rejected with a suggestion for the canonical hyphenated spelling. Value matching remains
-> case-insensitive, so `ADD-ONLY` is accepted as `add-only`.
+> Uppercase, mixed-case, and snake_case CLI aliases such as `ADD-ONLY`, `Update-Only`, `add_only`,
+> `logical_empty`, and `REMOVE_BOM` are rejected. When lowercasing the token and replacing
+> underscores with hyphens produces an exact declared choice, TopMark suggests that canonical
+> spelling.
 >
 > TOML configuration, Python API values, and machine-readable output use the canonical underscore
 > form:
@@ -37,4 +39,6 @@ topmark:header:end
 > ```
 >
 > CLI option names themselves also do not accept underscores. Use `--header-mutation-mode`, not
-> `--header_mutation_mode`.
+> `--header_mutation_mode`. These spelling rules apply only to option names and finite-choice
+> values; paths, filenames, globs, header content, and other free-form inputs retain their original
+> case.

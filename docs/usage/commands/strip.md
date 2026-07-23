@@ -209,7 +209,7 @@ Controls whether file-type detection may inspect file contents when needed.
 
 `--bom-before-shebang remove-bom` is a standalone remediation. It removes the leading BOM before a
 shebang even when no TopMark header is present; dry-run and `--diff` preview that byte change, and
-`--apply` commits it.
+`--apply` commits it. The finite-choice values require exact lowercase spelling.
 
 Header insertion and update policies (such as mutation mode, empty-file behavior, or
 generated-header formatting) do not apply to `strip` and are rejected when provided.

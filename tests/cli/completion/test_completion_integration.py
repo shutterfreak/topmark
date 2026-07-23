@@ -60,6 +60,10 @@ def _normalize_completion_output(
     if isinstance(result, str):
         tokens: list[str] = []
         for line in result.splitlines():
+            record_type, separator, record_value = line.partition(",")
+            if separator and record_type in {"plain", "file", "dir", "nospace"}:
+                tokens.append(record_value.strip())
+                continue
             # Split on whitespace, then on commas, trim all
             for piece in line.replace("\t", " ").split():
                 tokens.extend(p.strip() for p in piece.split(","))
@@ -78,7 +82,10 @@ def _normalize_completion_output(
     return set()
 
 
-def _bash_complete(args: list[str], incomplete: str) -> set[str]:
+def _bash_complete(
+    args: list[str],
+    incomplete: str,
+) -> set[str]:
     """Run Click's Bash completion adapter and return suggestion strings.
 
     Args:
@@ -101,7 +108,7 @@ def _bash_complete(args: list[str], incomplete: str) -> set[str]:
     }
     try:
         os.environ["_TOPMARK_COMPLETE"] = "complete"
-        os.environ["COMP_WORDS"] = " ".join([prog, *args])
+        os.environ["COMP_WORDS"] = " ".join([prog, *args, incomplete])
         os.environ["COMP_CWORD"] = str(len(args) + 1)
         os.environ["COMP_LINE"] = f"{prog} {' '.join(args)} {incomplete}".rstrip()
         raw: Any = bc.complete()
@@ -119,7 +126,11 @@ def _bash_complete(args: list[str], incomplete: str) -> set[str]:
 def test_output_format_bash_completion_lists_all_values() -> None:
     """End-to-end: `--output-format` should suggest enum values via Bash adapter."""
     suggestions: set[str] = _bash_complete(
-        [CliCmd.CONFIG, CliCmd.CONFIG_DUMP, CliOpt.OUTPUT_FORMAT],
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.OUTPUT_FORMAT,
+        ],
         "",
     )
     expected: set[str] = {e.value for e in OutputFormat}
@@ -138,16 +149,64 @@ def test_output_format_bash_completion_lists_all_values() -> None:
         ("n", "ndjson"),
     ],
 )
-def test_output_format_bash_completion_filters_by_prefix(prefix: str, expected_one: str) -> None:
-    """End-to-end: prefix should filter suggestions (case-insensitive)."""
+def test_output_format_bash_completion_filters_by_prefix(
+    prefix: str,
+    expected_one: str,
+) -> None:
+    """End-to-end: a lowercase prefix should filter suggestions."""
     suggestions: set[str] = _bash_complete(
-        [CliCmd.CONFIG, CliCmd.CONFIG_DUMP, CliOpt.OUTPUT_FORMAT],
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.OUTPUT_FORMAT,
+        ],
         prefix,
     )
     if not suggestions:
         pytest.xfail("No suggestions produced by BashComplete in this environment")
-    assert any(s.lower().startswith(prefix) for s in suggestions)
+    assert any(s.startswith(prefix) for s in suggestions)
     # If the expected choice exists in this build, ensure it appears for its prefix.
     enum_values: set[str] = {e.value for e in OutputFormat}
     if expected_one in enum_values:
-        assert any(s.lower().startswith(prefix) for s in suggestions)
+        assert any(s.startswith(prefix) for s in suggestions)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prefix", ["J", "Json", "JSON"])
+def test_output_format_bash_completion_rejects_non_lowercase_prefix(
+    prefix: str,
+) -> None:
+    """End-to-end: rejected case variants should not produce value suggestions."""
+    suggestions: set[str] = _bash_complete(
+        [
+            CliCmd.CONFIG,
+            CliCmd.CONFIG_DUMP,
+            CliOpt.OUTPUT_FORMAT,
+        ],
+        prefix,
+    )
+    assert suggestions == set()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("prefix", "expected"),
+    [
+        pytest.param("inp", {"inplace"}, id="lowercase"),
+        pytest.param("INP", set[str](), id="uppercase"),
+        pytest.param("Inp", set[str](), id="mixed-case"),
+    ],
+)
+def test_write_mode_bash_completion_matches_strict_parser(
+    prefix: str,
+    expected: set[str],
+) -> None:
+    """End-to-end: write-mode completion should follow exact lowercase matching."""
+    suggestions: set[str] = _bash_complete(
+        [
+            CliCmd.CHECK,
+            CliOpt.WRITE_MODE,
+        ],
+        prefix,
+    )
+    assert suggestions == expected

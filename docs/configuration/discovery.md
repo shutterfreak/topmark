@@ -438,7 +438,8 @@ For `topmark check`, these policy values may also be overridden from the CLI via
 `--header-mutation-mode`, `--allow-header-in-empty-files`, `--empty-insert-mode`,
 `--render-empty-header-when-no-fields`, `--allow-reflow`, and the shared `--allow-content-probe`
 option. `check` and `strip` also accept `--bom-before-shebang reject|remove-bom`; `probe` does not.
-Multiword CLI enum values require hyphens; the TOML values documented above remain snake_case.
+Finite-choice CLI values require exact lowercase spelling, and multiword values require hyphens; the
+TOML values documented above remain snake_case.
 
 `empty_insert_mode` defines *classification only*; it does not by itself allow insertion.
 

@@ -542,6 +542,13 @@ pipeline definition for that invocation, while \[`RunOptions`\][topmark.runtime.
 carries durable execution metadata such as pipeline kind, mutation mode, diff emission, STDIN mode,
 writer behavior, and view-pruning policy onto processing contexts and reduced results.
 
+The Click-only `--write-mode` vocabulary is represented by the private
+\[`CliWriteMode`\][topmark.cli.cli_types.CliWriteMode] enum. CLI parsing and invocation state retain
+that type until runtime option assembly decomposes `stdout` into
+\[`OutputTarget.STDOUT`\][topmark.config.types.OutputTarget] and `atomic` or `inplace` into the
+corresponding \[`FileWriteStrategy`\][topmark.config.types.FileWriteStrategy]. `CliWriteMode` is not
+a TOML, Python API, configuration-export, or machine-readable model.
+
 Important invariants:
 
 - [`check`](../usage/commands/check.md) may compare, render, plan, preview, and mutate headers when

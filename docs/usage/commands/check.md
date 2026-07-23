@@ -73,7 +73,8 @@ ______________________________________________________________________
 
 `--bom-before-shebang reject|remove-bom` overrides the remediation policy for this run. The
 `remove-bom` mode is standalone: dry-run reports `WOULD_CHANGE (3)` and `--diff` shows BOM removal
-even when the header is already compliant; `--apply` writes the BOM-free bytes.
+even when the header is already compliant; `--apply` writes the BOM-free bytes. These finite-choice
+values require exact lowercase spelling.
 
 ### STDIN modes
 
@@ -222,6 +223,9 @@ Use `--header-mutation-mode` to control mutation behavior for `check`:
 - `all` (default): insert missing headers and update existing headers
 - `add-only`: insert missing headers only; existing headers are not updated
 - `update-only`: update existing headers only; missing headers are not inserted
+
+The values require exact lowercase spelling; uppercase, mixed-case, and snake_case aliases are
+rejected.
 
 This policy affects dry-run reporting, `--apply` behavior, API result views, and semantic runtime
 outcome bucketing. It is a check-only policy; [`strip`](strip.md) removes existing headers and

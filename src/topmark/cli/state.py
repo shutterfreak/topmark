@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
 
+from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import ColorMode
 from topmark.cli.console.protocols import ConsoleProtocol
@@ -50,7 +51,7 @@ class TopmarkCliState:
     log_level: int | None = None
     prune_pipeline_views: bool = True
     apply_changes: bool = False
-    write_mode: str | None = None
+    write_mode: CliWriteMode | None = None
     resolved_writer_options: WriterOptions | None = None
     policy: MutablePolicy = field(default_factory=MutablePolicy)
 
@@ -139,8 +140,17 @@ def bootstrap_cli_state(ctx: click.Context) -> TopmarkCliState:
         raise TypeError("ctx.obj['prune_pipeline_views'] must be a bool")
     if not isinstance(apply_changes_obj, bool):
         raise TypeError("ctx.obj['apply_changes'] must be a bool")
-    if write_mode_obj is not None and not isinstance(write_mode_obj, str):
-        raise TypeError("ctx.obj['write_mode'] must be a str | None")
+
+    write_mode: CliWriteMode | None = None
+    if write_mode_obj is not None:
+        if not isinstance(write_mode_obj, str):
+            raise TypeError("ctx.obj['write_mode'] must be a CliWriteMode-compatible str | None")
+        try:
+            write_mode = CliWriteMode(write_mode_obj)
+        except ValueError as exc:
+            raise TypeError(
+                f"ctx.obj['write_mode'] must be one of: {', '.join(sorted(CliWriteMode))}"
+            ) from exc
 
     state = TopmarkCliState(
         verbosity=verbosity_obj,
@@ -152,7 +162,7 @@ def bootstrap_cli_state(ctx: click.Context) -> TopmarkCliState:
         log_level=log_level_obj,
         prune_pipeline_views=True if prune_pipeline_views_obj is None else prune_pipeline_views_obj,
         apply_changes=apply_changes_obj,
-        write_mode=write_mode_obj,
+        write_mode=write_mode,
         policy=MutablePolicy(),
     )
     ctx.obj = state

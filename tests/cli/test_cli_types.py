@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 import click
 import pytest
 
+from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cli_types import FileTypeParam
 from topmark.cli.cli_types import GlobParam
@@ -34,29 +35,54 @@ class _Mode(Enum):
     APPLY = "apply"
 
 
+def test_cli_write_mode_is_a_typed_cli_only_choice() -> None:
+    """Write-mode parsing should return the private CLI-boundary enum."""
+    param: EnumChoiceParam[CliWriteMode] = EnumChoiceParam(CliWriteMode)
+
+    assert param.choices == ["atomic", "inplace", "stdout"]
+    assert param.convert("atomic", None, None) is CliWriteMode.ATOMIC
+    assert param.convert("inplace", None, None) is CliWriteMode.INPLACE
+    assert param.convert("stdout", None, None) is CliWriteMode.STDOUT
+
+
 def test_enum_choice_param_accepts_only_canonical_kebab_case() -> None:
-    """Kebab-case enum choices should accept only their displayed delimiters."""
+    """Kebab-case enum choices should accept only exact displayed spellings."""
     param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, kebab_case=True)
 
     assert param.choices == ["dry-run", "apply"]
     assert param.convert("dry-run", None, None) is _Mode.DRY_RUN
-    assert param.convert("DRY-RUN", None, None) is _Mode.DRY_RUN
-    assert param.convert("APPLY", None, None) is _Mode.APPLY
+    assert param.convert("apply", None, None) is _Mode.APPLY
     assert param.convert(_Mode.DRY_RUN, None, None) is _Mode.DRY_RUN
     assert repr(param) == "EnumChoiceParam(_Mode)"
 
 
-def test_enum_choice_param_suggests_canonical_kebab_case() -> None:
-    """A known snake-case spelling should suggest its canonical CLI token."""
+@pytest.mark.parametrize(
+    ("invalid_value", "canonical_value"),
+    [
+        pytest.param("DRY-RUN", "dry-run", id="uppercase-kebab"),
+        pytest.param("Dry-Run", "dry-run", id="mixed-case-kebab"),
+        pytest.param("dry_run", "dry-run", id="lowercase-snake"),
+        pytest.param("DRY_RUN", "dry-run", id="uppercase-snake"),
+        pytest.param("Dry_Run", "dry-run", id="mixed-case-snake"),
+        pytest.param("APPLY", "apply", id="uppercase-single-word"),
+        pytest.param("Apply", "apply", id="mixed-case-single-word"),
+    ],
+)
+def test_enum_choice_param_suggests_canonical_lowercase_kebab_case(
+    invalid_value: str,
+    canonical_value: str,
+) -> None:
+    """Known case and delimiter variants should suggest the canonical CLI token."""
     param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, kebab_case=True)
     option = click.Option(["--mode"])
 
     with pytest.raises(click.BadParameter) as exc_info:
-        param.convert("dry_run", option, click.Context(click.Command("check")))
+        param.convert(invalid_value, option, click.Context(click.Command("check")))
 
     assert exc_info.value.param is option
     assert str(exc_info.value) == (
-        "Invalid value 'dry_run'. Did you mean 'dry-run'? Must be one of: dry-run, apply"
+        f"Invalid value '{invalid_value}'. Did you mean '{canonical_value}'? "
+        "Must be one of: dry-run, apply"
     )
 
 
@@ -65,9 +91,11 @@ def test_enum_choice_param_suggests_canonical_kebab_case() -> None:
     [
         pytest.param("", ["dry-run", "apply"], id="empty"),
         pytest.param("dry-", ["dry-run"], id="kebab-prefix"),
-        pytest.param("DRY-", ["dry-run"], id="case-insensitive-prefix"),
+        pytest.param("DRY-", [], id="uppercase-prefix"),
+        pytest.param("Dry-", [], id="mixed-case-prefix"),
         pytest.param("dry_", [], id="snake-prefix"),
         pytest.param("app", ["apply"], id="single-word-prefix"),
+        pytest.param("APP", [], id="uppercase-single-word-prefix"),
         pytest.param("zzz", [], id="unrelated-prefix"),
     ],
 )
@@ -101,9 +129,9 @@ def test_enum_choice_param_reports_invalid_values_with_display_choices() -> None
     assert "Did you mean" not in str(exc_info.value)
 
 
-def test_enum_choice_param_can_be_case_sensitive() -> None:
-    """Case-sensitive enum choices should reject case-mismatched input."""
-    param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, case_sensitive=True, kebab_case=True)
+def test_enum_choice_param_is_case_sensitive_by_default() -> None:
+    """Enum choices should reject case-mismatched input by default."""
+    param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode, kebab_case=True)
 
     assert param.convert("apply", None, None) is _Mode.APPLY
     assert param.convert("dry-run", None, None) is _Mode.DRY_RUN
@@ -113,12 +141,32 @@ def test_enum_choice_param_can_be_case_sensitive() -> None:
         param.convert("DRY-RUN", None, None)
 
 
+def test_enum_choice_param_can_explicitly_be_case_insensitive() -> None:
+    """Reusable enum choices may explicitly opt into case-insensitive matching."""
+    param: EnumChoiceParam[_Mode] = EnumChoiceParam(
+        _Mode,
+        case_sensitive=False,
+        kebab_case=True,
+    )
+
+    assert param.convert("APPLY", None, None) is _Mode.APPLY
+    assert param.convert("DRY-RUN", None, None) is _Mode.DRY_RUN
+    completions: list[CompletionItem] = param.shell_complete(
+        click.Context(click.Command("check")),
+        click.Option(["--mode"]),
+        "DRY-",
+    )
+    assert [item.value for item in completions] == ["dry-run"]
+
+
 def test_enum_choice_param_without_kebab_case_preserves_snake_case() -> None:
     """Delimiter strictness should apply only to kebab-case CLI parameters."""
     param: EnumChoiceParam[_Mode] = EnumChoiceParam(_Mode)
 
     assert param.choices == ["dry_run", "apply"]
-    assert param.convert("DRY_RUN", None, None) is _Mode.DRY_RUN
+    assert param.convert("dry_run", None, None) is _Mode.DRY_RUN
+    with pytest.raises(click.BadParameter, match="Did you mean 'dry_run'"):
+        param.convert("DRY_RUN", None, None)
     with pytest.raises(click.BadParameter):
         param.convert("dry-run", None, None)
 
