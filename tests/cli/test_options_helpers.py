@@ -164,16 +164,16 @@ def test_option_with_hidden_aliases_requires_explicit_destination() -> None:
         )
 
 
-def test_enum_value_help_text_marks_raw_string_default_and_canonical_values() -> None:
-    """Enum help text should support raw defaults and underscore canonical notes."""
+def test_enum_value_help_text_marks_raw_string_default_and_boundary_spellings() -> None:
+    """Enum help text should distinguish CLI and non-CLI value spellings."""
     assert enum_value_help_text(
         _OutputMode,
         default="machine_readable",
         suffix="Choose carefully.",
     ) == (
         "Accepted values: 'text', 'machine-readable' (default). "
-        "CLI also accepts underscore forms (machine_readable); "
-        "config, API, and machine-readable output use underscore values. "
+        "Multiword CLI values require hyphens; config, API, and machine-readable output use "
+        "underscore values (machine_readable). "
         "Choose carefully."
     )
 

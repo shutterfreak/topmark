@@ -24,8 +24,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
+from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
+from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import command_option_names
 from tests.cli.conftest import run_cli
@@ -71,6 +75,22 @@ def test_check_help_lists_check_only_and_shared_policy_options() -> None:
     assert CliOpt.POLICY_ALLOW_REFLOW in option_names
     assert CliOpt.POLICY_ALLOW_CONTENT_PROBE in option_names
     assert CliOpt.POLICY_BOM_BEFORE_SHEBANG in option_names
+    assert_rich_output_contains(
+        result.output,
+        expected="Accepted values: 'all', 'add-only', 'update-only'.",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected="Accepted values: 'bytes-empty', 'logical-empty', 'whitespace-empty'.",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected="Accepted values: 'reject', 'remove-bom'.",
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected="Multiword CLI values require hyphens",
+    )
 
 
 def test_strip_help_lists_only_shared_policy_options() -> None:
@@ -299,3 +319,86 @@ def test_check_rejects_invalid_bom_before_shebang_cli_token(tmp_path: Path) -> N
 
     assert result.exit_code == 2
     assert "Invalid value" in result.output
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        pytest.param(CliOpt.POLICY_HEADER_MUTATION_MODE, "add-only", id="add-only"),
+        pytest.param(CliOpt.POLICY_HEADER_MUTATION_MODE, "update-only", id="update-only"),
+        pytest.param(CliOpt.POLICY_EMPTY_INSERT_MODE, "bytes-empty", id="bytes-empty"),
+        pytest.param(CliOpt.POLICY_EMPTY_INSERT_MODE, "logical-empty", id="logical-empty"),
+        pytest.param(
+            CliOpt.POLICY_EMPTY_INSERT_MODE,
+            "whitespace-empty",
+            id="whitespace-empty",
+        ),
+        pytest.param(CliOpt.POLICY_BOM_BEFORE_SHEBANG, "remove-bom", id="remove-bom"),
+    ],
+)
+def test_check_accepts_canonical_multiword_policy_tokens(
+    tmp_path: Path,
+    option: str,
+    value: str,
+) -> None:
+    """Every multiword policy value should parse in canonical kebab-case."""
+    target: Path = tmp_path / "x.py"
+    target.write_text("print('ok')\n", encoding="utf-8")
+
+    result: Result = run_cli_in(tmp_path, [CliCmd.CHECK, option, value, target.name])
+
+    assert_SUCCESS_or_WOULD_CHANGE(result)
+
+
+@pytest.mark.parametrize("assignment_form", [False, True], ids=["spaced", "assignment"])
+@pytest.mark.parametrize(
+    ("option", "snake_value", "canonical_value", "choice_listing"),
+    [
+        pytest.param(
+            CliOpt.POLICY_HEADER_MUTATION_MODE,
+            "update_only",
+            "update-only",
+            "all, add-only, update-only",
+            id="header-mutation",
+        ),
+        pytest.param(
+            CliOpt.POLICY_EMPTY_INSERT_MODE,
+            "logical_empty",
+            "logical-empty",
+            "bytes-empty, logical-empty, whitespace-empty",
+            id="empty-insert",
+        ),
+        pytest.param(
+            CliOpt.POLICY_BOM_BEFORE_SHEBANG,
+            "remove_bom",
+            "remove-bom",
+            "reject, remove-bom",
+            id="bom-before-shebang",
+        ),
+    ],
+)
+def test_check_rejects_snake_case_policy_tokens_with_canonical_suggestion(
+    tmp_path: Path,
+    option: str,
+    snake_value: str,
+    canonical_value: str,
+    choice_listing: str,
+    *,
+    assignment_form: bool,
+) -> None:
+    """Snake-case policy values should be Click errors with a narrow suggestion."""
+    target: Path = tmp_path / "x.py"
+    target.write_text("print('ok')\n", encoding="utf-8")
+    option_args: list[str] = (
+        [f"{option}={snake_value}"] if assignment_form else [option, snake_value]
+    )
+
+    result: Result = run_cli_in(tmp_path, [CliCmd.CHECK, *option_args, target.name])
+
+    assert result.exit_code == 2
+    assert result.stdout == ""
+    assert_rich_output_contains(result.stderr, expected="Usage: cli check")
+    assert_rich_output_contains(result.stderr, expected=f"Invalid value for '{option}'")
+    assert_rich_output_contains(result.stderr, expected=f"Invalid value '{snake_value}'")
+    assert_rich_output_contains(result.stderr, expected=f"Did you mean '{canonical_value}'?")
+    assert_rich_output_contains(result.stderr, expected=f"Must be one of: {choice_listing}")
