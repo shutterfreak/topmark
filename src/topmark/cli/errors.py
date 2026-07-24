@@ -79,7 +79,7 @@ class TopmarkCliError(click.ClickException):
                 )
                 state.console.error(error_styler(self.format_message()))
                 return
-        except Exception:  # noqa: BLE001 - never let error rendering crash the CLI
+        except Exception:
             # Never let error rendering crash the CLI; fall back to Click behavior.
             logger.debug("Failed to render TopMark error via console", exc_info=True)
         # Fallback to Click's default behavior (includes its own styling)
