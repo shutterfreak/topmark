@@ -183,7 +183,7 @@ config = {
         "topmark:python": {
             "allow_header_in_empty_files": True,
         },
-    }
+    },
 }
 
 run: api.RunResult = api.check(

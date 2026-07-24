@@ -208,7 +208,7 @@ Markdown, which ensures reported line numbers always refer to the original `src/
 
 The shared enforcement logic lives in:
 
-```python
+```text
 tools/docs/docs_utils.py
 ```
 
@@ -238,8 +238,8 @@ A candidate is enforced when it:
 
 This logic lives in:
 
-```python
-tools/docs/docs_utils.should_enforce_link()
+```text
+tools.docs.docs_utils.should_enforce_link()
 ```
 
 ______________________________________________________________________
@@ -306,7 +306,7 @@ Depending on origin, logs include:
 Context lines are built centrally via:
 
 ```python
-tools/docs/docs_utils.context_lines()
+tools.docs.docs_utils.context_lines()
 ```
 
 ______________________________________________________________________

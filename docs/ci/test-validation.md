@@ -114,9 +114,9 @@ Example:
 ```python
 import pytest
 
+
 @pytest.mark.dev_validation
-def test_registered_processors_map_to_existing_filetypes() -> None:
-    ...
+def test_registered_processors_map_to_existing_filetypes() -> None: ...
 ```
 
 These tests are part of the normal test suite. Developer-validation checks are part of the normal

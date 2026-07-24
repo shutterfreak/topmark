@@ -196,6 +196,7 @@ from __future__ import annotations
 
 from topmark.filetypes.model import FileType
 
+
 def provide_filetypes() -> list[FileType]:
     return [
         FileType(
@@ -287,6 +288,7 @@ from topmark.registry.registry import Registry
 
 class MyLangHeaderProcessor(HeaderProcessor):
     """Example processor for MyLang."""
+
     namespace = "my_plugin"
     local_key = "my_lang"
     line_prefix = "#"

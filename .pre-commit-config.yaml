@@ -34,7 +34,7 @@ repos:
           - mdformat-gfm-alerts
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.23.0
+    rev: v0.23.1
     hooks:
       - id: markdownlint-cli2
         # Use args to point to your config or ignore specific folders
@@ -68,7 +68,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
+    rev: v0.16.0
     hooks:
       - id: ruff-format
       - id: ruff-check
