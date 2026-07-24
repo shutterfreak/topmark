@@ -44,6 +44,7 @@ from topmark.config.overrides import apply_config_overrides
 from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
@@ -505,6 +506,17 @@ def _resolve_public_bom_before_shebang_mode(value: str) -> BomBeforeShebangMode:
         ) from exc
 
 
+def _resolve_public_mixed_line_endings_mode(value: str) -> MixedLineEndingsMode:
+    """Return the internal enum for a public mixed-line-ending token."""
+    try:
+        return MixedLineEndingsMode(value)
+    except ValueError as exc:
+        raise InvalidPolicyError(
+            message=f"Invalid value for mixed_line_endings: {value!r}",
+            policy_key="mixed_line_endings",
+        ) from exc
+
+
 def _resolve_public_empty_insert_mode(
     value: str,
 ) -> EmptyInsertMode:
@@ -538,6 +550,11 @@ def _build_public_policy_overrides(
         bom_before_shebang=(
             _resolve_public_bom_before_shebang_mode(policy["bom_before_shebang"])
             if "bom_before_shebang" in policy
+            else None
+        ),
+        mixed_line_endings=(
+            _resolve_public_mixed_line_endings_mode(policy["mixed_line_endings"])
+            if "mixed_line_endings" in policy
             else None
         ),
         allow_header_in_empty_files=(

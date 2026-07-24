@@ -330,6 +330,26 @@ def test_check_rejects_invalid_bom_before_shebang_cli_token(tmp_path: Path) -> N
     assert "Did you mean" not in result.stderr
 
 
+def test_check_rejects_invalid_mixed_line_endings_cli_token(tmp_path: Path) -> None:
+    """Mixed-line-ending choices are strict lowercase canonical tokens."""
+    target: Path = tmp_path / "x.py"
+    target.write_text("print('ok')\n", encoding="utf-8")
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.CHECK,
+            CliOpt.POLICY_MIXED_LINE_ENDINGS,
+            "Preserve",
+            target.name,
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert result.stdout == ""
+    assert_rich_output_contains(result.stderr, expected="Invalid value 'Preserve'")
+    assert_rich_output_contains(result.stderr, expected="Must be one of: reject, preserve")
+
+
 @pytest.mark.parametrize(
     ("option", "value"),
     [

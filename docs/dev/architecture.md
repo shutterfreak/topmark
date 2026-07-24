@@ -444,16 +444,18 @@ files:
 The sniffer and reader both use this same contract. These standard newline styles are counted for
 newline-style detection, mixed-newline diagnostics, and write preservation. When a file uses one
 standard style consistently, TopMark preserves that style in generated headers, planned edits,
-patches, and writes. Files with mixed recognized newline styles are blocked by the existing
-mixed-line-ending guard rather than normalized implicitly.
+patches, and writes. The `mixed_line_endings` policy rejects mixed recognized styles by default or
+permits exact preservation. The bounded sniffer provides early detection; the full reader owns the
+authoritative whole-file histogram. A separate local header-rendering style prevents descriptive
+dominant-newline facts from steering every mutation.
 
 Non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and Paragraph
 Separator (`U+2029`) are not supported physical line-ending styles. They are treated as ordinary
 text content and do not contribute to newline histograms, dominant-newline detection, or
 mixed-newline diagnostics.
 
-This line-ending contract is global for built-in file types and is not currently configurable. The
-separate `bom_before_shebang` runtime policy defaults to strict refusal and may select standalone
+The line-ending policy supports global and per-file-type configuration. The separate
+`bom_before_shebang` runtime policy defaults to strict refusal and may select standalone
 `remove_bom` remediation for `check` and `strip`. XML-specific checks may still treat non-standard
 newline-like characters near XML insertion boundaries as an idempotence risk and skip mutation
 conservatively; that is a local safety guard, not extended newline support.

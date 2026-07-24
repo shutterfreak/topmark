@@ -230,13 +230,24 @@ allow_content_probe = false
 
 ______________________________________________________________________
 
-## Line-ending handling (not a policy)
-
-TopMark's line-ending behavior is fixed for 1.x releases and is not configurable through policy.
+## `mixed_line_endings`
 
 - Only LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are recognized as physical line-ending styles.
-- These styles are preserved across rendering, planning, patching, and writing.
-- Files with mixed recognized newline styles are skipped by the mixed-line-ending guard.
+- `reject` (default) preserves the strict blocked-policy error, halt, skipped outcome, and unchanged
+  bytes.
+- `preserve` permits normal header processing while preserving every existing non-header terminator
+  exactly. It is not normalization, and mixedness alone never creates a change.
+
+Validation is authoritative over the whole decoded file, including content beyond the bounded
+sniffer sample. For generated header content, TopMark instead chooses a local style: the first
+terminated line of an existing header; otherwise the terminated line immediately before the
+processor insertion anchor; otherwise the following line; otherwise the whole-file dominant style.
+Dominant ties use the style encountered first in file order, and files without a terminator fall
+back to LF.
+
+The TOML/API/machine values are `reject` and `preserve`. The `check` and `strip` CLI option is
+`--mixed-line-endings reject|preserve`; `probe` does not expose it. Global and per-file-type policy
+inheritance use the normal policy-resolution rules.
 
 Non-standard Unicode separators such as NEL (`U+0085`), Line Separator (`U+2028`), and Paragraph
 Separator (`U+2029`) are treated as ordinary content characters. They are not considered line
@@ -245,12 +256,6 @@ endings and do not affect newline detection or mixed-newline diagnostics.
 Some file-type-specific checks (notably XML) may conservatively skip mutation when such characters
 appear near insertion boundaries due to idempotence concerns. This is a localized safety behavior,
 not an extension of newline support.
-
-An explicit future `reject`/`preserve` policy is tracked in
-[GitHub issue #299](https://github.com/shutterfreak/topmark/issues/299), a sub-issue of
-[GitHub issue #262](https://github.com/shutterfreak/topmark/issues/262). Until that policy has
-defined and implemented end-to-end preservation semantics, mixed recognized line endings remain
-strictly rejected.
 
 ______________________________________________________________________
 

@@ -49,6 +49,46 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
+def _physical_terminator(line: str) -> str | None:
+    """Return a recognized physical terminator from one preserved image line."""
+    if line.endswith("\r\n"):
+        return "\r\n"
+    if line.endswith("\n"):
+        return "\n"
+    if line.endswith("\r"):
+        return "\r"
+    return None
+
+
+def _select_header_newline(
+    ctx: ProcessingContext,
+    *,
+    header_range: tuple[int, int] | None,
+) -> str:
+    """Select a deterministic local newline for newly rendered header content."""
+    lines: list[str] = list(ctx.iter_image_lines())
+    if header_range is not None:
+        start, end = header_range
+        for line in lines[start : end + 1]:
+            if (terminator := _physical_terminator(line)) is not None:
+                return terminator
+
+    if ctx.header_processor is not None:
+        anchor: int = ctx.header_processor.compute_insertion_anchor(lines)
+        if (
+            0 < anchor <= len(lines)
+            and (terminator := _physical_terminator(lines[anchor - 1])) is not None
+        ):
+            return terminator
+        if (
+            0 <= anchor < len(lines)
+            and (terminator := _physical_terminator(lines[anchor])) is not None
+        ):
+            return terminator
+
+    return ctx.dominant_newline or "\n"
+
+
 class ScannerStep(BaseStep):
     """Detect and parse TopMark headers from the file image.
 
@@ -164,6 +204,10 @@ class ScannerStep(BaseStep):
         if hb.kind is BoundsKind.NONE:
             logger.info("No header found in '%s'", ctx.path)
             ctx.status.header = HeaderStatus.MISSING
+            ctx.header_newline_style = _select_header_newline(
+                ctx,
+                header_range=None,
+            )
             self._halt_if_policy_blocks(ctx)
             return
 
@@ -217,6 +261,10 @@ class ScannerStep(BaseStep):
             lines=header_lines,
             block=header_block,
             mapping=None,
+        )
+        ctx.header_newline_style = _select_header_newline(
+            ctx,
+            header_range=(s_excl, e_excl - 1),
         )
 
         # 2) Parse fields (parse_fields reads from context.header)

@@ -49,6 +49,11 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added the explicit `mixed_line_endings = "reject" | "preserve"` policy with authoritative
+  whole-file validation, deterministic local newline selection for generated headers, strict
+  rejection by default, and exact preservation of existing non-header terminators. The policy is
+  available through global and per-file-type TOML/API overlays, `check`/`strip` CLI overrides, and
+  machine configuration export without introducing newline normalization.
 - Added the explicit `bom_before_shebang = "reject" | "remove_bom"` runtime policy, including global
   and per-file-type TOML/API overlays, `check`/`strip` CLI overrides, machine configuration export,
   standalone dry-run diffs, and exact atomic/in-place BOM removal while preserving strict rejection

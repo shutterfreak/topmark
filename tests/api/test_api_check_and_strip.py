@@ -230,6 +230,45 @@ def test_check_remove_bom_is_standalone_visible_and_idempotent(tmp_path: Path) -
     assert path.read_bytes() == bom_free
 
 
+def test_mixed_line_endings_preserve_insert_repeat_and_strip_exact_bytes(tmp_path: Path) -> None:
+    """Preserve mode changes only header-owned bytes across an exact round trip."""
+    path: Path = tmp_path / "mixed.py"
+    original = b"#!/usr/bin/env python\r\nprint('one')\nprint('two')\r"
+    path.write_bytes(original)
+    policy = PublicPolicy(mixed_line_endings="preserve")
+
+    inserted: api.RunResult = api.check(
+        [path],
+        apply=True,
+        include_file_types=["python"],
+        policy=policy,
+    )
+    assert inserted.had_errors is False
+    assert inserted.written == 1
+    after_insert: bytes = path.read_bytes()
+    assert after_insert.startswith(b"#!/usr/bin/env python\r\n")
+    assert after_insert.endswith(b"print('one')\nprint('two')\r")
+
+    repeated: api.RunResult = api.check(
+        [path],
+        apply=True,
+        include_file_types=["python"],
+        policy=policy,
+    )
+    assert repeated.written == 0
+    assert path.read_bytes() == after_insert
+
+    stripped: api.RunResult = api.strip(
+        [path],
+        apply=True,
+        include_file_types=["python"],
+        policy=policy,
+    )
+    assert stripped.had_errors is False
+    assert stripped.written == 1
+    assert path.read_bytes() == original
+
+
 def test_strip_remove_bom_repairs_file_without_header(tmp_path: Path) -> None:
     """Strip should treat BOM removal as a standalone mutation without a header."""
     path: Path = tmp_path / "no_header.py"

@@ -39,6 +39,8 @@ from tests.helpers.pipeline import run_resolver
 from tests.helpers.pipeline import run_sniffer
 from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.policy import MixedLineEndingsMode
+from topmark.config.policy import make_policy_registry
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.diagnostic.model import DiagnosticLevel
@@ -59,6 +61,7 @@ if TYPE_CHECKING:
 
     from tests.conftest import EffectiveRegistries
     from topmark.config.model import FrozenConfig
+    from topmark.config.model import MutableConfig
     from topmark.diagnostic.model import Diagnostic
     from topmark.filetypes.model import InsertChecker
     from topmark.filetypes.model import PreInsertContextView
@@ -773,6 +776,32 @@ def test_reader_full_image_mixed_newlines_are_terminal(
         cluster=Cluster.BLOCKED_POLICY,
         message="policy: mixed line endings",
     )
+
+
+def test_reader_preserve_mode_loads_authoritative_mixed_image(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """Preserve mode inventories the full image without halting or changing its lines."""
+    file: Path = tmp_path / "mixed.reader"
+    file.write_bytes(b"alpha\r\nbeta\ngamma\r")
+    ctx: ProcessingContext = _resolved_context(file, effective_registries)
+    draft: MutableConfig = ctx.config.thaw()
+    draft.policy.mixed_line_endings = MixedLineEndingsMode.PRESERVE
+    ctx.config = draft.freeze()
+    ctx.policy_registry = make_policy_registry(ctx.config)
+
+    ctx = run_reader(ctx)
+
+    assert ctx.status.content is ContentStatus.OK
+    assert ctx.status.fs is FsStatus.MIXED_LINE_ENDINGS
+    assert materialize_image_lines(ctx) == ["alpha\r\n", "beta\n", "gamma\r"]
+    assert ctx.newline_hist == {"\n": 1, "\r\n": 1, "\r": 1}
+    assert ctx.dominant_newline == "\r\n"
+    assert ctx.dominance_ratio == pytest.approx(1 / 3)
+    assert ctx.mixed_newlines is True
+    assert ctx.halt_state is None
+    assert [item.level for item in ctx.diagnostics.items] == [DiagnosticLevel.WARNING]
 
 
 def test_reader_maps_pre_insert_advisory_result(

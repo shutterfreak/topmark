@@ -102,6 +102,7 @@ from topmark.cli.validators import warn_if_machine_summary_diff_ignored
 from topmark.cli.validators import warn_if_report_scope_ignored
 from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.config.policy import MutablePolicy
 from topmark.core.errors import ConfigValidationError
 from topmark.core.exit_codes import ExitCode
@@ -225,6 +226,7 @@ def check_command(
     render_empty_header_when_no_fields: bool | None,
     allow_reflow: bool | None,
     bom_before_shebang: BomBeforeShebangMode | None,
+    mixed_line_endings: MixedLineEndingsMode | None,
     # policy_options (shared):
     allow_content_probe: bool | None,
     # common_apply_and_write_options
@@ -285,6 +287,7 @@ def check_command(
         allow_reflow: Check-only override controlling whether content reflow is
             allowed during header insertion or update.
         bom_before_shebang: Check/strip remediation override (`reject` or `remove_bom`).
+        mixed_line_endings: Mixed-newline handling override (`reject` or `preserve`).
         allow_content_probe: Shared policy override controlling whether
             file-type detection may consult file contents when needed.
         apply_changes: Write changes to files; otherwise perform a dry run.
@@ -378,6 +381,7 @@ def check_command(
         render_empty_header_when_no_fields=render_empty_header_when_no_fields,
         allow_reflow=allow_reflow,
         bom_before_shebang=bom_before_shebang,
+        mixed_line_endings=mixed_line_endings,
         allow_content_probe=allow_content_probe,
     )
 

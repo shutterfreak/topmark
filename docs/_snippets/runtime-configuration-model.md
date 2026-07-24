@@ -51,6 +51,7 @@ This layered runtime model keeps behavior deterministic while preserving stable
 configuration-discovery, configuration, policy, filesystem-identity, diagnostics, and
 machine-readable compatibility contracts.
 
-Enum-valued runtime policies, including `bom_before_shebang = "reject"|"remove_bom"`, use the same
-field-wise layering and per-file-type inheritance as other policy fields. Machine configuration
-snapshots serialize canonical underscore values.
+Enum-valued runtime policies, including `bom_before_shebang = "reject"|"remove_bom"` and
+`mixed_line_endings = "reject"|"preserve"`, use the same field-wise layering and per-file-type
+inheritance as other policy fields. Machine configuration snapshots serialize canonical underscore
+values.

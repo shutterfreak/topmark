@@ -52,6 +52,7 @@ from topmark.config.paths import pattern_source_from_cwd
 from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.types import PatternGroup
 from topmark.core.logging import get_logger
@@ -178,6 +179,13 @@ def mutable_config_from_layered_toml_table(
             tbl,
             Toml.KEY_POLICY_BOM_BEFORE_SHEBANG,
             enum_cls=BomBeforeShebangMode,
+            where=where,
+            diagnostics=merged_diagnostics,
+        )
+        _ = get_enum_value_checked(
+            tbl,
+            Toml.KEY_POLICY_MIXED_LINE_ENDINGS,
+            enum_cls=MixedLineEndingsMode,
             where=where,
             diagnostics=merged_diagnostics,
         )

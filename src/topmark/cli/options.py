@@ -50,6 +50,7 @@ from topmark.cli.keys import CliShortOpt
 from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
@@ -1254,7 +1255,7 @@ def remediation_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     Returns:
         Decorated Click command function.
     """
-    return option_with_underscore_traps(
+    f = option_with_underscore_traps(
         CliOpt.POLICY_BOM_BEFORE_SHEBANG,
         ArgKey.POLICY_BOM_BEFORE_SHEBANG,
         type=EnumChoiceParam(
@@ -1272,6 +1273,23 @@ def remediation_policy_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
             ),
         ),
     )(f)
+    f = option_with_underscore_traps(
+        CliOpt.POLICY_MIXED_LINE_ENDINGS,
+        ArgKey.POLICY_MIXED_LINE_ENDINGS,
+        type=EnumChoiceParam(
+            MixedLineEndingsMode,
+            case_sensitive=True,
+            kebab_case=True,
+        ),
+        default=None,
+        help=enum_value_help_text(
+            MixedLineEndingsMode,
+            prefix="Handle files containing mixed physical line endings.",
+            suffix="'preserve' keeps every existing non-header terminator unchanged.",
+        ),
+    )(f)
+
+    return f
 
 
 def version_format_options(f: Callable[_P, _R]) -> Callable[_P, _R]:

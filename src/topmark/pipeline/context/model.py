@@ -147,6 +147,8 @@ class ProcessingContext:
         mixed_newlines: True if multiple newline styles were detected, False if a single style was
             found, or None if not evaluated yet.
         newline_style: Normalized newline style used when writing output; defaults to ``"\\n"``.
+        header_newline_style: Local physical terminator selected for newly rendered header content,
+            or None until the reader/scanner establishes it.
         ends_with_newline: True if the file ends with a newline sequence, False if it does not, or
             None if unknown.
         pre_insert_capability: Advisory from the sniffer about pre-insert checks (for example,
@@ -208,6 +210,7 @@ class ProcessingContext:
     mixed_newlines: bool | None = None
 
     newline_style: str = "\n"  # Newline style (default = "\n")
+    header_newline_style: str | None = None  # Local style selected for generated header content
     ends_with_newline: bool | None = None  # True if file ends with a newline sequence
 
     # Advisory from sniffer about pre-insert checks (e.g. spacers, empty body)

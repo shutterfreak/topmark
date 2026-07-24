@@ -143,7 +143,7 @@ def _canonicalize_logically_empty_body_after_insert(
         lines = lines[:tail_start]
 
     # Ensure the final line ends with exactly one newline.
-    nl: str = ctx.newline_style or "\n"
+    nl: str = ctx.header_newline_style or ctx.newline_style or "\n"
     # Strip trailing fully-blank lines beyond the header terminator.
     while len(lines) >= 2 and lines[-1].strip() == "":
         lines.pop()
@@ -559,7 +559,7 @@ class PlannerStep(BaseStep):
                             original_text=original_text,
                             insert_offset=char_offset,
                             rendered_header_text=header_text,
-                            newline_style=ctx.newline_style or "\n",
+                            newline_style=ctx.header_newline_style or ctx.newline_style or "\n",
                         )
                     except (ValueError, TypeError, AttributeError) as e:
                         logger.warning(
@@ -657,7 +657,7 @@ class PlannerStep(BaseStep):
                 original_lines=original_lines,
                 insert_index=insert_index,
                 rendered_header_lines=rendered_expected_header_lines,
-                newline_style=ctx.newline_style or "\n",
+                newline_style=ctx.header_newline_style or ctx.newline_style or "\n",
             )
         except (ValueError, TypeError, AttributeError) as e:
             logger.warning("prepare_header_for_insertion failed for %s: %s", ctx.path, e)

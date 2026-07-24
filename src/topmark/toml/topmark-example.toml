@@ -221,6 +221,12 @@ header_mutation_mode = "all"
 #   CLI equivalent values for check and strip are `reject` and `remove-bom`.
 bom_before_shebang = "reject"
 
+# mixed_line_endings:
+#   "reject" refuses files containing more than one recognized physical
+#   terminator (default). "preserve" permits header processing while retaining
+#   every existing non-header terminator exactly; it never normalizes the body.
+mixed_line_endings = "reject"
+
 # allow_header_in_empty_files:
 #   Permit inserting a header into an otherwise empty file (e.g.,
 # `__init__.py`).
