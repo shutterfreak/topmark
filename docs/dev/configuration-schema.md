@@ -249,6 +249,13 @@ topmark:
       enum: ["reject", "remove_bom"]
       description: Reject a UTF-8 BOM before a shebang or plan standalone BOM removal.
 
+    mixed_line_endings:
+      type: str
+      default: "reject"
+      enum: ["reject", "preserve"]
+      description: Reject files with mixed physical line endings or permit header processing while
+        preserving every existing non-header terminator.
+
     allow_header_in_empty_files:
       type: bool
       default: false
@@ -300,19 +307,30 @@ topmark:
         optional: true
         enum: ["reject", "remove_bom"]
         description: Per-file-type BOM-before-shebang remediation override.
+
+      mixed_line_endings:
+        type: str
+        optional: true
+        enum: ["reject", "preserve"]
+        description: Per-file-type mixed-line-ending handling override.
+
       allow_header_in_empty_files:
         type: bool
         optional: true
+
       empty_insert_mode:
         type: str
         optional: true
         enum: ["bytes_empty", "logical_empty", "whitespace_empty"]
+
       render_empty_header_when_no_fields:
         type: bool
         optional: true
+
       allow_reflow:
         type: bool
         optional: true
+
       allow_content_probe:
         type: bool
         optional: true

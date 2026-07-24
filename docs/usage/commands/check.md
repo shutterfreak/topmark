@@ -271,9 +271,22 @@ These options influence rendering behavior and idempotence.
 
 ### Shared policy
 
-- `--allow-content-probe / --no-allow-content-probe`
+- `--allow-content-probe / --no-allow-content-probe` controls whether file-type detection may
+  inspect file contents when needed.
+- `--bom-before-shebang reject|remove-bom` controls a UTF-8 BOM immediately before a shebang.
+  `reject` is the default and blocks processing without changing bytes; `remove-bom` plans
+  standalone BOM removal even when the header is already compliant.
+- `--mixed-line-endings reject|preserve` controls the authoritative whole-file mixed-newline gate.
+  `reject` is the default and preserves the strict skipped outcome; `preserve` emits a nonterminal
+  warning and permits normal header processing while retaining every existing non-header terminator
+  exactly.
 
-Controls whether file-type detection may inspect file contents when needed.
+`remove-bom` is a remediation and can itself produce a change. `preserve` is permission to process
+mixed content, not a normalization or standalone mutation; mixedness alone remains unchanged.
+
+Finite-choice CLI values require exact lowercase kebab-case spelling. The corresponding TOML, API,
+and machine values use canonical lowercase underscore spelling where applicable. These shared
+options also apply to [`strip`](strip.md), but not to [`probe`](probe.md).
 
 ______________________________________________________________________
 
@@ -287,8 +300,17 @@ ______________________________________________________________________
     never break the declaration.
   - Markdown processor: uses HTML comments for the header; fenced code blocks are ignored for
     detection.
-- Newline/BOM preservation: preserved across all paths (insert/replace). Reader normalizes in
-  memory; updater reattaches BOM and keeps line endings.
+- Newline selection and preservation:
+  - The reader inventories recognized LF, CRLF, and CR terminators across the complete file and
+    preserves each original image line with its physical terminator.
+  - Under `mixed_line_endings = "preserve"`, insertion and replacement retain every existing
+    non-header terminator. Generated header lines use the local mutation neighborhood according to
+    the precedence documented in the [policy guide](../policies.md); the body is never normalized.
+  - Non-standard Unicode separators remain ordinary content and do not participate in newline
+    detection.
+- BOM handling: an ordinary leading UTF-8 BOM is detached from the in-memory image and reattached
+  when output is composed. A BOM immediately before a supported shebang is rejected by default;
+  `--bom-before-shebang remove-bom` intentionally omits it so `#!` begins at byte zero.
 - Header metadata path fields: generated from the selected processing target. If a file is reached
   through a symlink, `file_relpath`, `file_abspath`, `relpath`, and `abspath` describe the resolved
   target TopMark reads and writes rather than the symlink spelling.

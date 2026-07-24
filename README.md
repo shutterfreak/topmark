@@ -355,6 +355,7 @@ fields = ["file", "file_relpath", "project", "license"]
 
 [policy]
 bom_before_shebang = "reject"
+mixed_line_endings = "reject"
 ```
 
 Generate a documented starter configuration:

@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from topmark.config.policy import MixedLineEndingsMode
+from topmark.core.constants import STANDARD_NEWLINE_SET
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import should_remove_bom_before_shebang
 from topmark.pipeline.context.policy import source_lines_with_remediated_bom
@@ -75,7 +77,7 @@ def _reapply_bom_after_strip(
         # Preserve whether the original image ended with a newline.
         # This matters for logically-empty placeholders like "\ufeff\n".
         if ctx.ends_with_newline:
-            return ["\ufeff" + (ctx.newline_style or "\n")]
+            return ["\ufeff" + (ctx.header_newline_style or ctx.newline_style or "\n")]
         return ["\ufeff"]
 
     # The resulting file is non-empty and the original file had a BOM.
@@ -102,7 +104,7 @@ def _restore_logical_empty_placeholder_after_strip(
     if lines:
         return lines
     if ctx.ends_with_newline is True:
-        return [ctx.newline_style or "\n"]
+        return [ctx.header_newline_style or ctx.newline_style or "\n"]
     return lines
 
 
@@ -242,7 +244,7 @@ class StripperStep(BaseStep):
         strip_result: StripHeaderResult = ctx.header_processor.strip_header_block(
             lines=original_lines,
             span=span,
-            newline_style=ctx.newline_style,
+            newline_style=ctx.header_newline_style or ctx.newline_style,
             ends_with_newline=ctx.ends_with_newline,
         )
         new_lines: list[str] = strip_result.lines
@@ -301,9 +303,25 @@ class StripperStep(BaseStep):
             # and DO NOT drop whitespace-only lines like " \n" - those belong to the user's body.
             if 0 <= start < len(new_lines):
                 nxt: str = new_lines[start]
-                if nxt == ctx.newline_style:
+                if nxt in STANDARD_NEWLINE_SET:
                     logger.debug("stripper: dropped exact blank separator after removed header")
                     new_lines.pop(start)
+
+        # Header insertion after a processor-owned preamble may add one exact blank
+        # separator before the header. Remove that owned separator on strip.
+        if (
+            ctx.mixed_newlines
+            and ctx.get_effective_policy().mixed_line_endings is MixedLineEndingsMode.PRESERVE
+        ):
+            start, _end = removed
+            prefix_before_separator: list[str] = original_lines[: max(0, start - 1)]
+            anchor: int = ctx.header_processor.compute_insertion_anchor(prefix_before_separator)
+            if (
+                start == anchor + 1
+                and 0 <= anchor < len(new_lines)
+                and new_lines[anchor] in STANDARD_NEWLINE_SET
+            ):
+                new_lines.pop(anchor)
 
         # If the body after header removal consists only of *exact* blank lines that
         # match the file's newline style (e.g., "\n" or "\r\n"), collapse them.
@@ -313,12 +331,12 @@ class StripperStep(BaseStep):
         # to truly empty.
         #
         # Do NOT collapse whitespace-only lines like " \n" - those belong to the user's body.
-        if new_lines and all(ln == ctx.newline_style for ln in new_lines):
+        if new_lines and all(ln in STANDARD_NEWLINE_SET for ln in new_lines):
             if ctx.ends_with_newline is True:
                 logger.debug(
                     "stripper: body is only exact blank lines; preserving one blank line for FNL."
                 )
-                new_lines = [ctx.newline_style]
+                new_lines = [ctx.header_newline_style or ctx.newline_style]
             else:
                 logger.debug("stripper: body is only exact blank lines; collapsing to empty.")
                 new_lines = []
@@ -364,9 +382,9 @@ class StripperStep(BaseStep):
                     updated_lines[0].startswith("\ufeff")
                     and len(updated_lines) > 1
                     # Only collapse when the first line is truly BOM-only (possibly with a newline)
-                    and (first_no_bom == "" or first_no_bom == ctx.newline_style)
+                    and (first_no_bom == "" or first_no_bom in STANDARD_NEWLINE_SET)
                     # and everything after is an exact blank line
-                    and all(s == ctx.newline_style for s in updated_lines[1:])
+                    and all(s in STANDARD_NEWLINE_SET for s in updated_lines[1:])
                     # TODO - dedicated strip WS policy:
                     # and all(is_pure_spacer(s, policy) for s in updated_lines[1:]
                 ):
@@ -374,15 +392,15 @@ class StripperStep(BaseStep):
                     # and everything after is blank: collapse to BOM-only.
                     # Preserve original final-newline semantics.
                     if ctx.ends_with_newline is True:
-                        updated_lines = ["\ufeff" + ctx.newline_style]
+                        updated_lines = ["\ufeff" + (ctx.header_newline_style or ctx.newline_style)]
                     else:
                         updated_lines = ["\ufeff"]
                 # elif all(is_pure_spacer(s, policy) for s in updated_lines):
                 # (TODO - dedicated strip WS policy - see commented-out previous line)
-                elif all(s == ctx.newline_style for s in updated_lines):
+                elif all(s in STANDARD_NEWLINE_SET for s in updated_lines):
                     # Preserve original final-newline semantics.
-                    if ctx.ends_with_newline is True:  # noqa: SIM108
-                        updated_lines = [ctx.newline_style]
+                    if ctx.ends_with_newline is True:
+                        updated_lines = [ctx.header_newline_style or ctx.newline_style]
                     else:
                         # Case 4: If *all* lines are blank-like and no BOM, collapse to empty.
                         updated_lines = []

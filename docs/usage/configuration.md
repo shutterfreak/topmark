@@ -162,10 +162,12 @@ identities.
 [policy]
 header_mutation_mode = "add_only"
 bom_before_shebang = "reject"
+mixed_line_endings = "preserve"
 
 [policy_by_type."topmark:python"]
 header_mutation_mode = "update_only"
 bom_before_shebang = "remove_bom"
+mixed_line_endings = "reject"
 
 [policy_by_type.markdown]
 allow_content_probe = false
@@ -173,9 +175,11 @@ allow_content_probe = false
 
 In this example:
 
-- the global default policy uses `add_only`
+- the global default header mutation policy uses `add_only` and mixed line endings are preserved
+  when present
 - Python files override this with `update_only`
 - Python files also remediate a BOM immediately before a shebang
+- Python files also reject files with mixed line endings
 - Markdown files disable runtime content probing
 
 ______________________________________________________________________

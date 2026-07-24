@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.core.logging import get_logger
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import FsStatus
@@ -210,21 +211,20 @@ def allow_content_reflow(ctx: SupportsPolicyEvaluation) -> bool:
 def allow_mixed_line_endings(ctx: SupportsPolicyEvaluation) -> bool:
     """Return whether the filesystem state may pass the mixed-newline gate.
 
-    Healthy and empty files may proceed. Mixed physical line endings are
-    strictly refused because TopMark has no configurable reader-tolerance
-    policy; all other filesystem problem states are refused as well.
-
-    The named gate is retained so a future explicit handling mode can decide
-    `FsStatus.MIXED_LINE_ENDINGS` here without moving reader-policy ownership.
-    It does not expose such a mode today.
+    Healthy and empty files may proceed. Mixed physical line endings may also
+    proceed only when the effective explicit mode is `preserve`; all other
+    filesystem problem states are refused.
 
     Args:
         ctx: Processing context containing filesystem status and configuration.
 
     Returns:
-        `True` for `FsStatus.OK` and `FsStatus.EMPTY`; `False` otherwise.
+        `True` for healthy/empty files and preserved mixed files; `False` otherwise.
     """
-    return ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY}
+    return ctx.status.fs in {FsStatus.OK, FsStatus.EMPTY} or (
+        ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS
+        and ctx.get_effective_policy().mixed_line_endings is MixedLineEndingsMode.PRESERVE
+    )
 
 
 def bom_before_shebang_mode(ctx: SupportsPolicyEvaluation) -> BomBeforeShebangMode:
@@ -474,7 +474,13 @@ def can_change(ctx: SupportsPolicyEvaluation) -> bool:
     if should_remove_bom_before_shebang(ctx):
         return True
 
-    if ctx.status.fs == FsStatus.OK and not is_empty_for_insert(ctx):
+    if (
+        ctx.status.fs == FsStatus.OK
+        or (
+            ctx.status.fs == FsStatus.MIXED_LINE_ENDINGS
+            and ctx.get_effective_policy().mixed_line_endings is MixedLineEndingsMode.PRESERVE
+        )
+    ) and not is_empty_for_insert(ctx):
         return True
 
     # --- 3) Empty / empty-like files --------------------------------------------

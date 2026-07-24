@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.policy import BomBeforeShebangMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.core.constants import STANDARD_NEWLINES
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import FileType
@@ -317,7 +318,15 @@ class ReaderStep(BaseStep):
             if total > 0:
                 dom_nl: str
                 dom_cnt: int
-                dom_nl, dom_cnt = max(hist.items(), key=lambda kv: kv[1])
+                encountered: list[str] = []
+                for line in lines:
+                    for candidate in STANDARD_NEWLINES:
+                        if line.endswith(candidate):
+                            if candidate not in encountered:
+                                encountered.append(candidate)
+                            break
+                dom_nl = max(encountered, key=lambda candidate: hist[candidate])
+                dom_cnt = hist[dom_nl]
                 ctx.dominant_newline = dom_nl if dom_cnt > 0 else None
                 ctx.dominance_ratio = (dom_cnt / total) if dom_cnt else 0.0
             else:
@@ -340,6 +349,7 @@ class ReaderStep(BaseStep):
             total = sum(hist.values())
             if total > 0 and ctx.dominant_newline:
                 ctx.newline_style = ctx.dominant_newline
+            ctx.header_newline_style = ctx.newline_style
 
             # # Policy option: Update the newline_style to the dominant newline if any
             # if ctx.dominant_newline:
@@ -349,7 +359,10 @@ class ReaderStep(BaseStep):
             #   (akin to dos2unix, unix2dos...)
 
             # Exit if mixed line endings found in file
-            if ctx.mixed_newlines:
+            if (
+                ctx.mixed_newlines
+                and ctx.get_effective_policy().mixed_line_endings is MixedLineEndingsMode.REJECT
+            ):
                 ctx.status.content = ContentStatus.SKIPPED_MIXED_LINE_ENDINGS
                 lf: int = ctx.newline_hist.get("\n", 0)
                 crlf: int = ctx.newline_hist.get("\r\n", 0)
@@ -361,6 +374,15 @@ class ReaderStep(BaseStep):
                 ctx.diagnostics.add_error(reason)
                 ctx.request_halt(reason=reason, at_step=self)
                 return
+            if ctx.mixed_newlines:
+                ctx.status.fs = FsStatus.MIXED_LINE_ENDINGS
+                lf = ctx.newline_hist.get("\n", 0)
+                crlf = ctx.newline_hist.get("\r\n", 0)
+                cr = ctx.newline_hist.get("\r", 0)
+                ctx.diagnostics.add_warning(
+                    f"Mixed line endings detected (LF={lf}, CRLF={crlf}, CR={cr}); "
+                    "policy preserve keeps existing physical terminators unchanged."
+                )
 
             ctx.status.content = ContentStatus.OK
             logger.debug(

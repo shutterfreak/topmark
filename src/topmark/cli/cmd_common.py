@@ -329,6 +329,7 @@ def build_cli_policy_overrides(state: TopmarkCliState) -> PolicyOverrides:
     return PolicyOverrides(
         header_mutation_mode=policy.header_mutation_mode,
         bom_before_shebang=policy.bom_before_shebang,
+        mixed_line_endings=policy.mixed_line_endings,
         allow_header_in_empty_files=policy.allow_header_in_empty_files,
         empty_insert_mode=policy.empty_insert_mode,
         render_empty_header_when_no_fields=policy.render_empty_header_when_no_fields,

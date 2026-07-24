@@ -51,6 +51,7 @@ from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import FrozenPolicy
 from topmark.config.policy import HeaderMutationMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.policy import PolicyRegistry
 from topmark.config.policy import effective_frozen_policy
@@ -189,6 +190,7 @@ def test_mutable_config_policy_merge_global_and_per_type() -> None:
     override.policy = MutablePolicy(
         header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
         bom_before_shebang=BomBeforeShebangMode.REMOVE_BOM,
+        mixed_line_endings=MixedLineEndingsMode.PRESERVE,
     )
     override.policy_by_type = {
         "python": MutablePolicy(
@@ -717,6 +719,7 @@ def test_frozen_policy_to_dict_serializes_all_toml_policy_keys() -> None:
     policy = FrozenPolicy(
         header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
         bom_before_shebang=BomBeforeShebangMode.REMOVE_BOM,
+        mixed_line_endings=MixedLineEndingsMode.PRESERVE,
         allow_header_in_empty_files=True,
         empty_insert_mode=EmptyInsertMode.WHITESPACE_EMPTY,
         render_empty_header_when_no_fields=True,
@@ -727,6 +730,7 @@ def test_frozen_policy_to_dict_serializes_all_toml_policy_keys() -> None:
     expected: dict[str, object] = {
         Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.UPDATE_ONLY.value,
         Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: BomBeforeShebangMode.REMOVE_BOM.value,
+        Toml.KEY_POLICY_MIXED_LINE_ENDINGS: MixedLineEndingsMode.PRESERVE.value,
         Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES: True,
         Toml.KEY_POLICY_EMPTIES_INSERT_MODE: EmptyInsertMode.WHITESPACE_EMPTY.value,
         Toml.KEY_POLICY_ALLOW_EMPTY_HEADER: True,

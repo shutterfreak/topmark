@@ -102,6 +102,18 @@ class BomBeforeShebangMode(str, Enum):
     REMOVE_BOM = "remove_bom"
 
 
+class MixedLineEndingsMode(str, Enum):
+    """How TopMark handles files containing multiple physical newline styles.
+
+    Attributes:
+        REJECT: Refuse processing and leave the file unchanged (default).
+        PRESERVE: Preserve mixed line endings outside the TopMark header range.
+    """
+
+    REJECT = "reject"
+    PRESERVE = "preserve"
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class FrozenPolicy:
     """Immutable, runtime policy used by processing steps.
@@ -112,6 +124,8 @@ class FrozenPolicy:
             headers (`UPDATE_ONLY`).
         bom_before_shebang: Reject a UTF-8 BOM before a shebang by default, or remove it as a
             standalone remediation.
+        mixed_line_endings: Reject mixed physical terminators by default, or preserve existing
+            non-header terminators while permitting header processing.
         allow_header_in_empty_files: Allow inserting headers into files that are
             classified as empty under `empty_insert_mode`.
         empty_insert_mode: Defines which files are considered "empty" for
@@ -127,6 +141,7 @@ class FrozenPolicy:
 
     header_mutation_mode: HeaderMutationMode = HeaderMutationMode.ALL
     bom_before_shebang: BomBeforeShebangMode = BomBeforeShebangMode.REJECT
+    mixed_line_endings: MixedLineEndingsMode = MixedLineEndingsMode.REJECT
     allow_header_in_empty_files: bool = False
     empty_insert_mode: EmptyInsertMode = EmptyInsertMode.LOGICAL_EMPTY
     render_empty_header_when_no_fields: bool = False
@@ -143,6 +158,7 @@ class FrozenPolicy:
         return MutablePolicy(
             header_mutation_mode=self.header_mutation_mode,
             bom_before_shebang=self.bom_before_shebang,
+            mixed_line_endings=self.mixed_line_endings,
             allow_header_in_empty_files=self.allow_header_in_empty_files,
             empty_insert_mode=self.empty_insert_mode,
             render_empty_header_when_no_fields=self.render_empty_header_when_no_fields,
@@ -175,6 +191,8 @@ class MutablePolicy:
             `None` means "inherit".
         bom_before_shebang: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
             `None` means "inherit".
+        mixed_line_endings: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
+            `None` means "inherit".
         allow_header_in_empty_files: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
             `None` means "inherit".
         empty_insert_mode: See [`FrozenPolicy`][topmark.config.policy.FrozenPolicy].
@@ -190,6 +208,7 @@ class MutablePolicy:
 
     header_mutation_mode: HeaderMutationMode | None = None
     bom_before_shebang: BomBeforeShebangMode | None = None
+    mixed_line_endings: MixedLineEndingsMode | None = None
     allow_header_in_empty_files: bool | None = None
     empty_insert_mode: EmptyInsertMode | None = None
     render_empty_header_when_no_fields: bool | None = None
@@ -215,6 +234,10 @@ class MutablePolicy:
             bom_before_shebang=overlay(
                 override=other.bom_before_shebang,
                 current=self.bom_before_shebang,
+            ),
+            mixed_line_endings=overlay(
+                override=other.mixed_line_endings,
+                current=self.mixed_line_endings,
             ),
             allow_header_in_empty_files=overlay(
                 override=other.allow_header_in_empty_files,
@@ -257,6 +280,11 @@ class MutablePolicy:
                 base.bom_before_shebang
                 if self.bom_before_shebang is None
                 else self.bom_before_shebang
+            ),
+            mixed_line_endings=(
+                base.mixed_line_endings
+                if self.mixed_line_endings is None
+                else self.mixed_line_endings
             ),
             allow_header_in_empty_files=(
                 base.allow_header_in_empty_files
@@ -317,6 +345,11 @@ class MutablePolicy:
                 key=Toml.KEY_POLICY_BOM_BEFORE_SHEBANG,
                 enum_cls=BomBeforeShebangMode,
             ),
+            mixed_line_endings=opt_enum(
+                tbl,
+                key=Toml.KEY_POLICY_MIXED_LINE_ENDINGS,
+                enum_cls=MixedLineEndingsMode,
+            ),
             allow_header_in_empty_files=opt_bool(
                 tbl,
                 key=Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES,
@@ -354,11 +387,12 @@ def policy_to_dict(policy: FrozenPolicy) -> dict[str, object]:
     out: dict[str, object] = {}
     out[Toml.KEY_POLICY_HEADER_MUTATION_MODE] = policy.header_mutation_mode.value  # StrEnum
     out[Toml.KEY_POLICY_BOM_BEFORE_SHEBANG] = policy.bom_before_shebang.value  # StrEnum
-    out[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] = policy.allow_header_in_empty_files
+    out[Toml.KEY_POLICY_MIXED_LINE_ENDINGS] = policy.mixed_line_endings.value  # StrEnum
+    out[Toml.KEY_POLICY_ALLOW_HEADER_IN_EMPTIES] = policy.allow_header_in_empty_files  # bool
     out[Toml.KEY_POLICY_EMPTIES_INSERT_MODE] = policy.empty_insert_mode.value  # StrEnum
-    out[Toml.KEY_POLICY_ALLOW_EMPTY_HEADER] = policy.render_empty_header_when_no_fields
-    out[Toml.KEY_POLICY_ALLOW_REFLOW] = policy.allow_reflow
-    out[Toml.KEY_POLICY_ALLOW_CONTENT_PROBE] = policy.allow_content_probe
+    out[Toml.KEY_POLICY_ALLOW_EMPTY_HEADER] = policy.render_empty_header_when_no_fields  # bool
+    out[Toml.KEY_POLICY_ALLOW_REFLOW] = policy.allow_reflow  # bool
+    out[Toml.KEY_POLICY_ALLOW_CONTENT_PROBE] = policy.allow_content_probe  # bool
     return out
 
 

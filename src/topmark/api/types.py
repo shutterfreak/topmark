@@ -491,6 +491,12 @@ PublicBomBeforeShebangModeLiteral: TypeAlias = Literal[
 ]
 """Public tokens for handling a UTF-8 BOM immediately before a shebang."""
 
+PublicMixedLineEndingsModeLiteral: TypeAlias = Literal[
+    "reject",
+    "preserve",
+]
+"""Public tokens for handling mixed recognized physical line endings."""
+
 PublicReportScopeLiteral: TypeAlias = Literal[
     "actionable",
     "noncompliant",
@@ -648,6 +654,8 @@ class PublicPolicy(TypedDict, total=False):
             (`"update_only"`).
         bom_before_shebang: Reject a UTF-8 BOM before a shebang (`"reject"`, default) or remove
             it as a standalone remediation (`"remove_bom"`).
+        mixed_line_endings: Reject mixed physical line endings (`"reject"`, default) or preserve
+            every existing non-header terminator (`"preserve"`).
         allow_header_in_empty_files: Allow inserting headers into files that are
             classified as empty under the effective `empty_insert_mode`.
         empty_insert_mode: Public token controlling which files are considered
@@ -667,6 +675,7 @@ class PublicPolicy(TypedDict, total=False):
 
     header_mutation_mode: PublicHeaderMutationModeLiteral
     bom_before_shebang: PublicBomBeforeShebangModeLiteral
+    mixed_line_endings: PublicMixedLineEndingsModeLiteral
     allow_header_in_empty_files: bool
     empty_insert_mode: PublicEmptyInsertModeLiteral
     render_empty_header_when_no_fields: bool

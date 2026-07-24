@@ -89,6 +89,19 @@ def test_api_invalid_bom_before_shebang_mode_raises_invalid_policy_error(
         )
 
 
+def test_api_invalid_mixed_line_endings_mode_raises_invalid_policy_error(
+    repo_py_with_and_without_header: Path,
+) -> None:
+    """Invalid public mixed-line-ending values must be rejected."""
+    with pytest.raises(InvalidPolicyError):
+        _ = api.check(
+            [repo_py_with_and_without_header / "src"],
+            apply=False,
+            include_file_types=["python"],
+            policy=unsafe_public_policy({"mixed_line_endings": "normalize"}),
+        )
+
+
 @pytest.mark.parametrize(
     ("global_mode", "type_mode", "expect_removed"),
     [

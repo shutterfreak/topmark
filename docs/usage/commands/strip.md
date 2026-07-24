@@ -202,14 +202,21 @@ configuration and API overlays.
 
 ### Shared policy
 
-- `--allow-content-probe / --no-allow-content-probe`
-- `--bom-before-shebang reject|remove-bom`
+- `--allow-content-probe / --no-allow-content-probe` controls whether file-type detection may
+  inspect file contents when needed.
+- `--bom-before-shebang reject|remove-bom` controls a UTF-8 BOM immediately before a shebang.
+  `reject` is the default and blocks processing without changing bytes; `remove-bom` plans
+  standalone BOM removal even when no TopMark header is present.
+- `--mixed-line-endings reject|preserve` controls the authoritative whole-file mixed-newline gate.
+  `reject` is the default and preserves the strict skipped outcome; `preserve` emits a nonterminal
+  warning and permits header removal while retaining every surviving body terminator exactly.
 
-Controls whether file-type detection may inspect file contents when needed.
+`remove-bom` is a remediation and can itself produce a change. `preserve` is permission to process
+mixed content, not a normalization or standalone mutation; mixedness alone remains unchanged.
 
-`--bom-before-shebang remove-bom` is a standalone remediation. It removes the leading BOM before a
-shebang even when no TopMark header is present; dry-run and `--diff` preview that byte change, and
-`--apply` commits it. The finite-choice values require exact lowercase spelling.
+Finite-choice CLI values require exact lowercase kebab-case spelling. The corresponding TOML, API,
+and machine values use canonical lowercase underscore spelling where applicable. These shared
+options also apply to [`check`](check.md), but not to [`probe`](probe.md).
 
 Header insertion and update policies (such as mutation mode, empty-file behavior, or
 generated-header formatting) do not apply to `strip` and are rejected when provided.
@@ -220,9 +227,17 @@ ______________________________________________________________________
 
 - Removal policy: if a valid TopMark header is detected (policy-aware), remove the whole block. A
   permissive fallback accepts legacy single-line-wrapped markers (e.g., HTML/XML `<!-- ... -->`).
-- Newline/BOM preservation: preserved across normal removal. Reader normalizes in-memory; updater
-  re-attaches ordinary BOMs and keeps line endings. The explicit `remove_bom` mode is the sole
-  exception for a BOM immediately before a shebang.
+- Newline selection and preservation:
+  - The reader inventories recognized LF, CRLF, and CR terminators across the complete file and
+    preserves each original image line with its physical terminator.
+  - Under `mixed_line_endings = "preserve"`, stripping removes only header-owned bytes and
+    separators; surviving body lines retain their text, order, individual terminators, and
+    final-newline state.
+  - Non-standard Unicode separators remain ordinary content and do not participate in newline
+    detection.
+- BOM handling: an ordinary leading UTF-8 BOM is detached from the in-memory image and reattached
+  when output is composed. A BOM immediately before a supported shebang is rejected by default;
+  `--bom-before-shebang remove-bom` intentionally removes it even when no header is present.
 - XML/HTML processors: keep the XML declaration as the first logical line; maintains a single
   intentional blank as needed.
 - Markdown processor: ignores code fences for detection; header-like text inside fences is not

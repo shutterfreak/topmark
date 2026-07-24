@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from topmark.config.policy import BomBeforeShebangMode
+from topmark.config.policy import MixedLineEndingsMode
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.context.policy import allow_insert_into_empty_like
 from topmark.pipeline.context.policy import bom_before_shebang_mode
@@ -315,6 +316,8 @@ def _sniff_stream(
         _commit_newline_stats(ctx, counts)
 
         if ctx.mixed_newlines:
+            if ctx.get_effective_policy().mixed_line_endings is MixedLineEndingsMode.PRESERVE:
+                return FsStatus.MIXED_LINE_ENDINGS
             lf: int = ctx.newline_hist.get("\n", 0)
             crlf: int = ctx.newline_hist.get("\r\n", 0)
             cr: int = ctx.newline_hist.get("\r", 0)
@@ -528,12 +531,13 @@ class SnifferStep(BaseStep):
                     )
             case FsStatus.MIXED_LINE_ENDINGS:
                 # Implies ctx.status.resolve == ResolveStatus.RESOLVED
-                ctx.hint(
-                    axis=Axis.FS,
-                    code=KnownCode.CONTENT_SKIPPED_MIXED,
-                    cluster=Cluster.BLOCKED_POLICY,
-                    message="mixed line endings",
-                )
+                if ctx.get_effective_policy().mixed_line_endings is MixedLineEndingsMode.REJECT:
+                    ctx.hint(
+                        axis=Axis.FS,
+                        code=KnownCode.CONTENT_SKIPPED_MIXED,
+                        cluster=Cluster.BLOCKED_POLICY,
+                        message="mixed line endings",
+                    )
 
             # Stop processing:
             case FsStatus.NOT_FOUND:

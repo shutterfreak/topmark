@@ -141,7 +141,7 @@ class RendererStep(BaseStep):
                 rendered_lines: list[str] = ctx.header_processor.render_header_lines(
                     header_values={},  # no fields
                     config=ctx.config,
-                    newline_style=ctx.newline_style,
+                    newline_style=ctx.header_newline_style or ctx.newline_style,
                     header_indent_override=None,
                 )
                 ctx.views.render = RenderView(lines=rendered_lines, block="".join(rendered_lines))
@@ -188,7 +188,7 @@ class RendererStep(BaseStep):
         rendered_lines = ctx.header_processor.render_header_lines(
             header_values=fields,
             config=ctx.config,
-            newline_style=ctx.newline_style,
+            newline_style=ctx.header_newline_style or ctx.newline_style,
             # keep any other overrides you already pass (block_prefix/suffix,
             # line_prefix/suffix, etc.)
             header_indent_override=header_indent_override,  # preserve pre-prefix indent
