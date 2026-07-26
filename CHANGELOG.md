@@ -83,6 +83,11 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Replaced the coarse public API signature snapshot with a deterministic, schema-versioned
+  compatibility document that tracks callable parameters, defaults, and returns; dataclass flags,
+  fields, defaults, and factories; TypedDict totality, keys, requiredness, and extra items;
+  assignment-based type aliases; and enum members consistently across Python 3.10-3.14, with focused
+  generator tests and nested mismatch diagnostics.
 - Promoted Python 3.14 to the canonical local-development, QA, documentation, artifact-build, and
   release-tooling interpreter while retaining the Python 3.10-3.14 support matrix; added a tracked
   `.python-version`, refreshed documented patch releases, and updated CI to uv 0.11.x.

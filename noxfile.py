@@ -105,6 +105,7 @@ CHECK_DOCS_HYGIENE_SCRIPT = "tools/docs/check_docs_hygiene.py"
 CHECK_CODE_HYGIENE_SCRIPT = "tools/docs/check_code_hygiene.py"
 
 TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
+TEST_API_SNAPSHOT_GENERATOR_SCRIPT = "tests/api/test_api_snapshot_generator.py"
 
 
 # Session installs are resolved from project metadata and extras.
@@ -655,6 +656,7 @@ def api_snapshot(session: nox.Session) -> None:
         "pytest",
         "-vv",
         TEST_PUBLIC_API_SNAPSHOT_SCRIPT,
+        TEST_API_SNAPSHOT_GENERATOR_SCRIPT,
         *session.posargs,
     )
 

@@ -104,19 +104,47 @@ including:
   \[`list_filetypes`\][topmark.api.commands.registry.list_filetypes],
   \[`list_processors`\][topmark.api.commands.registry.list_processors], version helpers)
 - Public result and metadata types exported by \[`topmark.api`\][topmark.api]
-- Enum and class structure normalization for cross-version consistency:
-  - Enums → `"<enum>"`
-  - Classes → `"<class>"`
-  - Functions → real signatures are preserved
+- Assignment-based public type aliases and their normalized expressions
+- TypedDict effective keys, declaration order, value annotations, requiredness, totality, and any
+  explicit extra-items contract
+- Dataclass frozen and slots flags plus effective ordered fields, annotations, initializer and
+  keyword-only behavior, literal defaults, and default-factory identities
+- Callable parameter order, parameter kinds, annotations, supported immutable defaults, and return
+  annotations
+- Enum members and values in declaration order
+- Ordinary classes as deliberately narrow class records, without arbitrary member introspection
 
 This includes stable read-only diagnostic APIs such as \[`topmark.api.probe()`\][topmark.api.probe]
 in addition to content-processing commands.
 
+### Snapshot schema and normalization
+
+The committed JSON document has a top-level `schema_version` and a deterministically sorted
+`symbols` mapping. Schema version `1` uses one structured record per export, identified by a `kind`
+of `type_alias`, `typed_dict`, `dataclass`, `enum`, `class`, or `callable`. A future incompatible
+change to the snapshot document itself requires an explicit schema-version increment and a reviewed
+golden-file update.
+
+Classification is deliberate: aliases are identified from defining-module declarations first,
+followed by TypedDicts, dataclasses, enums, ordinary classes, and callables. Unsupported exported
+runtime values fail generation instead of receiving an opaque fallback token.
+
+Annotations are normalized from authored declarations and controlled runtime typing metadata.
+Built-in and `typing` generics, unions, literals, forward references, nested aliases, and
+`Required`/`NotRequired` wrappers use stable public or logical names. Assignment-based `TypeAlias`
+declarations are therefore detected consistently on Python 3.10-3.14 without requiring Python 3.12's
+`TypeAliasType`. Recursive aliases remain named references rather than being expanded indefinitely.
+
+Defaults use JSON-safe typed records. Absence, explicit `None`, booleans, numbers, strings, tuples,
+enum members, and supported dataclass factories remain distinguishable. Default factories are
+identified but never executed. Runtime versions, timestamps, operating systems, paths, object IDs,
+and arbitrary object representations are not recorded.
+
 The snapshot intentionally **does not include internal registries or implementation modules**. Only
 the public façade defined by `topmark.api.__all__` is considered part of the stable surface.
 
-Overlay state and internal registries are intentionally excluded from the snapshot; only symbols and
-signatures exported via \[`topmark.api`\][topmark.api] are tracked.
+Overlay state and internal registries are intentionally excluded from the snapshot; only contracts
+exported via \[`topmark.api`\][topmark.api] are tracked.
 
 Configuration layering objects and TOML source resolution machinery are internal implementation
 details and are not part of the public API symbol contract. The documented configuration-source
@@ -132,8 +160,10 @@ across:
 - resolution and filtering;
 - machine-readable output.
 
-The comparison is deterministic across Python versions by normalizing class representations and
-ordering.
+Symbol keys and unordered mappings are sorted. Semantically meaningful arrays retain their authored
+order, including callable parameters, dataclass fields, TypedDict declarations, alias union members,
+and enum members. The same source tree must therefore produce equal snapshots on every supported
+Python version.
 
 ______________________________________________________________________
 
@@ -183,7 +213,9 @@ make api-snapshot-update
 ```
 
 This regenerates the file `tests/api/public_api_snapshot.json` via `tools/api_snapshot.py`, shows
-the diff, and instructs you to commit the updated snapshot if the public API changed.
+the diff, and instructs you to review and commit the updated snapshot if the public API changed. The
+JSON diff is the primary review artifact; test failures also list missing, added, and changed
+symbols plus concise nested contract paths.
 
 ### Ensure snapshot is clean (CI gate)
 
@@ -203,9 +235,9 @@ ______________________________________________________________________
 
 ## Relationship to machine-readable output
 
-The API snapshot protects importable Python symbols and signatures exposed through `topmark.api`.
-Machine-readable output stability is tracked separately through documented JSON and NDJSON
-contracts.
+The API snapshot protects importable Python symbols, call signatures, exported DTO/TypedDict shapes,
+enum members, and type-alias expressions exposed through `topmark.api`. Machine-readable output
+stability is tracked separately through documented JSON and NDJSON contracts.
 
 Stable machine-readable contracts include canonical identifiers such as:
 
@@ -262,8 +294,11 @@ ______________________________________________________________________
 ## Implementation notes
 
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
+- Focused generator and real-surface contracts are implemented in
+  `tests/api/test_api_snapshot_generator.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
-- Normalization ensures consistent diffing across OSes and Python builds.
+- Source-backed declaration discovery and annotation normalization ensure consistent diffing across
+  supported Python interpreters and operating systems.
 - Canonical file type identity normalization ensures stable file type handling across configuration,
   resolver, registry, and machine-readable output boundaries.
 - The snapshot is derived from `topmark.api.__all__`, ensuring the stable façade remains small and
@@ -288,6 +323,9 @@ TopMark derives package versions from Git tags through `setuptools-scm`.
 
 Public API evolution, snapshot updates, changelog entries, and release tags together form the
 historical record of API evolution.
+
+Snapshot comparison remains an equality guard. It identifies structural drift but does not decide
+whether a change is additive, breaking, or appropriate for a particular semantic version.
 
 See also:
 

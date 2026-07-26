@@ -154,7 +154,9 @@ ______________________________________________________________________
 
 Before tagging a release:
 
-1. Refresh `tests/api/public_api_snapshot.json` if the public API changed.
+1. If the public API changed intentionally, run `make api-snapshot-update` and review the structured
+   diff in `tests/api/public_api_snapshot.json`. Confirm the snapshot is equal across Python
+   3.10-3.14 with `make api-snapshot`.
 
 1. Update `CHANGELOG.md`.
 
@@ -168,6 +170,9 @@ Before tagging a release:
    - stable runtime or reporting contracts.
 
 1. Ensure release notes match the intended semantic-versioning impact.
+
+   The snapshot is an equality guard; maintainers still interpret compatibility and choose the
+   release tag. Package versions are derived from Git tags through `setuptools-scm`.
 
 1. Run local verification:
 

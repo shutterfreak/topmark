@@ -89,20 +89,20 @@ ______________________________________________________________________
 
 ## Jobs and validation scope
 
-| Job                 | Purpose                                                               | Main tools                                 |
-| ------------------- | --------------------------------------------------------------------- | ------------------------------------------ |
-| `changes`           | Detect changed file groups for PR job gating and summarize the result | `dorny/paths-filter`                       |
-| `python-metadata`   | Resolve supported and canonical Python versions for CI jobs           | `nox`, `pyproject.toml`                    |
-| `lint`              | Validate formatting, linting, typing, and docstring links             | `nox`, `ruff`, `pyright`                   |
-| `pre-commit`        | Run configured pre-commit hooks                                       | `pre-commit`                               |
-| `docs`              | Build the documentation site in strict mode                           | `nox`, `mkdocs`                            |
-| `tests`             | Run the supported Python test matrix                                  | `nox`, `pytest`                            |
-| `filesystem-tests`  | Run canonical Python tests across macOS and Windows filesystems       | `nox`, `pytest`                            |
-| `coverage`          | Generate and publish canonical coverage reports                       | `nox`, `coverage.py`, `pytest`             |
-| `api-snapshot`      | Check public API stability for source-changing pull requests          | `nox`, `tools/api_snapshot.py`             |
-| `links`             | Validate links in source Markdown files                               | `lycheeverse/lychee-action`, `lychee.toml` |
-| `links-site`        | Validate links in the rendered MkDocs site, including generated pages | `mkdocs`, `lycheeverse/lychee-action`      |
-| `release-artifacts` | Build and upload release artifacts for version tags                   | `uv build`, `actions/upload-artifact`      |
+| Job                 | Purpose                                                                 | Main tools                                 |
+| ------------------- | ----------------------------------------------------------------------- | ------------------------------------------ |
+| `changes`           | Detect changed file groups for PR job gating and summarize the result   | `dorny/paths-filter`                       |
+| `python-metadata`   | Resolve supported and canonical Python versions for CI jobs             | `nox`, `pyproject.toml`                    |
+| `lint`              | Validate formatting, linting, typing, and docstring links               | `nox`, `ruff`, `pyright`                   |
+| `pre-commit`        | Run configured pre-commit hooks                                         | `pre-commit`                               |
+| `docs`              | Build the documentation site in strict mode                             | `nox`, `mkdocs`                            |
+| `tests`             | Run the supported Python test matrix                                    | `nox`, `pytest`                            |
+| `filesystem-tests`  | Run canonical Python tests across macOS and Windows filesystems         | `nox`, `pytest`                            |
+| `coverage`          | Generate and publish canonical coverage reports                         | `nox`, `coverage.py`, `pytest`             |
+| `api-snapshot`      | Check structured public API contracts for source-changing pull requests | `nox`, `tools/api_snapshot.py`             |
+| `links`             | Validate links in source Markdown files                                 | `lycheeverse/lychee-action`, `lychee.toml` |
+| `links-site`        | Validate links in the rendered MkDocs site, including generated pages   | `mkdocs`, `lycheeverse/lychee-action`      |
+| `release-artifacts` | Build and upload release artifacts for version tags                     | `uv build`, `actions/upload-artifact`      |
 
 Most jobs delegate validation to nox sessions so local development and CI share the same stable
 validation contracts and execution semantics. The `python-metadata` job resolves supported Python
@@ -141,9 +141,11 @@ separate hard-coded version literals in the workflow.
 > keeping the `setup-uv` built-in cache integration disabled. This avoids cache-reservation race
 > warnings between concurrent jobs using identical bootstrap inputs.
 
-The API snapshot check is pull-request-only and runs when Python-relevant files change. It is a fast
-guardrail for unexpected stable public API surface changes, not a replacement for the full test
-matrix.
+The API snapshot check is pull-request-only and runs when Python-relevant files change. Its
+schema-versioned JSON is derived from `topmark.api.__all__` and compares normalized callable,
+dataclass, TypedDict, type-alias, enum, and class records. The job is a fast guardrail for
+unexpected stable public API contract changes, not a compatibility-policy classifier or replacement
+for the full supported-Python matrix.
 
 Documentation integrity is validated at multiple levels:
 
