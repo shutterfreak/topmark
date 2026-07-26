@@ -76,9 +76,9 @@ help:
 	@echo "  links-all       Check links in docs/, tracked Markdown, and Python docstrings (nox: links_all)"
 	@echo "  links-site      Check links in the built MkDocs site (includes generated pages)"
 	@echo ""
-	@echo "  api-snapshot-dev         Check API snapshot with current interpreter (fast local)"
-	@echo "  api-snapshot             Check API snapshot across all supported Pythons (nox: api_snapshot)"
-	@echo "  api-snapshot-update      Regenerate tests/api/public_api_snapshot.json (interactive)"
+	@echo "  api-snapshot-dev         Check structured API contracts with current interpreter (fast local)"
+	@echo "  api-snapshot             Check structured API contracts across all supported Pythons"
+	@echo "  api-snapshot-update      Regenerate the structured public API snapshot (interactive)"
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
 	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
@@ -239,7 +239,7 @@ api-snapshot: check-venv
 # Local fast check (current interpreter only)
 .PHONY: api-snapshot-dev
 api-snapshot-dev: check-venv
-	@$(VENV_BIN)/pytest -qq tests/api/test_public_api_snapshot.py && \
+	@$(VENV_BIN)/pytest -qq tests/api/test_public_api_snapshot.py tests/api/test_api_snapshot_generator.py && \
 	echo "✅ Public API snapshot unchanged."
 
 # Update snapshot (interactive)
@@ -251,7 +251,7 @@ api-snapshot-dev: check-venv
 	else \
 		git --no-pager diff -- "$(PUBLIC_API_JSON)"; \
 		echo "⚠️  Public API snapshot UPDATED: $(PUBLIC_API_JSON)"; \
-		echo "⚠️  Review diff, add $(PUBLIC_API_JSON) to git, bump version & update CHANGELOG."; \
+		echo "⚠️  Review diff, add $(PUBLIC_API_JSON) to git, and update CHANGELOG."; \
 	fi
 
 .PHONY: api-snapshot-update

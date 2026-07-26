@@ -1,30 +1,1269 @@
 {
-  "ApiPipelineRun": "<class>",
-  "ContentStreamEvent": "<?>",
-  "DiagnosticEntry": "<class>",
-  "FileResult": "<class>",
-  "FileResultEvent": "<class>",
-  "FileTypeInfo": "<class>",
-  "Outcome": "<enum>",
-  "ProbeCandidateInfo": "<class>",
-  "ProbeFileResult": "<class>",
-  "ProbeFileResultEvent": "<class>",
-  "ProbeRunResult": "<class>",
-  "ProbeStreamEvent": "<?>",
-  "ProcessorInfo": "<class>",
-  "PublicStreamEvent": "<?>",
-  "RunCompletedEvent": "<class>",
-  "RunResult": "<class>",
-  "RunStartedEvent": "<class>",
-  "VersionInfo": "<class>",
-  "check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | FrozenConfig | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, report: 'PublicReportScopeLiteral' = 'actionable', prune_views: 'bool' = False) -> 'RunResult'",
-  "get_version_info": "(*, semver: 'bool' = False) -> 'VersionInfo'",
-  "get_version_text": "() -> 'str'",
-  "list_filetypes": "() -> 'list[FileTypeInfo]'",
-  "list_processors": "() -> 'list[ProcessorInfo]'",
-  "probe": "(paths: 'Iterable[Path | str]', *, config: 'Mapping[str, object] | FrozenConfig | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, prune_views: 'bool' = False) -> 'ProbeRunResult'",
-  "stream_check": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | FrozenConfig | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, report: 'PublicReportScopeLiteral' = 'actionable', prune_views: 'bool' = False) -> 'Iterator[ContentStreamEvent]'",
-  "stream_probe": "(paths: 'Iterable[Path | str]', *, config: 'Mapping[str, object] | FrozenConfig | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, prune_views: 'bool' = False) -> 'Iterator[ProbeStreamEvent]'",
-  "stream_strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | FrozenConfig | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, report: 'PublicReportScopeLiteral' = 'actionable', prune_views: 'bool' = False) -> 'Iterator[ContentStreamEvent]'",
-  "strip": "(paths: 'Iterable[Path | str]', *, apply: 'bool' = False, diff: 'bool' = False, config: 'Mapping[str, object] | FrozenConfig | None' = None, policy: 'PublicPolicy | None' = None, policy_by_type: 'Mapping[str, PublicPolicy] | None' = None, include_file_types: 'Sequence[str] | None' = None, exclude_file_types: 'Sequence[str] | None' = None, report: 'PublicReportScopeLiteral' = 'actionable', prune_views: 'bool' = False) -> 'RunResult'"
+  "schema_version": 1,
+  "symbols": {
+    "ApiPipelineRun": {
+      "fields": [
+        {
+          "annotation": "FrozenConfig",
+          "init": true,
+          "kw_only": true,
+          "name": "effective_cfg"
+        },
+        {
+          "annotation": "list[Path]",
+          "init": true,
+          "kw_only": true,
+          "name": "file_list"
+        },
+        {
+          "annotation": "list[ProcessingContext]",
+          "init": true,
+          "kw_only": true,
+          "name": "contexts"
+        },
+        {
+          "annotation": "ExitCode | None",
+          "init": true,
+          "kw_only": true,
+          "name": "exit_code"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "ContentStreamEvent": {
+      "expression": "RunStartedEvent | FileResultEvent | RunCompletedEvent",
+      "kind": "type_alias"
+    },
+    "DiagnosticEntry": {
+      "fields": [
+        {
+          "annotation": "DiagnosticLevelLiteral",
+          "name": "level",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "message",
+          "required": true
+        }
+      ],
+      "kind": "typed_dict",
+      "total": true
+    },
+    "FileResult": {
+      "fields": [
+        {
+          "annotation": "Path",
+          "init": true,
+          "kw_only": true,
+          "name": "path"
+        },
+        {
+          "annotation": "Outcome",
+          "init": true,
+          "kw_only": true,
+          "name": "outcome"
+        },
+        {
+          "annotation": "str | None",
+          "init": true,
+          "kw_only": true,
+          "name": "diff"
+        },
+        {
+          "annotation": "str",
+          "init": true,
+          "kw_only": true,
+          "name": "bucket_key"
+        },
+        {
+          "annotation": "str",
+          "init": true,
+          "kw_only": true,
+          "name": "bucket_label"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "FileResultEvent": {
+      "fields": [
+        {
+          "annotation": "Literal[\"file_result\"]",
+          "init": true,
+          "kw_only": true,
+          "name": "kind"
+        },
+        {
+          "annotation": "Literal[\"check\", \"strip\"]",
+          "init": true,
+          "kw_only": true,
+          "name": "command"
+        },
+        {
+          "annotation": "int",
+          "init": true,
+          "kw_only": true,
+          "name": "index"
+        },
+        {
+          "annotation": "FileResult",
+          "init": true,
+          "kw_only": true,
+          "name": "result"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "FileTypeInfo": {
+      "fields": [
+        {
+          "annotation": "str",
+          "name": "local_key",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "namespace",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "qualified_key",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "description",
+          "required": true
+        },
+        {
+          "annotation": "bool",
+          "name": "bound",
+          "required": true
+        },
+        {
+          "annotation": "Sequence[str]",
+          "name": "extensions",
+          "required": true
+        },
+        {
+          "annotation": "Sequence[str]",
+          "name": "filenames",
+          "required": true
+        },
+        {
+          "annotation": "Sequence[str]",
+          "name": "patterns",
+          "required": true
+        },
+        {
+          "annotation": "bool",
+          "name": "skip_processing",
+          "required": true
+        },
+        {
+          "annotation": "bool",
+          "name": "has_content_matcher",
+          "required": true
+        },
+        {
+          "annotation": "bool",
+          "name": "has_insert_checker",
+          "required": true
+        },
+        {
+          "annotation": "FileTypePolicyInfo",
+          "name": "policy",
+          "required": true
+        }
+      ],
+      "kind": "typed_dict",
+      "total": true
+    },
+    "Outcome": {
+      "kind": "enum",
+      "members": [
+        {
+          "name": "PENDING",
+          "value": {
+            "kind": "literal",
+            "value": "pending"
+          }
+        },
+        {
+          "name": "ERROR",
+          "value": {
+            "kind": "literal",
+            "value": "error"
+          }
+        },
+        {
+          "name": "SKIPPED",
+          "value": {
+            "kind": "literal",
+            "value": "skipped"
+          }
+        },
+        {
+          "name": "UNCHANGED",
+          "value": {
+            "kind": "literal",
+            "value": "unchanged"
+          }
+        },
+        {
+          "name": "WOULD_CHANGE",
+          "value": {
+            "kind": "literal",
+            "value": "would change"
+          }
+        },
+        {
+          "name": "WOULD_INSERT",
+          "value": {
+            "kind": "literal",
+            "value": "would insert"
+          }
+        },
+        {
+          "name": "WOULD_UPDATE",
+          "value": {
+            "kind": "literal",
+            "value": "would update"
+          }
+        },
+        {
+          "name": "WOULD_STRIP",
+          "value": {
+            "kind": "literal",
+            "value": "would strip"
+          }
+        },
+        {
+          "name": "CHANGED",
+          "value": {
+            "kind": "literal",
+            "value": "changed"
+          }
+        },
+        {
+          "name": "INSERTED",
+          "value": {
+            "kind": "literal",
+            "value": "inserted"
+          }
+        },
+        {
+          "name": "UPDATED",
+          "value": {
+            "kind": "literal",
+            "value": "updated"
+          }
+        },
+        {
+          "name": "STRIPPED",
+          "value": {
+            "kind": "literal",
+            "value": "stripped"
+          }
+        }
+      ]
+    },
+    "ProbeCandidateInfo": {
+      "fields": [
+        {
+          "annotation": "str",
+          "init": true,
+          "kw_only": true,
+          "name": "file_type"
+        },
+        {
+          "annotation": "str",
+          "init": true,
+          "kw_only": true,
+          "name": "qualified_key"
+        },
+        {
+          "annotation": "int",
+          "init": true,
+          "kw_only": true,
+          "name": "score"
+        },
+        {
+          "annotation": "bool",
+          "init": true,
+          "kw_only": true,
+          "name": "selected"
+        },
+        {
+          "annotation": "int",
+          "init": true,
+          "kw_only": true,
+          "name": "rank"
+        },
+        {
+          "annotation": "tuple[str, ...]",
+          "init": true,
+          "kw_only": true,
+          "name": "matched_by"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "ProbeFileResult": {
+      "fields": [
+        {
+          "annotation": "Path",
+          "init": true,
+          "kw_only": true,
+          "name": "path"
+        },
+        {
+          "annotation": "str",
+          "init": true,
+          "kw_only": true,
+          "name": "status"
+        },
+        {
+          "annotation": "str",
+          "init": true,
+          "kw_only": true,
+          "name": "reason"
+        },
+        {
+          "annotation": "str | None",
+          "init": true,
+          "kw_only": true,
+          "name": "selected_file_type"
+        },
+        {
+          "annotation": "str | None",
+          "init": true,
+          "kw_only": true,
+          "name": "selected_processor"
+        },
+        {
+          "annotation": "Sequence[ProbeCandidateInfo]",
+          "init": true,
+          "kw_only": true,
+          "name": "candidates"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "ProbeFileResultEvent": {
+      "fields": [
+        {
+          "annotation": "Literal[\"file_result\"]",
+          "init": true,
+          "kw_only": true,
+          "name": "kind"
+        },
+        {
+          "annotation": "Literal[\"probe\"]",
+          "init": true,
+          "kw_only": true,
+          "name": "command"
+        },
+        {
+          "annotation": "int",
+          "init": true,
+          "kw_only": true,
+          "name": "index"
+        },
+        {
+          "annotation": "ProbeFileResult",
+          "init": true,
+          "kw_only": true,
+          "name": "result"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "ProbeRunResult": {
+      "fields": [
+        {
+          "annotation": "Sequence[ProbeFileResult]",
+          "init": true,
+          "kw_only": true,
+          "name": "files"
+        },
+        {
+          "annotation": "Mapping[str, int]",
+          "init": true,
+          "kw_only": true,
+          "name": "summary"
+        },
+        {
+          "annotation": "bool",
+          "init": true,
+          "kw_only": true,
+          "name": "had_errors"
+        },
+        {
+          "annotation": "dict[str, list[DiagnosticEntry]] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "diagnostics"
+        },
+        {
+          "annotation": "DiagnosticTotals | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "diagnostic_totals"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "ProbeStreamEvent": {
+      "expression": "RunStartedEvent | ProbeFileResultEvent | RunCompletedEvent",
+      "kind": "type_alias"
+    },
+    "ProcessorInfo": {
+      "fields": [
+        {
+          "annotation": "str",
+          "name": "local_key",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "namespace",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "qualified_key",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "description",
+          "required": true
+        },
+        {
+          "annotation": "bool",
+          "name": "bound",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "line_indent",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "line_prefix",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "line_suffix",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "block_prefix",
+          "required": true
+        },
+        {
+          "annotation": "str",
+          "name": "block_suffix",
+          "required": true
+        }
+      ],
+      "kind": "typed_dict",
+      "total": true
+    },
+    "PublicStreamEvent": {
+      "expression": "ContentStreamEvent | ProbeStreamEvent",
+      "kind": "type_alias"
+    },
+    "RunCompletedEvent": {
+      "fields": [
+        {
+          "annotation": "Literal[\"run_completed\"]",
+          "init": true,
+          "kw_only": true,
+          "name": "kind"
+        },
+        {
+          "annotation": "PipelineKindLiteral",
+          "init": true,
+          "kw_only": true,
+          "name": "command"
+        },
+        {
+          "annotation": "Mapping[str, int]",
+          "init": true,
+          "kw_only": true,
+          "name": "summary"
+        },
+        {
+          "annotation": "bool",
+          "init": true,
+          "kw_only": true,
+          "name": "had_errors"
+        },
+        {
+          "annotation": "int",
+          "default": {
+            "kind": "literal",
+            "value": 0
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "skipped"
+        },
+        {
+          "annotation": "int",
+          "default": {
+            "kind": "literal",
+            "value": 0
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "written"
+        },
+        {
+          "annotation": "int",
+          "default": {
+            "kind": "literal",
+            "value": 0
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "failed"
+        },
+        {
+          "annotation": "DiagnosticTotals | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "diagnostic_totals"
+        },
+        {
+          "annotation": "DiagnosticTotals | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "diagnostic_totals_all"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "RunResult": {
+      "fields": [
+        {
+          "annotation": "Sequence[FileResult]",
+          "init": true,
+          "kw_only": true,
+          "name": "files"
+        },
+        {
+          "annotation": "Mapping[str, int]",
+          "init": true,
+          "kw_only": true,
+          "name": "summary"
+        },
+        {
+          "annotation": "bool",
+          "init": true,
+          "kw_only": true,
+          "name": "had_errors"
+        },
+        {
+          "annotation": "int",
+          "default": {
+            "kind": "literal",
+            "value": 0
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "skipped"
+        },
+        {
+          "annotation": "int",
+          "default": {
+            "kind": "literal",
+            "value": 0
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "written"
+        },
+        {
+          "annotation": "int",
+          "default": {
+            "kind": "literal",
+            "value": 0
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "failed"
+        },
+        {
+          "annotation": "Mapping[str, int] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "bucket_summary"
+        },
+        {
+          "annotation": "dict[str, list[DiagnosticEntry]] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "diagnostics"
+        },
+        {
+          "annotation": "DiagnosticTotals | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "diagnostic_totals"
+        },
+        {
+          "annotation": "DiagnosticTotals | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "diagnostic_totals_all"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "RunStartedEvent": {
+      "fields": [
+        {
+          "annotation": "Literal[\"run_started\"]",
+          "init": true,
+          "kw_only": true,
+          "name": "kind"
+        },
+        {
+          "annotation": "PipelineKindLiteral",
+          "init": true,
+          "kw_only": true,
+          "name": "command"
+        },
+        {
+          "annotation": "int",
+          "init": true,
+          "kw_only": true,
+          "name": "selected_count"
+        },
+        {
+          "annotation": "Sequence[Path]",
+          "default": {
+            "items": [],
+            "kind": "tuple"
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "paths"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "VersionInfo": {
+      "fields": [
+        {
+          "annotation": "str",
+          "init": true,
+          "kw_only": true,
+          "name": "version_text"
+        },
+        {
+          "annotation": "VersionFormatLiteral",
+          "init": true,
+          "kw_only": true,
+          "name": "version_format"
+        },
+        {
+          "annotation": "Exception | None",
+          "init": true,
+          "kw_only": true,
+          "name": "err"
+        }
+      ],
+      "frozen": true,
+      "kind": "dataclass",
+      "slots": true
+    },
+    "check": {
+      "kind": "callable",
+      "parameters": [
+        {
+          "annotation": "Iterable[Path | str]",
+          "kind": "positional_or_keyword",
+          "name": "paths"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "apply"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "diff"
+        },
+        {
+          "annotation": "Mapping[str, object] | FrozenConfig | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "config"
+        },
+        {
+          "annotation": "PublicPolicy | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy"
+        },
+        {
+          "annotation": "Mapping[str, PublicPolicy] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy_by_type"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "include_file_types"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "exclude_file_types"
+        },
+        {
+          "annotation": "PublicReportScopeLiteral",
+          "default": {
+            "kind": "literal",
+            "value": "actionable"
+          },
+          "kind": "keyword_only",
+          "name": "report"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "prune_views"
+        }
+      ],
+      "return": "RunResult"
+    },
+    "get_version_info": {
+      "kind": "callable",
+      "parameters": [
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "semver"
+        }
+      ],
+      "return": "VersionInfo"
+    },
+    "get_version_text": {
+      "kind": "callable",
+      "parameters": [],
+      "return": "str"
+    },
+    "list_filetypes": {
+      "kind": "callable",
+      "parameters": [],
+      "return": "list[FileTypeInfo]"
+    },
+    "list_processors": {
+      "kind": "callable",
+      "parameters": [],
+      "return": "list[ProcessorInfo]"
+    },
+    "probe": {
+      "kind": "callable",
+      "parameters": [
+        {
+          "annotation": "Iterable[Path | str]",
+          "kind": "positional_or_keyword",
+          "name": "paths"
+        },
+        {
+          "annotation": "Mapping[str, object] | FrozenConfig | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "config"
+        },
+        {
+          "annotation": "PublicPolicy | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy"
+        },
+        {
+          "annotation": "Mapping[str, PublicPolicy] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy_by_type"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "include_file_types"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "exclude_file_types"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "prune_views"
+        }
+      ],
+      "return": "ProbeRunResult"
+    },
+    "stream_check": {
+      "kind": "callable",
+      "parameters": [
+        {
+          "annotation": "Iterable[Path | str]",
+          "kind": "positional_or_keyword",
+          "name": "paths"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "apply"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "diff"
+        },
+        {
+          "annotation": "Mapping[str, object] | FrozenConfig | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "config"
+        },
+        {
+          "annotation": "PublicPolicy | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy"
+        },
+        {
+          "annotation": "Mapping[str, PublicPolicy] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy_by_type"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "include_file_types"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "exclude_file_types"
+        },
+        {
+          "annotation": "PublicReportScopeLiteral",
+          "default": {
+            "kind": "literal",
+            "value": "actionable"
+          },
+          "kind": "keyword_only",
+          "name": "report"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "prune_views"
+        }
+      ],
+      "return": "Iterator[ContentStreamEvent]"
+    },
+    "stream_probe": {
+      "kind": "callable",
+      "parameters": [
+        {
+          "annotation": "Iterable[Path | str]",
+          "kind": "positional_or_keyword",
+          "name": "paths"
+        },
+        {
+          "annotation": "Mapping[str, object] | FrozenConfig | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "config"
+        },
+        {
+          "annotation": "PublicPolicy | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy"
+        },
+        {
+          "annotation": "Mapping[str, PublicPolicy] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy_by_type"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "include_file_types"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "exclude_file_types"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "prune_views"
+        }
+      ],
+      "return": "Iterator[ProbeStreamEvent]"
+    },
+    "stream_strip": {
+      "kind": "callable",
+      "parameters": [
+        {
+          "annotation": "Iterable[Path | str]",
+          "kind": "positional_or_keyword",
+          "name": "paths"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "apply"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "diff"
+        },
+        {
+          "annotation": "Mapping[str, object] | FrozenConfig | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "config"
+        },
+        {
+          "annotation": "PublicPolicy | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy"
+        },
+        {
+          "annotation": "Mapping[str, PublicPolicy] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy_by_type"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "include_file_types"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "exclude_file_types"
+        },
+        {
+          "annotation": "PublicReportScopeLiteral",
+          "default": {
+            "kind": "literal",
+            "value": "actionable"
+          },
+          "kind": "keyword_only",
+          "name": "report"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "prune_views"
+        }
+      ],
+      "return": "Iterator[ContentStreamEvent]"
+    },
+    "strip": {
+      "kind": "callable",
+      "parameters": [
+        {
+          "annotation": "Iterable[Path | str]",
+          "kind": "positional_or_keyword",
+          "name": "paths"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "apply"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "diff"
+        },
+        {
+          "annotation": "Mapping[str, object] | FrozenConfig | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "config"
+        },
+        {
+          "annotation": "PublicPolicy | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy"
+        },
+        {
+          "annotation": "Mapping[str, PublicPolicy] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "policy_by_type"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "include_file_types"
+        },
+        {
+          "annotation": "Sequence[str] | None",
+          "default": {
+            "kind": "literal",
+            "value": null
+          },
+          "kind": "keyword_only",
+          "name": "exclude_file_types"
+        },
+        {
+          "annotation": "PublicReportScopeLiteral",
+          "default": {
+            "kind": "literal",
+            "value": "actionable"
+          },
+          "kind": "keyword_only",
+          "name": "report"
+        },
+        {
+          "annotation": "bool",
+          "default": {
+            "kind": "literal",
+            "value": false
+          },
+          "kind": "keyword_only",
+          "name": "prune_views"
+        }
+      ],
+      "return": "RunResult"
+    }
+  }
 }
