@@ -46,6 +46,7 @@ import re
 from importlib.metadata import version as get_version
 from pathlib import Path
 from re import Match
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Final
 
@@ -74,6 +75,11 @@ from topmark.toml.getters import get_string_value_or_none
 from topmark.toml.getters import get_table_value
 from topmark.toml.typing_guards import as_toml_table
 
+if TYPE_CHECKING:
+    from mkdocs.config.defaults import MkDocsConfig
+    from mkdocs.structure.files import Files
+    from mkdocs.structure.pages import Page
+
 logger: PrefixedLogger = get_logger("hooks")
 
 # Generate debug logging
@@ -91,7 +97,7 @@ if TOPMARK_DOCS_STRICT_REFS is True:
     )
 
 
-def _page_location(page: Any) -> tuple[str, str | None]:
+def _page_location(page: Page) -> tuple[str, str | None]:
     """Return stable identifiers for a page for logging.
 
     MkDocs pages are often generated or transformed during the build. For actionable
@@ -169,7 +175,7 @@ def get_version_from_toml() -> str:
     return ver
 
 
-def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
+def pre_build(config: MkDocsConfig, **kwargs: object) -> None:
     """Capture the TopMark version once before any page is processed.
 
     This function attempts to retrieve the installed TopMark package version using
@@ -178,15 +184,10 @@ def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     substituted in all pages via the `on_page_markdown` hook.
 
     Args:
-        config: The MkDocs config dictionary. While this hook function doesn't modify the config
-            directly to store the version (it uses a global variable instead), it must be passed
-            by the MkDocs hook system.
+        config: MkDocs configuration for the current build. The hook receives
+            but does not modify it.
         **kwargs: Additional keyword arguments passed by the MkDocs hook system (e.g., ``files``,
             ``site_dir``, etc.). Currently unused.
-
-    Returns:
-        The modified config dictionary. We return the original ``config`` object to satisfy the
-        MkDocs hook API, although it has not been modified within this function.
     """
     global topmark_version_id  # MUST declare global intent to WRITE
 
@@ -199,7 +200,7 @@ def pre_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     # Reset per-build state.
     _UNLINKED_SYMBOL_FINDINGS.clear()
 
-    return config
+    return None
 
 
 GH_CALLOUT_RE: re.Pattern[str] = re.compile(
@@ -303,15 +304,16 @@ if TOPMARK_DOCS_DEBUG and NONLINKED_SYMBOLS:
 
 def on_page_markdown(
     markdown: str,
-    page: Any,
-    config: dict[str, Any],
-    files: Any,
+    page: Page,
+    config: MkDocsConfig,
+    files: Files,
 ) -> str:
     """Transform Markdown for each page before Markdown extensions run.
 
     The transformation pipeline performs:
 
-    1. Version token substitution (``%%TOPMARK_VERSION%%``) from ``config['extra']``.
+    1. Version token substitution (``%%TOPMARK_VERSION%%``) using the version
+       captured by `pre_build`.
     2. A harmless guard for GitHub Actions expressions in fenced blocks (no-op here).
     3. Conversion of GitHub-style callouts into Material admonition blocks with
        default titles derived from the alert kind.
@@ -320,15 +322,14 @@ def on_page_markdown(
 
     Args:
         markdown: Page Markdown text.
-        page: MkDocs page object (unused).
-        config: MkDocs config; ``extra.topmark_version`` may be read.
+        page: MkDocs page being transformed.
+        config: MkDocs configuration for the current build (unused).
         files: MkDocs files collection (unused).
 
     Returns:
         The transformed Markdown string.
     """
     # 0) Replace version tokens
-    global topmark_version_id  # MUST declare global intent to WRITE
     markdown = markdown.replace("%%TOPMARK_VERSION%%", str(topmark_version_id))
 
     # 1) Shield GH Actions blocks (noop for simple-hooks)
@@ -442,7 +443,7 @@ def on_page_markdown(
 # ---------- post_build: aggregate strict ref hygiene errors ----------
 
 
-def post_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
+def post_build(config: MkDocsConfig, **kwargs: object) -> None:
     """Fail the build after processing all pages when strict ref hygiene is enabled.
 
     When `TOPMARK_DOCS_STRICT_REFS` is set, `on_page_markdown` records any pages that
@@ -451,11 +452,8 @@ def post_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
     list instead of stopping at the first page.
 
     Args:
-        config: The MkDocs config dictionary.
+        config: MkDocs configuration for the completed build (unused).
         **kwargs: Additional keyword arguments passed by the MkDocs hook system.
-
-    Returns:
-        The config dictionary (unchanged).
 
     Raises:
         Abort: If strict refs are enabled and any pages contained unlinked backticked
@@ -463,10 +461,10 @@ def post_build(config: dict[str, Any], **kwargs: Any) -> dict[str, Any] | None:
         RuntimeError: If `Abort` cannot be imported.
     """
     if TOPMARK_DOCS_STRICT_REFS is not True:
-        return config
+        return None
 
     if not _UNLINKED_SYMBOL_FINDINGS:
-        return config
+        return None
 
     pages: set[str] = {page_path for (page_path, _syms) in _UNLINKED_SYMBOL_FINDINGS}
     total_refs: int = sum(len(syms) for (_page_path, syms) in _UNLINKED_SYMBOL_FINDINGS)

@@ -12,14 +12,36 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
+from mkdocs.config.defaults import MkDocsConfig
+from mkdocs.structure.files import File
+from mkdocs.structure.files import Files
+from mkdocs.structure.pages import Page
 
 from tools.docs import hooks
 
 
 def _transform(markdown: str) -> str:
     """Run the page-Markdown hook without enabling diagnostic-only behavior."""
-    return hooks.on_page_markdown(markdown, page=object(), config={}, files=None)
+    # MkDocs exposes this constructor as returning its Config base even though
+    # it creates a MkDocsConfig instance.
+    config: MkDocsConfig = cast("MkDocsConfig", MkDocsConfig())
+    file = File(
+        "test.md",
+        src_dir="docs",
+        dest_dir="site",
+        use_directory_urls=True,
+    )
+    page = Page(title=None, file=file, config=config)
+    files = Files([file])
+    return hooks.on_page_markdown(
+        markdown,
+        page=page,
+        config=config,
+        files=files,
+    )
 
 
 @pytest.mark.dev_validation

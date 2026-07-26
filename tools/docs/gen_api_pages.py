@@ -41,11 +41,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Any
-from typing import Final
 
 import mkdocs_gen_files
-from mkdocs.plugins import PrefixedLogger
 from mkdocs.plugins import get_plugin_logger as get_logger
 
 import topmark
@@ -67,6 +64,12 @@ from tools.docs.docs_utils import strip_repo_prefix
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from types import ModuleType
+    from typing import Any
+    from typing import Final
+    from typing import TextIO
+
+    from mkdocs.plugins import PrefixedLogger
+
 
 logger: PrefixedLogger = get_logger("gen_api_pages")
 
@@ -464,7 +467,7 @@ def _breadcrumbs_for_module(modname: str, current_doc: str) -> list[tuple[str, s
 # --- Markdown rendering helpers ---
 
 
-def _write_breadcrumbs(fd: Any, breadcrumbs: list[tuple[str, str | None]]) -> None:
+def _write_breadcrumbs(fd: TextIO, breadcrumbs: list[tuple[str, str | None]]) -> None:
     """Write a Markdown breadcrumb trail when breadcrumbs are available.
 
     Args:
@@ -480,7 +483,7 @@ def _write_breadcrumbs(fd: Any, breadcrumbs: list[tuple[str, str | None]]) -> No
     fd.write(" / ".join(rendered) + "\n\n")
 
 
-def _write_child_section(fd: Any, title: str, items: list[str]) -> None:
+def _write_child_section(fd: TextIO, title: str, items: list[str]) -> None:
     """Write a generated child-list section with an explicit empty state.
 
     Args:
@@ -519,7 +522,7 @@ def _first_line_summary(modname: str) -> str | None:
     return None
 
 
-def _write_child_list(fd: Any, items: list[str]) -> None:
+def _write_child_list(fd: TextIO, items: list[str]) -> None:
     """Write a Markdown list of real child modules with icons and summaries.
 
     Args:

@@ -42,12 +42,12 @@ if TYPE_CHECKING:
 
 
 def _fake_runner_run(
-    ctx: Any,
+    ctx: object,
     pipeline: object,
     *,
     prune_views: bool = True,
     keep_diff_view: bool = False,
-) -> Any:
+) -> object:
     """Faked no-op runner.run()."""
     return ctx
 
@@ -85,7 +85,7 @@ def test_run_steps_for_files_uses_path_specific_configs_when_provided(
             config: FrozenConfig,
             run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
-        ) -> Any:
+        ) -> SimpleNamespace:
             bootstrap_calls.append((path, config, run_options, policy_registry_override))
             return SimpleNamespace(path=path, config=config, run_options=run_options)
 
@@ -153,7 +153,7 @@ def test_run_steps_for_files_falls_back_to_shared_config_without_path_configs(
             config: FrozenConfig,
             run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
-        ) -> Any:
+        ) -> SimpleNamespace:
             bootstrap_calls.append((path, config, run_options, policy_registry_override))
             return SimpleNamespace(path=path, config=config, run_options=run_options)
 
@@ -215,7 +215,7 @@ def test_iter_steps_for_files_yields_contexts_before_later_files_are_bootstrappe
             config: FrozenConfig,
             run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
-        ) -> Any:
+        ) -> SimpleNamespace:
             bootstrapped_paths.append(path)
             return SimpleNamespace(path=path, config=config, run_options=run_options)
 
@@ -266,7 +266,7 @@ def test_iter_steps_for_files_records_engine_exit_code_in_state(
             config: FrozenConfig,
             run_options: RunOptions,
             policy_registry_override: PolicyRegistry | None = None,
-        ) -> Any:
+        ) -> SimpleNamespace:
             if path == missing:
                 raise FileNotFoundError(path)
             return SimpleNamespace(path=path, config=config, run_options=run_options)
