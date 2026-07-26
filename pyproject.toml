@@ -265,11 +265,13 @@ typeCheckingMode = "strict"
 # because our actual type checks run inside nox-managed environments where Pyright
 # is invoked with an explicit `--pythonversion` per env.
 # If you don't maintain a local `.venv`, you can remove these two lines.
-venvPath                           = "."
-venv                               = ".venv"
+venvPath = "."
+venv     = ".venv"
+
+# Enforce the following rules:
 reportImportCycles                 = true
 reportMissingImports               = true
-reportMissingTypeStubs             = false   # Set to true if you want to be strict about missing type stubs
+reportMissingTypeStubs             = false # Set to true if you want to be strict about missing type stubs
 reportPrivateUsage                 = true
 reportUnnecessaryTypeIgnoreComment = true
 reportUnusedImport                 = true
