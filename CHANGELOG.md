@@ -83,6 +83,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Enabled Ruff's function-annotation checks across the repository, tightened MkDocs hook and test
+  fixture types, and retained narrow suppressions for deliberately unannotated API snapshot
+  fixtures.
 - Replaced the coarse public API signature snapshot with a deterministic, schema-versioned
   compatibility document that tracks callable parameters, defaults, and returns; dataclass flags,
   fields, defaults, and factories; TypedDict totality, keys, requiredness, and extra items;

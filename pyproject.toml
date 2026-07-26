@@ -320,6 +320,7 @@ line-length = 100
   [tool.ruff.lint]
   exclude = [".git", ".venv", ".vscode", "artifacts", "build", "dist", "venv"]
   select = [
+    "ANN",    # (flake8-annotations): enforce function annotations
     "B",      # (flake8-bugbear)
     "B904",   # raise-without-from inside except
     "B905",   # zip() without strict=

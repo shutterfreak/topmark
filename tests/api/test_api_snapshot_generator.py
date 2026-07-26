@@ -70,14 +70,14 @@ def all_parameter_kinds(
     return []
 
 
-def literal_defaults(
-    none=None,
-    flag=True,
-    integer=3,
-    number=1.5,
-    text="text",
-    values=(1, "two"),
-    member=FixtureEnum.ONE,
+def literal_defaults(  # noqa: ANN201
+    none=None,  # noqa: ANN001
+    flag=True,  # noqa: ANN001
+    integer=3,  # noqa: ANN001
+    number=1.5,  # noqa: ANN001
+    text="text",  # noqa: ANN001
+    values=(1, "two"),  # noqa: ANN001
+    member=FixtureEnum.ONE,  # noqa: ANN001
 ):
     """Exercise every supported immutable default without annotations.
 
