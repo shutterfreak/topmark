@@ -17,12 +17,12 @@ Sessions:
   - `lint_fixall`: Ruff lint autofix.
   - `format_check`: Verify formatting (ruff, mdformat, taplo, mbake).
   - `format`: Apply formatting (ruff, mdformat, taplo, mbake).
-  - `docs`: Build MkDocs documentation in strict mode.
+  - `docs`: Build MkDocs documentation strictly and validate project-owned hosted routes.
   - `docs_serve`: Serve docs locally.
   - `links`: Lychee link checks for docs/ + tracked Markdown.
   - `links_src`: Lychee link checks for Python sources (docstring URLs).
   - `links_all`: Combined link checks.
-  - `links_site`: Lychee link checks for the built MkDocs site (includes generated pages).
+  - `links_site`: Built-site Lychee checks plus project-owned hosted-route validation.
   - `docstring_links`: Enforce docstring link style (custom tool).
   - `docs_hygiene`: Enforce lightweight Markdown snippet/include hygiene (custom tool).
   - `code_hygiene`: Enforce lightweight Python prose hygiene (custom tool).
@@ -102,6 +102,7 @@ SOURCE_PATTERNS = (":(glob)src/topmark/**/*.py",)
 
 # Tools and scripts
 CHECK_DOCS_HYGIENE_SCRIPT = "tools/docs/check_docs_hygiene.py"
+CHECK_PROJECT_DOCS_LINKS_SCRIPT = "tools/docs/check_project_links.py"
 CHECK_CODE_HYGIENE_SCRIPT = "tools/docs/check_code_hygiene.py"
 
 TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
@@ -532,13 +533,20 @@ def format(session: nox.Session) -> None:
 
 @nox.session
 def docs(session: nox.Session) -> None:
-    """Build documentation."""
+    """Build documentation and validate project-owned hosted routes."""
     session.install(DEPS_DOCS)
 
     session.run(
         "mkdocs",
         "build",
         "--strict",
+    )
+    session.run(
+        "python",
+        CHECK_PROJECT_DOCS_LINKS_SCRIPT,
+        "--site-dir",
+        "site",
+        "--stats",
     )
 
 
@@ -601,6 +609,14 @@ def links_site(session: nox.Session) -> None:
         "--config-file",
         "mkdocs.linkcheck.yml",
         external=True,
+    )
+
+    session.run(
+        "python",
+        CHECK_PROJECT_DOCS_LINKS_SCRIPT,
+        "--site-dir",
+        "site",
+        "--stats",
     )
 
     # Lychee can take a directory and will scan supported formats within.

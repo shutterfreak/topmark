@@ -74,7 +74,7 @@ help:
 	@echo "  links           Check links in docs/ and tracked Markdown (nox: links)"
 	@echo "  links-src       Check links found in Python docstrings under src/ (nox: links_src)"
 	@echo "  links-all       Check links in docs/, tracked Markdown, and Python docstrings (nox: links_all)"
-	@echo "  links-site      Check links in the built MkDocs site (includes generated pages)"
+	@echo "  links-site      Check built-site links and project-owned hosted documentation routes"
 	@echo ""
 	@echo "  api-snapshot-dev         Check structured API contracts with current interpreter (fast local)"
 	@echo "  api-snapshot             Check structured API contracts across all supported Pythons"

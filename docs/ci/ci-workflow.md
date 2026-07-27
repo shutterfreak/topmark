@@ -169,12 +169,14 @@ for the full supported-Python matrix.
 
 Documentation integrity is validated at multiple levels:
 
-- the `docs` job runs a strict MkDocs build;
-- the `links` job validates links in source Markdown files;
-- the `links-site` job validates links in the rendered site, including generated API pages.
+- the `docs` job runs a strict MkDocs build and maps TopMark-hosted documentation URLs to local
+  rendered routes;
+- the `links` job validates relative links and third-party URLs in source Markdown files;
+- the `links-site` job validates links in the rendered site, including generated API pages, and
+  repeats the project-owned hosted-route check against that build.
 
-Generated API pages are visible only after the site is built, so source-only link checks cannot
-fully replace the built-site link check.
+Generated API pages and pages introduced by the current pull request are visible only after the site
+is built. Source-only network checks cannot validate that proposed state reliably.
 
 ______________________________________________________________________
 
@@ -345,7 +347,8 @@ When editing this workflow:
   release publication;
 - keep release artifact building in CI unless the release trust model is deliberately redesigned;
 - avoid moving package publication into this workflow;
-- keep generated-site link validation separate from source Markdown link validation;
+- keep generated-site and project-owned hosted-route validation separate from third-party network
+  link validation;
 - keep link-check jobs bounded with explicit timeouts so network-dependent validation cannot hang
   indefinitely;
 - keep action pins synchronized across workflows and local composite actions;
