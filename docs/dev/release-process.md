@@ -160,6 +160,15 @@ Before tagging a release:
 
 1. Update `CHANGELOG.md`.
 
+1. If dependencies changed, apply the
+   [dependency baseline maintenance policy](dependency-maintenance.md):
+
+   - confirm `pyproject.toml` expresses the intended published compatibility ranges;
+   - confirm `uv.lock` is synchronized and reviewed;
+   - distinguish routine lock or tool refreshes from compatibility-impacting range changes;
+   - record important lower-bound, security, or contributor-workflow changes in the appropriate
+     changelog section.
+
 1. Review upgrade and migration guidance ([Upgrading to TopMark 1.0](../usage/upgrading-to-1.0.md))
    if the release changes:
 
@@ -325,6 +334,8 @@ ______________________________________________________________________
 
 - [CI & Validation](../ci/index.md) - overview of the CI documentation family
 - [Terminology and Canonical Vocabulary](../terminology.md)
+- [Dependency baseline maintenance](dependency-maintenance.md) - compatibility, lockfile, CI, and
+  tooling baseline policy
 - GitHub workflows:
   - [CI workflow](../ci/ci-workflow.md) - source-tree validation and release artifact creation
   - [Release workflow](../ci/release-workflow.md) - artifact-only package publication

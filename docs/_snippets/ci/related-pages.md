@@ -25,5 +25,7 @@ topmark:header:end
     nox bootstrap layer for CI jobs
 - [CI and validation](../../ci/index.md) - overview of the CI documentation family
 - [Test and validation architecture](../../ci/test-validation.md)
+- [Dependency baseline maintenance](../../dev/dependency-maintenance.md) - compatibility ranges,
+  lockfile refreshes, CI validation, and pre-commit tooling policy
 - [Release process](../../dev/release-process.md) - project-level release workflow and policy
 - [Contributing to TopMark](../../contributing.md) - contributor workflow and dependency guidance
