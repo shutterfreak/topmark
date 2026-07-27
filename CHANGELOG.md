@@ -575,6 +575,8 @@ ______________________________________________________________________
   marker declarations, and stale Nox marker expressions are detected during repository validation.
 - Refreshed the uv lockfile within the existing dependency ranges and updated the
   `markdownlint-cli2` pre-commit hook from v0.23.1 to v0.23.2.
+- Refined Dependency Review license handling for compound and inaccurate package metadata exposed by
+  the lockfile refresh.
 - Updated pre-commit dependencies, including TopMark itself.
 - Raised the minimum supported runtime dependency version for `click` to 8.4.2 to align with the
   current validated compatibility baseline.
