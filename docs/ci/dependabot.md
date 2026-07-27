@@ -68,6 +68,7 @@ jobs.
 Dependabot update pull requests:
 
 - run through normal CI validation;
+- trigger the Dependency Review workflow when they change `pyproject.toml` or `uv.lock`;
 - remain subject to branch protection rules;
 - require normal maintainer review;
 - do not bypass repository policy.
@@ -113,7 +114,9 @@ Current labels are:
 | `github-actions` | `dependencies`, `github-actions` |
 | `uv`             | `dependencies`, `python`         |
 
-Dependabot update pull requests are validated through the normal CI workflow after creation.
+Dependabot update pull requests are validated through the normal CI workflow after creation. Python
+dependency updates also run through [Dependency Review](./dependency-review.md), which applies the
+runtime license and known-vulnerability policy to the pull request dependency diff.
 
 ______________________________________________________________________
 
@@ -184,6 +187,7 @@ When reviewing Dependabot PRs:
 
 - review GitHub Action updates as infrastructure changes;
 - review Python dependency updates as runtime and tooling changes;
+- inspect Dependency Review findings for license metadata and known vulnerabilities;
 - apply additional scrutiny to major-version updates;
 - inspect release and publishing actions carefully;
 - confirm CI passes before merging.
@@ -196,6 +200,10 @@ Dependabot does not reliably track nested local composite-action metadata refere
 
 TopMark therefore uses the [GitHub Action pin audit](./action-pin-audit.md) workflow and tool to
 detect drift between workflow files and local composite actions.
+
+Dependabot and Dependency Review serve different purposes: Dependabot proposes updates, while
+Dependency Review evaluates the changed dependency graph. Neither replaces maintainer review of
+declared ranges and lockfile changes.
 
 ______________________________________________________________________
 
