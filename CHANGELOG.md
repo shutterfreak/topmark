@@ -413,6 +413,9 @@ ______________________________________________________________________
 
 ### Documentation - Unreleased
 
+- Formalized the dependency baseline maintenance policy, including minimum-version rationale,
+  compatibility ranges, lockfile refreshes, CI validation scope, pre-commit tool pins, changelog
+  classification, and release review expectations.
 - Updated probe and machine-output documentation for corrected explicit-input probe behavior.
 - Clarified strict configuration-validation diagnostics in shared configuration strictness
   documentation.

@@ -205,6 +205,10 @@ Dependabot and Dependency Review serve different purposes: Dependabot proposes u
 Dependency Review evaluates the changed dependency graph. Neither replaces maintainer review of
 declared ranges and lockfile changes.
 
+The [dependency baseline maintenance policy](../dev/dependency-maintenance.md) defines when
+maintainers should change declared ranges, refresh the lockfile, synchronize pre-commit tooling, and
+record compatibility-impacting changes.
+
 ______________________________________________________________________
 
 ## Related pages

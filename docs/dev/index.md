@@ -68,6 +68,8 @@ ______________________________________________________________________
 
 - [Documentation pipeline and reference hygiene](documentation-pipeline.md)
 - [Documentation conventions](documentation-conventions.md)
+- [Dependency baseline maintenance](dependency-maintenance.md) - compatibility ranges, resolved lock
+  state, CI validation, pre-commit pins, and changelog policy
 - [Release process](release-process.md)
 - [Road to TopMark 1.0](road-to-1.0.md)
 - [TopMark stable 1.x roadmap](roadmap.md)

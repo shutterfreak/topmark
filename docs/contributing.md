@@ -35,6 +35,7 @@ ______________________________________________________________________
 | Understand CI and validation workflows                   | [CI documentation](ci/index.md)                                                      |
 | Understand coverage reporting and Codecov                | [CI workflow](ci/ci-workflow.md#artifact-handling)                                   |
 | Understand dependency license and vulnerability review   | [Dependency review](ci/dependency-review.md)                                         |
+| Maintain dependency compatibility and resolved baselines | [Dependency baseline maintenance](dev/dependency-maintenance.md)                     |
 | Understand releases and publication                      | [Release process](dev/release-process.md)                                            |
 | Review public API stability                              | [Public API](api/public.md)                                                          |
 | Review internal API reference                            | [Internal API reference](api/internals.md)                                           |
@@ -81,6 +82,7 @@ ______________________________________________________________________
 - [Documentation conventions](dev/documentation-conventions.md)
 - [CI workflow](ci/ci-workflow.md)
 - [Dependency review](ci/dependency-review.md)
+- [Dependency baseline maintenance](dev/dependency-maintenance.md)
 - [Release workflow](ci/release-workflow.md)
 - [Published artifact validation](ci/published-artifact-validation.md)
 - [Release process](dev/release-process.md)

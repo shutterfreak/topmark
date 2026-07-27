@@ -256,7 +256,11 @@ TopMark uses a two-layer dependency strategy:
 - **`uv.lock`** holds the *resolved lock state*:
 
   - `uv.lock` is the committed dependency lock used as the canonical reproducible dependency graph.
-  - CI, release automation, and local development all derive from this uv-managed lock workflow.
+  - It supports reproducible `uv sync`, lockfile review, and Dependabot updates.
+
+Published packages expose the compatibility ranges from `pyproject.toml`; they do not force
+consumers to install the versions recorded in `uv.lock`. CI validates representative resolutions
+across the supported Python matrix, but it is not an exhaustive minimum-version matrix.
 
 When updating dependencies:
 
@@ -278,6 +282,10 @@ against TopMark's accepted license policy and fails on newly introduced high- or
 known vulnerabilities. No additional local service or token is required, but contributors should
 inspect license metadata, security advisories, and the resulting lockfile rather than relying on the
 automated result alone.
+
+Maintainers should follow the
+[dependency baseline maintenance policy](docs/dev/dependency-maintenance.md) when changing minimum
+versions, compatibility ranges, the lockfile, or pre-commit tool pins.
 
 ______________________________________________________________________
 

@@ -128,7 +128,7 @@ ______________________________________________________________________
 
 Supported Python versions are resolved by `noxfile.py` from `pyproject.toml` using Nox's project
 metadata helpers. Matrix sessions run across the supported Python versions, while canonical
-single-version sessions use the second most recent supported Python version.
+single-version sessions use the most recent supported Python version.
 
 Run the recommended local pre-PR validation gate before opening or updating a pull request:
 
