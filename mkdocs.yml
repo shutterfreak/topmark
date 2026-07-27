@@ -212,6 +212,7 @@ nav:
       - Test and validation architecture: ci/test-validation.md
       - Workflows:
           - CI workflow: ci/ci-workflow.md
+          - Codecov coverage policy: ci/codecov.md
           - Published artifact validation: ci/published-artifact-validation.md
           - Release workflow: ci/release-workflow.md
           - Dependabot: ci/dependabot.md

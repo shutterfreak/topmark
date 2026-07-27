@@ -54,6 +54,9 @@ ______________________________________________________________________
   together with contributor and maintainer documentation.
 - Added non-blocking Codecov uploads to the canonical CI coverage job and exposed main-branch
   coverage through a README badge.
+- Added repository-level Codecov policy that compares project coverage with the pull request base,
+  permits a 0.25 percentage-point decline, reports patch coverage informationally, and limits pull
+  request comments to actual coverage changes.
 - Added the explicit `mixed_line_endings = "reject" | "preserve"` policy with authoritative
   whole-file validation, deterministic local newline selection for generated headers, strict
   rejection by default, and exact preservation of existing non-header terminators. The policy is

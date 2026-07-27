@@ -1,0 +1,32 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : codecov.yml
+#   file_relpath : codecov.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.25%
+        if_not_found: failure
+        informational: false
+        only_pulls: true
+    patch:
+      default:
+        target: auto
+        informational: true
+        only_pulls: true
+
+comment:
+  layout: "header, diff, files, footer"
+  behavior: default
+  require_changes: "any_change"
+  require_base: true
+  require_head: true
+  hide_project_coverage: false
