@@ -16,6 +16,7 @@ topmark:header:end
 [![GitHub release](https://img.shields.io/github/v/release/shutterfreak/topmark)](https://github.com/shutterfreak/topmark/releases)
 [![Python Versions](https://img.shields.io/pypi/pyversions/topmark.svg)](https://pypi.org/project/topmark/)
 [![CI](https://github.com/shutterfreak/topmark/actions/workflows/ci.yml/badge.svg)](https://github.com/shutterfreak/topmark/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/shutterfreak/topmark/branch/main/graph/badge.svg)](https://codecov.io/gh/shutterfreak/topmark)
 [![Documentation Status](https://readthedocs.org/projects/topmark/badge/?version=latest)](https://topmark.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Development Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](https://pypi.org/project/topmark/)

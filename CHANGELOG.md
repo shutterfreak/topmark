@@ -49,6 +49,8 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added non-blocking Codecov uploads to the canonical CI coverage job and exposed main-branch
+  coverage through a README badge.
 - Added the explicit `mixed_line_endings = "reject" | "preserve"` policy with authoritative
   whole-file validation, deterministic local newline selection for generated headers, strict
   rejection by default, and exact preservation of existing non-header terminators. The policy is
