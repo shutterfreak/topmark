@@ -122,17 +122,21 @@ Generated coverage files are local diagnostics and are not committed.
 
 GitHub CI runs the same canonical coverage session after the supported Python test matrix succeeds.
 It retains the HTML, XML, and JSON reports as workflow artifacts, publishes a short GitHub Step
-Summary, and submits `coverage.xml` to Codecov. Codecov publication is non-blocking and supplies the
-main-branch coverage badge in `README.md`; it is not a percentage-driven merge or release gate.
+Summary, and submits `coverage.xml` to Codecov. Codecov compares project coverage with the pull
+request base, permits a decline of at most 0.25 percentage points, reports patch coverage
+informationally, and supplies the main-branch coverage badge in `README.md`. Coverage remains
+independent of release publication.
 
 The upstream workflow authenticates with the repository-scoped `CODECOV_TOKEN` secret. Contributors
 do not need that token for local coverage, and must not add coverage-service credentials to source,
 configuration files, pull requests, or workflow logs. Pull requests from forks cannot access
 upstream repository secrets.
 
-For the complete CI coverage design, artifact handling, and maintenance guidance, see:
+For the complete CI coverage design, Codecov status policy, artifact handling, and maintenance
+guidance, see:
 
 - [CI workflow (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/ci-workflow/)
+- [Codecov coverage policy (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/codecov/)
 
 ### Configuration architecture note
 

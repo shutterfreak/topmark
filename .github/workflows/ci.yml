@@ -34,6 +34,7 @@ on:
       - "Makefile"
       - "mkdocs.yml"
       - "mkdocs.linkcheck.yml"
+      - "codecov.yml"
       - ".readthedocs.yml"
       - "pyproject.toml"
       - "uv.lock"
@@ -77,6 +78,7 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - 'noxfile.py'
+              - 'codecov.yml'
             docs:
               - 'docs/**'
               - 'src/**'
@@ -115,6 +117,7 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - 'noxfile.py'
+              - 'codecov.yml'
               - 'README.md'
               - 'INSTALL.md'
               - 'CONTRIBUTING.md'

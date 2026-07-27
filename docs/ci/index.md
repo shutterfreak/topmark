@@ -37,6 +37,8 @@ workflows rather than correctness-validation or release-gating checks.
 - [CI workflow](./ci-workflow.md) - validates repository source trees, documentation, tests, typing,
   linting, API snapshots, canonical coverage reporting through GitHub artifacts and Codecov, and
   release artifacts produced from trusted CI runs.
+- [Codecov coverage policy](./codecov.md) - documents the repository-level Codecov configuration,
+  project-coverage comparison threshold, informational patch status, and pull request comments.
 - [Setup Python + nox action](./setup-python-nox-action.md) - documents the shared Python, uv,
   cache, and nox bootstrap layer used by CI jobs.
 - [Test validation](./test-validation.md) - explains pytest markers, validation categories, the
@@ -82,6 +84,7 @@ Use this family of pages as follows:
 | What should I run before opening or updating a pull request?     | [Test validation](./test-validation.md)                             |
 | What runs on pull requests and pushes?                           | [CI workflow](./ci-workflow.md)                                     |
 | How is canonical coverage generated and published?               | [CI workflow](./ci-workflow.md#artifact-handling)                   |
+| How does Codecov evaluate pull request coverage?                 | [Codecov coverage policy](./codecov.md)                             |
 | How are Python, uv, and nox bootstrapped in CI jobs?             | [Setup Python + nox action](./setup-python-nox-action.md)           |
 | Which tests are included, skipped, slow, or integration-focused? | [Test validation](./test-validation.md)                             |
 | How do I run memory/allocation baseline measurements?            | [Performance baselines](../dev/performance-baselines.md)            |
