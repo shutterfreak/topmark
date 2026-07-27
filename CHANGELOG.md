@@ -59,6 +59,9 @@ ______________________________________________________________________
   request comments to actual coverage changes.
 - Added offline validation that maps TopMark-hosted documentation URLs to the locally built MkDocs
   site, preventing pull-request checks from depending on pages not yet deployed to Read the Docs.
+- Added repository-level `AGENTS.md` guidance that directs coding agents to TopMark's canonical
+  contributor policies, compatibility constraints, validation commands, optional parallel pytest
+  execution, and change-handoff expectations.
 - Added the explicit `mixed_line_endings = "reject" | "preserve"` policy with authoritative
   whole-file validation, deterministic local newline selection for generated headers, strict
   rejection by default, and exact preservation of existing non-header terminators. The policy is
