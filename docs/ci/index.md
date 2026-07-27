@@ -35,7 +35,8 @@ Performance baseline measurements are documented separately because they are opt
 workflows rather than correctness-validation or release-gating checks.
 
 - [CI workflow](./ci-workflow.md) - validates repository source trees, documentation, tests, typing,
-  linting, API snapshots, and release artifacts produced from trusted CI runs.
+  linting, API snapshots, canonical coverage reporting through GitHub artifacts and Codecov, and
+  release artifacts produced from trusted CI runs.
 - [Setup Python + nox action](./setup-python-nox-action.md) - documents the shared Python, uv,
   cache, and nox bootstrap layer used by CI jobs.
 - [Test validation](./test-validation.md) - explains pytest markers, validation categories, the
@@ -78,6 +79,7 @@ Use this family of pages as follows:
 | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
 | What should I run before opening or updating a pull request?     | [Test validation](./test-validation.md)                             |
 | What runs on pull requests and pushes?                           | [CI workflow](./ci-workflow.md)                                     |
+| How is canonical coverage generated and published?               | [CI workflow](./ci-workflow.md#artifact-handling)                   |
 | How are Python, uv, and nox bootstrapped in CI jobs?             | [Setup Python + nox action](./setup-python-nox-action.md)           |
 | Which tests are included, skipped, slow, or integration-focused? | [Test validation](./test-validation.md)                             |
 | How do I run memory/allocation baseline measurements?            | [Performance baselines](../dev/performance-baselines.md)            |
@@ -93,6 +95,7 @@ ______________________________________________________________________
 TopMark intentionally separates:
 
 1. repository source-tree validation;
+1. diagnostic coverage generation and external presentation;
 1. dependency and GitHub Action maintenance;
 1. release artifact construction in CI;
 1. privileged artifact publication;
