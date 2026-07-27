@@ -136,7 +136,7 @@ For the complete CI coverage design, Codecov status policy, artifact handling, a
 guidance, see:
 
 - [CI workflow (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/ci-workflow/)
-- [Codecov coverage policy (hosted docs)](https://topmark.readthedocs.io/en/latest/ci/codecov/)
+- [Codecov coverage policy](docs/ci/codecov.md)
 
 ### Configuration architecture note
 
