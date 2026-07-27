@@ -49,6 +49,9 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added a SHA-pinned GitHub Dependency Review workflow that checks changed runtime dependencies
+  against an explicit license allowlist and blocks high- or critical-severity known vulnerabilities,
+  together with contributor and maintainer documentation.
 - Added non-blocking Codecov uploads to the canonical CI coverage job and exposed main-branch
   coverage through a README badge.
 - Added the explicit `mixed_line_endings = "reject" | "preserve"` policy with authoritative

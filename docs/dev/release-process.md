@@ -331,6 +331,8 @@ ______________________________________________________________________
   - [Published artifact validation workflow](../ci/published-artifact-validation.md) - package-index
     install validation
   - [Dependabot workflow](../ci/dependabot.md) - dependency and GitHub Actions update policy
+  - [Dependency review workflow](../ci/dependency-review.md) - pull request runtime dependency
+    license and vulnerability policy
   - [GitHub Action pin audit](../ci/action-pin-audit.md) - action pin consistency audit
 - [Contributing](../contributing.md) - hosted contributor guide
 

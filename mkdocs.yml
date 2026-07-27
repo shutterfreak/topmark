@@ -215,6 +215,7 @@ nav:
           - Published artifact validation: ci/published-artifact-validation.md
           - Release workflow: ci/release-workflow.md
           - Dependabot: ci/dependabot.md
+          - Dependency review: ci/dependency-review.md
           - GitHub Action pin audit: ci/action-pin-audit.md
       - Actions:
           - Setup Python + nox action: ci/setup-python-nox-action.md

@@ -66,6 +66,8 @@ Dependency automation is documented separately because it has different triggers
 and maintenance expectations than repository-source validation or release publication.
 
 - [Dependabot workflow](./dependabot.md) - documents dependency-update and security-audit behavior.
+- [Dependency review workflow](./dependency-review.md) - checks pull request runtime dependency
+  changes against the project's vulnerability-severity and SPDX license policies.
 - [GitHub Action pin audit](./action-pin-audit.md) - audits GitHub Action pin consistency across
   workflows and local composite actions, with an explicit local repair mode for stale repeated refs.
 
@@ -86,6 +88,7 @@ Use this family of pages as follows:
 | How are release artifacts produced and published?                | [Release workflow](./release-workflow.md)                           |
 | How do we validate packages after publication?                   | [Published artifact validation](./published-artifact-validation.md) |
 | How are dependency updates handled?                              | [Dependabot](./dependabot.md)                                       |
+| How are dependency licenses and vulnerabilities reviewed?        | [Dependency review](./dependency-review.md)                         |
 | How do we audit or locally repair GitHub Action pin consistency? | [GitHub Action pin audit](./action-pin-audit.md)                    |
 
 ______________________________________________________________________
@@ -96,7 +99,8 @@ TopMark intentionally separates:
 
 1. repository source-tree validation;
 1. diagnostic coverage generation and external presentation;
-1. dependency and GitHub Action maintenance;
+1. dependency maintenance and pre-merge license and vulnerability review;
+1. GitHub Action maintenance;
 1. release artifact construction in CI;
 1. privileged artifact publication;
 1. post-publication package validation from PyPI or TestPyPI.

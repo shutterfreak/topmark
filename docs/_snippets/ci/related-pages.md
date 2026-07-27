@@ -16,6 +16,8 @@ topmark:header:end
   - [Published artifact validation workflow](../../ci/published-artifact-validation.md) - validate
     published package installation and runtime behavior
   - [Dependabot workflow](../../ci/dependabot.md) - dependency and security-update automation
+  - [Dependency review workflow](../../ci/dependency-review.md) - pull request license and known
+    vulnerability policy for runtime dependency changes
   - [GitHub Action pin audit](../../ci/action-pin-audit.md) - audit GitHub Action pin consistency
     across workflows and local composite actions
 - GitHub actions:

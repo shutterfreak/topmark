@@ -272,6 +272,13 @@ When updating dependencies:
 
 1. Commit both the updated `pyproject.toml` and `uv.lock` together.
 
+Pull requests that change either dependency file run the
+[Dependency Review workflow](docs/ci/dependency-review.md). It checks changed runtime dependencies
+against TopMark's accepted license policy and fails on newly introduced high- or critical-severity
+known vulnerabilities. No additional local service or token is required, but contributors should
+inspect license metadata, security advisories, and the resulting lockfile rather than relying on the
+automated result alone.
+
 ______________________________________________________________________
 
 ## Type Checking
