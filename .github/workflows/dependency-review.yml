@@ -46,9 +46,14 @@ jobs:
             Apache-2.0,
             BSD-2-Clause,
             BSD-3-Clause,
+            HPND-Markus-Kuhn,
             ISC,
             MIT,
             MIT-0,
             MPL-2.0,
             PSF-2.0,
             Python-2.0
+          # The 3.4.9 wheel declares MIT and ships only an MIT license, but GitHub's
+          # dependency metadata reports an unrelated compound license expression.
+          allow-dependencies-licenses: >-
+            pkg:pypi/charset-normalizer@3.4.9

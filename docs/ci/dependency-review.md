@@ -15,8 +15,8 @@ topmark:header:end
 This page documents `.github/workflows/dependency-review.yml`.
 
 TopMark uses GitHub Dependency Review as a pre-merge guardrail for dependency changes. It checks new
-or updated runtime dependencies for known vulnerabilities and licenses that fall outside the
-project's explicit policy.
+or updated dependencies for known vulnerabilities and licenses that fall outside the project's
+explicit policy.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -67,12 +67,18 @@ ______________________________________________________________________
 
 The workflow enforces the following policy for newly introduced or updated dependencies:
 
-| Check                    | Policy                                                                |
-| ------------------------ | --------------------------------------------------------------------- |
-| Dependency scope         | Failures are limited to runtime dependencies                          |
-| Vulnerability severity   | Fail on `high` or `critical` known vulnerabilities                    |
-| License evaluation       | Require a license in the explicit SPDX allowlist                      |
-| Unknown license metadata | Report it for maintainer review; GitHub does not fail on it by itself |
+| Check                    | Policy                                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| Vulnerability scope      | Failures are limited to dependencies GitHub reports as runtime                         |
+| Vulnerability severity   | Fail on `high` or `critical` known vulnerabilities                                     |
+| License evaluation       | Require changed dependencies to use a license in the explicit SPDX allowlist           |
+| Unknown license metadata | Report it for maintainer review; GitHub does not fail on unknown metadata by itself    |
+| Metadata exceptions      | Permit only explicitly reviewed package versions whose published metadata was verified |
+
+The action's `fail-on-scopes` input applies to vulnerability failures, not license evaluation.
+GitHub currently reports dependencies resolved from `uv.lock` as runtime without preserving
+TopMark's optional-dependency groups. The workflow therefore cannot reliably distinguish runtime,
+development, documentation, and test dependencies from that manifest.
 
 The current license allowlist is defined directly in the workflow:
 
@@ -81,6 +87,7 @@ The current license allowlist is defined directly in the workflow:
 Apache-2.0
 BSD-2-Clause
 BSD-3-Clause
+HPND-Markus-Kuhn
 ISC
 MIT
 MIT-0
@@ -91,6 +98,15 @@ Python-2.0
 
 The list covers the permissive and weak-copyleft licenses currently accepted for TopMark's runtime
 dependency graph. An allowlist is used so a new license requires an intentional policy decision.
+
+The workflow also contains the following narrow metadata exception:
+
+| Package              | Version | Verified license | Rationale                                                                                        |
+| -------------------- | ------- | ---------------- | ------------------------------------------------------------------------------------------------ |
+| `charset-normalizer` | 3.4.9   | MIT              | GitHub reports an unrelated compound expression; the wheel declares MIT and ships an MIT license |
+
+The exception uses the complete versioned package URL `pkg:pypi/charset-normalizer@3.4.9`. A future
+release must be reviewed independently rather than inheriting the exception.
 
 License metadata can be missing, incomplete, or expressed as a compound SPDX expression.
 Consequently:
@@ -108,13 +124,13 @@ ______________________________________________________________________
 
 The workflow contains one job:
 
-| Job                 | Purpose                                                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| `dependency-review` | Review the pull request's runtime dependency diff against vulnerability and license policy |
+| Job                 | Purpose                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| `dependency-review` | Review the pull request's dependency diff against vulnerability and license policy |
 
-Development, documentation, and test dependencies are outside the failure scope. Maintainers must
-still inspect their `pyproject.toml` and `uv.lock` changes, and normal CI validates the resulting
-tooling environment.
+Vulnerability failures are configured for dependencies GitHub classifies as runtime. License checks
+apply to every changed dependency reported by the action. Maintainers must still inspect
+`pyproject.toml` and `uv.lock`, and normal CI validates the resulting tooling environment.
 
 ______________________________________________________________________
 
