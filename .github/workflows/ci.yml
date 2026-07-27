@@ -81,12 +81,16 @@ jobs:
               - 'codecov.yml'
             docs:
               - 'docs/**'
+              - 'README.md'
+              - 'INSTALL.md'
+              - 'CONTRIBUTING.md'
               - 'src/**'
               - 'tools/docs/**'
               - '.github/actions/setup-python-nox/**'
               - '.mdformat.toml'
               - 'mkdocs.yml'
               - 'mkdocs.linkcheck.yml'
+              - 'lychee.toml'
               - '.readthedocs.yml'
               - 'pyproject.toml'
               - 'uv.lock'
@@ -527,6 +531,10 @@ jobs:
       - name: Build docs (linkcheck config)
         run: |
           mkdocs build -f mkdocs.linkcheck.yml --strict
+
+      - name: Validate project-owned hosted documentation routes
+        run: |
+          python tools/docs/check_project_links.py --site-dir site --stats
 
       - name: Check links in built site
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0

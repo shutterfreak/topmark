@@ -283,6 +283,24 @@ and deep canonical reference pages:
 Explicitly label hosted documentation links with `(hosted docs)` in repository-static files when
 that improves orientation.
 
+Links inside `docs/` should remain relative to the documentation source tree. In repository-static
+files:
+
+- use repository-relative links for contributor, development, and CI pages that should follow the
+  checked-out branch;
+- use hosted links when the document is rendered outside the repository, such as the project
+  `README.md` on PyPI, or when the rendered documentation is the intended destination;
+- prefer stable hosted landing pages over unnecessary deep links.
+
+Do not validate TopMark's own `https://topmark.readthedocs.io/en/latest/` routes against the
+deployed site during pull-request checks. The deployment still represents the base branch and cannot
+contain pages introduced by the pull request. Documentation builds instead run
+`tools/docs/check_project_links.py`, which maps those URLs to the local `site/` output and validates
+routes and fragments against the proposed documentation tree.
+
+Lychee continues to validate third-party URLs over the network. Its exclusion for TopMark's hosted
+documentation is paired with the local route checker and must not be removed independently.
+
 ______________________________________________________________________
 
 ## Emoji and Callout Conventions
@@ -792,7 +810,8 @@ navigation integrity, command synchronization, generated-page verification, and 
 Automated validation includes:
 
 - strict MkDocs builds;
-- link checking;
+- project-owned hosted-route and fragment checking against the local MkDocs build;
+- third-party network link checking;
 - heading consistency checks;
 - emoji-in-heading rejection;
 - `mkdocs.yml` nav membership checks for files under `docs/`;
@@ -805,7 +824,8 @@ Automated validation includes:
 
 `make docs-hygiene` runs deterministic repository-hygiene checks for Markdown and snippets.
 `make code-hygiene` runs deterministic prose-hygiene checks for Python comments, docstrings, and
-prose-oriented string literals.
+prose-oriented string literals. `make docs-build` performs the strict build and offline
+project-owned hosted-route validation; `make links-site` adds rendered-site network link checking.
 
 The validation fails on objective problems such as:
 
@@ -813,6 +833,7 @@ The validation fails on objective problems such as:
 - nested snippet includes;
 - malformed docs-root-relative include paths;
 - include targets that resolve outside `docs/`;
+- TopMark-hosted documentation routes or fragments absent from the local MkDocs build;
 - accidental macOS `._*` resource files under documentation sources;
 - Markdown files under `docs/` missing from `mkdocs.yml` nav;
 - emoji in Markdown headings;

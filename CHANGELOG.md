@@ -57,6 +57,8 @@ ______________________________________________________________________
 - Added repository-level Codecov policy that compares project coverage with the pull request base,
   permits a 0.25 percentage-point decline, reports patch coverage informationally, and limits pull
   request comments to actual coverage changes.
+- Added offline validation that maps TopMark-hosted documentation URLs to the locally built MkDocs
+  site, preventing pull-request checks from depending on pages not yet deployed to Read the Docs.
 - Added the explicit `mixed_line_endings = "reject" | "preserve"` policy with authoritative
   whole-file validation, deterministic local newline selection for generated headers, strict
   rejection by default, and exact preservation of existing non-header terminators. The policy is
