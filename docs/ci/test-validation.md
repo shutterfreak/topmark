@@ -158,6 +158,11 @@ Generate the canonical local coverage report:
 nox -s coverage -p 3.14
 ```
 
+This generates local HTML, XML, and JSON reports without publishing them. The dedicated CI coverage
+job retains those reports as GitHub Actions artifacts and submits the XML report to Codecov as a
+non-blocking external diagnostic. Contributors do not need Codecov credentials for local coverage.
+See the [CI workflow](./ci-workflow.md#artifact-handling) for the reporting and artifact model.
+
 Inspect the Python metadata consumed by CI:
 
 ```bash

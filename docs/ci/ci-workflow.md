@@ -23,7 +23,8 @@ pushes to `main`, and version-tag pushes before release publication consumes CI-
 
 The CI workflow validates that the repository source tree is healthy before changes are merged or
 released. It checks formatting, linting, typing, documentation integrity, link integrity, test
-behavior, and stable public API compatibility.
+behavior, stable public API compatibility, and canonical code coverage. The canonical coverage
+report is retained as a GitHub Actions artifact and published to Codecov for external presentation.
 
 The workflow also builds release artifacts on version-tag pushes. This is intentional: release
 artifacts are built in the unprivileged CI workflow and later consumed by the privileged release
@@ -71,6 +72,12 @@ repository access plus read-only pull-request metadata access for path filtering
 pre-commit, coverage, and release-artifact jobs keep read-only repository permissions. The workflow
 does not publish packages, create releases, or request elevated release permissions.
 
+The coverage job authenticates its Codecov upload with the repository-scoped `CODECOV_TOKEN` Actions
+secret. The secret is passed only to the pinned Codecov upload action; it is not written to coverage
+output or made available to unrelated jobs. Pull requests from forks cannot access repository
+Actions secrets. Codecov's public-repository fork handling can accept those uploads without exposing
+the upstream token.
+
 The trust boundary is intentional:
 
 - CI checks out and runs repository code in an unprivileged context.
@@ -98,7 +105,7 @@ ______________________________________________________________________
 | `docs`              | Build the documentation site in strict mode                             | `nox`, `mkdocs`                            |
 | `tests`             | Run the supported Python test matrix                                    | `nox`, `pytest`                            |
 | `filesystem-tests`  | Run canonical Python tests across macOS and Windows filesystems         | `nox`, `pytest`                            |
-| `coverage`          | Generate and publish canonical coverage reports                         | `nox`, `coverage.py`, `pytest`             |
+| `coverage`          | Generate and publish canonical coverage reports                         | `nox`, `coverage.py`, `pytest`, Codecov    |
 | `api-snapshot`      | Check structured public API contracts for source-changing pull requests | `nox`, `tools/api_snapshot.py`             |
 | `links`             | Validate links in source Markdown files                                 | `lycheeverse/lychee-action`, `lychee.toml` |
 | `links-site`        | Validate links in the rendered MkDocs site, including generated pages   | `mkdocs`, `lycheeverse/lychee-action`      |
@@ -127,6 +134,12 @@ Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolve
 version and the existing `nox -s coverage` session. Coverage intentionally runs outside the full
 test matrix to avoid duplicating expensive QA work that is already covered by the compatibility
 matrix.
+
+After generating the reports, the job uploads only `coverage.xml` to Codecov. Automatic report
+discovery is disabled so `coverage.json`, the coverage database, and the HTML report are not
+accidentally submitted as additional inputs. Codecov upload failures are non-blocking: the local
+coverage run and GitHub-hosted coverage artifacts remain authoritative CI diagnostics even when the
+external reporting service is unavailable.
 
 The coverage job depends on the full supported-version test matrix succeeding before coverage
 reports are generated. This keeps the compatibility matrix as the primary validation gate while
@@ -167,6 +180,11 @@ The workflow also publishes coverage artifacts from the dedicated `coverage` job
 - an HTML coverage report;
 - XML and JSON machine-readable coverage reports;
 - a short GitHub Step Summary with a coverage overview and artifact notice.
+
+The same job submits the XML report to Codecov. Codecov presents coverage history and supplies the
+main-branch coverage badge shown in `README.md`; the badge links to TopMark's public Codecov
+[dashboard](https://app.codecov.io/gh/shutterfreak/topmark). This external presentation complements
+rather than replaces the reports retained with the GitHub Actions run.
 
 Coverage artifacts are diagnostic CI outputs only. They are not release artifacts and are not
 consumed by the release workflow.
@@ -281,8 +299,9 @@ uv build
 ```
 
 Local commands can reproduce most validation behavior, but they do not reproduce GitHub event
-context, pull-request path filtering, artifact-upload behavior, or downstream release-workflow
-handoff semantics.
+context, pull-request path filtering, GitHub artifact uploads, authenticated Codecov publication, or
+downstream release-workflow handoff semantics. Contributors do not need a Codecov token to generate
+or inspect coverage locally.
 
 ______________________________________________________________________
 
@@ -299,6 +318,12 @@ When editing this workflow:
 - keep Python-version metadata sourced from `pyproject.toml` through `nox -s print_python_matrix`;
 - keep the coverage job canonical and lightweight rather than instrumenting the full compatibility
   matrix;
+- keep the Codecov action pinned to a full commit SHA, pass only the repository-scoped
+  `CODECOV_TOKEN`, and keep explicit report discovery limited to `coverage.xml`;
+- keep external Codecov publication non-blocking and retain GitHub-hosted coverage reports as the
+  independently available diagnostic output;
+- keep the README coverage badge pointed at the `main` branch and TopMark's public Codecov
+  dashboard;
 - keep Linux canonical QA covered by the supported Python matrix and keep additional
   platform-dependent filesystem behavior covered by the macOS/Windows `filesystem-tests` job rather
   than expanding the full Python-version matrix across all operating systems;
