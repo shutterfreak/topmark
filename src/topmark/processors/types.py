@@ -21,6 +21,44 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
+from typing import Literal
+from typing import TypeAlias
+
+HeaderFieldValidationTargetLiteral: TypeAlias = Literal[
+    "name",
+    "value",
+]
+"""Header-field component targeted by a validation issue."""
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class HeaderFieldValidationIssue:
+    """One deterministic violation of the header-field serialization contract.
+
+    Attributes:
+        field_index: Zero-based position in the configured field sequence.
+        field_name: Original field name. Diagnostic rendering must not echo this
+            value unless it has independently been established as safe.
+        target: Whether the violation applies to the field name or value.
+        rule: Stable machine-friendly rule identifier.
+    """
+
+    field_index: int
+    field_name: str
+    target: HeaderFieldValidationTargetLiteral
+    rule: str
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class HeaderFieldValidationResult:
+    """Typed aggregate returned by processor field validation."""
+
+    issues: tuple[HeaderFieldValidationIssue, ...] = ()
+
+    @property
+    def is_valid(self) -> bool:
+        """Return whether every selected field satisfied the contract."""
+        return not self.issues
 
 
 @dataclass(kw_only=True, slots=True)

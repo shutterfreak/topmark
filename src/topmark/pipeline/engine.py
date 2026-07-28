@@ -58,6 +58,7 @@ from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.resolution.probe import ResolutionProbeReason
 from topmark.resolution.probe import ResolutionProbeResult
@@ -89,6 +90,11 @@ class SupportsPipelineExitStatus(Protocol):
     @property
     def content(self) -> ContentStatus:
         """Content status used by exit-code selection."""
+        ...
+
+    @property
+    def render(self) -> RenderStatus:
+        """Render status used by exit-code selection."""
         ...
 
     @property
@@ -231,6 +237,7 @@ def exit_code_from_pipeline_results(
       3. encoding failures (`ENCODING_ERROR`)
       4. write failures (`IO_ERROR`)
       5. generic read/I/O failures (`IO_ERROR`)
+      6. invalid render inputs (`FAILURE`)
 
     Non-error skips such as binary/unsupported files, empty files, mixed line
     endings, and policy blocks are intentionally not mapped here. Those remain
@@ -269,6 +276,9 @@ def exit_code_from_pipeline_results(
         for r in results
     ):
         return ExitCode.IO_ERROR
+
+    if any(r.status.render == RenderStatus.FAILED for r in results):
+        return ExitCode.FAILURE
 
     return None
 

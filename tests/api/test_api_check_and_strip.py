@@ -57,6 +57,45 @@ def test_check_dry_run_reports_one_change_and_one_unchanged(
     assert r.written == 0 and r.failed == 0
 
 
+@pytest.mark.parametrize(
+    "apply",
+    [
+        False,
+        True,
+    ],
+)
+def test_check_rejects_unsafe_api_field_without_writing(
+    tmp_path: Path,
+    apply: bool,
+) -> None:
+    """API configuration is validated identically in preview and apply modes."""
+    path: Path = tmp_path / "unsafe.py"
+    original = "print('safe')\n"
+    path.write_text(original, encoding="utf-8")
+
+    result: api.RunResult = api.check(
+        [path],
+        config={
+            "fields": {
+                "project": "safe\nescaped",
+            },
+            "header": {
+                "fields": [
+                    "project",
+                ],
+            },
+        },
+        apply=apply,
+        report="all",
+    )
+
+    assert result.had_errors
+    assert result.summary == {Outcome.ERROR: 1}
+    assert result.written == 0
+    assert path.read_text(encoding="utf-8") == original
+    assert result.files[0].diff is None
+
+
 def test_check_apply_add_only_inserts_header_for_missing(
     repo_py_with_and_without_header: Path, proc_py: HeaderProcessor
 ) -> None:

@@ -36,6 +36,7 @@ from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
 from topmark.pipeline.status import WriteStatus
@@ -75,6 +76,31 @@ def _make_context(
 def test_result_bucket_repr_uses_fallback_reason() -> None:
     """Bucket repr should use the shared fallback reason when reason is absent."""
     assert repr(ResultBucket(outcome=Outcome.PENDING)) == (f"pending: {NO_REASON_PROVIDED}")
+
+
+@pytest.mark.parametrize(
+    "apply",
+    [
+        False,
+        True,
+    ],
+)
+def test_map_bucket_render_failure_is_error(
+    tmp_path: Path,
+    apply: bool,
+) -> None:
+    """Field-validation failure is an error in both preview and apply modes."""
+    ctx: ProcessingContext = _make_context(tmp_path, apply_changes=apply)
+    ctx.status.header = HeaderStatus.MISSING
+    ctx.status.generation = GenerationStatus.GENERATED
+    ctx.status.render = RenderStatus.FAILED
+
+    bucket: ResultBucket = map_bucket(ctx, apply=apply)
+
+    assert bucket == ResultBucket(
+        outcome=Outcome.ERROR,
+        reason=RenderStatus.FAILED.value,
+    )
 
 
 @pytest.mark.parametrize(

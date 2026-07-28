@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.core.logging import TopmarkLogger
+    from topmark.processors.types import HeaderFieldValidationIssue
 
 logger: TopmarkLogger = get_logger(__name__)
 
@@ -66,6 +67,27 @@ class MarkdownHeaderProcessor(HeaderProcessor):
             block_prefix="<!--",
             block_suffix="-->",
         )
+
+    def validate_processor_field(
+        self,
+        *,
+        field_index: int,
+        field_name: str,
+        field_value: str,
+    ) -> tuple[HeaderFieldValidationIssue, ...]:
+        """Reject double-hyphens forbidden by HTML comment grammar."""
+        issues: list[HeaderFieldValidationIssue] = []
+        for target, content in (("name", field_name), ("value", field_value)):
+            if "--" in content:
+                issues.append(
+                    self._field_validation_issue(
+                        field_index=field_index,
+                        field_name=field_name,
+                        target=target,
+                        rule="processor:markdown-double-hyphen",
+                    )
+                )
+        return tuple(issues)
 
     # --- Markdown-specific fence handling ---------------------------------
 

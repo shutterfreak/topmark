@@ -18,7 +18,10 @@ from typing import TYPE_CHECKING
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_renderer
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.diagnostic.model import DiagnosticLevel
 from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import RenderStatus
@@ -162,6 +165,69 @@ def test_renderer_passes_selected_fields_config_and_newline_to_processor(tmp_pat
     assert ctx.diagnostics.items == []
     assert ctx.halt_state is None
     assert ctx.diagnostic_hints.items == []
+
+
+def test_renderer_validation_failure_is_terminal_and_produces_no_view(
+    tmp_path: Path,
+) -> None:
+    """Unsafe content must fail before invoking rendering or creating partial output."""
+    unsafe_value = "safe\nDO NOT ECHO"
+    cfg: FrozenConfig = _renderer_config(header_fields=["project"])
+    selected: dict[str, str] = {
+        "project": unsafe_value,
+    }
+    ctx, processor = _renderer_context(
+        tmp_path / "source.py",
+        cfg,
+        generation=GenerationStatus.GENERATED,
+        selected=selected,
+    )
+
+    run_renderer(ctx)
+
+    assert processor.calls == []
+    assert ctx.status.render is RenderStatus.FAILED
+    assert ctx.views.render is None
+    assert ctx.halt_state is not None
+    assert ctx.halt_state.step_name == "RendererStep"
+    assert [(item.level, item.message) for item in ctx.diagnostics.items] == [
+        (
+            DiagnosticLevel.ERROR,
+            "header field #1 (project) value violates content:line-break.",
+        )
+    ]
+    assert unsafe_value not in ctx.diagnostics.items[0].message
+    assert [
+        (hint.axis, hint.code, hint.cluster, hint.terminal) for hint in ctx.diagnostic_hints.items
+    ] == [
+        (
+            Axis.RENDER,
+            KnownCode.RENDER_INVALID_FIELDS.value,
+            Cluster.ERROR.value,
+            True,
+        )
+    ]
+
+
+def test_renderer_does_not_echo_an_unsafe_field_name(
+    tmp_path: Path,
+) -> None:
+    """Diagnostics identify an unsafe name by position without reproducing it."""
+    unsafe_name = "bad\nname"
+    cfg: FrozenConfig = _renderer_config(header_fields=[unsafe_name])
+    ctx, processor = _renderer_context(
+        tmp_path / "source.py",
+        cfg,
+        generation=GenerationStatus.GENERATED,
+        selected={unsafe_name: "value"},
+    )
+
+    run_renderer(ctx)
+
+    assert processor.calls == []
+    assert ctx.status.render is RenderStatus.FAILED
+    assert ctx.views.render is None
+    assert unsafe_name not in "\n".join(item.message for item in ctx.diagnostics.items)
 
 
 def test_renderer_preserves_existing_pre_prefix_indentation(tmp_path: Path) -> None:

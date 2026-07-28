@@ -207,6 +207,7 @@ class KnownCode(EnumIntrospectionMixin, str, Enum):
     GENERATION_GENERATED = "generation:generated"
     # Render
     RENDER_RENDERED = "render:rendered"
+    RENDER_INVALID_FIELDS = "render:invalid_fields"
     # Comparison
     COMPARE_CHANGED = "compare:changed"
     COMPARE_WOULD_CHANGE = "compare:would_change"

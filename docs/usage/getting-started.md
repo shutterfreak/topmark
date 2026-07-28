@@ -67,6 +67,14 @@ fields = [
 > When using `pyproject.toml`, TopMark settings must be placed under the `tool.topmark` table prefix
 > (for example: `[config]` becomes `[tool.topmark.config]`).
 
+Header fields are serialized as one physical `key: value` line inside the selected file type's
+comment syntax. Field names must be non-empty, contain no colon or surrounding whitespace, and
+round-trip unchanged through that representation. Names and values must not contain CR/LF, NUL, TAB,
+other control characters, or TopMark's reserved header markers. The selected processor may also
+reject syntax that would invalidate its comment, such as `*/` in C block comments or `--` in
+XML/HTML/Markdown comments. TopMark reports invalid content and does not render, preview, patch, or
+write a partial header.
+
 Generate a documented starter configuration:
 
 ### Repository-level configuration

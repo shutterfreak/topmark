@@ -33,6 +33,8 @@ from typing import TYPE_CHECKING
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import allow_empty_header
 from topmark.pipeline.hints import Axis
+from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
@@ -46,22 +48,45 @@ if TYPE_CHECKING:
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.views import BuilderView
     from topmark.pipeline.views import HeaderView
+    from topmark.processors.types import HeaderFieldValidationIssue
+    from topmark.processors.types import HeaderFieldValidationResult
 
 
 logger: TopmarkLogger = get_logger(__name__)
 
 
+def _diagnostic_field_label(
+    issue: HeaderFieldValidationIssue,
+) -> str:
+    """Return a safe field label without reproducing unsafe raw content."""
+    name: str = issue.field_name
+    if name and all(char.isascii() and (char.isalnum() or char in "._-") for char in name):
+        return f"header field #{issue.field_index + 1} ({name})"
+    return f"header field #{issue.field_index + 1}"
+
+
+def _diagnostic_rule_label(
+    rule: str,
+) -> str:
+    """Return a safe rule identifier for diagnostics."""
+    if rule and all(char.isascii() and (char.isalnum() or char in "._:-") for char in rule):
+        return rule
+    return "processor:specific-constraint"
+
+
 class RendererStep(BaseStep):
     """Render expected header text from the selected field mapping.
 
-    Consumes `BuilderView.selected` and produces a `RenderView` with lines/block.
-    Preserves newline style and indentation where applicable.
+    Consumes `BuilderView.selected`, validates the exact configured fields at
+    the processor boundary, and produces a `RenderView` with lines/block only
+    when validation succeeds. Preserves newline style and indentation where
+    applicable.
 
     Axes written:
       - render
 
     Sets:
-      - RenderStatus: {PENDING, RENDERED, SKIPPED}
+      - RenderStatus: {PENDING, RENDERED, SKIPPED, FAILED}
     """
 
     def __init__(self) -> None:
@@ -162,6 +187,32 @@ class RendererStep(BaseStep):
             builder_view.selected if builder_view and builder_view.selected else {}
         )
 
+        validation: HeaderFieldValidationResult = ctx.header_processor.validate_header_fields(
+            field_names=ctx.config.header_fields,
+            header_values=fields,
+        )
+        if not validation.is_valid:
+            for issue in validation.issues:
+                ctx.diagnostics.add_error(
+                    f"{_diagnostic_field_label(issue)} {issue.target} violates "
+                    f"{_diagnostic_rule_label(issue.rule)}."
+                )
+            ctx.status.render = RenderStatus.FAILED
+            ctx.hint(
+                axis=Axis.RENDER,
+                code=KnownCode.RENDER_INVALID_FIELDS,
+                cluster=Cluster.ERROR,
+                message=(
+                    "header field validation failed "
+                    f"({len(validation.issues)} violation"
+                    f"{'' if len(validation.issues) == 1 else 's'})"
+                ),
+                terminal=True,
+                reason=RenderStatus.FAILED.value,
+            )
+            ctx.request_halt(reason="unsafe header field content", at_step=self)
+            return
+
         # Compute header_indent_override using the header view and file lines
         # Preserve pre-prefix indentation when replacing an existing header
         # (spaces/tabs before the prefix, e.g., "    //"). This keeps nested/indented
@@ -226,6 +277,9 @@ class RendererStep(BaseStep):
             # Stop processing:
             case RenderStatus.SKIPPED:
                 pass  # already halted by run()
+
+            case RenderStatus.FAILED:
+                pass  # validation failure already diagnosed and halted by run()
 
             # States owned outside this step:
             case RenderStatus.PENDING:  # pragma: no cover - BaseStep owns pending handling.

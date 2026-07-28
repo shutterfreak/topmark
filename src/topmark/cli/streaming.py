@@ -44,11 +44,12 @@ if TYPE_CHECKING:
 
 
 _EXIT_CODE_PRIORITY: dict[ExitCode, int] = {
-    ExitCode.FILE_NOT_FOUND: 5,
-    ExitCode.PERMISSION_DENIED: 4,
-    ExitCode.ENCODING_ERROR: 3,
-    ExitCode.IO_ERROR: 2,
-    ExitCode.PIPELINE_ERROR: 1,
+    ExitCode.FILE_NOT_FOUND: 6,
+    ExitCode.PERMISSION_DENIED: 5,
+    ExitCode.ENCODING_ERROR: 4,
+    ExitCode.IO_ERROR: 3,
+    ExitCode.PIPELINE_ERROR: 2,
+    ExitCode.FAILURE: 1,
 }
 
 
