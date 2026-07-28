@@ -19,6 +19,7 @@ import pytest
 from tests.helpers.paths import symlink_or_skip
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_builder
+from tests.helpers.pipeline import run_renderer
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.model import MutableConfig
 from topmark.diagnostic.model import DiagnosticLevel
@@ -29,8 +30,10 @@ from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
+from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps import builder as builder_module
 from topmark.pipeline.steps.builder import BuilderStep
+from topmark.processors.builtins.pound import PoundHeaderProcessor
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
@@ -293,6 +296,35 @@ def test_builder_uses_logical_stdin_path_but_materialized_content_directory(
     assert ctx.diagnostics.items == []
     assert ctx.halt_state is None
     assert ctx.diagnostic_hints.items == []
+
+
+def test_derived_logical_filename_is_validated_before_rendering(
+    tmp_path: Path,
+) -> None:
+    """Derived path metadata receives the same validation as configured values."""
+    content_path: Path = tmp_path / "stdin-content.py"
+    content_path.write_text(
+        "print('hello')\n",
+        encoding="utf-8",
+        newline="",
+    )
+    cfg: FrozenConfig = _builder_config(header_fields=["file"])
+    ctx: ProcessingContext = _builder_context(content_path, cfg)
+    ctx.run_options = RunOptions(
+        pipeline_kind="check",
+        apply_changes=False,
+        stdin_mode=True,
+        stdin_filename="logical/input\n.py",
+    )
+
+    run_builder(ctx)
+    ctx.header_processor = PoundHeaderProcessor()
+    run_renderer(ctx)
+
+    assert ctx.views.build is not None
+    assert ctx.views.build.selected == {"file": "input\n.py"}
+    assert ctx.status.render is RenderStatus.FAILED
+    assert ctx.views.render is None
 
 
 def test_builder_generates_path_fields_from_matching_filesystem_spelling(

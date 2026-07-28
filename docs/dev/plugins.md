@@ -311,6 +311,14 @@ For character-offset placement, return `NO_LINE_ANCHOR` from that method and imp
 `get_header_bounds()`, `parse_fields()`, or the insertion-preparation hooks only when the format's
 syntax cannot use the base behavior.
 
+All processors inherit the shared single-line field validation boundary. If a custom comment grammar
+has additional forbidden content, override `validate_processor_field()` and return typed
+`HeaderFieldValidationIssue` values for only those processor-specific rules. Do not override
+`validate_header_fields()` or repeat the shared name, control-character, newline, and
+reserved-marker checks. Validation runs after runtime field selection and before
+`render_header_lines()`, so custom processors receive no render call when any shared or
+processor-specific issue is present.
+
 During `Registry.bind(...)`, TopMark resolves the file type identifier through the composed runtime
 file type registry and records a binding from that file type's qualified key to the registered
 processor definition. Runtime resolution later constructs a fresh processor instance bound to the

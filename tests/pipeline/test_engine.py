@@ -23,6 +23,7 @@ from topmark.core.exit_codes import ExitCode
 from topmark.pipeline import engine
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
+from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import WriteStatus
 from topmark.runtime.model import RunOptions
 
@@ -40,6 +41,7 @@ class _ExitStatus:
 
     fs: FsStatus = FsStatus.PENDING
     content: ContentStatus = ContentStatus.PENDING
+    render: RenderStatus = RenderStatus.PENDING
     write: WriteStatus = WriteStatus.PENDING
 
 
@@ -224,6 +226,7 @@ def test_run_steps_for_files_maps_directory_error_and_materializes_later_context
         (_ExitStatus(write=WriteStatus.FAILED), ExitCode.IO_ERROR),
         (_ExitStatus(fs=FsStatus.UNREADABLE), ExitCode.IO_ERROR),
         (_ExitStatus(content=ContentStatus.UNREADABLE), ExitCode.IO_ERROR),
+        (_ExitStatus(render=RenderStatus.FAILED), ExitCode.FAILURE),
         (_ExitStatus(), None),
     ],
 )

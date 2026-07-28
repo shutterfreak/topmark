@@ -51,6 +51,7 @@ from topmark.pipeline.status import FsStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import PlanStatus
+from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import StripStatus
 from topmark.pipeline.status import WriteStatus
@@ -91,6 +92,11 @@ class SupportsOutcomeStatus(Protocol):
     @property
     def generation(self) -> GenerationStatus:
         """Generation status used by the classifier."""
+        ...
+
+    @property
+    def render(self) -> RenderStatus:
+        """Render status used by the classifier."""
         ...
 
     @property
@@ -425,6 +431,13 @@ def map_bucket(
             debug_tag="error:header-malformed",
             outcome=Outcome.ERROR,
             reason=ctx.status.header.value,
+        )
+
+    if ctx.status.render == RenderStatus.FAILED:
+        return ret(
+            debug_tag="error:render",
+            outcome=Outcome.ERROR,
+            reason=ctx.status.render.value,
         )
 
     # 6) Policy veto (add-only / update-only)

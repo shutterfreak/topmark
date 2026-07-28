@@ -24,11 +24,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from click.testing import Result
 
+from tests.cli.conftest import assert_FAILURE
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
+from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 
@@ -71,3 +74,44 @@ def test_check_apply_writes_changes_and_exits_success(tmp_path: Path) -> None:
 
     # The file should be changed by header insertion.
     assert after != before, "file should have been modified"
+
+
+@pytest.mark.parametrize(
+    "apply",
+    [
+        False,
+        True,
+    ],
+)
+def test_check_rejects_multiline_toml_field_without_writing(
+    tmp_path: Path,
+    apply: bool,
+) -> None:
+    """Discovered TOML values fail identically in preview and apply modes."""
+    path: Path = tmp_path / "unsafe.py"
+    original = "print('safe')\n"
+    path.write_text(original, encoding="utf-8")
+    (tmp_path / "topmark.toml").write_text(
+        """
+[config]
+root = true
+
+[fields]
+project = \"\"\"safe
+escaped\"\"\"
+
+[header]
+fields = ["project"]
+""".lstrip(),
+        encoding="utf-8",
+    )
+    argv: list[str] = [CliCmd.CHECK]
+    if apply:
+        argv.append(CliOpt.APPLY_CHANGES)
+    argv.append(path.name)
+
+    result: Result = run_cli_in(tmp_path, argv)
+
+    assert_FAILURE(result)
+    assert path.read_text(encoding="utf-8") == original
+    assert "escaped" not in result.output

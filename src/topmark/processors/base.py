@@ -35,6 +35,7 @@ otherwise it falls back to the line-based strategy using the computed anchor.
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import TYPE_CHECKING
 from typing import ClassVar
 from typing import Final
@@ -47,6 +48,8 @@ from topmark.core.logging import get_logger
 from topmark.pipeline.policy_whitespace import is_pure_spacer
 from topmark.processors.types import BoundsKind
 from topmark.processors.types import HeaderBounds
+from topmark.processors.types import HeaderFieldValidationIssue
+from topmark.processors.types import HeaderFieldValidationResult
 from topmark.processors.types import HeaderParseResult
 from topmark.processors.types import StripDiagKind
 from topmark.processors.types import StripDiagnostic
@@ -59,6 +62,7 @@ from topmark.registry.identity import validate_reserved_topmark_namespace
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Mapping
+    from collections.abc import Sequence
 
     from topmark.core.logging import TopmarkLogger
     from topmark.diagnostic.model import MutableDiagnosticLog
@@ -408,6 +412,166 @@ class HeaderProcessor:
             success_count=cnt_header_ok,
             error_count=cnt_header_error,
         )
+
+    def validate_header_fields(
+        self,
+        *,
+        field_names: Sequence[str],
+        header_values: Mapping[str, str],
+    ) -> HeaderFieldValidationResult:
+        """Validate the exact ordered fields that would be rendered.
+
+        Shared TopMark serialization rules are always evaluated first. Each
+        field is then passed to `validate_processor_field` so subclasses can
+        add grammar-specific constraints without duplicating the shared rules.
+
+        Args:
+            field_names: Ordered configured field names to serialize.
+            header_values: Selected field values; missing names use the same
+                empty-string fallback as rendering.
+
+        Returns:
+            Immutable, deterministically ordered validation issues.
+        """
+        issues: list[HeaderFieldValidationIssue] = []
+        for field_index, field_name in enumerate(field_names):
+            field_value: str = header_values.get(field_name, "")
+
+            if not field_name:
+                issues.append(
+                    self._field_validation_issue(
+                        field_index=field_index,
+                        field_name=field_name,
+                        target="name",
+                        rule="name:empty",
+                    )
+                )
+            elif field_name != field_name.strip():
+                issues.append(
+                    self._field_validation_issue(
+                        field_index=field_index,
+                        field_name=field_name,
+                        target="name",
+                        rule="name:not-round-trippable",
+                    )
+                )
+
+            if ":" in field_name:
+                issues.append(
+                    self._field_validation_issue(
+                        field_index=field_index,
+                        field_name=field_name,
+                        target="name",
+                        rule="name:colon",
+                    )
+                )
+
+            issues.extend(
+                self._validate_generic_field_content(
+                    field_index=field_index,
+                    field_name=field_name,
+                    target="name",
+                    content=field_name,
+                )
+            )
+            issues.extend(
+                self._validate_generic_field_content(
+                    field_index=field_index,
+                    field_name=field_name,
+                    target="value",
+                    content=field_value,
+                )
+            )
+            issues.extend(
+                self.validate_processor_field(
+                    field_index=field_index,
+                    field_name=field_name,
+                    field_value=field_value,
+                )
+            )
+
+        return HeaderFieldValidationResult(issues=tuple(issues))
+
+    def validate_processor_field(
+        self,
+        *,
+        field_index: int,
+        field_name: str,
+        field_value: str,
+    ) -> tuple[HeaderFieldValidationIssue, ...]:
+        """Return processor-specific issues for one field.
+
+        Custom processors may override this additive hook. Shared rules remain
+        owned by `validate_header_fields` and must not be repeated.
+
+        Args:
+            field_index: Zero-based position in the configured field sequence.
+            field_name: Field name to validate.
+            field_value: Effective value that would be rendered.
+
+        Returns:
+            Processor-specific issues in deterministic rule order.
+        """
+        return ()
+
+    @staticmethod
+    def _field_validation_issue(
+        *,
+        field_index: int,
+        field_name: str,
+        target: str,
+        rule: str,
+    ) -> HeaderFieldValidationIssue:
+        """Build a typed validation issue for an internal validation rule."""
+        if target == "name":
+            normalized_target = "name"
+        elif target == "value":
+            normalized_target = "value"
+        else:  # pragma: no cover - internal exhaustive guard
+            raise ValueError(f"Unsupported header field validation target: {target}")
+        return HeaderFieldValidationIssue(
+            field_index=field_index,
+            field_name=field_name,
+            target=normalized_target,
+            rule=rule,
+        )
+
+    def _validate_generic_field_content(
+        self,
+        *,
+        field_index: int,
+        field_name: str,
+        target: str,
+        content: str,
+    ) -> tuple[HeaderFieldValidationIssue, ...]:
+        """Return shared content violations for a field name or value."""
+        issues: list[HeaderFieldValidationIssue] = []
+
+        def add(rule: str) -> None:
+            issues.append(
+                self._field_validation_issue(
+                    field_index=field_index,
+                    field_name=field_name,
+                    target=target,
+                    rule=rule,
+                )
+            )
+
+        if "\r" in content or "\n" in content:
+            add("content:line-break")
+        if "\0" in content:
+            add("content:nul")
+        if any(
+            unicodedata.category(char) == "Cc" and char not in {"\r", "\n", "\0"}
+            for char in content
+        ):
+            add("content:control-character")
+        if TOPMARK_START_MARKER in content:
+            add("content:reserved-start-marker")
+        if TOPMARK_END_MARKER in content:
+            add("content:reserved-end-marker")
+
+        return tuple(issues)
 
     def _find_inner_marker_indices(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Find START and END marker indices relative to the given slice.

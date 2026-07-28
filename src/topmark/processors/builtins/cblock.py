@@ -30,9 +30,13 @@ We emit the wrapper lines '/*' and '*/' and render inner lines as '* ...'.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from typing import ClassVar
 
 from topmark.processors.base import HeaderProcessor
+
+if TYPE_CHECKING:
+    from topmark.processors.types import HeaderFieldValidationIssue
 
 
 class CBlockHeaderProcessor(HeaderProcessor):
@@ -57,6 +61,27 @@ class CBlockHeaderProcessor(HeaderProcessor):
     def __init__(self) -> None:
         # Defer to base initializer; class attributes define affixes/indent.
         super().__init__()
+
+    def validate_processor_field(
+        self,
+        *,
+        field_index: int,
+        field_name: str,
+        field_value: str,
+    ) -> tuple[HeaderFieldValidationIssue, ...]:
+        """Reject the C block-comment terminator in field content."""
+        issues: list[HeaderFieldValidationIssue] = []
+        for target, content in (("name", field_name), ("value", field_value)):
+            if "*/" in content:
+                issues.append(
+                    self._field_validation_issue(
+                        field_index=field_index,
+                        field_name=field_name,
+                        target=target,
+                        rule="processor:cblock-comment-terminator",
+                    )
+                )
+        return tuple(issues)
 
     # Broaden matching so we also recognize headers whose inner lines were written
     # WITHOUT the leading "*" (older tools / formatters sometimes do that).

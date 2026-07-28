@@ -314,6 +314,9 @@ ______________________________________________________________________
 
 ### Fixed - Unreleased
 
+- Rejected unsafe header field names and values before processor rendering, including line breaks,
+  control characters, reserved TopMark markers, ambiguous names, and processor-specific comment
+  terminators, without producing partial render, diff, patch, or write output.
 - Hardened the Makefile uv availability check to execute `uv --version`, detecting stale or broken
   command shims, and deferred release-matrix discovery so uv-only targets do not require nox while
   parsing the Makefile.

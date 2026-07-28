@@ -233,6 +233,8 @@ class RenderStatus(BaseStatus):
     States:
         PENDING: Rendering has not been executed or did not complete.
         RENDERED: The expected header text was successfully rendered.
+        SKIPPED: Rendering was intentionally skipped by policy.
+        FAILED: Rendering was refused because its inputs were invalid.
     """
 
     PENDING = (
@@ -246,6 +248,10 @@ class RenderStatus(BaseStatus):
     SKIPPED = (
         "header rendering skipped",
         StyleRole.SKIPPED,
+    )
+    FAILED = (
+        "header rendering failed",
+        StyleRole.ERROR,
     )
 
 
