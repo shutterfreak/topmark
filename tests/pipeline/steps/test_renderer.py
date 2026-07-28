@@ -15,6 +15,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_renderer
 from topmark.config.io.deserializers import mutable_config_from_defaults
@@ -26,6 +28,9 @@ from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.renderer import RendererStep
+from topmark.pipeline.steps.renderer import (
+    _diagnostic_rule_label,  # pyright: ignore[reportPrivateUsage]
+)
 from topmark.pipeline.views import BuilderView
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import ListFileImageView
@@ -91,6 +96,15 @@ class RecordingProcessor(HeaderProcessor):
             )
         )
         return ["<rendered>\r\n", "</rendered>\r\n"]
+
+
+def test_diagnostic_rule_label_preserves_safe_rules_and_redacts_unsafe_rules() -> None:
+    """Rule labels must expose safe identifiers only and use a deterministic fallback."""
+    fallback = "processor:specific-constraint"
+
+    assert _diagnostic_rule_label("processor:custom-rule") == "processor:custom-rule"
+    assert _diagnostic_rule_label("processor:custom\nunsafe") == fallback
+    assert _diagnostic_rule_label("") == fallback
 
 
 def _renderer_config(
@@ -165,6 +179,26 @@ def test_renderer_passes_selected_fields_config_and_newline_to_processor(tmp_pat
     assert ctx.diagnostics.items == []
     assert ctx.halt_state is None
     assert ctx.diagnostic_hints.items == []
+
+
+def test_renderer_requires_a_resolved_header_processor(
+    tmp_path: Path,
+) -> None:
+    """The renderer must reject a context that has no resolved processor."""
+    cfg: FrozenConfig = _renderer_config(header_fields=["project"])
+    ctx: ProcessingContext = make_pipeline_context(tmp_path / "source.py", cfg)
+    ctx.status.generation = GenerationStatus.GENERATED
+    ctx.views.build = BuilderView(
+        builtins={
+            "unused": "builtin",
+        },
+        selected={
+            "project": "TopMark",
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="^Header processor not defined$"):
+        run_renderer(ctx)
 
 
 def test_renderer_validation_failure_is_terminal_and_produces_no_view(
@@ -285,6 +319,43 @@ def test_renderer_omits_indent_override_for_unindented_existing_header(tmp_path:
     run_renderer(ctx)
 
     assert processor.calls[0].header_indent_override is None
+    assert ctx.status.render is RenderStatus.RENDERED
+    assert ctx.halt_state is None
+
+
+def test_renderer_tolerates_header_range_beyond_image_lines(
+    tmp_path: Path,
+) -> None:
+    """A mismatched header view must render safely without an indentation override."""
+    cfg: FrozenConfig = _renderer_config(header_fields=["project"])
+    selected: dict[str, str] = {
+        "project": "TopMark",
+    }
+    ctx, processor = _renderer_context(
+        tmp_path / "source.jsonc",
+        cfg,
+        generation=GenerationStatus.GENERATED,
+        selected=selected,
+        image_lines=["body\n"],
+    )
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.views.header = HeaderView(
+        range=(4, 5),
+        lines=["    // topmark:header:start\n", "    // topmark:header:end\n"],
+        block="    // topmark:header:start\n    // topmark:header:end\n",
+        mapping={},
+    )
+
+    run_renderer(ctx)
+
+    assert processor.calls == [
+        RenderCall(
+            header_values=selected,
+            config=cfg,
+            newline_style="\n",
+            header_indent_override=None,
+        )
+    ]
     assert ctx.status.render is RenderStatus.RENDERED
     assert ctx.halt_state is None
 
