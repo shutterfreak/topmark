@@ -319,6 +319,15 @@ reserved-marker checks. Validation runs after runtime field selection and before
 `render_header_lines()`, so custom processors receive no render call when any shared or
 processor-specific issue is present.
 
+The approved [multiline header field serialization](multiline-header-fields.md) contract extends
+this model for implementation by GitHub issue
+[#326](https://github.com/shutterfreak/topmark/issues/326). The base processor will own continuation
+parsing, semantic reconstruction, canonical rendering, and shared validation. Custom processors may
+add restrictions for complete semantic values and encoded physical payload lines, but must not
+define a conflicting continuation grammar while claiming base-format compatibility. This extension
+contract is not active until GitHub issue [#326](https://github.com/shutterfreak/topmark/issues/326)
+is implemented.
+
 During `Registry.bind(...)`, TopMark resolves the file type identifier through the composed runtime
 file type registry and records a binding from that file type's qualified key to the registered
 processor definition. Runtime resolution later constructs a fresh processor instance bound to the

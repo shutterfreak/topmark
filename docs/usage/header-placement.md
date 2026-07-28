@@ -80,6 +80,25 @@ processor-specific comment syntax and insertion semantics.
 
 ______________________________________________________________________
 
+## Field serialization and placement
+
+Header placement and field serialization are separate contracts. The selected processor controls
+where the marker-delimited block is placed and which comment affixes surround each physical line.
+The current implementation serializes each field as one physical `key: value` line and rejects CR
+and LF in values before rendering.
+
+The approved [multiline header field serialization](../dev/multiline-header-fields.md) contract
+preserves these placement rules while allowing a future logical value to occupy explicit
+continuation records. Continuation tokens use a fixed extra indentation level rather than aligning
+with field colons, so `align_fields`, field-name length, and compact rendering do not change their
+canonical position.
+
+The syntax remains design documentation until GitHub issue
+[#326](https://github.com/shutterfreak/topmark/issues/326) is implemented. The processor examples
+below therefore show the currently supported single-line representation.
+
+______________________________________________________________________
+
 ## Pound-style files
 
 The `topmark:pound` processor is used for pound-prefixed line-comment formats such as Python, Python
