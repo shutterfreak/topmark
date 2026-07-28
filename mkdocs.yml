@@ -235,6 +235,7 @@ nav:
       - Architecture: dev/architecture.md
       - Registry model: dev/registry-model.md
       - Plugins and extensibility: dev/plugins.md
+      - Multiline header field serialization: dev/multiline-header-fields.md
       - Resolution: dev/resolution.md
       - Configuration schema: dev/configuration-schema.md
       - Pipelines (concepts): dev/pipelines.md

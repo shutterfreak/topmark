@@ -75,6 +75,15 @@ reject syntax that would invalidate its comment, such as `*/` in C block comment
 XML/HTML/Markdown comments. TopMark reports invalid content and does not render, preview, patch, or
 write a partial header.
 
+> [!NOTE]
+>
+> Multiline field values are not yet supported. The approved
+> [multiline header field serialization](../dev/multiline-header-fields.md) contract documents the
+> syntax and validation behavior planned for GitHub issues
+> [#326](https://github.com/shutterfreak/topmark/issues/326) and
+> [#327](https://github.com/shutterfreak/topmark/issues/327) without changing current single-line
+> behavior.
+
 Generate a documented starter configuration:
 
 ### Repository-level configuration
