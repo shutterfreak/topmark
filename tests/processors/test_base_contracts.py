@@ -228,8 +228,8 @@ def test_parse_fields_normalizes_affixes_and_preserves_field_semantics() -> None
     assert result.success_count == 2
     assert result.error_count == 2
     assert [item.message for item in context.diagnostics.items] == [
-        "Malformed header at line 14 (no colon found): '// missing-colon !\\r\\n'",
-        "Malformed header at line 15 (empty text before colon): '// : missing-name !\\r\\n'",
+        "Malformed header at physical line 14 (no colon found).",
+        "Malformed header at physical line 15 (empty text before colon).",
     ]
 
 
@@ -261,7 +261,7 @@ def test_render_header_lines_is_ordered_round_trippable_and_non_mutating(
     assert values == original
     assert all(line.endswith("\r\n") for line in rendered)
     assert rendered[0] == "    <block>\r\n"
-    assert rendered[-1] == "</block>\r\n"
+    assert rendered[-1] == "    </block>\r\n"
     assert rendered.index(next(line for line in rendered if "one" in line)) < rendered.index(
         next(line for line in rendered if "two" in line)
     )

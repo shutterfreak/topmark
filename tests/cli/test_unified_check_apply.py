@@ -27,7 +27,6 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import Result
 
-from tests.cli.conftest import assert_FAILURE
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import assert_WOULD_CHANGE
 from tests.cli.conftest import run_cli
@@ -83,12 +82,12 @@ def test_check_apply_writes_changes_and_exits_success(tmp_path: Path) -> None:
         True,
     ],
 )
-def test_check_rejects_multiline_toml_field_without_writing(
+def test_check_previews_and_applies_multiline_toml_field(
     tmp_path: Path,
     apply: bool,
 ) -> None:
-    """Discovered TOML values fail identically in preview and apply modes."""
-    path: Path = tmp_path / "unsafe.py"
+    """TOML multiline strings render canonically and converge after apply."""
+    path: Path = tmp_path / "multiline.py"
     original = "print('safe')\n"
     path.write_text(original, encoding="utf-8")
     (tmp_path / "topmark.toml").write_text(
@@ -112,6 +111,55 @@ fields = ["project"]
 
     result: Result = run_cli_in(tmp_path, argv)
 
-    assert_FAILURE(result)
+    if not apply:
+        assert_WOULD_CHANGE(result)
+        assert path.read_text(encoding="utf-8") == original
+        return
+
+    assert_SUCCESS(result)
+    rendered: str = path.read_text(encoding="utf-8")
+    assert "#   project :" in rendered
+    assert "#     | safe" in rendered
+    assert "#     | escaped" in rendered
+    assert_SUCCESS(run_cli_in(tmp_path, [CliCmd.CHECK, path.name]))
+
+
+def test_multiline_insert_strip_insert_is_byte_stable(tmp_path: Path) -> None:
+    """Preview, apply, strip, and reinsert converge on one canonical block."""
+    path: Path = tmp_path / "roundtrip.py"
+    original = "print('round trip')\n"
+    path.write_text(original, encoding="utf-8")
+    (tmp_path / "topmark.toml").write_text(
+        """
+[config]
+root = true
+
+[fields]
+notice = \"\"\"first
+
+third
+\"\"\"
+
+[header]
+fields = ["notice"]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    preview: Result = run_cli_in(
+        tmp_path,
+        [CliCmd.CHECK, CliOpt.RENDER_DIFF, path.name],
+    )
+    assert_WOULD_CHANGE(preview)
+    assert "#     | first" in preview.output
+    assert "#     |" in preview.output
+
+    assert_SUCCESS(run_cli_in(tmp_path, [CliCmd.CHECK, CliOpt.APPLY_CHANGES, path.name]))
+    first_insert: str = path.read_text(encoding="utf-8")
+    assert_SUCCESS(run_cli_in(tmp_path, [CliCmd.CHECK, path.name]))
+
+    assert_SUCCESS(run_cli_in(tmp_path, [CliCmd.STRIP, CliOpt.APPLY_CHANGES, path.name]))
     assert path.read_text(encoding="utf-8") == original
-    assert "escaped" not in result.output
+
+    assert_SUCCESS(run_cli_in(tmp_path, [CliCmd.CHECK, CliOpt.APPLY_CHANGES, path.name]))
+    assert path.read_text(encoding="utf-8") == first_insert

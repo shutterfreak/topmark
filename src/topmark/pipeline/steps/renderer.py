@@ -40,6 +40,7 @@ from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import RenderView
 from topmark.pipeline.views import ViewSlot
+from topmark.processors.base import normalize_semantic_newlines
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -183,9 +184,12 @@ class RendererStep(BaseStep):
         # Use builder output as the source of fields
         header_view: HeaderView | None = ctx.views.header
         builder_view: BuilderView | None = ctx.views.build
-        fields: Mapping[str, str] = (
+        selected_fields: Mapping[str, str] = (
             builder_view.selected if builder_view and builder_view.selected else {}
         )
+        fields: dict[str, str] = {
+            key: normalize_semantic_newlines(value) for key, value in selected_fields.items()
+        }
 
         validation: HeaderFieldValidationResult = ctx.header_processor.validate_header_fields(
             field_names=ctx.config.header_fields,

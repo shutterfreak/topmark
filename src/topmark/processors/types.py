@@ -73,10 +73,10 @@ class HeaderParseResult:
     Attributes:
         fields: Mapping of all successfully parsed header fields (key → value). Defaults to an
             empty dictionary.
-        success_count: The number of header lines that were successfully parsed and added to the
-            ``fields`` dictionary. Defaults to 0.
-        error_count: The number of header lines that were malformed (e.g., missing a colon,
-            or having an empty field name). Defaults to 0.
+        success_count: The number of logical fields successfully parsed and added to the
+            ``fields`` dictionary. Multiline continuation records count once. Defaults to 0.
+        error_count: The number of malformed logical fields or orphan records. A malformed
+            multiline scalar counts once. Defaults to 0.
     """
 
     fields: dict[str, str] = field(default_factory=lambda: {})

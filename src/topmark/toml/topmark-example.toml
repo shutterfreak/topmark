@@ -157,6 +157,13 @@ fields = ["file", "file_relpath"]
 # Copyright statement included in generated headers.
 # copyright = "(c) 2025 Your Name" # Update according to your needs
 
+# Multiline TOML strings become literal continuation records in generated
+# headers. The closing delimiter placement below avoids an implicit terminal
+# semantic newline.
+# notice = """
+# First literal line.
+# Second literal line."""
+
 
 # ----------------------------------------------------------------------------
 # Formatting configuration

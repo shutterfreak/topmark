@@ -64,12 +64,12 @@ def test_check_dry_run_reports_one_change_and_one_unchanged(
         True,
     ],
 )
-def test_check_rejects_unsafe_api_field_without_writing(
+def test_check_accepts_multiline_api_field(
     tmp_path: Path,
     apply: bool,
 ) -> None:
-    """API configuration is validated identically in preview and apply modes."""
-    path: Path = tmp_path / "unsafe.py"
+    """API multiline values preview and apply without changing result shapes."""
+    path: Path = tmp_path / "multiline.py"
     original = "print('safe')\n"
     path.write_text(original, encoding="utf-8")
 
@@ -89,10 +89,16 @@ def test_check_rejects_unsafe_api_field_without_writing(
         report="all",
     )
 
-    assert result.had_errors
-    assert result.summary == {Outcome.ERROR: 1}
-    assert result.written == 0
-    assert path.read_text(encoding="utf-8") == original
+    assert not result.had_errors
+    expected: Outcome = Outcome.INSERTED if apply else Outcome.WOULD_INSERT
+    assert result.summary == {expected: 1}
+    assert result.written == (1 if apply else 0)
+    rendered: str = path.read_text(encoding="utf-8")
+    if apply:
+        assert "#     | safe" in rendered
+        assert "#     | escaped" in rendered
+    else:
+        assert rendered == original
     assert result.files[0].diff is None
 
 
