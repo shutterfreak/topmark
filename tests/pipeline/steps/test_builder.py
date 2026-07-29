@@ -140,6 +140,29 @@ def test_builder_generates_complete_builtins_and_ordered_selection_for_empty_fil
     assert ctx.diagnostic_hints.items == []
 
 
+def test_builder_normalizes_configured_semantic_newlines(
+    tmp_path: Path,
+) -> None:
+    """Configuration and runtime field values converge on semantic LF."""
+    file_path: Path = tmp_path / "source.py"
+    file_path.write_text("print('hello')\n", encoding="utf-8", newline="")
+    cfg: FrozenConfig = _builder_config(
+        header_fields=["crlf", "cr"],
+        field_values={
+            "crlf": "first\r\nsecond",
+            "cr": "third\rfourth",
+        },
+    )
+
+    ctx: ProcessingContext = _build_for_path(file_path, cfg)
+
+    assert ctx.views.build is not None
+    assert ctx.views.build.selected == {
+        "crlf": "first\nsecond",
+        "cr": "third\nfourth",
+    }
+
+
 def test_builder_preserves_derived_builtins_while_configured_overrides_win(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
@@ -298,10 +321,10 @@ def test_builder_uses_logical_stdin_path_but_materialized_content_directory(
     assert ctx.diagnostic_hints.items == []
 
 
-def test_derived_logical_filename_is_validated_before_rendering(
+def test_derived_logical_filename_multiline_value_is_rendered_safely(
     tmp_path: Path,
 ) -> None:
-    """Derived path metadata receives the same validation as configured values."""
+    """Derived values receive the same structured multiline encoding."""
     content_path: Path = tmp_path / "stdin-content.py"
     content_path.write_text(
         "print('hello')\n",
@@ -323,8 +346,10 @@ def test_derived_logical_filename_is_validated_before_rendering(
 
     assert ctx.views.build is not None
     assert ctx.views.build.selected == {"file": "input\n.py"}
-    assert ctx.status.render is RenderStatus.FAILED
-    assert ctx.views.render is None
+    assert ctx.status.render is RenderStatus.RENDERED
+    assert ctx.views.render is not None
+    assert "#     | input\n" in (ctx.views.render.block or "")
+    assert "#     | .py\n" in (ctx.views.render.block or "")
 
 
 def test_builder_generates_path_fields_from_matching_filesystem_spelling(

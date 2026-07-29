@@ -49,6 +49,11 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Implemented literal multiline header field values with plain, empty, and exact continuation
+  records; semantic newline normalization; canonical rendering across every built-in processor
+  family; safe malformed-scalar diagnostics; and end-to-end preview, patch, apply, strip, and
+  convergence behavior. Folded continuation syntax remains reserved for
+  [#327](https://github.com/shutterfreak/topmark/issues/327).
 - Added a decision-ready multiline header field serialization design covering explicit literal and
   reserved folded continuation records, fixed continuation indentation, exact boundary-whitespace
   encoding, validation integration, processor examples, and the implementation boundary for GitHub

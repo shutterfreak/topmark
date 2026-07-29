@@ -86,6 +86,28 @@ TOML/API/machine-readable underscore form.
 
 ______________________________________________________________________
 
+## Multiline field values
+
+Custom `[fields]` values may use TOML multiline strings. TopMark normalizes semantic CRLF and CR to
+LF, then renders each logical line as an explicit literal continuation record:
+
+```toml
+[fields]
+notice = """
+First literal line.
+Second literal line."""
+
+[header]
+fields = ["notice"]
+```
+
+The closing delimiter follows the final content on the same line so this example has no semantic
+terminal newline. An empty final TOML line is meaningful and renders as a bare `|` record. See
+[Multiline header field serialization](../dev/multiline-header-fields.md) for empty-line,
+boundary-whitespace, validation, and canonicalization details.
+
+______________________________________________________________________
+
 ## File type identifiers
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}

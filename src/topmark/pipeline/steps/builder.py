@@ -41,6 +41,7 @@ from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import BuilderView
+from topmark.processors.base import normalize_semantic_newlines
 from topmark.utils.file import compute_relpath
 from topmark.utils.path import canonical_processing_path
 from topmark.utils.path import canonicalize_existing_path
@@ -249,7 +250,10 @@ class BuilderStep(BaseStep):
         # to header_fields.
         all_fields: dict[str, str] = {
             **builtin_fields,
-            **config.field_values,
+            **{
+                key: normalize_semantic_newlines(value)
+                for key, value in config.field_values.items()
+            },
         }
 
         result: dict[str, str] = {}

@@ -52,6 +52,9 @@ root = true
 [fields]
 project = "MyProject"
 license = "MIT"
+notice = """
+First literal line.
+Second literal line."""
 
 [header]
 fields = [
@@ -59,6 +62,7 @@ fields = [
   "file_relpath",
   "project",
   "license",
+  "notice",
 ]
 ```
 
@@ -67,22 +71,25 @@ fields = [
 > When using `pyproject.toml`, TopMark settings must be placed under the `tool.topmark` table prefix
 > (for example: `[config]` becomes `[tool.topmark.config]`).
 
-Header fields are serialized as one physical `key: value` line inside the selected file type's
-comment syntax. Field names must be non-empty, contain no colon or surrounding whitespace, and
-round-trip unchanged through that representation. Names and values must not contain CR/LF, NUL, TAB,
-other control characters, or TopMark's reserved header markers. The selected processor may also
+Single-line header fields retain their physical `key: value` representation. TOML multiline strings
+are rendered as an empty field opener followed by explicit literal continuation records:
+
+```text
+#   notice:
+#     | First literal line.
+#     | Second literal line.
+```
+
+Semantic CRLF and CR in configured, overridden, derived, or plugin-provided values normalize to LF.
+Field names remain single-line and must be non-empty, contain no colon or surrounding whitespace,
+and round-trip unchanged. Names and values must not contain NUL, TAB, other controls, Unicode line
+or paragraph separators, or TopMark's reserved header markers. The selected processor may also
 reject syntax that would invalidate its comment, such as `*/` in C block comments or `--` in
 XML/HTML/Markdown comments. TopMark reports invalid content and does not render, preview, patch, or
-write a partial header.
-
-> [!NOTE]
->
-> Multiline field values are not yet supported. The approved
-> [multiline header field serialization](../dev/multiline-header-fields.md) contract documents the
-> syntax and validation behavior planned for GitHub issues
-> [#326](https://github.com/shutterfreak/topmark/issues/326) and
-> [#327](https://github.com/shutterfreak/topmark/issues/327) without changing current single-line
-> behavior.
+write a partial header. See
+[Multiline header field serialization](../dev/multiline-header-fields.md) for exact and empty record
+syntax. Folded `>` records remain reserved for
+[#327](https://github.com/shutterfreak/topmark/issues/327).
 
 Generate a documented starter configuration:
 

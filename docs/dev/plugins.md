@@ -308,25 +308,24 @@ strip behavior. A plugin processor normally declares its comment affixes and ove
 format-specific hooks it needs. Override `get_header_insertion_index()` for a different line anchor.
 For character-offset placement, return `NO_LINE_ANCHOR` from that method and implement
 `get_header_insertion_char_offset()`; do not mix line indexes and character offsets. Override
-`get_header_bounds()`, `parse_fields()`, or the insertion-preparation hooks only when the format's
-syntax cannot use the base behavior.
+`get_header_bounds()` or the insertion-preparation hooks only when the format's syntax cannot use
+the base behavior. Base-format-compatible processors must retain the shared continuation parser.
 
-All processors inherit the shared single-line field validation boundary. If a custom comment grammar
+All processors inherit the shared semantic field validation boundary. If a custom comment grammar
 has additional forbidden content, override `validate_processor_field()` and return typed
 `HeaderFieldValidationIssue` values for only those processor-specific rules. Do not override
-`validate_header_fields()` or repeat the shared name, control-character, newline, and
-reserved-marker checks. Validation runs after runtime field selection and before
-`render_header_lines()`, so custom processors receive no render call when any shared or
-processor-specific issue is present.
+`validate_header_fields()` or repeat the shared name, control-character, Unicode-separator, and
+reserved-marker checks. To restrict a canonical affix-free physical payload line, override
+`validate_processor_encoded_line()` with another additive check. Validation runs after runtime field
+selection and semantic newline normalization but before `render_header_lines()`, so custom
+processors receive no render call when any shared or processor-specific issue is present.
 
-The approved [multiline header field serialization](multiline-header-fields.md) contract extends
-this model for implementation by GitHub issue
-[#326](https://github.com/shutterfreak/topmark/issues/326). The base processor will own continuation
-parsing, semantic reconstruction, canonical rendering, and shared validation. Custom processors may
-add restrictions for complete semantic values and encoded physical payload lines, but must not
-define a conflicting continuation grammar while claiming base-format compatibility. This extension
-contract is not active until GitHub issue [#326](https://github.com/shutterfreak/topmark/issues/326)
-is implemented.
+The implemented [multiline header field serialization](multiline-header-fields.md) contract extends
+this model. The base processor owns continuation parsing, semantic reconstruction, canonical
+rendering, and shared validation. Custom processors may add restrictions for complete semantic
+values and encoded physical payload lines, but must not define a conflicting continuation grammar
+while claiming base-format compatibility. Folded values remain reserved for GitHub issue
+[#327](https://github.com/shutterfreak/topmark/issues/327).
 
 During `Registry.bind(...)`, TopMark resolves the file type identifier through the composed runtime
 file type registry and records a binding from that file type's qualified key to the registered

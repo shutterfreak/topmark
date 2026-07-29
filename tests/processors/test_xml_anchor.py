@@ -190,6 +190,38 @@ def test_xml_prepare_text_insertion_respects_disabled_trailing_policy() -> None:
     assert block == "\n<!-- header -->\n"
 
 
+def test_xml_prepare_text_insertion_does_not_invent_leading_padding() -> None:
+    """A non-prolog character anchor must not gain a leading blank."""
+    processor = XmlHeaderProcessor()
+    original = "<root><child/></root>"
+    offset: int = original.index("<child")
+
+    block: str = processor.prepare_header_for_insertion_text(
+        original_text=original,
+        insert_offset=offset,
+        rendered_header_text="<!-- header -->\n",
+        newline_style="\n",
+    )
+
+    assert block == "<!-- header -->\n\n"
+
+
+def test_xml_prepare_text_insertion_preserves_existing_body_spacer() -> None:
+    """An existing blank at the character anchor suppresses trailing padding."""
+    processor = XmlHeaderProcessor()
+    original = '<?xml version="1.0"?>\n\n<root/>\n'
+    offset: int = original.index("\n\n") + 1
+
+    block: str = processor.prepare_header_for_insertion_text(
+        original_text=original,
+        insert_offset=offset,
+        rendered_header_text="<!-- header -->\n",
+        newline_style="\n",
+    )
+
+    assert block == "\n<!-- header -->\n"
+
+
 def test_xml_prepare_line_insertion_after_multiline_doctype_adds_leading_blank() -> None:
     """Line insertion should detect a nearby multiline DOCTYPE opener."""
     processor = XmlHeaderProcessor()
@@ -262,6 +294,18 @@ def test_xml_prepare_line_insertion_respects_disabled_trailing_policy() -> None:
 
     lines: list[str] = processor.prepare_header_for_insertion(
         original_lines=["<root/>\n"],
+        insert_index=0,
+        rendered_header_lines=["<!-- header -->\n"],
+        newline_style="\n",
+    )
+
+    assert lines == ["<!-- header -->\n"]
+
+
+def test_xml_prepare_line_insertion_preserves_existing_body_spacer() -> None:
+    """An existing policy blank after the anchor suppresses trailing padding."""
+    lines: list[str] = XmlHeaderProcessor().prepare_header_for_insertion(
+        original_lines=["\n", "<root/>\n"],
         insert_index=0,
         rendered_header_lines=["<!-- header -->\n"],
         newline_style="\n",

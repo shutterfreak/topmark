@@ -27,6 +27,7 @@ from hypothesis import HealthCheck
 from hypothesis import assume
 from hypothesis import given
 from hypothesis import settings
+from hypothesis import strategies as st
 
 from tests.helpers.pipeline import materialize_updated_lines
 from tests.helpers.pipeline import run_insert
@@ -34,6 +35,7 @@ from tests.helpers.pipeline import run_strip
 from tests.strategies_topmark import s_source_envelope_for_ext
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.constants import TOPMARK_START_MARKER
+from topmark.pipeline.status import ComparisonStatus
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -149,3 +151,41 @@ def test_insert_strip_idempotent_roundtrip(
 
     # Locality: body content size should remain in a reasonable bound vs. original
     assert abs(len(updated1) - len(content)) < max(4096, len(content) // 2)
+
+
+@settings(deadline=None, max_examples=100)
+@given(
+    logical_lines=st.lists(
+        st.text(
+            alphabet=' abcXYZ0123:|>=\\"',
+            min_size=0,
+            max_size=20,
+        ),
+        min_size=2,
+        max_size=8,
+    ),
+)
+def test_multiline_field_round_trip_and_canonical_convergence(
+    tmp_path_factory: TempPathFactory,
+    logical_lines: list[str],
+) -> None:
+    """Generated literal records reconstruct arbitrary safe logical lines."""
+    value: str = "\n".join(logical_lines)
+    base_dir: Path = tmp_path_factory.mktemp("multiline-field-cases")
+    path: Path = base_dir / f"{uuid4().hex}.py"
+    path.write_text("print('body')\n", encoding="utf-8", newline="")
+
+    mutable: MutableConfig = mutable_config_from_defaults()
+    mutable.header_fields = ["notice"]
+    mutable.field_values = {"notice": value}
+    config: FrozenConfig = mutable.freeze()
+
+    first: ProcessingContext = run_insert(path, config)
+    first_image: str = "".join(materialize_updated_lines(first))
+    path.write_text(first_image, encoding="utf-8", newline="")
+
+    second: ProcessingContext = run_insert(path, config)
+
+    assert second.views.header is not None
+    assert second.views.header.mapping == {"notice": value}
+    assert second.status.comparison is ComparisonStatus.UNCHANGED

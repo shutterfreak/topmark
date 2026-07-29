@@ -17,10 +17,9 @@ spans multiple physical header lines.
 
 > [!IMPORTANT]
 >
-> This is an implementation contract for
-> [GitHub issue #326](https://github.com/shutterfreak/topmark/issues/326), not a description of
-> functionality available on the current `main` branch. Until #326 is implemented, field values
-> remain single-line and the renderer rejects CR and LF. Folded rendering remains reserved for
+> Literal multiline field parsing and rendering are implemented. Folded records are recognized but
+> remain reserved: using `>` or `>=` produces `header:folded-reserved`. Folded parsing and rendering
+> are future scope tracked by
 > [GitHub issue #327](https://github.com/shutterfreak/topmark/issues/327).
 
 The contract is intentionally smaller than YAML, Python, or TOML string syntax. It keeps existing
@@ -110,8 +109,8 @@ Folded records are reserved for #327:
 #     > sed do eiusmod tempor incididunt ut labore.
 ```
 
-The parser implemented by #326 must recognize `>` and `>=` as reserved folded syntax and diagnose
-their use deterministically. It must not treat them as literal records or orphan ordinary fields.
+The parser recognizes `>` and `>=` as reserved folded syntax and diagnoses their use
+deterministically. It does not treat them as literal records or orphan ordinary fields.
 
 ______________________________________________________________________
 
@@ -247,8 +246,8 @@ ______________________________________________________________________
 
 ## Folded value semantics
 
-Folded syntax is reserved by [#326](https://github.com/shutterfreak/topmark/issues/326) and
-activated only by [#327](https://github.com/shutterfreak/topmark/issues/327).
+Folded syntax is recognized as reserved. Its parsing and rendering behavior remains future scope
+tracked by [#327](https://github.com/shutterfreak/topmark/issues/327).
 
 For a folded field:
 
@@ -457,19 +456,19 @@ Stripping remains marker/span based and does not interpret continuation records.
 
 ______________________________________________________________________
 
-## Implementation staging
+## Implemented scope and folded future
 
-Issue [#326](https://github.com/shutterfreak/topmark/issues/326) must:
+The implemented literal scope:
 
-- implement ordinary, plain literal, empty literal, and exact literal records;
-- reserve and diagnose folded record tokens;
-- normalize semantic line endings;
-- validate complete values and encoded physical lines;
-- count logical fields rather than continuation records;
-- support every built-in processor family;
-- preserve aligned, compact, and pre-prefix-indented headers;
-- retain mapping, comparison, planning, stripping, and machine-output contracts; and
-- prove insert, replace, check, strip, patch, and write idempotence.
+- supports ordinary, plain literal, empty literal, and exact literal records;
+- reserves and diagnoses folded record tokens;
+- normalizes semantic line endings;
+- validates complete values and encoded physical lines;
+- counts logical fields rather than continuation records;
+- supports every built-in processor family;
+- preserves aligned, compact, and pre-prefix-indented headers;
+- retains mapping, comparison, planning, stripping, and machine-output contracts; and
+- provides insert, replace, check, strip, patch, and write idempotence.
 
 Issue [#327](https://github.com/shutterfreak/topmark/issues/327) may then activate `>` and `>=`,
 provided wrapping:

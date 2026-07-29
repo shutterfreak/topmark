@@ -36,10 +36,13 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import ClassVar
 from typing import Final
+from typing import Literal
 from typing import Protocol
+from typing import final
 
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_NAMESPACE
@@ -117,6 +120,24 @@ logger: TopmarkLogger = get_logger(__name__)
 
 # Sentinel value when get_header_insertion_index() cannot find an insertion index:
 NO_LINE_ANCHOR: Final[int] = -1
+
+_CONTINUATION_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(\|=|\||>=|>)")
+_FIELD_RE: Final[re.Pattern[str]] = re.compile(r"^(?P<name>[^:]+?)(?P<padding> *):(?P<tail>.*)$")
+
+
+def normalize_semantic_newlines(
+    value: str,
+) -> str:
+    """Normalize CRLF and CR semantic newlines to LF."""
+    return value.replace("\r\n", "\n").replace("\r", "\n")
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class _ContinuationRecord:
+    """One decoded continuation record."""
+
+    mode: Literal["literal", "folded"]
+    value: str
 
 
 def _equals_affix_ignoring_space_tab(line: str, affix: str) -> bool:
@@ -328,11 +349,15 @@ class HeaderProcessor:
         Returns:
             Parsed mapping and per-line success/error counters.
 
+        Raises:
+            RuntimeError: If the internal continuation decoder violates its
+                record-or-error invariant.
+
         Notes:
-            - Comment affixes (``line_prefix`` / ``line_suffix``) are stripped per line.
-            - Malformed field lines add diagnostics but do not mutate ``context.status.header``
-              (handled by the scanner).
-            - Subclasses may override to support multi-line fields or alternate syntax.
+            - Physical newlines and comment affixes are removed before field parsing.
+            - Empty field openers are promoted only after two valid literal records.
+            - Malformed logical fields add safe diagnostics but do not mutate
+              ``context.status.header`` (handled by the scanner).
         """
         # Keep track of processed header entries (lines)
         cnt_header_ok: int = 0
@@ -367,45 +392,261 @@ class HeaderProcessor:
         if not payload:
             return empty_result
 
-        # 3) Parse lines as `key: value`, stripping comment affixes and whitespace.
+        # 3) Parse ordinary fields and explicit continuation records.
         header_mapping: dict[str, str] = {}
         # Compute approximate absolute line number for diagnostics if we can.
         abs_start: int
         _abs_end: int
         abs_start, _abs_end = hv.range
 
-        for i, raw in enumerate(payload, start=1):
+        pending_name: str | None = None
+        pending_index: int | None = None
+        pending_records: list[str] = []
+        pending_mode: Literal["literal", "folded"] | None = None
+        pending_malformed = False
+        last_was_ordinary = False
+
+        def field_label(
+            field_index: int | None,
+        ) -> str:
+            """Return a safe one-based field position."""
+            return f"field #{(field_index if field_index is not None else cnt_header_ok) + 1}"
+
+        def diagnose(
+            code: str,
+            line_no: int,
+            field_index: int | None = None,
+        ) -> None:
+            """Add one safe continuation diagnostic."""
+            context.diagnostics.add_error(
+                f"{code} at {field_label(field_index)}, physical line {line_no}."
+            )
+
+        def commit_field(
+            name: str,
+            value: str,
+            *,
+            field_index: int,
+            line_no: int,
+        ) -> bool:
+            """Validate and commit one complete semantic field."""
+            validation: HeaderFieldValidationResult = self.validate_header_fields(
+                field_names=(name,),
+                header_values={name: value},
+            )
+            if validation.is_valid:
+                header_mapping[name] = value
+                return True
+            for issue in validation.issues:
+                context.diagnostics.add_error(
+                    f"{issue.rule} at {field_label(field_index)}, physical line {line_no}."
+                )
+            return False
+
+        def close_pending(
+            line_no: int,
+        ) -> None:
+            """Commit or reject the pending empty/scalar field exactly once."""
+            nonlocal cnt_header_ok
+            nonlocal cnt_header_error
+            nonlocal pending_name
+            nonlocal pending_index
+            nonlocal pending_records
+            nonlocal pending_mode
+            nonlocal pending_malformed
+            nonlocal last_was_ordinary
+
+            if pending_name is None:
+                return
+            if pending_malformed:
+                cnt_header_error += 1
+                last_was_ordinary = False
+            elif pending_mode is None:
+                if commit_field(
+                    pending_name,
+                    "",
+                    field_index=pending_index if pending_index is not None else cnt_header_ok,
+                    line_no=line_no,
+                ):
+                    cnt_header_ok += 1
+                    last_was_ordinary = True
+                else:
+                    cnt_header_error += 1
+                    last_was_ordinary = False
+            elif len(pending_records) < 2:
+                diagnose(
+                    "header:scalar-too-short",
+                    line_no,
+                    pending_index,
+                )
+                cnt_header_error += 1
+                last_was_ordinary = False
+            else:
+                if commit_field(
+                    pending_name,
+                    "\n".join(pending_records),
+                    field_index=pending_index if pending_index is not None else cnt_header_ok,
+                    line_no=line_no,
+                ):
+                    cnt_header_ok += 1
+                else:
+                    cnt_header_error += 1
+                last_was_ordinary = False
+
+            pending_name = None
+            pending_index = None
+            pending_records = []
+            pending_mode = None
+            pending_malformed = False
+
+        i = 0
+        while i < len(payload):
+            raw: str = payload[i]
             # Absolute line number in the original file (1-based)
-            abs_line_no: int = abs_start + start_rel + i + 1
+            abs_line_no: int = abs_start + start_rel + i + 2
             logger.trace("Header line %d: [%s]", abs_line_no, raw)
 
-            cleaned: str = self._strip_line_affixes(raw).strip()
-            if not cleaned:
+            inner: str
+            affix_valid: bool
+            inner, affix_valid = self._remove_line_affixes(raw)
+            cleaned: str = inner.lstrip(" \t")
+            continuation_like: bool = _CONTINUATION_TOKEN_RE.match(cleaned) is not None
+            folded_token: bool = cleaned.startswith(">")
+
+            if not cleaned.strip(" \t"):
+                close_pending(abs_line_no)
+                last_was_ordinary = False
+                i += 1
                 continue
+
+            record: _ContinuationRecord | None = None
+            record_error: str | None = None
+            if continuation_like:
+                if not affix_valid:
+                    record_error = "header:invalid-continuation-affix"
+                else:
+                    record, record_error = self._parse_continuation_record(cleaned)
+
+            if continuation_like:
+                if pending_name is None:
+                    code: str
+                    if folded_token:
+                        code = "header:folded-reserved"
+                    elif record_error is not None:
+                        code = record_error
+                    elif last_was_ordinary:
+                        code = "header:continuation-after-scalar"
+                    else:
+                        code = "header:orphan-continuation"
+                    diagnose(code, abs_line_no)
+                    cnt_header_error += 1
+                    last_was_ordinary = False
+                    i += 1
+                    continue
+
+                if pending_malformed:
+                    i += 1
+                    continue
+
+                if pending_mode == "literal" and folded_token:
+                    diagnose(
+                        "header:mixed-scalar-mode",
+                        abs_line_no,
+                        pending_index,
+                    )
+                    pending_malformed = True
+                    i += 1
+                    continue
+
+                if pending_mode is None and folded_token:
+                    diagnose(
+                        "header:folded-reserved",
+                        abs_line_no,
+                        pending_index,
+                    )
+                    pending_mode = "folded"
+                    pending_malformed = True
+                    i += 1
+                    continue
+
+                if record_error is not None:
+                    diagnose(
+                        record_error,
+                        abs_line_no,
+                        pending_index,
+                    )
+                    pending_malformed = True
+                    i += 1
+                    continue
+
+                if record is None:  # pragma: no cover - exhaustive internal guard
+                    raise RuntimeError("Continuation parser returned no record or error")
+
+                if pending_mode is None:
+                    pending_mode = record.mode
+                    pending_records.append(record.value)
+                else:
+                    pending_records.append(record.value)
+                i += 1
+                continue
+
+            field_match: re.Match[str] | None = _FIELD_RE.fullmatch(cleaned)
+            if field_match is not None:
+                close_pending(abs_line_no)
+                key: str = field_match.group("name").strip()
+                tail: str = field_match.group("tail")
+                value: str = tail[1:] if tail.startswith(" ") else tail
+                value = value.strip()
+                if value == "":
+                    pending_name = key
+                    pending_index = cnt_header_ok + cnt_header_error
+                    pending_records = []
+                    pending_mode = None
+                    pending_malformed = False
+                    last_was_ordinary = False
+                else:
+                    field_index: int = cnt_header_ok + cnt_header_error
+                    if commit_field(
+                        key,
+                        value,
+                        field_index=field_index,
+                        line_no=abs_line_no,
+                    ):
+                        cnt_header_ok += 1
+                        last_was_ordinary = True
+                    else:
+                        cnt_header_error += 1
+                        last_was_ordinary = False
+                i += 1
+                continue
+
+            if pending_name is not None:
+                if pending_mode is None:
+                    close_pending(abs_line_no)
+                else:
+                    diagnose(
+                        "header:missing-continuation-body",
+                        abs_line_no,
+                        pending_index,
+                    )
+                    pending_malformed = True
+                    i += 1
+                    continue
 
             if ":" not in cleaned:
-                # Header line has no colon
                 context.diagnostics.add_error(
-                    f"Malformed header at line {abs_line_no} (no colon found): {raw!r}"
+                    f"Malformed header at physical line {abs_line_no} (no colon found)."
                 )
-                cnt_header_error += 1
-                continue
-
-            key: str
-            value: str
-            key, value = cleaned.split(":", 1)
-            k: str = key.strip()
-            v: str = value.strip()
-            if not k:
-                # Header line has colon but empty text before colon
+            else:
                 context.diagnostics.add_error(
-                    f"Malformed header at line {abs_line_no} (empty text before colon): {raw!r}"
+                    f"Malformed header at physical line {abs_line_no} (empty text before colon)."
                 )
-                cnt_header_error += 1
-                continue
+            cnt_header_error += 1
+            last_was_ordinary = False
+            i += 1
 
-            header_mapping[k] = v
-            cnt_header_ok += 1
+        end_line_no: int = abs_start + end_rel + 1
+        close_pending(end_line_no)
 
         return HeaderParseResult(
             fields=header_mapping,
@@ -413,6 +654,7 @@ class HeaderProcessor:
             error_count=cnt_header_error,
         )
 
+    @final
     def validate_header_fields(
         self,
         *,
@@ -435,7 +677,7 @@ class HeaderProcessor:
         """
         issues: list[HeaderFieldValidationIssue] = []
         for field_index, field_name in enumerate(field_names):
-            field_value: str = header_values.get(field_name, "")
+            field_value: str = normalize_semantic_newlines(header_values.get(field_name, ""))
 
             if not field_name:
                 issues.append(
@@ -489,6 +731,19 @@ class HeaderProcessor:
                     field_value=field_value,
                 )
             )
+            for encoded_line in self._encode_field_lines(
+                field_name=field_name,
+                field_value=field_value,
+                width=0,
+            ):
+                issues.extend(
+                    self.validate_processor_encoded_line(
+                        field_index=field_index,
+                        field_name=field_name,
+                        field_value=field_value,
+                        encoded_line=encoded_line,
+                    )
+                )
 
         return HeaderFieldValidationResult(issues=tuple(issues))
 
@@ -511,6 +766,22 @@ class HeaderProcessor:
 
         Returns:
             Processor-specific issues in deterministic rule order.
+        """
+        return ()
+
+    def validate_processor_encoded_line(
+        self,
+        *,
+        field_index: int,
+        field_name: str,
+        field_value: str,
+        encoded_line: str,
+    ) -> tuple[HeaderFieldValidationIssue, ...]:
+        """Return processor-specific issues for one encoded payload line.
+
+        This additive hook runs after shared semantic validation and before
+        processor affixes are applied. Custom processors may add restrictions
+        but cannot replace shared validation or continuation encoding.
         """
         return ()
 
@@ -557,7 +828,7 @@ class HeaderProcessor:
                 )
             )
 
-        if "\r" in content or "\n" in content:
+        if target == "name" and ("\r" in content or "\n" in content):
             add("content:line-break")
         if "\0" in content:
             add("content:nul")
@@ -570,8 +841,62 @@ class HeaderProcessor:
             add("content:reserved-start-marker")
         if TOPMARK_END_MARKER in content:
             add("content:reserved-end-marker")
+        if "\u2028" in content or "\u2029" in content:
+            add("content:unicode-line-separator")
 
         return tuple(issues)
+
+    @staticmethod
+    def _parse_continuation_record(
+        cleaned: str,
+    ) -> tuple[_ContinuationRecord | None, str | None]:
+        """Decode one affix-free continuation record."""
+        mode: Literal["literal", "folded"] = "literal" if cleaned.startswith("|") else "folded"
+        token: str = "|" if mode == "literal" else ">"
+        exact_token: str = f"{token}="
+
+        if cleaned == token:
+            return _ContinuationRecord(mode=mode, value=""), None
+
+        if cleaned.startswith(exact_token):
+            remainder: str = cleaned[len(exact_token) :]
+            if not remainder or remainder == " ":
+                return None, "header:missing-continuation-body"
+            if not remainder.startswith(' "'):
+                return None, "header:invalid-continuation-string"
+            quoted: str = remainder[1:]
+            if len(quoted) < 2 or not quoted.startswith('"') or not quoted.endswith('"'):
+                return None, "header:invalid-continuation-string"
+            body: str = quoted[1:-1]
+            decoded: list[str] = []
+            index = 0
+            while index < len(body):
+                char: str = body[index]
+                if char == "\\":
+                    index += 1
+                    if index >= len(body) or body[index] not in {'"', "\\"}:
+                        return None, "header:invalid-continuation-string"
+                    decoded.append(body[index])
+                elif char == '"':
+                    return None, "header:invalid-continuation-string"
+                else:
+                    decoded.append(char)
+                index += 1
+            value: str = "".join(decoded)
+        elif cleaned.startswith(f"{token} "):
+            value = cleaned[2:]
+            if not value:
+                return None, "header:missing-continuation-body"
+            if value != value.strip(" \t"):
+                return None, "header:invalid-continuation-character"
+        else:
+            return None, "header:missing-continuation-body"
+
+        if any(
+            unicodedata.category(char) == "Cc" or char in {"\u2028", "\u2029"} for char in value
+        ):
+            return None, "header:invalid-continuation-character"
+        return _ContinuationRecord(mode=mode, value=value), None
 
     def _find_inner_marker_indices(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Find START and END marker indices relative to the given slice.
@@ -599,35 +924,36 @@ class HeaderProcessor:
 
         return start_rel, end_rel
 
-    def _strip_line_affixes(self, line: str) -> str:
-        """Remove configured line prefix/suffix from a single line, if present.
+    def _remove_line_affixes(
+        self,
+        line: str,
+    ) -> tuple[str, bool]:
+        """Remove physical newline and required affixes while preserving layout."""
+        cleaned: str = line
+        if cleaned.endswith("\r\n"):
+            cleaned = cleaned[:-2]
+        elif cleaned.endswith(("\r", "\n")):
+            cleaned = cleaned[:-1]
 
-        This mirrors the matching semantics of `line_has_directive()`:
-            - If a prefix is configured and present at start, remove it.
-            - If a suffix is configured and present at end, remove it.
-        Then strip surrounding whitespace.
+        valid = True
+        if self.line_prefix:
+            leading_len: int = len(cleaned) - len(cleaned.lstrip(" \t"))
+            head: str = cleaned[leading_len:]
+            if head.startswith(self.line_prefix):
+                cleaned = head.removeprefix(self.line_prefix)
+            else:
+                valid = False
 
-        Args:
-            line: The line to be stripped of its line prefix/suffix.
+        if self.line_suffix:
+            without_layout: str = cleaned.rstrip(" \t")
+            if without_layout.endswith(self.line_suffix):
+                cleaned = without_layout.removesuffix(self.line_suffix)
+                if cleaned.endswith(" "):
+                    cleaned = cleaned[:-1]
+            else:
+                valid = False
 
-        Returns:
-            The stripped line.
-        """
-        cleaned: str = line.rstrip("\r\n")
-        if self.line_prefix and cleaned.lstrip().startswith(self.line_prefix):
-            # allow incidental indentation before the prefix
-            leading_ws_len: int = len(cleaned) - len(cleaned.lstrip())
-            head: str = cleaned[leading_ws_len:]
-            # The enclosing condition already proves that `head` starts with the prefix.
-            cleaned = cleaned[:leading_ws_len] + head.removeprefix(self.line_prefix)
-        elif self.line_prefix and not cleaned.strip().startswith(self.line_prefix):
-            # Prefix configured but not present-leave the line as-is; parser tolerates.
-            pass
-
-        if self.line_suffix and cleaned.rstrip().endswith(self.line_suffix):
-            cleaned = cleaned.removesuffix(self.line_suffix)
-
-        return cleaned.strip()
+        return cleaned, valid
 
     def _wrap_line(
         self,
@@ -657,7 +983,13 @@ class HeaderProcessor:
         Returns:
             str: The fully wrapped line (prefix + content + suffix) including the trailing
                 newline characters.
+
+        Raises:
+            ValueError: If `content` contains a raw CR or LF character.
         """
+        if "\r" in content or "\n" in content:
+            raise ValueError("A physical header line cannot contain CR or LF")
+
         lp: str = self.line_prefix if line_prefix is None else line_prefix
         ls: str = self.line_suffix if line_suffix is None else line_suffix
         # Pre-prefix indentation is applied to the whole line before the prefix
@@ -792,7 +1124,7 @@ class HeaderProcessor:
             )
         )
         if bs:
-            lines.append(bs + newline_style)
+            lines.append(header_indent + bs + newline_style)
         return lines
 
     def render_header_lines(
@@ -809,9 +1141,9 @@ class HeaderProcessor:
     ) -> list[str]:
         """Render a header block from configuration, template, and overrides.
 
-        This method generates a header string using the configuration's header fields and
-        values, optionally overridden by provided header_list and custom_headers. It respects
-        alignment and raw_header settings from the configuration to format the output.
+        This method serializes configured semantic values using ordinary or literal
+        continuation records, then applies the processor affixes and selected physical
+        newline style to every emitted line.
 
         Args:
             header_values: Mapping of header fields to render.
@@ -877,18 +1209,27 @@ class HeaderProcessor:
 
         # Field lines (no blanks in-between)
         for field in config.header_fields:
-            value: str = header_values.get(field, "")
-            inner: str = f"{field:<{width}}: {value}" if width else f"{field}: {value}"
-            lines.append(
-                self._wrap_line(
-                    inner,
-                    newline_style=newline_style,
-                    line_prefix=line_prefix,
-                    line_suffix=line_suffix,
-                    header_indent=header_indent,
-                    after_prefix_indent=effective_line_indent,
-                )
+            value: str = normalize_semantic_newlines(header_values.get(field, ""))
+            encoded_lines: list[str] = self._encode_field_lines(
+                field_name=field,
+                field_value=value,
+                width=width,
             )
+            for encoded_index, inner in enumerate(encoded_lines):
+                lines.append(
+                    self._wrap_line(
+                        inner,
+                        newline_style=newline_style,
+                        line_prefix=line_prefix,
+                        line_suffix=line_suffix,
+                        header_indent=header_indent,
+                        after_prefix_indent=(
+                            effective_line_indent
+                            if encoded_index == 0
+                            else effective_line_indent + "  "
+                        ),
+                    )
+                )
 
         # Compose postamble
         lines.extend(
@@ -904,6 +1245,33 @@ class HeaderProcessor:
         logger.debug("Rendered %d header lines:\n%s", len(lines), "".join(lines))
 
         return lines
+
+    @staticmethod
+    def _encode_field_lines(
+        *,
+        field_name: str,
+        field_value: str,
+        width: int,
+    ) -> list[str]:
+        """Encode one semantic field into ordinary or literal payload lines."""
+        if "\r" in field_value:
+            raise ValueError("Semantic field values must be normalized before encoding")
+        if "\n" not in field_value:
+            return [
+                f"{field_name:<{width}}: {field_value}" if width else f"{field_name}: {field_value}"
+            ]
+
+        opener: str = f"{field_name:<{width}}:" if width else f"{field_name}:"
+        records: list[str] = []
+        for logical_line in field_value.split("\n"):
+            if logical_line == "":
+                records.append("|")
+            elif logical_line != logical_line.strip(" \t"):
+                escaped: str = logical_line.replace("\\", "\\\\").replace('"', '\\"')
+                records.append(f'|= "{escaped}"')
+            else:
+                records.append(f"| {logical_line}")
+        return [opener, *records]
 
     def compute_insertion_anchor(self, lines: list[str]) -> int:
         """Return a stable line-based insertion anchor for the pipeline.

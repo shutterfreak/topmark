@@ -23,7 +23,6 @@ from topmark.processors.builtins.markdown import MarkdownHeaderProcessor
 from topmark.processors.builtins.pound import PoundHeaderProcessor
 from topmark.processors.builtins.slash import SlashHeaderProcessor
 from topmark.processors.builtins.xml import XmlHeaderProcessor
-from topmark.processors.types import HeaderFieldValidationResult
 
 if TYPE_CHECKING:
     from topmark.processors.base import HeaderProcessor
@@ -57,17 +56,41 @@ class ExtendingProcessor(PoundHeaderProcessor):
         )
 
 
-def test_newline_value_is_rejected_before_cblock_rendering() -> None:
-    """A physical newline must not escape the processor's line prefix."""
+class EncodedLineExtendingProcessor(PoundHeaderProcessor):
+    """Custom processor exercising the additive encoded-line hook."""
+
+    namespace = "tests"
+    local_key = "extending-encoded-line-validation"
+
+    def validate_processor_encoded_line(
+        self,
+        *,
+        field_index: int,
+        field_name: str,
+        field_value: str,
+        encoded_line: str,
+    ) -> tuple[HeaderFieldValidationIssue, ...]:
+        """Reject a custom token after canonical continuation encoding."""
+        if "encoded-stop" not in encoded_line:
+            return ()
+        return (
+            self._field_validation_issue(
+                field_index=field_index,
+                field_name=field_name,
+                target="value",
+                rule="processor:encoded-stop",
+            ),
+        )
+
+
+def test_semantic_newline_value_is_valid_before_cblock_rendering() -> None:
+    """A semantic newline is encoded into prefixed physical continuation lines."""
     result: HeaderFieldValidationResult = CBlockHeaderProcessor().validate_header_fields(
         field_names=("project",),
         header_values={"project": "safe\nescaped"},
     )
 
-    assert not result.is_valid
-    assert [(issue.target, issue.rule) for issue in result.issues] == [
-        ("value", "content:line-break"),
-    ]
+    assert result.is_valid
 
 
 def test_comment_terminator_is_rejected_before_processor_rendering() -> None:
@@ -89,6 +112,21 @@ def test_comment_terminator_is_rejected_before_processor_rendering() -> None:
     ]
 
 
+def test_comment_terminators_are_rejected_across_multiline_boundaries() -> None:
+    """Processor restrictions inspect the complete reconstructed value."""
+    cblock: HeaderFieldValidationResult = CBlockHeaderProcessor().validate_header_fields(
+        field_names=("notice",),
+        header_values={"notice": "first\nunsafe */ tail"},
+    )
+    markdown: HeaderFieldValidationResult = MarkdownHeaderProcessor().validate_header_fields(
+        field_names=("notice",),
+        header_values={"notice": "first\nunsafe -- tail"},
+    )
+
+    assert not cblock.is_valid
+    assert not markdown.is_valid
+
+
 @pytest.mark.parametrize(
     ("field_name", "field_value", "target", "rule"),
     [
@@ -96,8 +134,7 @@ def test_comment_terminator_is_rejected_before_processor_rendering() -> None:
         (" project", "value", "name", "name:not-round-trippable"),
         ("project ", "value", "name", "name:not-round-trippable"),
         ("bad:key", "value", "name", "name:colon"),
-        ("project", "line\rbreak", "value", "content:line-break"),
-        ("project", "line\r\nbreak", "value", "content:line-break"),
+        ("bad\nname", "value", "name", "content:line-break"),
         ("project", "nul\0byte", "value", "content:nul"),
         ("project", "tab\tvalue", "value", "content:control-character"),
         ("project", "escape\x1bvalue", "value", "content:control-character"),
@@ -195,6 +232,17 @@ def test_custom_processor_extends_without_replacing_shared_validation() -> None:
     )
 
     assert [(issue.target, issue.rule) for issue in result.issues] == [
-        ("value", "content:line-break"),
         ("value", "processor:custom-stop"),
+    ]
+
+
+def test_custom_processor_can_restrict_canonical_encoded_lines() -> None:
+    """The shared orchestrator invokes additive encoded-line checks."""
+    result: HeaderFieldValidationResult = EncodedLineExtendingProcessor().validate_header_fields(
+        field_names=("notice",),
+        header_values={"notice": "first\nencoded-stop"},
+    )
+
+    assert [(issue.target, issue.rule) for issue in result.issues] == [
+        ("value", "processor:encoded-stop"),
     ]
