@@ -268,6 +268,24 @@ def test_physical_newlines_parse_to_semantic_lf(newline: str) -> None:
     }
 
 
+@pytest.mark.parametrize("terminator", ["\r\n", "\n", "\r", ""])
+def test_affix_removal_accepts_optional_physical_line_terminator(
+    terminator: str,
+) -> None:
+    """Affix removal handles CRLF, LF, CR, and an unterminated logical line."""
+    processor = HeaderProcessor(
+        line_prefix="#",
+        line_suffix="!",
+    )
+
+    inner, valid = processor._remove_line_affixes(  # pyright: ignore[reportPrivateUsage]
+        f"#   | content !{terminator}"
+    )
+
+    assert valid
+    assert inner == "   | content"
+
+
 @pytest.mark.parametrize(
     ("payload", "code"),
     [
