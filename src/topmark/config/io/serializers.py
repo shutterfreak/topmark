@@ -118,6 +118,12 @@ def config_to_topmark_toml_table(
         Toml.KEY_ALIGN_FIELDS,
         config.align_fields,
     )
+    insert_if_present(
+        formatting_tbl,
+        Toml.KEY_MAX_HEADER_LINE_LENGTH,
+        config.max_header_line_length,
+    )
+    formatting_tbl[Toml.KEY_WRAP_FIELDS] = as_toml_string_list(config.wrap_fields)
 
     # ---- Files ----
 

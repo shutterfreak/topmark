@@ -47,10 +47,8 @@ plugin integration.
 - [Configuration discovery and layering](../configuration/index.md) - discovery anchors,
   project-chain discovery, layered precedence, and configuration-source identity
 - [Plugins and extensibility](plugins.md)
-- [Multiline header field serialization](multiline-header-fields.md) - approved serialization and
-  validation contract for implementation by GitHub issues
-  [#326](https://github.com/shutterfreak/topmark/issues/326) and
-  [#327](https://github.com/shutterfreak/topmark/issues/327)
+- [Multiline header field serialization](multiline-header-fields.md) - canonical serialization,
+  validation, deterministic wrapping, and reflow contract
 - [Configuration schema](configuration-schema.md)
 - [Pipelines](pipelines.md)
 - [Pipelines reference hub](pipelines-reference.md)

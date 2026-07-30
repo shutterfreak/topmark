@@ -13,13 +13,7 @@ topmark:header:end
 # Multiline header field serialization and deterministic wrapping
 
 This document defines the serialization contract for TopMark field values that span multiple
-physical header lines. It also defines the deterministic, opt-in wrapping and reflow policy tracked
-by [GitHub issue #327](https://github.com/shutterfreak/topmark/issues/327).
-
-Literal multiline serialization was designed in
-[PR #329](https://github.com/shutterfreak/topmark/pull/329) and implemented in
-[PR #330](https://github.com/shutterfreak/topmark/pull/330). Issue #327 activates the previously
-reserved folded record syntax.
+physical header lines. It also defines deterministic, opt-in wrapping and canonical reflow.
 
 The format is intentionally smaller than YAML, Python, TOML, or Markdown string syntax. TopMark
 continues to represent semantic fields as `Mapping[str, str]`. Literal and folded records are
@@ -28,20 +22,26 @@ user-maintained layout contract.
 
 ______________________________________________________________________
 
-## Status and terminology
+## Scope and terminology
 
-This document distinguishes:
+TopMark originally represented every header field on one physical line using ordinary `key: value`
+syntax. Multiline serialization extends that stable baseline with two forms:
 
-- **Current behavior**: behavior present on `main` after PR #330.
-- **Required behavior for #327**: behavior to be implemented after this design is approved.
+- **Literal multiline field**: the semantic value contains LF characters and is serialized through
+  `|`, bare `|`, or `|=` records. Its record boundaries preserve semantic line breaks.
+- **Folded multiline field**: a semantically single-line value is serialized across physical lines
+  through `>` or `>=` records. Its record boundaries are presentation wrapping and do not introduce
+  semantic line breaks.
+
+The distinction is semantic rather than merely visual: literal records preserve line breaks in the
+value, while folded records preserve a single-line value through canonical physical wrapping.
+
+The remaining terminology is:
+
 - **Semantic value**: the complete string associated with a field.
 - **Physical line**: one rendered source-file line, excluding its physical line terminator when
   measuring width.
-- **Ordinary field**: the existing `key: value` representation.
-- **Literal field**: an empty field opener followed by `|`, bare `|`, or `|=` records. Its record
-  boundaries represent semantic LF characters.
-- **Folded field**: an empty field opener followed by `>` or `>=` records. Its record boundaries are
-  presentation wrapping and do not introduce semantic LF characters.
+- **Ordinary single-line field**: the original `key: value` representation on one physical line.
 - **Plain folded record**: a `>` record whose boundary contributes exactly one U+0020 SPACE.
 - **Exact folded record**: a `>=` record whose decoded content is concatenated without an implicit
   separator.
@@ -88,42 +88,33 @@ Continuation syntax is activated only after an empty field opener.
 
 ______________________________________________________________________
 
-## Current implementation constraints
+## Single-line compatibility
 
-On `main` after PR #330:
+The original ordinary representation remains canonical for single-line, ordinary-safe values when
+automatic wrapping does not apply:
 
-- `HeaderProcessor` recognizes literal and folded continuation tokens, but folded records produce
-  `header:folded-reserved`.
-- Pending multiline scalars currently require two records.
-- Literal records are reconstructed by joining decoded records with semantic LF.
-- Ordinary field parsing strips boundary whitespace.
-- Exact records recognize only `\"` and `\\` escapes.
-- Shared validation runs before additive processor-specific semantic and encoded-line hooks.
-- Rendering normalizes semantic CRLF and CR to LF and renders literal records for values containing
-  LF.
-- Processor prefixes, suffixes, pre-prefix indentation, post-prefix indentation, and physical
-  newline style are applied after field encoding.
-- Comparison checks semantic mappings and then exact rendered block content, so formatting-only
-  differences are actionable.
-- Configuration is resolved through mutable merge and immutable freeze stages and is serialized to
-  TOML and machine-readable payloads.
+```text
+# project: TopMark
+# license: MIT
+```
 
-Relevant sources at commit `88f8c6a893df2108dfb0e018549a8cbc914e42d2`:
+Multiline serialization is additive:
 
-- [Existing multiline contract](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/docs/dev/multiline-header-fields.md)
-- [`HeaderProcessor` parsing and rendering](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/src/topmark/processors/base.py)
-- [Configuration model](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/src/topmark/config/model.py)
-- [Configuration deserialization](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/src/topmark/config/io/deserializers.py)
-- [Configuration serialization](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/src/topmark/config/io/serializers.py)
-- [Renderer step](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/src/topmark/pipeline/steps/renderer.py)
-- [Comparer step](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/src/topmark/pipeline/steps/comparer.py)
-- [Multiline processor tests](https://github.com/shutterfreak/topmark/blob/88f8c6a893df2108dfb0e018549a8cbc914e42d2/tests/processors/test_multiline_fields.py)
+- semantic values containing LF use literal records;
+- semantically single-line values selected for wrapping may use folded records;
+- short single-line values with leading or trailing whitespace use one exact folded record so
+  ordinary parsing cannot discard that whitespace; and
+- values equal to or beginning with a continuation token remain ordinary when written after the
+  field colon.
+
+With wrapping disabled, existing ordinary-safe single-line fields retain their syntax, meaning, and
+canonical output.
 
 ______________________________________________________________________
 
-## Executive decision
+## Wrapping policy
 
-Issue #327 shall introduce these stable public configuration keys:
+TopMark provides these stable public configuration keys:
 
 ```toml
 [formatting]
@@ -151,8 +142,8 @@ The selected contract is:
 - Rendering reconstructs canonical layout from the semantic value and effective configuration.
 - A width or allowlist change may intentionally cause formatting-only file changes.
 
-No mdformat-style `keep` policy is introduced by #327. Literal line breaks are semantic and are
-always preserved. Folded line breaks are presentation and are always canonicalized.
+No mdformat-style `keep` policy is provided. Literal line breaks are semantic and are always
+preserved. Folded line breaks are presentation and are always canonicalized.
 
 ______________________________________________________________________
 
@@ -298,9 +289,9 @@ notice = 100
 copyright = 88
 ```
 
-Rejected for #327 because it combines selection and width into a more complex merge model, makes
-clearing and inheritance harder to explain, and offers little benefit before real use demonstrates
-that fields need different widths.
+Rejected because it combines selection and width into a more complex merge model, makes clearing and
+inheritance harder to explain, and offers little benefit before real use demonstrates that fields
+need different widths.
 
 ### Per-file-type widths or policy defaults
 
@@ -335,9 +326,9 @@ fields fold only when needed, except for the whitespace-sensitive exact represen
 
 ### Preserve existing folded layout
 
-Rejected for #327 because it would require retaining presentation metadata outside
-`Mapping[str, str]` and defining what happens after value, width, processor, indentation, or
-alignment changes. That conflicts with canonical render-from-semantics behavior.
+Rejected because it would require retaining presentation metadata outside `Mapping[str, str]` and
+defining what happens after value, width, processor, indentation, or alignment changes. That
+conflicts with canonical render-from-semantics behavior.
 
 ______________________________________________________________________
 
@@ -873,12 +864,11 @@ The hint is informational:
 
 ______________________________________________________________________
 
-## Parsing activation
+## Folded parsing
 
-Issue #327 changes folded parsing as follows:
+Folded parsing behaves as follows:
 
 - `>` and `>=` become active folded records.
-- `header:folded-reserved` is retired for valid folded records.
 - A folded scalar closes successfully after one or more valid folded records.
 - A literal scalar still requires two or more literal records.
 - Folded reconstruction uses implicit U+0020 only for subsequent plain `>` records.
@@ -919,7 +909,6 @@ ______________________________________________________________________
 | Required processor affix missing          | Field error          | `header:invalid-continuation-affix`     |
 | Processor-forbidden reconstructed value   | Field error          | Existing processor validation rule      |
 | Soft width exceeded                       | Valid, informational | `render:soft-width-exceeded`            |
-| Previously reserved valid folded syntax   | Valid after #327     | No `header:folded-reserved`             |
 
 `header:scalar-too-short` now applies only to literal fields. Existing valid folded fields with
 redundant records remain valid and canonicalize according to the effective policy.
@@ -1211,9 +1200,9 @@ No explicit header format version is required.
 The change is additive:
 
 - ordinary syntax is unchanged;
-- literal syntax and semantics are unchanged;
-- valid one-record folded fields become accepted;
-- valid two-or-more-record folded fields become accepted;
+- semantic multiline values gain literal serialization;
+- selected semantically single-line values gain folded serialization;
+- folded fields accept one or more records;
 - one-record literal fields remain malformed;
 - incomplete or approximate continuation syntax remains malformed;
 - folded activation requires an empty field opener; and
@@ -1221,14 +1210,12 @@ The change is additive:
 
 The following compatibility effects are intentional:
 
-- `header:folded-reserved` is retired for valid folded syntax.
-- Previously invalid one-record folded syntax becomes valid.
-- Existing redundant two-record exact layouts may canonicalize to one record.
+- Short values with leading or trailing whitespace use one exact folded record.
+- Redundant two-record exact folded layouts canonicalize to one record.
 - Enabling wrapping may cause formatting-only changes.
 - Changing width or selected fields may cause formatting-only changes.
 - Disabling wrapping restores ordinary rendering where ordinary serialization is lossless.
-- Unset configuration preserves existing generated output for headers that do not already contain
-  folded syntax.
+- Unset configuration preserves existing generated output for ordinary-safe single-line fields.
 
 The configuration keys are public and stable after release. Renaming them, changing their types,
 changing list replacement semantics, or changing the width metric would require normal public
@@ -1259,7 +1246,7 @@ therefore the more appropriate default.
 
 If practical experience later demonstrates a genuine need to retain manually authored folded layout,
 it should be designed separately as an explicit mode such as `keep`, `reflow`, or `unfold`. It is
-not part of #327.
+not part of this contract.
 
 ______________________________________________________________________
 
@@ -1404,13 +1391,12 @@ Test:
 
 ______________________________________________________________________
 
-## Acceptance criteria for issue #327
+## Contract conformance criteria
 
-Issue #327 is complete when:
+The implementation must continue to satisfy these criteria:
 
 - the two public configuration keys are implemented with the specified types and merge behavior;
 - folded `>` and `>=` parsing is active;
-- `header:folded-reserved` no longer applies to valid folded syntax;
 - one-or-more folded records are accepted;
 - two-or-more literal records remain required;
 - short whitespace-sensitive values use one exact folded record;
@@ -1429,40 +1415,9 @@ Issue #327 is complete when:
 
 ______________________________________________________________________
 
-## Documentation-PR handoff checklist
+## Implementation inventory
 
-The documentation-only PR should:
-
-- update this document without changing runtime code;
-- link issues #327 and PRs #329 and #330;
-- distinguish current behavior from required #327 behavior;
-- change folded grammar from two-or-more to one-or-more records;
-- retain the two-or-more literal requirement;
-- remove the need for synthetic empty `>= ""` records;
-- document single exact folded records;
-- document configuration keys and layering;
-- document the width metric;
-- document the canonical wrapping algorithm;
-- document soft overflow;
-- document parser activation and diagnostics;
-- document canonicalization and convergence;
-- document every built-in processor family;
-- document the plugin boundary;
-- state that no line-break preservation option is introduced;
-- state that implementation is deferred; and
-- avoid closing #327.
-
-Suggested title:
-
-```text
-docs(design): specify deterministic header field wrapping
-```
-
-______________________________________________________________________
-
-## Implementation handoff checklist
-
-The implementation task should proceed from the merged version of this contract and include:
+The implementation covers:
 
 1. Configuration model fields and validation.
 1. Merge, freeze, thaw, and override behavior.
@@ -1483,7 +1438,7 @@ The implementation task should proceed from the merged version of this contract 
 1. User-facing configuration documentation.
 1. Changelog entry.
 
-Implementation must not introduce:
+The implementation does not introduce:
 
 - body-content wrapping;
 - terminal or editor width discovery;
@@ -1495,9 +1450,7 @@ Implementation must not introduce:
 
 ______________________________________________________________________
 
-## Project-owner decisions
-
-No unresolved project-owner decision is required before the documentation PR.
+## Settled decisions
 
 The approved decisions are:
 

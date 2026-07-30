@@ -63,6 +63,7 @@ from topmark.registry.identity import require_and_validate_registry_identity
 from topmark.registry.identity import validate_reserved_topmark_namespace
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Iterable
     from collections.abc import Mapping
     from collections.abc import Sequence
@@ -95,6 +96,16 @@ class RuntimeConfigLike(Protocol):
         """Whether to align fields, from [formatting]."""
         ...
 
+    @property
+    def max_header_line_length(self) -> int | None:
+        """Optional soft maximum physical header-line length."""
+        ...
+
+    @property
+    def wrap_fields(self) -> tuple[str, ...]:
+        """Ordered field names eligible for automatic folded wrapping."""
+        ...
+
 
 class ProcessingContextLike(Protocol):
     """Minimal structural subset of `ProcessingContext` required by `HeaderProcessor`.
@@ -123,6 +134,7 @@ NO_LINE_ANCHOR: Final[int] = -1
 
 _CONTINUATION_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(\|=|\||>=|>)")
 _FIELD_RE: Final[re.Pattern[str]] = re.compile(r"^(?P<name>[^:]+?)(?P<padding> *):(?P<tail>.*)$")
+_SPACE_RUN_RE: Final[re.Pattern[str]] = re.compile(r" +")
 
 
 def normalize_semantic_newlines(
@@ -138,6 +150,7 @@ class _ContinuationRecord:
 
     mode: Literal["literal", "folded"]
     value: str
+    exact: bool
 
 
 def _equals_affix_ignoring_space_tab(line: str, affix: str) -> bool:
@@ -355,7 +368,7 @@ class HeaderProcessor:
 
         Notes:
             - Physical newlines and comment affixes are removed before field parsing.
-            - Empty field openers are promoted only after two valid literal records.
+            - Empty field openers are promoted after two literal records or one folded record.
             - Malformed logical fields add safe diagnostics but do not mutate
               ``context.status.header`` (handled by the scanner).
         """
@@ -401,7 +414,7 @@ class HeaderProcessor:
 
         pending_name: str | None = None
         pending_index: int | None = None
-        pending_records: list[str] = []
+        pending_records: list[_ContinuationRecord] = []
         pending_mode: Literal["literal", "folded"] | None = None
         pending_malformed = False
         last_was_ordinary = False
@@ -473,7 +486,7 @@ class HeaderProcessor:
                 else:
                     cnt_header_error += 1
                     last_was_ordinary = False
-            elif len(pending_records) < 2:
+            elif pending_mode == "literal" and len(pending_records) < 2:
                 diagnose(
                     "header:scalar-too-short",
                     line_no,
@@ -482,9 +495,19 @@ class HeaderProcessor:
                 cnt_header_error += 1
                 last_was_ordinary = False
             else:
+                if pending_mode == "literal":
+                    semantic_value: str = "\n".join(record.value for record in pending_records)
+                else:
+                    first_record, *remaining_records = pending_records
+                    folded_parts: list[str] = [first_record.value]
+                    for record in remaining_records:
+                        if not record.exact:
+                            folded_parts.append(" ")
+                        folded_parts.append(record.value)
+                    semantic_value = "".join(folded_parts)
                 if commit_field(
                     pending_name,
-                    "\n".join(pending_records),
+                    semantic_value,
                     field_index=pending_index if pending_index is not None else cnt_header_ok,
                     line_no=line_no,
                 ):
@@ -511,7 +534,6 @@ class HeaderProcessor:
             inner, affix_valid = self._remove_line_affixes(raw)
             cleaned: str = inner.lstrip(" \t")
             continuation_like: bool = _CONTINUATION_TOKEN_RE.match(cleaned) is not None
-            folded_token: bool = cleaned.startswith(">")
 
             if not cleaned.strip(" \t"):
                 close_pending(abs_line_no)
@@ -530,9 +552,7 @@ class HeaderProcessor:
             if continuation_like:
                 if pending_name is None:
                     code: str
-                    if folded_token:
-                        code = "header:folded-reserved"
-                    elif record_error is not None:
+                    if record_error is not None:
                         code = record_error
                     elif last_was_ordinary:
                         code = "header:continuation-after-scalar"
@@ -545,27 +565,6 @@ class HeaderProcessor:
                     continue
 
                 if pending_malformed:
-                    i += 1
-                    continue
-
-                if pending_mode == "literal" and folded_token:
-                    diagnose(
-                        "header:mixed-scalar-mode",
-                        abs_line_no,
-                        pending_index,
-                    )
-                    pending_malformed = True
-                    i += 1
-                    continue
-
-                if pending_mode is None and folded_token:
-                    diagnose(
-                        "header:folded-reserved",
-                        abs_line_no,
-                        pending_index,
-                    )
-                    pending_mode = "folded"
-                    pending_malformed = True
                     i += 1
                     continue
 
@@ -584,9 +583,16 @@ class HeaderProcessor:
 
                 if pending_mode is None:
                     pending_mode = record.mode
-                    pending_records.append(record.value)
+                    pending_records.append(record)
+                elif pending_mode != record.mode:
+                    diagnose(
+                        "header:mixed-scalar-mode",
+                        abs_line_no,
+                        pending_index,
+                    )
+                    pending_malformed = True
                 else:
-                    pending_records.append(record.value)
+                    pending_records.append(record)
                 i += 1
                 continue
 
@@ -660,6 +666,8 @@ class HeaderProcessor:
         *,
         field_names: Sequence[str],
         header_values: Mapping[str, str],
+        config: RuntimeConfigLike | None = None,
+        header_indent_override: str | None = None,
     ) -> HeaderFieldValidationResult:
         """Validate the exact ordered fields that would be rendered.
 
@@ -671,11 +679,40 @@ class HeaderProcessor:
             field_names: Ordered configured field names to serialize.
             header_values: Selected field values; missing names use the same
                 empty-string fallback as rendering.
+            config: Optional effective formatting configuration. When supplied,
+                encoded-line hooks receive the exact canonical ordinary, literal,
+                or folded payload lines selected for rendering.
+            header_indent_override: Optional preserved pre-prefix indentation used
+                for complete-line wrapping measurement.
 
         Returns:
             Immutable, deterministically ordered validation issues.
         """
         issues: list[HeaderFieldValidationIssue] = []
+        width: int = (
+            max((len(name) for name in header_values), default=0) + 1
+            if config is not None and config.align_fields and header_values
+            else 0
+        )
+        effective_header_indent: str = (
+            header_indent_override if header_indent_override is not None else self.header_indent
+        )
+
+        def measure_payload_line(inner: str, continuation: bool) -> int:
+            """Return the default complete physical line length for validation."""
+            return len(
+                self._wrap_line(
+                    inner,
+                    newline_style="",
+                    line_prefix=self.line_prefix,
+                    line_suffix=self.line_suffix,
+                    header_indent=effective_header_indent,
+                    after_prefix_indent=(
+                        self.line_indent + "  " if continuation else self.line_indent
+                    ),
+                )
+            )
+
         for field_index, field_name in enumerate(field_names):
             field_value: str = normalize_semantic_newlines(header_values.get(field_name, ""))
 
@@ -734,7 +771,16 @@ class HeaderProcessor:
             for encoded_line in self._encode_field_lines(
                 field_name=field_name,
                 field_value=field_value,
-                width=0,
+                width=width,
+                max_line_length=(
+                    config.max_header_line_length
+                    if config is not None
+                    and config.max_header_line_length is not None
+                    and field_name in config.wrap_fields
+                    and "\n" not in field_value
+                    else None
+                ),
+                measure_line=measure_payload_line,
             ):
                 issues.extend(
                     self.validate_processor_encoded_line(
@@ -856,7 +902,9 @@ class HeaderProcessor:
         exact_token: str = f"{token}="
 
         if cleaned == token:
-            return _ContinuationRecord(mode=mode, value=""), None
+            if mode == "folded":
+                return None, "header:missing-continuation-body"
+            return _ContinuationRecord(mode=mode, value="", exact=False), None
 
         if cleaned.startswith(exact_token):
             remainder: str = cleaned[len(exact_token) :]
@@ -896,7 +944,11 @@ class HeaderProcessor:
             unicodedata.category(char) == "Cc" or char in {"\u2028", "\u2029"} for char in value
         ):
             return None, "header:invalid-continuation-character"
-        return _ContinuationRecord(mode=mode, value=value), None
+        return _ContinuationRecord(
+            mode=mode,
+            value=value,
+            exact=cleaned.startswith(exact_token),
+        ), None
 
     def _find_inner_marker_indices(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Find START and END marker indices relative to the given slice.
@@ -1138,12 +1190,13 @@ class HeaderProcessor:
         line_suffix_override: str | None = None,
         line_indent_override: str | None = None,
         header_indent_override: str | None = None,
+        soft_overflow_fields: set[str] | None = None,
     ) -> list[str]:
         """Render a header block from configuration, template, and overrides.
 
-        This method serializes configured semantic values using ordinary or literal
-        continuation records, then applies the processor affixes and selected physical
-        newline style to every emitted line.
+        This method serializes configured semantic values using ordinary, literal,
+        or folded continuation records, then applies the processor affixes and selected
+        physical newline style to every emitted line.
 
         Args:
             header_values: Mapping of header fields to render.
@@ -1159,6 +1212,8 @@ class HeaderProcessor:
             header_indent_override: Optional indentation override *before*
                 the comment prefix, applied to complete header lines (used to preserve
                 existing leading indentation on replace).
+            soft_overflow_fields: Optional mutable collector populated with field
+                names whose canonical active-wrapping output exceeds the soft target.
 
         Returns:
             Rendered header lines ending with ``newline_style``.
@@ -1210,11 +1265,47 @@ class HeaderProcessor:
         # Field lines (no blanks in-between)
         for field in config.header_fields:
             value: str = normalize_semantic_newlines(header_values.get(field, ""))
+
+            def measure_payload_line(
+                inner: str,
+                continuation: bool,
+            ) -> int:
+                """Return the complete physical payload-line length without its terminator."""
+                return len(
+                    self._wrap_line(
+                        inner,
+                        newline_style="",
+                        line_prefix=line_prefix,
+                        line_suffix=line_suffix,
+                        header_indent=header_indent,
+                        after_prefix_indent=(
+                            effective_line_indent + "  " if continuation else effective_line_indent
+                        ),
+                    )
+                )
+
+            wrap_active: bool = (
+                config.max_header_line_length is not None
+                and field in config.wrap_fields
+                and "\n" not in value
+            )
             encoded_lines: list[str] = self._encode_field_lines(
                 field_name=field,
                 field_value=value,
                 width=width,
+                max_line_length=config.max_header_line_length if wrap_active else None,
+                measure_line=measure_payload_line,
             )
+            if (
+                wrap_active
+                and soft_overflow_fields is not None
+                and config.max_header_line_length is not None
+                and any(
+                    measure_payload_line(inner, index > 0) > config.max_header_line_length
+                    for index, inner in enumerate(encoded_lines)
+                )
+            ):
+                soft_overflow_fields.add(field)
             for encoded_index, inner in enumerate(encoded_lines):
                 lines.append(
                     self._wrap_line(
@@ -1246,32 +1337,128 @@ class HeaderProcessor:
 
         return lines
 
-    @staticmethod
     def _encode_field_lines(
+        self,
         *,
         field_name: str,
         field_value: str,
         width: int,
+        max_line_length: int | None = None,
+        measure_line: Callable[[str, bool], int] | None = None,
     ) -> list[str]:
-        """Encode one semantic field into ordinary or literal payload lines."""
+        """Encode one semantic field into canonical ordinary, literal, or folded lines."""
         if "\r" in field_value:
             raise ValueError("Semantic field values must be normalized before encoding")
-        if "\n" not in field_value:
-            return [
-                f"{field_name:<{width}}: {field_value}" if width else f"{field_name}: {field_value}"
-            ]
 
         opener: str = f"{field_name:<{width}}:" if width else f"{field_name}:"
+        ordinary: str = f"{opener} {field_value}"
+
+        if "\n" not in field_value:
+            if field_value and field_value != field_value.strip():
+                return [opener, self._encode_exact_record(">=", field_value)]
+            if (
+                max_line_length is None
+                or measure_line is None
+                or measure_line(ordinary, False) <= max_line_length
+            ):
+                return [ordinary]
+
+            folded_records: list[str] = self._wrap_folded_records(
+                field_value,
+                max_line_length=max_line_length,
+                measure_line=measure_line,
+            )
+            if len(folded_records) >= 2:
+                return [opener, *folded_records]
+            return [ordinary]
+
         records: list[str] = []
         for logical_line in field_value.split("\n"):
             if logical_line == "":
                 records.append("|")
             elif logical_line != logical_line.strip(" \t"):
-                escaped: str = logical_line.replace("\\", "\\\\").replace('"', '\\"')
-                records.append(f'|= "{escaped}"')
+                records.append(self._encode_exact_record("|=", logical_line))
             else:
                 records.append(f"| {logical_line}")
         return [opener, *records]
+
+    @staticmethod
+    def _encode_exact_record(
+        token: str,
+        value: str,
+    ) -> str:
+        """Return one exact continuation record with canonical escaping."""
+        escaped: str = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'{token} "{escaped}"'
+
+    def _wrap_folded_records(
+        self,
+        value: str,
+        *,
+        max_line_length: int,
+        measure_line: Callable[[str, bool], int],
+    ) -> list[str]:
+        """Return deterministic lossless folded records for one overlong semantic value."""
+        records: list[str] = []
+        cursor = 0
+        while True:
+            remaining: str = value[cursor:]
+            final_record: str = self._encode_folded_record(remaining)
+            runs: list[re.Match[str]] = [
+                match
+                for match in _SPACE_RUN_RE.finditer(value, cursor)
+                if match.start() > cursor and match.end() < len(value)
+            ]
+            if measure_line(final_record, True) <= max_line_length and (records or not runs):
+                records.append(final_record)
+                break
+            if not runs:
+                records.append(final_record)
+                break
+
+            chosen: re.Match[str] | None = None
+            for match in runs:
+                candidate: str = value[cursor : match.start()]
+                encoded: str = self._encode_folded_record(candidate)
+                if measure_line(encoded, True) <= max_line_length:
+                    chosen = match
+                else:
+                    break
+            if chosen is None:
+                chosen = runs[0]
+
+            fragment: str = value[cursor : chosen.start()]
+            records.append(self._encode_folded_record(fragment))
+            cursor = chosen.end() if len(chosen.group()) == 1 else chosen.start()
+
+        if self._decode_folded_records(records) != value:
+            raise RuntimeError("Folded continuation encoding did not preserve the semantic value")
+        return records
+
+    def _encode_folded_record(
+        self,
+        value: str,
+    ) -> str:
+        """Return the canonical plain or exact folded record for one fragment."""
+        if value and value == value.strip(" \t"):
+            return f"> {value}"
+        return self._encode_exact_record(">=", value)
+
+    @classmethod
+    def _decode_folded_records(
+        cls,
+        records: Sequence[str],
+    ) -> str:
+        """Decode renderer-produced folded records for an internal round-trip check."""
+        decoded: list[str] = []
+        for index, encoded in enumerate(records):
+            record, error = cls._parse_continuation_record(encoded)
+            if error is not None or record is None or record.mode != "folded":
+                raise RuntimeError("Renderer produced an invalid folded continuation record")
+            if index > 0 and not record.exact:
+                decoded.append(" ")
+            decoded.append(record.value)
+        return "".join(decoded)
 
     def compute_insertion_anchor(self, lines: list[str]) -> int:
         """Return a stable line-based insertion anchor for the pipeline.

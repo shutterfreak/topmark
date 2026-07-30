@@ -91,8 +91,10 @@ receives the selected processor's comment affixes and preserved pre-prefix inden
 
 Continuation tokens use a fixed extra indentation level rather than aligning with field colons, so
 `align_fields`, field-name length, and compact rendering do not change their canonical position.
-Folded `>` continuation records remain reserved for GitHub issue
-[#327](https://github.com/shutterfreak/topmark/issues/327).
+Folded `>` and `>=` continuation records provide deterministic opt-in wrapping for selected
+single-line values. Their presentation boundaries are canonicalized according to the effective
+width, processor affixes, alignment, and preserved indentation; literal record boundaries remain
+semantic and are always preserved.
 
 ______________________________________________________________________
 

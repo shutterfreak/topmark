@@ -94,6 +94,41 @@ def test_config_serializers_reject_human_output_formats(fmt: OutputFormat) -> No
     assert str(exc_info.value) == expected_message
 
 
+def test_config_json_exposes_effective_wrapping_formatting() -> None:
+    """Machine config output includes null width and the immutable allowlist."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    default_payload = json.loads(
+        serialize_config_json(
+            meta=_machine_meta(),
+            config=draft.freeze(),
+            resolved_toml=_empty_resolved_toml_sources(),
+        )
+    )
+    assert default_payload["config"]["formatting"]["max_header_line_length"] is None
+    assert default_payload["config"]["formatting"]["wrap_fields"] == []
+
+    draft.max_header_line_length = 88
+    draft.wrap_fields = [
+        "notice",
+        "copyright",
+    ]
+    configured_payload = json.loads(
+        serialize_config_json(
+            meta=_machine_meta(),
+            config=draft.freeze(),
+            resolved_toml=_empty_resolved_toml_sources(),
+        )
+    )
+    assert configured_payload["config"]["formatting"] == {
+        "align_fields": True,
+        "max_header_line_length": 88,
+        "wrap_fields": [
+            "notice",
+            "copyright",
+        ],
+    }
+
+
 def test_config_diagnostics_ndjson_streams_counts_before_diagnostics() -> None:
     """Diagnostics NDJSON keeps the summary-first streaming contract."""
     draft: MutableConfig = mutable_config_from_defaults()

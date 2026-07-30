@@ -324,8 +324,10 @@ The implemented [multiline header field serialization](multiline-header-fields.m
 this model. The base processor owns continuation parsing, semantic reconstruction, canonical
 rendering, and shared validation. Custom processors may add restrictions for complete semantic
 values and encoded physical payload lines, but must not define a conflicting continuation grammar
-while claiming base-format compatibility. Folded values remain reserved for GitHub issue
-[#327](https://github.com/shutterfreak/topmark/issues/327).
+while claiming base-format compatibility. Base-format-compatible processors also inherit
+deterministic folded wrapping, complete-physical-line width measurement, and canonical reflow.
+Processors that replace the complete renderer are outside that guarantee unless they delegate field
+serialization and line construction to the base implementation.
 
 During `Registry.bind(...)`, TopMark resolves the file type identifier through the composed runtime
 file type registry and records a binding from that file type's qualified key to the registered

@@ -85,6 +85,8 @@ class _Context:
 class _Config:
     header_fields: tuple[str, ...]
     align_fields: bool
+    max_header_line_length: int | None = None
+    wrap_fields: tuple[str, ...] = ()
 
 
 def _context(

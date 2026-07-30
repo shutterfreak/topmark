@@ -88,8 +88,9 @@ reject syntax that would invalidate its comment, such as `*/` in C block comment
 XML/HTML/Markdown comments. TopMark reports invalid content and does not render, preview, patch, or
 write a partial header. See
 [Multiline header field serialization](../dev/multiline-header-fields.md) for exact and empty record
-syntax. Folded `>` records remain reserved for
-[#327](https://github.com/shutterfreak/topmark/issues/327).
+syntax. Deterministic folded `>` and `>=` records are generated when a positive
+`formatting.max_header_line_length` and matching `formatting.wrap_fields` entry enable wrapping.
+Their physical boundaries are canonical presentation and do not change the semantic field value.
 
 Generate a documented starter configuration:
 

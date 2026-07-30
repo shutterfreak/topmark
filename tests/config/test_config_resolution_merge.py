@@ -24,6 +24,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import cast
 
+import pytest
+
 from tests.helpers.diagnostics import NON_EMPTY
 from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from tests.helpers.diagnostics import assert_validation_stage_totals
@@ -41,6 +43,8 @@ from topmark.config.resolution.layers import build_config_layers_from_resolved_t
 from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.config.resolution.merge import merge_layers_globally
 from topmark.config.resolution.merge import select_applicable_layers
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.errors import ConfigValidationError
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
 from topmark.toml.resolution import resolve_topmark_toml_sources
@@ -53,6 +57,7 @@ if TYPE_CHECKING:
     from topmark.config.policy import FrozenPolicy
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.config.resolution.layers import ConfigLayer
+    from topmark.diagnostic.model import Diagnostic
     from topmark.diagnostic.model import MutableDiagnosticLog
     from topmark.filetypes.model import FileType
 
@@ -286,6 +291,94 @@ def test_cli_overrides_merge_last(
         overrides,
     )
     assert resolved_config.draft.align_fields is True
+
+
+def test_wrapping_overrides_replace_width_and_clear_allowlist(
+    tmp_path: Path,
+) -> None:
+    """Highest-precedence formatting overrides preserve explicit empty clearing."""
+    proj: Path = tmp_path / "proj"
+    proj.mkdir()
+    write_toml_document(
+        path=proj / "topmark.toml",
+        content="""
+            [header]
+            fields = ["notice"]
+
+            [formatting]
+            max_header_line_length = 100
+            wrap_fields = ["notice"]
+        """,
+    )
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[proj],
+    )
+
+    apply_config_overrides(
+        resolved_config.draft,
+        ConfigOverrides(
+            max_header_line_length=88,
+            wrap_fields=[],
+        ),
+    )
+
+    assert resolved_config.draft.max_header_line_length == 88
+    assert resolved_config.draft.wrap_fields == []
+
+
+@pytest.mark.parametrize(
+    "invalid_width",
+    [
+        True,
+        0,
+        -1,
+    ],
+)
+def test_wrapping_override_rejects_invalid_width(
+    invalid_width: int,
+) -> None:
+    """Runtime wrapping overrides reject booleans and nonpositive integers."""
+    draft: MutableConfig = mutable_config_from_defaults()
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(max_header_line_length=invalid_width),
+    )
+
+    assert draft.max_header_line_length is None
+    assert [diagnostic.message for diagnostic in draft.validation_logs.merged_config.items] == [
+        "Override max_header_line_length must be a positive integer."
+    ]
+
+
+def test_wrapping_override_validates_names_and_deduplicates() -> None:
+    """Runtime wrapping overrides apply shared name rules and stable deduplication."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    invalid_names: list[str] = [
+        "",
+        " bad ",
+        "bad:name",
+        f"bad{TOPMARK_START_MARKER}",
+        f"bad{TOPMARK_END_MARKER}",
+        "bad\u2028name",
+        "bad\u2029name",
+        "bad\tname",
+    ]
+
+    apply_config_overrides(
+        draft,
+        ConfigOverrides(
+            wrap_fields=["notice", "notice", *invalid_names, "copyright"],
+        ),
+    )
+
+    assert draft.wrap_fields == ["notice", "copyright"]
+    diagnostics: list[Diagnostic] = draft.validation_logs.merged_config.items
+    assert len(diagnostics) == len(invalid_names)
+    assert all(
+        diagnostic.message.startswith("Invalid field name in override wrap_fields:")
+        for diagnostic in diagnostics
+    )
 
 
 def test_override_diagnostics_land_in_merged_config(tmp_path: Path) -> None:

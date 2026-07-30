@@ -102,6 +102,91 @@ def test_check_accepts_multiline_api_field(
     assert result.files[0].diff is None
 
 
+def test_check_applies_opt_in_wrapping_and_converges(
+    tmp_path: Path,
+) -> None:
+    """API configuration wraps selected fields and a second check is unchanged."""
+    path: Path = tmp_path / "wrapped.py"
+    path.write_text("print('safe')\n", encoding="utf-8")
+    value = "A sufficiently long notice that contains ordinary spaces and can be wrapped."
+    config: dict[str, object] = {
+        "fields": {
+            "notice": value,
+        },
+        "header": {
+            "fields": ["notice"],
+        },
+        "formatting": {
+            "align_fields": False,
+            "max_header_line_length": 35,
+            "wrap_fields": ["notice"],
+        },
+    }
+
+    applied: api.RunResult = api.check(
+        [path],
+        config=config,
+        apply=True,
+        report="all",
+    )
+
+    assert applied.summary == {Outcome.INSERTED: 1}
+    rendered: str = path.read_text(encoding="utf-8")
+    assert "#   notice:\n" in rendered
+    assert "#     > A sufficiently long notice\n" in rendered
+    assert "#     > that contains ordinary\n" in rendered
+    assert "#     > spaces and can be wrapped.\n" in rendered
+
+    converged: api.RunResult = api.check(
+        [path],
+        config=config,
+        apply=False,
+        report="all",
+    )
+    assert converged.summary == {Outcome.UNCHANGED: 1}
+
+
+def test_valid_folded_input_canonicalizes_when_wrapping_is_disabled(
+    tmp_path: Path,
+) -> None:
+    """Folded parsing is unconditional while rendering follows effective config."""
+    path: Path = tmp_path / "folded.py"
+    path.write_text(
+        "# topmark:header:start\n"
+        "#\n"
+        "#   notice:\n"
+        "#     > short\n"
+        "#     > value\n"
+        "#\n"
+        "# topmark:header:end\n"
+        "print('safe')\n",
+        encoding="utf-8",
+    )
+    config: dict[str, object] = {
+        "fields": {
+            "notice": "short value",
+        },
+        "header": {
+            "fields": ["notice"],
+        },
+        "formatting": {
+            "align_fields": False,
+        },
+    }
+
+    applied: api.RunResult = api.check(
+        [path],
+        config=config,
+        apply=True,
+        report="all",
+    )
+
+    assert applied.summary == {Outcome.UPDATED: 1}
+    rendered: str = path.read_text(encoding="utf-8")
+    assert "#   notice: short value\n" in rendered
+    assert "#     >" not in rendered
+
+
 def test_check_apply_add_only_inserts_header_for_missing(
     repo_py_with_and_without_header: Path, proc_py: HeaderProcessor
 ) -> None:

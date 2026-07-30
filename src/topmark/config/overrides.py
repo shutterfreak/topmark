@@ -32,6 +32,7 @@ Flattening is performed only at reporting and output boundaries.
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -43,6 +44,8 @@ from topmark.config.policy import MutablePolicy
 from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.config.types import PatternGroup
 from topmark.core.constants import CLI_OVERRIDE_STR
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
@@ -118,6 +121,8 @@ class ConfigOverrides:
         field_values: Mapping of field names to their string values
             from [fields].
         align_fields: Whether to align fields, from [formatting].
+        max_header_line_length: Optional soft physical header-line width.
+        wrap_fields: Ordered field names eligible for automatic folded wrapping.
         relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring
             source (config file dir or CWD for CLI), not relative_to.
@@ -148,6 +153,8 @@ class ConfigOverrides:
     header_fields: list[str] | None = None
     field_values: dict[str, str] | None = None
     align_fields: bool | None = None
+    max_header_line_length: int | None = None
+    wrap_fields: list[str] | None = None
     relative_to: str | None = None
 
 
@@ -321,6 +328,37 @@ def apply_config_overrides(
     # align_fields: checked bool
     if overrides.align_fields is not None:
         config.align_fields = overrides.align_fields
+    if overrides.max_header_line_length is not None:
+        if isinstance(overrides.max_header_line_length, bool) or (
+            overrides.max_header_line_length <= 0
+        ):
+            merged_diagnostics.add_error(
+                "Override max_header_line_length must be a positive integer."
+            )
+        else:
+            config.max_header_line_length = overrides.max_header_line_length
+    if overrides.wrap_fields is not None:
+        deduped_wrap_fields: list[str] = []
+        seen_wrap_fields: set[str] = set()
+        for field_name in overrides.wrap_fields:
+            if (
+                not field_name
+                or field_name != field_name.strip()
+                or ":" in field_name
+                or TOPMARK_START_MARKER in field_name
+                or TOPMARK_END_MARKER in field_name
+                or "\u2028" in field_name
+                or "\u2029" in field_name
+                or any(unicodedata.category(char) == "Cc" for char in field_name)
+            ):
+                merged_diagnostics.add_error(
+                    f"Invalid field name in override wrap_fields: {field_name!r}."
+                )
+                continue
+            if field_name not in seen_wrap_fields:
+                seen_wrap_fields.add(field_name)
+                deduped_wrap_fields.append(field_name)
+        config.wrap_fields = deduped_wrap_fields
 
     # Absent override values intentionally preserve whatever came from layered
     # config discovery / TOML resolution.

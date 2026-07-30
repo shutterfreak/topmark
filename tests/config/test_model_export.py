@@ -37,6 +37,7 @@ from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.toml.enums import FilesSerializationMode
 from topmark.toml.keys import Toml
 from topmark.toml.render import render_toml_table
+from topmark.toml.types import TomlTable
 from topmark.utils.file import RebasedGlobPatterns
 
 if TYPE_CHECKING:
@@ -65,6 +66,31 @@ def test_to_toml_strips_none_entries() -> None:
 
     s: str = render_toml_table(formatting_tbl)
     assert ArgKey.ALIGN_FIELDS not in s  # or whatever your stripper does
+
+
+def test_wrapping_formatting_serializes_with_unset_width_and_empty_allowlist() -> None:
+    """TOML omits its null width while retaining the canonical empty allowlist."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    config: FrozenConfig = draft.freeze()
+
+    table: TomlTable = config_to_topmark_toml_table(config)
+    formatting = table[Toml.SECTION_FORMATTING]
+
+    assert isinstance(formatting, dict)
+    assert Toml.KEY_MAX_HEADER_LINE_LENGTH not in formatting
+    assert formatting[Toml.KEY_WRAP_FIELDS] == []
+
+    draft.max_header_line_length = 88
+    draft.wrap_fields = [
+        "notice",
+    ]
+    configured: TomlTable = config_to_topmark_toml_table(draft.freeze())
+    configured_formatting = configured[Toml.SECTION_FORMATTING]
+    assert isinstance(configured_formatting, dict)
+    assert configured_formatting[Toml.KEY_MAX_HEADER_LINE_LENGTH] == 88
+    assert configured_formatting[Toml.KEY_WRAP_FIELDS] == [
+        "notice",
+    ]
 
 
 def test_config_to_toml_dict_origin_mode_preserves_pattern_group_and_source_tables(

@@ -39,6 +39,7 @@ Typical entry points:
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -55,10 +56,13 @@ from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MixedLineEndingsMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.types import PatternGroup
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 from topmark.toml.defaults import build_default_topmark_toml_table
 from topmark.toml.getters import get_bool_value_or_none_checked
 from topmark.toml.getters import get_enum_value_checked
+from topmark.toml.getters import get_int_value_or_none_checked
 from topmark.toml.getters import get_string_list_value_checked
 from topmark.toml.getters import get_string_value_checked
 from topmark.toml.getters import get_table_value
@@ -514,6 +518,46 @@ def mutable_config_from_layered_toml_table(
             where=where_fmt,
             diagnostics=merged_diagnostics,
         )
+        draft.max_header_line_length = get_int_value_or_none_checked(
+            formatting_tbl,
+            Toml.KEY_MAX_HEADER_LINE_LENGTH,
+            where=where_fmt,
+            diagnostics=merged_diagnostics,
+        )
+        if draft.max_header_line_length is not None and draft.max_header_line_length <= 0:
+            merged_diagnostics.add_error(
+                f"{where_fmt}.{Toml.KEY_MAX_HEADER_LINE_LENGTH} must be greater than zero."
+            )
+            draft.max_header_line_length = None
+
+        if Toml.KEY_WRAP_FIELDS in formatting_tbl:
+            raw_wrap_fields: list[str] = get_string_list_value_checked(
+                formatting_tbl,
+                Toml.KEY_WRAP_FIELDS,
+                where=where_fmt,
+                diagnostics=merged_diagnostics,
+            )
+            deduped_wrap_fields: list[str] = []
+            seen_wrap_fields: set[str] = set()
+            for field_name in raw_wrap_fields:
+                if (
+                    not field_name
+                    or field_name != field_name.strip()
+                    or ":" in field_name
+                    or TOPMARK_START_MARKER in field_name
+                    or TOPMARK_END_MARKER in field_name
+                    or "\u2028" in field_name
+                    or "\u2029" in field_name
+                    or any(unicodedata.category(char) == "Cc" for char in field_name)
+                ):
+                    merged_diagnostics.add_error(
+                        f"Invalid field name in {where_fmt}.{Toml.KEY_WRAP_FIELDS}: {field_name!r}."
+                    )
+                    continue
+                if field_name not in seen_wrap_fields:
+                    seen_wrap_fields.add(field_name)
+                    deduped_wrap_fields.append(field_name)
+            draft.wrap_fields = deduped_wrap_fields
 
     def _extract_layered_toml_tables(
         layered_tbl: TomlTable,
