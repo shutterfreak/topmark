@@ -219,6 +219,15 @@ topmark:
       type: bool
       default: true
       description: Align header field labels/colons.
+    max_header_line_length:
+      type: int | null
+      default: null
+      constraints: positive when set
+      description: Soft Unicode-code-point target for complete physical header field lines.
+    wrap_fields:
+      type: list[str]
+      default: []
+      description: Ordered allowlist of fields eligible for deterministic folded wrapping.
 
     relative_to:
       type: path

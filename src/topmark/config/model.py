@@ -120,6 +120,8 @@ class FrozenConfig:
         field_values: Mapping of field names to their string values
             from [fields].
         align_fields: Whether to align fields, from [formatting].
+        max_header_line_length: Optional soft physical header-line width.
+        wrap_fields: Ordered field names eligible for automatic folded wrapping.
         relative_to_raw: Original string from config, API or CLI.
         relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring source
@@ -163,6 +165,8 @@ class FrozenConfig:
 
     # Header formatting
     align_fields: bool | None
+    max_header_line_length: int | None
+    wrap_fields: tuple[str, ...]
 
     # Header formatting: base path resolution
     relative_to_raw: str | None
@@ -261,6 +265,8 @@ class FrozenConfig:
             header_fields=list(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
+            max_header_line_length=self.max_header_line_length,
+            wrap_fields=list(self.wrap_fields),
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             files=list(self.files),
@@ -315,6 +321,10 @@ class MutableConfig:
         header_fields: List of header fields from the [header] section.
         field_values: Mapping of field names to their string values from [fields].
         align_fields: Whether to align fields, from [formatting].
+        max_header_line_length: Optional soft physical header-line width.
+        wrap_fields: Ordered field names eligible for automatic folded wrapping.
+            `None` means absent in this layer; an empty list explicitly clears an
+            inherited allowlist.
         relative_to_raw: Original string from config or CLI
         relative_to: Base path used only for resolving header metadata (e.g., `file_relpath`).
         files: List of files to process.
@@ -343,6 +353,8 @@ class MutableConfig:
 
     # Header formatting
     align_fields: bool | None = None
+    max_header_line_length: int | None = None
+    wrap_fields: list[str] | None = None
 
     # Header formatting: base path resolution
     relative_to_raw: str | None = None  # original string from config or CLI
@@ -449,6 +461,8 @@ class MutableConfig:
             header_fields=tuple(self.header_fields),
             field_values=dict(self.field_values),
             align_fields=self.align_fields,
+            max_header_line_length=self.max_header_line_length,
+            wrap_fields=tuple(self.wrap_fields or ()),
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             files=tuple(self.files),
@@ -484,6 +498,8 @@ class MutableConfig:
             Behavioral config:
                 - `header_fields`: replace when `other` provides a non-empty list
                 - `align_fields`: replace only when explicitly set in `other`
+                - `max_header_line_length`: replace only when explicitly set in `other`
+                - `wrap_fields`: replace when present, including an explicit empty list
                 - `relative_to_raw`, `relative_to`: replace only when explicitly set in `other`
 
             Policy:
@@ -547,6 +563,14 @@ class MutableConfig:
         merged_align_fields: bool | None = (
             other.align_fields if other.align_fields is not None else self.align_fields
         )
+        merged_max_header_line_length: int | None = (
+            other.max_header_line_length
+            if other.max_header_line_length is not None
+            else self.max_header_line_length
+        )
+        merged_wrap_fields: list[str] | None = (
+            other.wrap_fields if other.wrap_fields is not None else self.wrap_fields
+        )
         merged_relative_to_raw: str | None = (
             other.relative_to_raw if other.relative_to_raw is not None else self.relative_to_raw
         )
@@ -597,6 +621,8 @@ class MutableConfig:
             header_fields=merged_header_fields,
             field_values=merged_field_values,
             align_fields=merged_align_fields,
+            max_header_line_length=merged_max_header_line_length,
+            wrap_fields=merged_wrap_fields,
             relative_to_raw=merged_relative_to_raw,
             relative_to=merged_relative_to,
             files=merged_files,

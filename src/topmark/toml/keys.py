@@ -71,6 +71,8 @@ class Toml:
     SECTION_FORMATTING: Final[str] = "formatting"
 
     KEY_ALIGN_FIELDS: Final[str] = "align_fields"
+    KEY_MAX_HEADER_LINE_LENGTH: Final[str] = "max_header_line_length"
+    KEY_WRAP_FIELDS: Final[str] = "wrap_fields"
 
     # [writer]
     SECTION_WRITER: Final[str] = "writer"

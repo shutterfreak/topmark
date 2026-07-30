@@ -824,6 +824,10 @@ High-level structure (keys may be extended over time):
 - `policy`: global resolved policy flags (booleans).
 - `policy_by_type`: per-file-type resolved policy overrides.
 
+The `formatting` object includes `align_fields`, `max_header_line_length`, and `wrap_fields`.
+Machine output represents an unset width as JSON `null` and always emits the effective wrapping
+allowlist as an array.
+
 File type identifiers in `files.include_file_types`, `files.exclude_file_types`, and
 `policy_by_type` are emitted after configuration normalization. Consumers should expect canonical
 qualified keys such as `topmark:python` rather than the exact local-or-qualified spelling supplied

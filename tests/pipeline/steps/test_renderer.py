@@ -65,6 +65,7 @@ class RecordingProcessor(HeaderProcessor):
     def __init__(self) -> None:
         super().__init__()
         self.calls: list[RenderCall] = []
+        self.soft_overflow_field: str | None = None
 
     def render_header_lines(
         self,
@@ -77,6 +78,7 @@ class RecordingProcessor(HeaderProcessor):
         line_suffix_override: str | None = None,
         line_indent_override: str | None = None,
         header_indent_override: str | None = None,
+        soft_overflow_fields: set[str] | None = None,
     ) -> list[str]:
         """Record the orchestration arguments and return fixed rendered lines."""
         assert block_prefix_override is None
@@ -84,6 +86,9 @@ class RecordingProcessor(HeaderProcessor):
         assert line_prefix_override is None
         assert line_suffix_override is None
         assert line_indent_override is None
+        assert soft_overflow_fields is None or soft_overflow_fields == set()
+        if soft_overflow_fields is not None and self.soft_overflow_field is not None:
+            soft_overflow_fields.add(self.soft_overflow_field)
         self.calls.append(
             RenderCall(
                 header_values=header_values,
@@ -108,11 +113,16 @@ def _renderer_config(
     *,
     header_fields: list[str],
     allow_empty_header: bool = False,
+    max_header_line_length: int | None = None,
+    wrap_fields: list[str] | None = None,
 ) -> FrozenConfig:
     """Return a coherent effective config with explicit renderer inputs."""
     config: MutableConfig = mutable_config_from_defaults()
     config.header_fields = header_fields
     config.policy.render_empty_header_when_no_fields = allow_empty_header
+    config.max_header_line_length = max_header_line_length
+    if wrap_fields is not None:
+        config.wrap_fields = wrap_fields
     return config.freeze()
 
 
@@ -176,6 +186,34 @@ def test_renderer_passes_selected_fields_config_and_newline_to_processor(tmp_pat
     assert ctx.diagnostics.items == []
     assert ctx.halt_state is None
     assert ctx.diagnostic_hints.items == []
+
+
+def test_renderer_reports_one_nonfailing_soft_width_hint_per_field(
+    tmp_path: Path,
+) -> None:
+    """Processor overflow metadata becomes a safe informational render hint."""
+    cfg: FrozenConfig = _renderer_config(
+        header_fields=["notice"],
+        max_header_line_length=10,
+        wrap_fields=["notice"],
+    )
+    ctx, processor = _renderer_context(
+        tmp_path / "source.py",
+        cfg,
+        generation=GenerationStatus.GENERATED,
+        selected={"notice": "unbreakable"},
+    )
+    processor.soft_overflow_field = "notice"
+
+    run_renderer(ctx)
+
+    assert ctx.status.render is RenderStatus.RENDERED
+    assert ctx.halt_state is None
+    assert len(ctx.diagnostic_hints.items) == 1
+    hint = ctx.diagnostic_hints.items[0]
+    assert hint.code == "render:soft-width-exceeded"
+    assert hint.axis is Axis.RENDER
+    assert "notice" in hint.message
 
 
 def test_renderer_normalizes_semantic_newlines_before_custom_processor(

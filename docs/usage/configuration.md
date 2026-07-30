@@ -106,6 +106,27 @@ terminal newline. An empty final TOML line is meaningful and renders as a bare `
 [Multiline header field serialization](../dev/multiline-header-fields.md) for empty-line,
 boundary-whitespace, validation, and canonicalization details.
 
+### Deterministic field wrapping
+
+Selected single-line values can be wrapped into canonical folded continuation records:
+
+```toml
+[formatting]
+max_header_line_length = 100
+wrap_fields = ["notice", "copyright"]
+```
+
+Wrapping is disabled unless both a positive width and an allowlisted field are present. The width
+counts Unicode code points across the complete physical field line, including comment syntax and
+indentation but excluding the line terminator. It is a soft target: TopMark wraps only at lossless
+U+0020 SPACE boundaries and never hard-splits URLs, paths, identifiers, or other unbreakable
+content.
+
+Folded `>` and `>=` records are TopMark-managed on-disk serialization. Their physical boundaries are
+presentation-only and are canonically reflowed from the semantic value and effective configuration.
+Literal `|`, bare `|`, and `|=` records continue to preserve semantic line breaks and are never
+reflowed as folded text.
+
 ______________________________________________________________________
 
 ## File type identifiers

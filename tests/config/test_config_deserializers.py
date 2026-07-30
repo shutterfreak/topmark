@@ -48,6 +48,88 @@ if TYPE_CHECKING:
 # --- Layered-config deserialization tests (remain in topmark.config) ---
 
 
+def test_wrapping_formatting_values_are_validated_and_normalized() -> None:
+    """Wrapping config preserves order, removes duplicates, and validates names."""
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_FORMATTING: {
+                Toml.KEY_MAX_HEADER_LINE_LENGTH: 100,
+                Toml.KEY_WRAP_FIELDS: [
+                    "notice",
+                    "copyright",
+                    "notice",
+                    "",
+                    " bad ",
+                    "bad:name",
+                    "bad\tname",
+                ],
+            },
+        },
+    )
+
+    assert draft.max_header_line_length == 100
+    assert draft.wrap_fields == ["notice", "copyright"]
+    assert draft.validation_logs.merged_config.stats().n_error == 4
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        0,
+        -1,
+    ],
+)
+def test_nonpositive_header_line_width_is_invalid(
+    value: int,
+) -> None:
+    """A configured header-line width must be a positive integer."""
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: [
+                    "file",
+                ],
+            },
+            Toml.SECTION_FORMATTING: {
+                Toml.KEY_MAX_HEADER_LINE_LENGTH: value,
+            },
+        },
+    )
+
+    assert draft.max_header_line_length is None
+    assert draft.validation_logs.merged_config.stats().n_error == 1
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        True,
+        1.5,
+        "100",
+        [],
+    ],
+)
+def test_header_line_width_rejects_non_integer_types(
+    value: TomlValue,
+) -> None:
+    """Booleans and other non-integer TOML values do not activate wrapping."""
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_HEADER: {
+                Toml.KEY_FIELDS: [
+                    "file",
+                ],
+            },
+            Toml.SECTION_FORMATTING: {
+                Toml.KEY_MAX_HEADER_LINE_LENGTH: value,
+            },
+        },
+    )
+
+    assert draft.max_header_line_length is None
+    assert draft.validation_logs.merged_config.stats().n_warning == 1
+
+
 def test_header_fields_wrong_type_is_treated_as_empty() -> None:
     """Wrong-type [header].fields is treated as empty (must not crash)."""
     draft: MutableConfig = mutable_config_from_layered_toml_table(

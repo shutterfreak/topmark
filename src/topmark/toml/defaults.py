@@ -96,6 +96,7 @@ def _build_default_layered_config_toml() -> TomlTable:
         Toml.SECTION_FIELDS: {},
         Toml.SECTION_FORMATTING: {
             Toml.KEY_ALIGN_FIELDS: True,
+            Toml.KEY_WRAP_FIELDS: [],
         },
         Toml.SECTION_POLICY: {
             Toml.KEY_POLICY_HEADER_MUTATION_MODE: HeaderMutationMode.ALL.value,

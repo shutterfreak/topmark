@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 
 from tests.helpers.diagnostics import assert_diagnostic_level_stats
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.model import MutableConfig
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MutablePolicy
 from topmark.config.resolution.synthetic import DEFAULT_CONFIG_SOURCE
@@ -32,7 +33,6 @@ from topmark.config.types import PatternGroup
 from topmark.config.types import PatternSource
 
 if TYPE_CHECKING:
-    from topmark.config.model import MutableConfig
     from topmark.diagnostic.model import MutableDiagnosticLog
 
 
@@ -100,6 +100,56 @@ def test_merge_invariant_empty_header_fields_do_not_clear_parent() -> None:
     merged: MutableConfig = base.merge_with(override)
 
     assert merged.header_fields == ["project", "license"]
+
+
+def test_merge_invariant_wrapping_allowlist_replaces_and_empty_clears() -> None:
+    """wrap_fields distinguishes an absent child from an explicit empty child list."""
+    base: MutableConfig = mutable_config_from_defaults()
+    base.wrap_fields = [
+        "notice",
+        "copyright",
+    ]
+
+    absent_child = MutableConfig()
+    inherited: MutableConfig = base.merge_with(absent_child)
+    assert inherited.wrap_fields == [
+        "notice",
+        "copyright",
+    ]
+
+    clearing_child = MutableConfig(wrap_fields=[])
+    cleared: MutableConfig = base.merge_with(clearing_child)
+    assert cleared.wrap_fields == []
+
+    replacing_child = MutableConfig(wrap_fields=["license"])
+    replaced: MutableConfig = base.merge_with(replacing_child)
+    assert replaced.wrap_fields == [
+        "license",
+    ]
+
+
+def test_wrapping_config_freeze_and_thaw_are_symmetric() -> None:
+    """The frozen runtime view uses immutable wrapping configuration."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.max_header_line_length = 100
+    draft.wrap_fields = [
+        "notice",
+        "copyright",
+    ]
+
+    frozen = draft.freeze()
+    assert frozen.max_header_line_length == 100
+    assert frozen.wrap_fields == (
+        "notice",
+        "copyright",
+    )
+
+    thawed: MutableConfig = frozen.thaw()
+    assert thawed.max_header_line_length == 100
+    assert thawed.wrap_fields == [
+        "notice",
+        "copyright",
+    ]
 
 
 def test_merge_invariant_field_values_overlay_by_key() -> None:

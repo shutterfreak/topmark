@@ -191,9 +191,28 @@ class RendererStep(BaseStep):
             key: normalize_semantic_newlines(value) for key, value in selected_fields.items()
         }
 
+        # Compute header_indent_override using the header view and file lines
+        # Preserve pre-prefix indentation when replacing an existing header
+        # (spaces/tabs before the prefix, e.g., "    //"). This keeps nested/indented
+        # headers (like JSONC inside an object) visually stable after replacement.
+        header_indent_override: str | None = None
+        if header_view and header_view.range is not None:
+            start_idx: int
+            _end_idx: int
+            start_idx, _end_idx = header_view.range
+            # Fetch the first header line via iterator without materializing the file
+            first_line_iter: islice[str] = islice(ctx.iter_image_lines(), start_idx, start_idx + 1)
+            first_line: str | None = next(first_line_iter, None)
+            if first_line is not None:
+                leading_ws: str = first_line[: len(first_line) - len(first_line.lstrip())]
+                if leading_ws and first_line.lstrip().startswith(ctx.header_processor.line_prefix):
+                    header_indent_override = leading_ws
+
         validation: HeaderFieldValidationResult = ctx.header_processor.validate_header_fields(
             field_names=ctx.config.header_fields,
             header_values=fields,
+            config=ctx.config,
+            header_indent_override=header_indent_override,
         )
         if not validation.is_valid:
             for issue in validation.issues:
@@ -217,29 +236,13 @@ class RendererStep(BaseStep):
             ctx.request_halt(reason="unsafe header field content", at_step=self)
             return
 
-        # Compute header_indent_override using the header view and file lines
-        # Preserve pre-prefix indentation when replacing an existing header
-        # (spaces/tabs before the prefix, e.g., "    //"). This keeps nested/indented
-        # headers (like JSONC inside an object) visually stable after replacement.
-        header_indent_override: str | None = None
-        if header_view and header_view.range is not None:
-            start_idx: int
-            _end_idx: int
-            start_idx, _end_idx = header_view.range
-            # Fetch the first header line via iterator without materializing the file
-            first_line_iter: islice[str] = islice(ctx.iter_image_lines(), start_idx, start_idx + 1)
-            first_line: str | None = next(first_line_iter, None)
-            if first_line is not None:
-                leading_ws: str = first_line[: len(first_line) - len(first_line.lstrip())]
-                if leading_ws and first_line.lstrip().startswith(ctx.header_processor.line_prefix):
-                    header_indent_override = leading_ws
-
         # Defensive: if mapping is empty, produce an empty render
         if not fields:
             ctx.status.render = RenderStatus.RENDERED
             ctx.views.render = RenderView(lines=[], block="")
             return
 
+        soft_overflow_fields: set[str] = set()
         rendered_lines = ctx.header_processor.render_header_lines(
             header_values=fields,
             config=ctx.config,
@@ -249,7 +252,18 @@ class RendererStep(BaseStep):
             header_indent_override=header_indent_override,  # preserve pre-prefix indent
             # line_indent_override stays as default so fields still use processor's
             # after-prefix spacing
+            soft_overflow_fields=soft_overflow_fields,
         )
+        for field_name in sorted(soft_overflow_fields):
+            ctx.hint(
+                axis=Axis.RENDER,
+                code="render:soft-width-exceeded",
+                cluster=Cluster.UNCHANGED,
+                message=(
+                    f"header field {field_name!r} exceeds the configured soft width "
+                    f"of {ctx.config.max_header_line_length} code points"
+                ),
+            )
 
         # Generate the expected (updated) header block, preserving the file newline style
         ctx.status.render = RenderStatus.RENDERED

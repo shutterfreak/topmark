@@ -176,6 +176,15 @@ fields = ["file", "file_relpath"]
 # Values: true or false.
 align_fields = true
 
+# Optional soft maximum for complete physical header field lines. The value
+# counts Unicode code points after processor prefixes, suffixes, and indentation.
+# Unbreakable content may exceed the target and is never hard-split.
+# max_header_line_length = 100
+
+# Fields eligible for automatic folded wrapping. Wrapping is active only when
+# the width above is set and a field is listed here.
+wrap_fields = []
+
 
 # ----------------------------------------------------------------------------
 # Writer configuration

@@ -30,6 +30,8 @@ from topmark.processors.builtins.slash import SlashHeaderProcessor
 from topmark.processors.builtins.xml import XmlHeaderProcessor
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from topmark.processors.types import HeaderFieldValidationIssue
     from topmark.processors.types import HeaderParseResult
 
@@ -38,6 +40,8 @@ if TYPE_CHECKING:
 class _Config:
     header_fields: tuple[str, ...]
     align_fields: bool
+    max_header_line_length: int | None = None
+    wrap_fields: tuple[str, ...] = ()
 
 
 @dataclass(kw_only=True)
@@ -204,6 +208,301 @@ def test_literal_records_round_trip_with_canonical_encoding(
     assert context.diagnostics.items == []
 
 
+@pytest.mark.parametrize(
+    ("records", "value"),
+    [
+        (("> first",), "first"),
+        (('>= "   Indented"',), "   Indented"),
+        (("> first", "> second"), "first second"),
+        (("> first", '>= "   second"'), "first   second"),
+        (('>= ""', '>= "   Indented"'), "   Indented"),
+    ],
+)
+def test_folded_records_reconstruct_one_semantic_value(
+    records: tuple[str, ...],
+    value: str,
+) -> None:
+    """One-or-more plain and exact folded records reconstruct losslessly."""
+    result, context = _parse(
+        PoundHeaderProcessor(),
+        _pound_payload("notice:", *records),
+    )
+
+    assert result.fields == {"notice": value}
+    assert result.success_count == 1
+    assert result.error_count == 0
+    assert list(context.diagnostics.items) == []
+
+
+def test_redundant_empty_exact_folded_record_canonicalizes_away() -> None:
+    """A redundant empty exact record remains parseable but is not rendered."""
+    processor = PoundHeaderProcessor()
+    parsed, _context = _parse(
+        processor,
+        _pound_payload("notice:", '>= ""', '>= "   Indented"'),
+    )
+
+    rendered: list[str] = processor.render_header_lines(
+        header_values=parsed.fields,
+        config=_Config(header_fields=("notice",), align_fields=False),
+        newline_style="\n",
+    )
+
+    assert '#     >= ""\n' not in rendered
+    assert '#     >= "   Indented"\n' in rendered
+
+
+def test_selected_overlong_field_wraps_to_complete_physical_line_width() -> None:
+    """Wrapping measures pound-comment affixes and produces canonical folded records."""
+    processor = PoundHeaderProcessor()
+    overflow_fields: set[str] = set()
+    value = "A sufficiently long notice that contains ordinary spaces and can be wrapped."
+    rendered: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=False,
+            max_header_line_length=35,
+            wrap_fields=("notice",),
+        ),
+        newline_style="\n",
+        soft_overflow_fields=overflow_fields,
+    )
+
+    assert "#   notice:\n" in rendered
+    assert "#     > A sufficiently long notice\n" in rendered
+    assert "#     > that contains ordinary\n" in rendered
+    assert "#     > spaces and can be wrapped.\n" in rendered
+    assert all(len(line.removesuffix("\n")) <= 35 for line in rendered[2:6])
+    assert overflow_fields == set()
+
+    parsed, _context = _parse(processor, rendered)
+    assert parsed.fields == {"notice": value}
+
+
+def test_wrapping_preserves_multiple_space_runs_with_exact_records() -> None:
+    """Automatic boundaries preserve exceptional U+0020 runs exactly."""
+    processor = PoundHeaderProcessor()
+    value = "Words  separated   here"
+    rendered: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=False,
+            max_header_line_length=30,
+            wrap_fields=("notice",),
+        ),
+        newline_style="\n",
+    )
+
+    assert "#     > Words  separated\n" in rendered
+    assert '#     >= "   here"\n' in rendered
+    parsed, _context = _parse(processor, rendered)
+    assert parsed.fields == {"notice": value}
+
+
+def test_width_boundary_and_allowlist_control_automatic_folding() -> None:
+    """The complete ordinary line fits at equality and folds only when selected below it."""
+    processor = PoundHeaderProcessor()
+    value = "one two"
+    ordinary_length = len("#   notice: one two")
+
+    at_boundary: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=False,
+            max_header_line_length=ordinary_length,
+            wrap_fields=("notice",),
+        ),
+        newline_style="\n",
+    )
+    below_boundary: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=False,
+            max_header_line_length=ordinary_length - 1,
+            wrap_fields=("notice",),
+        ),
+        newline_style="\n",
+    )
+    unselected: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=False,
+            max_header_line_length=ordinary_length - 1,
+            wrap_fields=(),
+        ),
+        newline_style="\n",
+    )
+
+    assert "#   notice: one two\n" in at_boundary
+    assert "#   notice:\n" in below_boundary
+    assert "#     > one\n" in below_boundary
+    assert "#     > two\n" in below_boundary
+    assert "#   notice: one two\n" in unselected
+
+
+def test_unicode_width_counts_code_points_and_preserves_emoji_sequences() -> None:
+    """Unicode wrapping counts Python code points rather than display cells or bytes."""
+    processor = PoundHeaderProcessor()
+    value = "界 界 👩‍💻 界"
+    rendered: list[str] = processor.render_header_lines(
+        header_values={"n": value},
+        config=_Config(
+            header_fields=("n",),
+            align_fields=False,
+            max_header_line_length=14,
+            wrap_fields=("n",),
+        ),
+        newline_style="\n",
+    )
+
+    folded_lines: list[str] = [line for line in rendered if "> " in line]
+    assert folded_lines == ["#     > 界 界\n", "#     > 👩‍💻 界\n"]
+    assert all(len(line.removesuffix("\n")) <= 14 for line in folded_lines)
+    parsed, _context = _parse(processor, rendered)
+    assert parsed.fields == {"n": value}
+
+
+def test_unbreakable_selected_value_remains_ordinary_and_reports_soft_overflow() -> None:
+    """The soft width never hard-splits an unbreakable value."""
+    processor = PoundHeaderProcessor()
+    value = "https://example.com/very/long/path"
+    overflow_fields: set[str] = set()
+    rendered: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=False,
+            max_header_line_length=10,
+            wrap_fields=("notice",),
+        ),
+        newline_style="\n",
+        soft_overflow_fields=overflow_fields,
+    )
+
+    assert f"#   notice: {value}\n" in rendered
+    assert not any("> " in line for line in rendered)
+    assert overflow_fields == {"notice"}
+
+
+def test_impossibly_small_width_uses_smallest_lossless_breakpoint() -> None:
+    """A soft target below structural overhead still makes deterministic progress."""
+    processor = PoundHeaderProcessor()
+    overflow_fields: set[str] = set()
+    value = "one two"
+    rendered: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=False,
+            max_header_line_length=1,
+            wrap_fields=("notice",),
+        ),
+        newline_style="\n",
+        soft_overflow_fields=overflow_fields,
+    )
+
+    assert "#   notice:\n" in rendered
+    assert "#     > one\n" in rendered
+    assert "#     > two\n" in rendered
+    assert overflow_fields == {"notice"}
+    parsed, _context = _parse(processor, rendered)
+    assert parsed.fields == {"notice": value}
+
+
+def test_folded_wrapper_enforces_semantic_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed renderer round-trip invariant is an implementation error."""
+    processor = PoundHeaderProcessor()
+
+    def decode_as_mismatch(_records: Sequence[str]) -> str:
+        return "different"
+
+    monkeypatch.setattr(
+        processor,
+        "_decode_folded_records",
+        decode_as_mismatch,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="did not preserve the semantic value",
+    ):
+        processor._wrap_folded_records(  # pyright: ignore[reportPrivateUsage]
+            "one two",
+            max_line_length=1,
+            measure_line=lambda inner, _continuation: len(inner),
+        )
+
+
+def test_folded_internal_decoder_rejects_non_folded_records() -> None:
+    """The renderer's round-trip verifier rejects a non-folded record."""
+    with pytest.raises(
+        RuntimeError,
+        match="invalid folded continuation record",
+    ):
+        HeaderProcessor._decode_folded_records(  # pyright: ignore[reportPrivateUsage]
+            ["| literal"]
+        )
+
+
+@pytest.mark.parametrize(
+    "newline_style",
+    [
+        "\n",
+        "\r\n",
+        "\r",
+    ],
+)
+@pytest.mark.parametrize(
+    "align_fields",
+    [
+        False,
+        True,
+    ],
+)
+@pytest.mark.parametrize(
+    "processor",
+    [
+        PoundHeaderProcessor(),
+        SlashHeaderProcessor(),
+        CBlockHeaderProcessor(),
+        MarkdownHeaderProcessor(),
+        XmlHeaderProcessor(),
+    ],
+)
+def test_every_builtin_family_wraps_and_round_trips_deterministically(
+    processor: HeaderProcessor,
+    align_fields: bool,
+    newline_style: str,
+) -> None:
+    """Every built-in family applies affixes, width, alignment, and newline policy."""
+    value = "Deterministic wrapping preserves the complete semantic value across processors."
+    rendered: list[str] = processor.render_header_lines(
+        header_values={"notice": value},
+        config=_Config(
+            header_fields=("notice",),
+            align_fields=align_fields,
+            max_header_line_length=42,
+            wrap_fields=("notice",),
+        ),
+        newline_style=newline_style,
+        header_indent_override="  ",
+    )
+
+    folded_lines: list[str] = [line for line in rendered if "> " in line or '>= "' in line]
+    assert len(folded_lines) >= 2
+    assert all(len(line.removesuffix(newline_style)) <= 42 for line in folded_lines)
+    assert all(line.endswith(newline_style) for line in rendered)
+    parsed, _context = _parse(processor, rendered)
+    assert parsed.fields == {"notice": value}
+
+
 @pytest.mark.parametrize("align_fields", [False, True])
 @pytest.mark.parametrize(
     "processor",
@@ -302,6 +601,10 @@ def test_affix_removal_accepts_optional_physical_line_terminator(
             "header:scalar-too-short",
         ),
         (
+            ("field:", ">"),
+            "header:missing-continuation-body",
+        ),
+        (
             ("field:", "| ", "| second"),
             "header:missing-continuation-body",
         ),
@@ -318,16 +621,12 @@ def test_affix_removal_accepts_optional_physical_line_terminator(
             "header:mixed-scalar-mode",
         ),
         (
-            ("field:", "> first", "> second"),
-            "header:folded-reserved",
-        ),
-        (
             ("field:", '>= "bad\\n"', "> second"),
-            "header:folded-reserved",
+            "header:invalid-continuation-string",
         ),
         (
             ("> orphan",),
-            "header:folded-reserved",
+            "header:orphan-continuation",
         ),
         (
             ("| ",),

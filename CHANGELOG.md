@@ -49,16 +49,19 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added deterministic, opt-in wrapping and canonical reflow for selected header fields through
+  `formatting.max_header_line_length` and `formatting.wrap_fields`; activated lossless `>` and `>=`
+  folded continuation parsing; preserved semantic whitespace through exact records; measured
+  complete physical lines in Unicode code points; and retained overlong unbreakable content through
+  non-failing soft-width diagnostics.
 - Implemented literal multiline header field values with plain, empty, and exact continuation
   records; semantic newline normalization; canonical rendering across every built-in processor
   family; safe malformed-scalar diagnostics; and end-to-end preview, patch, apply, strip, and
-  convergence behavior. Folded continuation syntax remains reserved for
-  [#327](https://github.com/shutterfreak/topmark/issues/327).
-- Added a decision-ready multiline header field serialization design covering explicit literal and
-  reserved folded continuation records, fixed continuation indentation, exact boundary-whitespace
-  encoding, validation integration, processor examples, and the implementation boundary for GitHub
-  issues [#326](https://github.com/shutterfreak/topmark/issues/326) and
-  [#327](https://github.com/shutterfreak/topmark/issues/327).
+  convergence behavior. Folded continuation syntax is now active through deterministic wrapping and
+  canonical reflow.
+- Added the multiline header field serialization contract covering literal and folded continuation
+  records, fixed continuation indentation, exact boundary-whitespace encoding, validation
+  integration, processor examples, and conformance criteria.
 - Added a SHA-pinned GitHub Dependency Review workflow that checks changed runtime dependencies
   against an explicit license allowlist and blocks high- or critical-severity known vulnerabilities,
   together with contributor and maintainer documentation.

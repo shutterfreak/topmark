@@ -86,6 +86,18 @@ def build_config_payload(
 
     normalized_base: object = normalize_payload(base)
     normalized_dict: dict[str, object] = as_object_dict(normalized_base)
+    formatting: dict[str, object] = get_object_dict_value(
+        normalized_dict,
+        Toml.SECTION_FORMATTING,
+    )
+    formatting.setdefault(
+        Toml.KEY_MAX_HEADER_LINE_LENGTH,
+        config.max_header_line_length,
+    )
+    formatting.setdefault(
+        Toml.KEY_WRAP_FIELDS,
+        list(config.wrap_fields),
+    )
 
     return ConfigPayload(
         fields=get_string_dict_value(
@@ -96,10 +108,7 @@ def build_config_payload(
             normalized_dict,
             Toml.SECTION_HEADER,
         ),
-        formatting=get_object_dict_value(
-            normalized_dict,
-            Toml.SECTION_FORMATTING,
-        ),
+        formatting=formatting,
         files=get_object_dict_value(
             normalized_dict,
             Toml.SECTION_FILES,

@@ -490,6 +490,8 @@ TOPMARK_TOML_SCHEMA: Final[TomlSchema] = TomlSchema(
             allowed_keys=frozenset(
                 {
                     Toml.KEY_ALIGN_FIELDS,
+                    Toml.KEY_MAX_HEADER_LINE_LENGTH,
+                    Toml.KEY_WRAP_FIELDS,
                 }
             ),
         ),
