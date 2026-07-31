@@ -115,7 +115,7 @@ dependencies = [
     # TOML formatter:
     "taplo>=0.9.3,<0.10.0",
     # Upload distributions to PyPI:
-    "twine>=6.2.0,<7.0.0",
+    "twine>=6.2.0,<8.0.0",
     # Fast Python package/project manager used by Nox:
     "uv>=0.11.24,<0.12.0",
   ]
