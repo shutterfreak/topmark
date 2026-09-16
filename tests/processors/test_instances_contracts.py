@@ -50,7 +50,7 @@ _CACHED_BUILDERS = (
 
 
 @pytest.fixture(autouse=True)
-def _isolate_processor_instance_caches() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
+def _isolate_processor_instance_caches() -> Iterator[None]:
     """Clear all patched composition state before and after every test."""
     for builder in _CACHED_BUILDERS:
         builder.cache_clear()

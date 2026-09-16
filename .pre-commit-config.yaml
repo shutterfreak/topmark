@@ -68,7 +68,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0
+    rev: v0.16.7
     hooks:
       - id: ruff-format
       - id: ruff-check
@@ -134,7 +134,7 @@ repos:
 
   # Type checker last
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.411
+    rev: v1.1.414
     hooks:
       - id: pyright
 
