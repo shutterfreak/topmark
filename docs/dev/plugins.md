@@ -320,14 +320,14 @@ reserved-marker checks. To restrict a canonical affix-free physical payload line
 selection and semantic newline normalization but before `render_header_lines()`, so custom
 processors receive no render call when any shared or processor-specific issue is present.
 
-The implemented [multiline header field serialization](multiline-header-fields.md) contract extends
-this model. The base processor owns continuation parsing, semantic reconstruction, canonical
-rendering, and shared validation. Custom processors may add restrictions for complete semantic
-values and encoded physical payload lines, but must not define a conflicting continuation grammar
-while claiming base-format compatibility. Base-format-compatible processors also inherit
-deterministic folded wrapping, complete-physical-line width measurement, and canonical reflow.
-Processors that replace the complete renderer are outside that guarantee unless they delegate field
-serialization and line construction to the base implementation.
+The target [multiline header field rendering](multiline-header-fields.md) contract extends this
+model. The base processor owns pipe-continuation parsing, canonical rendering, and shared
+validation. Custom processors may add restrictions for complete semantic values and encoded physical
+payload lines, but must not define a conflicting continuation grammar while claiming base-format
+compatibility. Base-format-compatible processors also inherit configuration-owned prose reflow and
+complete-physical-line width measurement. Processors that replace the complete renderer are outside
+that guarantee unless they delegate field serialization and line construction to the base
+implementation.
 
 During `Registry.bind(...)`, TopMark resolves the file type identifier through the composed runtime
 file type registry and records a binding from that file type's qualified key to the registered

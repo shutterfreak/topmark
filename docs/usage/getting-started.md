@@ -53,8 +53,9 @@ root = true
 project = "MyProject"
 license = "MIT"
 notice = """
-First literal line.
-Second literal line."""
+First line.
+Second line.
+"""
 
 [header]
 fields = [
@@ -71,13 +72,14 @@ fields = [
 > When using `pyproject.toml`, TopMark settings must be placed under the `tool.topmark` table prefix
 > (for example: `[config]` becomes `[tool.topmark.config]`).
 
-Single-line header fields retain their physical `key: value` representation. TOML multiline strings
-are rendered as an empty field opener followed by explicit literal continuation records:
+The target multiline-rendering design in [#339](https://github.com/shutterfreak/topmark/issues/339)
+retains the physical `key: value` representation for single-line header fields. It renders TOML
+multiline strings as an empty field opener followed by pipe-prefixed continuation records:
 
 ```text
 #   notice:
-#     | First literal line.
-#     | Second literal line.
+#     | First line.
+#     | Second line.
 ```
 
 Semantic CRLF and CR in configured, overridden, derived, or plugin-provided values normalize to LF.
@@ -86,11 +88,10 @@ and round-trip unchanged. Names and values must not contain NUL, TAB, other cont
 or paragraph separators, or TopMark's reserved header markers. The selected processor may also
 reject syntax that would invalidate its comment, such as `*/` in C block comments or `--` in
 XML/HTML/Markdown comments. TopMark reports invalid content and does not render, preview, patch, or
-write a partial header. See
-[Multiline header field serialization](../dev/multiline-header-fields.md) for exact and empty record
-syntax. Deterministic folded `>` and `>=` records are generated when a positive
-`formatting.max_header_line_length` and matching `formatting.wrap_fields` entry enable wrapping.
-Their physical boundaries are canonical presentation and do not change the semantic field value.
+write a partial header. See [Multiline header field rendering](../dev/multiline-header-fields.md)
+for continuation and paragraph syntax. A positive `formatting.max_header_line_length` and matching
+`formatting.wrap_fields` entry make a TOML field reflowable prose: nonblank TOML line boundaries
+become spaces and blank lines separate independently wrapped paragraphs.
 
 Generate a documented starter configuration:
 

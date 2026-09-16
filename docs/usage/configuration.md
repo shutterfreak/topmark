@@ -88,27 +88,29 @@ ______________________________________________________________________
 
 ## Multiline field values
 
-Custom `[fields]` values may use TOML multiline strings. TopMark normalizes semantic CRLF and CR to
-LF, then renders each logical line as an explicit literal continuation record:
+The target design in [#339](https://github.com/shutterfreak/topmark/issues/339) changes multiline
+field rendering. Under that design, custom `[fields]` values may use TOML multiline strings; TopMark
+removes their incidental leading and trailing blank lines, then renders multiline values using
+pipe-prefixed continuation records:
 
 ```toml
 [fields]
 notice = """
-First literal line.
-Second literal line."""
+First line.
+Second line.
+"""
 
 [header]
 fields = ["notice"]
 ```
 
-The closing delimiter follows the final content on the same line so this example has no semantic
-terminal newline. An empty final TOML line is meaningful and renders as a bare `|` record. See
-[Multiline header field serialization](../dev/multiline-header-fields.md) for empty-line,
-boundary-whitespace, validation, and canonicalization details.
+See [Multiline header field rendering](../dev/multiline-header-fields.md) for continuation,
+paragraph, validation, and canonicalization details.
 
 ### Deterministic field wrapping
 
-Selected single-line values can be wrapped into canonical folded continuation records:
+Under the target design, selected fields treat multiline TOML content as reflowable prose and wrap
+it into canonical continuation records:
 
 ```toml
 [formatting]
@@ -122,10 +124,10 @@ indentation but excluding the line terminator. It is a soft target: TopMark wrap
 U+0020 SPACE boundaries and never hard-splits URLs, paths, identifiers, or other unbreakable
 content.
 
-Folded `>` and `>=` records are TopMark-managed on-disk serialization. Their physical boundaries are
-presentation-only and are canonically reflowed from the semantic value and effective configuration.
-Literal `|`, bare `|`, and `|=` records continue to preserve semantic line breaks and are never
-reflowed as folded text.
+For a selected field, nonblank TOML line breaks become spaces and blank-line runs become paragraph
+separators. TopMark wraps each paragraph independently and uses a bare continuation pipe between
+paragraphs. Unselected multiline fields retain their logical lines. The rendered header is derived
+from the effective configuration; it is not an independent source of field values.
 
 ______________________________________________________________________
 
