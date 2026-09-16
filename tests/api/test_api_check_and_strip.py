@@ -133,9 +133,9 @@ def test_check_applies_opt_in_wrapping_and_converges(
     assert applied.summary == {Outcome.INSERTED: 1}
     rendered: str = path.read_text(encoding="utf-8")
     assert "#   notice:\n" in rendered
-    assert "#     > A sufficiently long notice\n" in rendered
-    assert "#     > that contains ordinary\n" in rendered
-    assert "#     > spaces and can be wrapped.\n" in rendered
+    assert "#     | A sufficiently long notice\n" in rendered
+    assert "#     | that contains ordinary\n" in rendered
+    assert "#     | spaces and can be wrapped.\n" in rendered
 
     converged: api.RunResult = api.check(
         [path],
@@ -146,17 +146,17 @@ def test_check_applies_opt_in_wrapping_and_converges(
     assert converged.summary == {Outcome.UNCHANGED: 1}
 
 
-def test_valid_folded_input_canonicalizes_when_wrapping_is_disabled(
+def test_pipe_input_canonicalizes_when_wrapping_is_disabled(
     tmp_path: Path,
 ) -> None:
-    """Folded parsing is unconditional while rendering follows effective config."""
-    path: Path = tmp_path / "folded.py"
+    """Pipe parsing is structural while rendering follows effective config."""
+    path: Path = tmp_path / "pipe.py"
     path.write_text(
         "# topmark:header:start\n"
         "#\n"
         "#   notice:\n"
-        "#     > short\n"
-        "#     > value\n"
+        "#     | short\n"
+        "#     | value\n"
         "#\n"
         "# topmark:header:end\n"
         "print('safe')\n",
@@ -184,7 +184,7 @@ def test_valid_folded_input_canonicalizes_when_wrapping_is_disabled(
     assert applied.summary == {Outcome.UPDATED: 1}
     rendered: str = path.read_text(encoding="utf-8")
     assert "#   notice: short value\n" in rendered
-    assert "#     >" not in rendered
+    assert "#     |" not in rendered
 
 
 def test_check_apply_add_only_inserts_header_for_missing(

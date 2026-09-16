@@ -84,6 +84,28 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
+def _trim_multiline_field_boundary_blank_lines(
+    value: str,
+) -> str:
+    """Remove incidental outer blank lines from a TOML field value."""
+    lines: list[str] = (
+        value.replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+        .split("\n")
+    )
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)
+
+
 # ------------------ Extracted TOML table bundles  ------------------
 
 
@@ -454,7 +476,9 @@ def mutable_config_from_layered_toml_table(
         field_values: dict[str, str] = {}
         for k, v in field_tbl.items():
             if isinstance(v, str | int | float | bool):
-                field_values[k] = str(v)
+                field_values[k] = (
+                    _trim_multiline_field_boundary_blank_lines(v) if isinstance(v, str) else str(v)
+                )
             else:
                 # [fields] is a free-form table; include the TOML location for consistency.
                 loc: str = f"[{Toml.SECTION_FIELDS}].{k}"

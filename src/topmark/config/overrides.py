@@ -122,7 +122,7 @@ class ConfigOverrides:
             from [fields].
         align_fields: Whether to align fields, from [formatting].
         max_header_line_length: Optional soft physical header-line width.
-        wrap_fields: Ordered field names eligible for automatic folded wrapping.
+        wrap_fields: Ordered field names eligible for automatic prose wrapping.
         relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring
             source (config file dir or CWD for CLI), not relative_to.

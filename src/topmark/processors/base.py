@@ -36,11 +36,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import ClassVar
 from typing import Final
-from typing import Literal
 from typing import Protocol
 from typing import final
 
@@ -103,7 +101,7 @@ class RuntimeConfigLike(Protocol):
 
     @property
     def wrap_fields(self) -> tuple[str, ...]:
-        """Ordered field names eligible for automatic folded wrapping."""
+        """Ordered field names eligible for automatic prose wrapping."""
         ...
 
 
@@ -132,9 +130,8 @@ logger: TopmarkLogger = get_logger(__name__)
 # Sentinel value when get_header_insertion_index() cannot find an insertion index:
 NO_LINE_ANCHOR: Final[int] = -1
 
-_CONTINUATION_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(\|=|\||>=|>)")
+_CONTINUATION_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"^[ \t]*\|")
 _FIELD_RE: Final[re.Pattern[str]] = re.compile(r"^(?P<name>[^:]+?)(?P<padding> *):(?P<tail>.*)$")
-_SPACE_RUN_RE: Final[re.Pattern[str]] = re.compile(r" +")
 
 
 def normalize_semantic_newlines(
@@ -142,15 +139,6 @@ def normalize_semantic_newlines(
 ) -> str:
     """Normalize CRLF and CR semantic newlines to LF."""
     return value.replace("\r\n", "\n").replace("\r", "\n")
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class _ContinuationRecord:
-    """One decoded continuation record."""
-
-    mode: Literal["literal", "folded"]
-    value: str
-    exact: bool
 
 
 def _equals_affix_ignoring_space_tab(line: str, affix: str) -> bool:
@@ -368,7 +356,7 @@ class HeaderProcessor:
 
         Notes:
             - Physical newlines and comment affixes are removed before field parsing.
-            - Empty field openers are promoted after two literal records or one folded record.
+            - Empty field openers collect any following structural pipe records.
             - Malformed logical fields add safe diagnostics but do not mutate
               ``context.status.header`` (handled by the scanner).
         """
@@ -414,8 +402,7 @@ class HeaderProcessor:
 
         pending_name: str | None = None
         pending_index: int | None = None
-        pending_records: list[_ContinuationRecord] = []
-        pending_mode: Literal["literal", "folded"] | None = None
+        pending_records: list[str] = []
         pending_malformed = False
         last_was_ordinary = False
 
@@ -465,7 +452,6 @@ class HeaderProcessor:
             nonlocal pending_name
             nonlocal pending_index
             nonlocal pending_records
-            nonlocal pending_mode
             nonlocal pending_malformed
             nonlocal last_was_ordinary
 
@@ -474,7 +460,7 @@ class HeaderProcessor:
             if pending_malformed:
                 cnt_header_error += 1
                 last_was_ordinary = False
-            elif pending_mode is None:
+            elif not pending_records:
                 if commit_field(
                     pending_name,
                     "",
@@ -486,25 +472,8 @@ class HeaderProcessor:
                 else:
                     cnt_header_error += 1
                     last_was_ordinary = False
-            elif pending_mode == "literal" and len(pending_records) < 2:
-                diagnose(
-                    "header:scalar-too-short",
-                    line_no,
-                    pending_index,
-                )
-                cnt_header_error += 1
-                last_was_ordinary = False
             else:
-                if pending_mode == "literal":
-                    semantic_value: str = "\n".join(record.value for record in pending_records)
-                else:
-                    first_record, *remaining_records = pending_records
-                    folded_parts: list[str] = [first_record.value]
-                    for record in remaining_records:
-                        if not record.exact:
-                            folded_parts.append(" ")
-                        folded_parts.append(record.value)
-                    semantic_value = "".join(folded_parts)
+                semantic_value: str = "\n".join(pending_records)
                 if commit_field(
                     pending_name,
                     semantic_value,
@@ -519,7 +488,6 @@ class HeaderProcessor:
             pending_name = None
             pending_index = None
             pending_records = []
-            pending_mode = None
             pending_malformed = False
 
         i = 0
@@ -541,7 +509,7 @@ class HeaderProcessor:
                 i += 1
                 continue
 
-            record: _ContinuationRecord | None = None
+            record: str | None = None
             record_error: str | None = None
             if continuation_like:
                 if not affix_valid:
@@ -581,18 +549,7 @@ class HeaderProcessor:
                 if record is None:  # pragma: no cover - exhaustive internal guard
                     raise RuntimeError("Continuation parser returned no record or error")
 
-                if pending_mode is None:
-                    pending_mode = record.mode
-                    pending_records.append(record)
-                elif pending_mode != record.mode:
-                    diagnose(
-                        "header:mixed-scalar-mode",
-                        abs_line_no,
-                        pending_index,
-                    )
-                    pending_malformed = True
-                else:
-                    pending_records.append(record)
+                pending_records.append(record)
                 i += 1
                 continue
 
@@ -607,7 +564,6 @@ class HeaderProcessor:
                     pending_name = key
                     pending_index = cnt_header_ok + cnt_header_error
                     pending_records = []
-                    pending_mode = None
                     pending_malformed = False
                     last_was_ordinary = False
                 else:
@@ -627,7 +583,7 @@ class HeaderProcessor:
                 continue
 
             if pending_name is not None:
-                if pending_mode is None:
+                if not pending_records:
                     close_pending(abs_line_no)
                 else:
                     diagnose(
@@ -680,8 +636,8 @@ class HeaderProcessor:
             header_values: Selected field values; missing names use the same
                 empty-string fallback as rendering.
             config: Optional effective formatting configuration. When supplied,
-                encoded-line hooks receive the exact canonical ordinary, literal,
-                or folded payload lines selected for rendering.
+                encoded-line hooks receive the exact canonical ordinary or structural-pipe payload
+                lines selected for rendering.
             header_indent_override: Optional preserved pre-prefix indentation used
                 for complete-line wrapping measurement.
 
@@ -774,13 +730,11 @@ class HeaderProcessor:
                 width=width,
                 max_line_length=(
                     config.max_header_line_length
-                    if config is not None
-                    and config.max_header_line_length is not None
-                    and field_name in config.wrap_fields
-                    and "\n" not in field_value
+                    if config is not None and field_name in config.wrap_fields
                     else None
                 ),
                 measure_line=measure_payload_line,
+                reflow_prose=config is not None and field_name in config.wrap_fields,
             ):
                 issues.extend(
                     self.validate_processor_encoded_line(
@@ -895,60 +849,13 @@ class HeaderProcessor:
     @staticmethod
     def _parse_continuation_record(
         cleaned: str,
-    ) -> tuple[_ContinuationRecord | None, str | None]:
-        """Decode one affix-free continuation record."""
-        mode: Literal["literal", "folded"] = "literal" if cleaned.startswith("|") else "folded"
-        token: str = "|" if mode == "literal" else ">"
-        exact_token: str = f"{token}="
-
-        if cleaned == token:
-            if mode == "folded":
-                return None, "header:missing-continuation-body"
-            return _ContinuationRecord(mode=mode, value="", exact=False), None
-
-        if cleaned.startswith(exact_token):
-            remainder: str = cleaned[len(exact_token) :]
-            if not remainder or remainder == " ":
-                return None, "header:missing-continuation-body"
-            if not remainder.startswith(' "'):
-                return None, "header:invalid-continuation-string"
-            quoted: str = remainder[1:]
-            if len(quoted) < 2 or not quoted.startswith('"') or not quoted.endswith('"'):
-                return None, "header:invalid-continuation-string"
-            body: str = quoted[1:-1]
-            decoded: list[str] = []
-            index = 0
-            while index < len(body):
-                char: str = body[index]
-                if char == "\\":
-                    index += 1
-                    if index >= len(body) or body[index] not in {'"', "\\"}:
-                        return None, "header:invalid-continuation-string"
-                    decoded.append(body[index])
-                elif char == '"':
-                    return None, "header:invalid-continuation-string"
-                else:
-                    decoded.append(char)
-                index += 1
-            value: str = "".join(decoded)
-        elif cleaned.startswith(f"{token} "):
-            value = cleaned[2:]
-            if not value:
-                return None, "header:missing-continuation-body"
-            if value != value.strip(" \t"):
-                return None, "header:invalid-continuation-character"
-        else:
+    ) -> tuple[str | None, str | None]:
+        """Decode one affix-free structural pipe continuation record."""
+        if cleaned == "|":
+            return "", None
+        if not cleaned.startswith("| "):
             return None, "header:missing-continuation-body"
-
-        if any(
-            unicodedata.category(char) == "Cc" or char in {"\u2028", "\u2029"} for char in value
-        ):
-            return None, "header:invalid-continuation-character"
-        return _ContinuationRecord(
-            mode=mode,
-            value=value,
-            exact=cleaned.startswith(exact_token),
-        ), None
+        return cleaned[2:], None
 
     def _find_inner_marker_indices(self, lines: list[str]) -> tuple[int | None, int | None]:
         """Find START and END marker indices relative to the given slice.
@@ -1194,8 +1101,8 @@ class HeaderProcessor:
     ) -> list[str]:
         """Render a header block from configuration, template, and overrides.
 
-        This method serializes configured semantic values using ordinary, literal,
-        or folded continuation records, then applies the processor affixes and selected
+        This method serializes configured semantic values using ordinary or structural-pipe
+        continuation records, then applies the processor affixes and selected
         physical newline style to every emitted line.
 
         Args:
@@ -1284,17 +1191,15 @@ class HeaderProcessor:
                     )
                 )
 
-            wrap_active: bool = (
-                config.max_header_line_length is not None
-                and field in config.wrap_fields
-                and "\n" not in value
-            )
+            reflow_prose: bool = field in config.wrap_fields
+            wrap_active: bool = reflow_prose and config.max_header_line_length is not None
             encoded_lines: list[str] = self._encode_field_lines(
                 field_name=field,
                 field_value=value,
                 width=width,
                 max_line_length=config.max_header_line_length if wrap_active else None,
                 measure_line=measure_payload_line,
+                reflow_prose=reflow_prose,
             )
             if (
                 wrap_active
@@ -1345,120 +1250,102 @@ class HeaderProcessor:
         width: int,
         max_line_length: int | None = None,
         measure_line: Callable[[str, bool], int] | None = None,
+        reflow_prose: bool = False,
     ) -> list[str]:
-        """Encode one semantic field into canonical ordinary, literal, or folded lines."""
+        """Encode one field into ordinary or structural-pipe physical lines."""
         if "\r" in field_value:
             raise ValueError("Semantic field values must be normalized before encoding")
 
         opener: str = f"{field_name:<{width}}:" if width else f"{field_name}:"
-        ordinary: str = f"{opener} {field_value}"
+        if reflow_prose:
+            paragraphs: list[str] = self._prose_paragraphs(field_value)
+            if not paragraphs:
+                return [f"{opener} "]
+            ordinary: str = f"{opener} {paragraphs[0]}"
+            if len(paragraphs) == 1:
+                if (
+                    max_line_length is None
+                    or measure_line is None
+                    or measure_line(ordinary, False) <= max_line_length
+                ):
+                    return [ordinary]
+                wrapped_records: list[str] = self._wrap_prose_records(
+                    paragraphs[0],
+                    max_line_length=max_line_length,
+                    measure_line=measure_line,
+                )
+                if len(wrapped_records) == 1:
+                    return [ordinary]
+                return [opener, *wrapped_records]
+
+            records: list[str] = []
+            for index, paragraph in enumerate(paragraphs):
+                if index:
+                    records.append("|")
+                if max_line_length is None or measure_line is None:
+                    records.append(f"| {paragraph}")
+                else:
+                    records.extend(
+                        self._wrap_prose_records(
+                            paragraph,
+                            max_line_length=max_line_length,
+                            measure_line=measure_line,
+                        )
+                    )
+            return [opener, *records]
 
         if "\n" not in field_value:
-            if field_value and field_value != field_value.strip():
-                return [opener, self._encode_exact_record(">=", field_value)]
-            if (
-                max_line_length is None
-                or measure_line is None
-                or measure_line(ordinary, False) <= max_line_length
-            ):
-                return [ordinary]
-
-            folded_records: list[str] = self._wrap_folded_records(
-                field_value,
-                max_line_length=max_line_length,
-                measure_line=measure_line,
-            )
-            if len(folded_records) >= 2:
-                return [opener, *folded_records]
-            return [ordinary]
-
-        records: list[str] = []
-        for logical_line in field_value.split("\n"):
-            if logical_line == "":
-                records.append("|")
-            elif logical_line != logical_line.strip(" \t"):
-                records.append(self._encode_exact_record("|=", logical_line))
-            else:
-                records.append(f"| {logical_line}")
+            return [f"{opener} {field_value}"]
+        records: list[str] = [
+            "|" if logical_line == "" else f"| {logical_line}"
+            for logical_line in field_value.split("\n")
+        ]
         return [opener, *records]
 
     @staticmethod
-    def _encode_exact_record(
-        token: str,
+    def _prose_paragraphs(
         value: str,
-    ) -> str:
-        """Return one exact continuation record with canonical escaping."""
-        escaped: str = value.replace("\\", "\\\\").replace('"', '\\"')
-        return f'{token} "{escaped}"'
+    ) -> list[str]:
+        """Return normalized nonempty prose paragraphs from a multiline value."""
+        lines: list[str] = value.split("\n")
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        while lines and not lines[-1].strip():
+            lines.pop()
 
-    def _wrap_folded_records(
-        self,
-        value: str,
+        paragraphs: list[str] = []
+        current: list[str] = []
+        for line in lines:
+            if line.strip():
+                current.append(line.strip())
+            elif current:
+                paragraphs.append(" ".join(current))
+                current = []
+        if current:
+            paragraphs.append(" ".join(current))
+        return paragraphs
+
+    @staticmethod
+    def _wrap_prose_records(
+        paragraph: str,
         *,
         max_line_length: int,
         measure_line: Callable[[str, bool], int],
     ) -> list[str]:
-        """Return deterministic lossless folded records for one overlong semantic value."""
+        """Wrap one normalized paragraph into structural pipe records."""
         records: list[str] = []
-        cursor = 0
-        while True:
-            remaining: str = value[cursor:]
-            final_record: str = self._encode_folded_record(remaining)
-            runs: list[re.Match[str]] = [
-                match
-                for match in _SPACE_RUN_RE.finditer(value, cursor)
-                if match.start() > cursor and match.end() < len(value)
-            ]
-            if measure_line(final_record, True) <= max_line_length and (records or not runs):
-                records.append(final_record)
-                break
-            if not runs:
-                records.append(final_record)
-                break
-
-            chosen: re.Match[str] | None = None
-            for match in runs:
-                candidate: str = value[cursor : match.start()]
-                encoded: str = self._encode_folded_record(candidate)
-                if measure_line(encoded, True) <= max_line_length:
-                    chosen = match
-                else:
-                    break
-            if chosen is None:
-                chosen = runs[0]
-
-            fragment: str = value[cursor : chosen.start()]
-            records.append(self._encode_folded_record(fragment))
-            cursor = chosen.end() if len(chosen.group()) == 1 else chosen.start()
-
-        if self._decode_folded_records(records) != value:
-            raise RuntimeError("Folded continuation encoding did not preserve the semantic value")
+        words: list[str] = paragraph.split()
+        current: str = ""
+        for word in words:
+            candidate: str = f"{current} {word}" if current else word
+            if current and measure_line(f"| {candidate}", True) > max_line_length:
+                records.append(f"| {current}")
+                current = word
+            else:
+                current = candidate
+        if current:
+            records.append(f"| {current}")
         return records
-
-    def _encode_folded_record(
-        self,
-        value: str,
-    ) -> str:
-        """Return the canonical plain or exact folded record for one fragment."""
-        if value and value == value.strip(" \t"):
-            return f"> {value}"
-        return self._encode_exact_record(">=", value)
-
-    @classmethod
-    def _decode_folded_records(
-        cls,
-        records: Sequence[str],
-    ) -> str:
-        """Decode renderer-produced folded records for an internal round-trip check."""
-        decoded: list[str] = []
-        for index, encoded in enumerate(records):
-            record, error = cls._parse_continuation_record(encoded)
-            if error is not None or record is None or record.mode != "folded":
-                raise RuntimeError("Renderer produced an invalid folded continuation record")
-            if index > 0 and not record.exact:
-                decoded.append(" ")
-            decoded.append(record.value)
-        return "".join(decoded)
 
     def compute_insertion_anchor(self, lines: list[str]) -> int:
         """Return a stable line-based insertion anchor for the pipeline.

@@ -439,6 +439,19 @@ def test_fields_scalar_values_are_stringified_and_unsupported_are_ignored(
     )
 
 
+def test_multiline_toml_fields_trim_only_outer_blank_lines() -> None:
+    """TOML field layout does not create incidental outer header paragraphs."""
+    draft: MutableConfig = mutable_config_from_layered_toml_table(
+        {
+            Toml.SECTION_FIELDS: {
+                "notice": "\n\nfirst\n\nsecond\n\n",
+            },
+        },
+    )
+
+    assert draft.field_values == {"notice": "first\n\nsecond"}
+
+
 def test_header_fields_can_reference_missing_custom_fields_without_error() -> None:
     """header.fields may reference names not present in [fields] and should not crash."""
     draft: MutableConfig = mutable_config_from_layered_toml_table(

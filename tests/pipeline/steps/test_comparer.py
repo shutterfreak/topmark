@@ -458,7 +458,13 @@ def test_comparer_skips_and_halts_for_malformed_headers(
 @pytest.mark.parametrize(
     ("existing_mapping", "expected_mapping", "existing_block", "rendered_block", "expected"),
     [
-        ({"project": "old"}, {"project": "new"}, "same", "same", ComparisonStatus.CHANGED),
+        (
+            {"project": "old"},
+            {"project": "new"},
+            "same",
+            "same",
+            ComparisonStatus.UNCHANGED,
+        ),
         (
             {"project": "TopMark"},
             {"project": "TopMark"},
@@ -468,7 +474,7 @@ def test_comparer_skips_and_halts_for_malformed_headers(
         ),
     ],
 )
-def test_comparer_semantic_mapping_and_available_block_contracts(
+def test_comparer_uses_available_canonical_block_contract(
     tmp_path: Path,
     existing_mapping: dict[str, str],
     expected_mapping: dict[str, str],
@@ -476,7 +482,7 @@ def test_comparer_semantic_mapping_and_available_block_contracts(
     rendered_block: str | None,
     expected: ComparisonStatus,
 ) -> None:
-    """Mappings decide semantics; formatting requires both exact blocks."""
+    """The rendered block, not decoded field text, decides header equality."""
     ctx: ProcessingContext = _make_comparer_context(tmp_path / "semantic.py", rendered=True)
     ctx.status.generation = GenerationStatus.GENERATED
     ctx.views.header = HeaderView(
@@ -492,6 +498,20 @@ def test_comparer_semantic_mapping_and_available_block_contracts(
 
     assert ctx.status.comparison is expected
     assert ctx.diagnostics.items == []
+
+
+def test_comparer_marks_changed_when_an_existing_header_block_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    """An incomplete existing-header view cannot prove canonical equality."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "missing-block.py", rendered=True)
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.generation = GenerationStatus.GENERATED
+    ctx.views.render = RenderView(lines=[], block="# rendered\n")
+
+    ComparerStep()(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
 
 
 def test_comparer_marks_rendered_markers_only_header_changed_when_header_is_missing(
@@ -716,9 +736,4 @@ def test_formatting_only_changes_are_detected(tmp_path: Path) -> None:
     assert ctx.status.comparison is ComparisonStatus.CHANGED, (
         "Comparer must flag formatting-only difference as CHANGED"
     )
-    assert [(d.level, d.message) for d in ctx.diagnostics.items] == [
-        (
-            DiagnosticLevel.INFO,
-            "Header fields unchanged, rendered header block text differs → formatting change",
-        )
-    ]
+    assert ctx.diagnostics.items == []

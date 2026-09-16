@@ -121,7 +121,7 @@ class FrozenConfig:
             from [fields].
         align_fields: Whether to align fields, from [formatting].
         max_header_line_length: Optional soft physical header-line width.
-        wrap_fields: Ordered field names eligible for automatic folded wrapping.
+        wrap_fields: Ordered field names eligible for automatic prose wrapping.
         relative_to_raw: Original string from config, API or CLI.
         relative_to: Base path used only for header metadata (e.g., file_relpath).
             Note: Glob expansion and filtering are resolved relative to their declaring source
@@ -322,7 +322,7 @@ class MutableConfig:
         field_values: Mapping of field names to their string values from [fields].
         align_fields: Whether to align fields, from [formatting].
         max_header_line_length: Optional soft physical header-line width.
-        wrap_fields: Ordered field names eligible for automatic folded wrapping.
+        wrap_fields: Ordered field names eligible for automatic prose wrapping.
             `None` means absent in this layer; an empty list explicitly clears an
             inherited allowlist.
         relative_to_raw: Original string from config or CLI
