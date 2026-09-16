@@ -29,6 +29,7 @@ Conventions
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -255,7 +256,7 @@ def extract_stdin_for_from_options(
     text_excludes: str | None = None
 
     if wants:
-        text: str = stdin_text if stdin_text is not None else click.get_text_stream("stdin").read()
+        text: str = stdin_text if stdin_text is not None else sys.stdin.read()
         # Treat empty as empty list; keep it simple (no error)
         # (No need to check for None, as text is always a string here)
         if wants[0] == StdinUse.FILES_FROM:
