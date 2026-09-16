@@ -47,8 +47,8 @@ plugin integration.
 - [Configuration discovery and layering](../configuration/index.md) - discovery anchors,
   project-chain discovery, layered precedence, and configuration-source identity
 - [Plugins and extensibility](plugins.md)
-- [Multiline header field serialization](multiline-header-fields.md) - canonical serialization,
-  validation, deterministic wrapping, and reflow contract
+- [Multiline header field rendering](multiline-header-fields.md) - configuration-owned multiline
+  rendering, validation, paragraph wrapping, and migration contract
 - [Configuration schema](configuration-schema.md)
 - [Pipelines](pipelines.md)
 - [Pipelines reference hub](pipelines-reference.md)

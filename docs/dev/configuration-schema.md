@@ -227,7 +227,7 @@ topmark:
     wrap_fields:
       type: list[str]
       default: []
-      description: Ordered allowlist of fields eligible for deterministic folded wrapping.
+      description: Ordered allowlist of fields eligible for deterministic prose wrapping.
 
     relative_to:
       type: path

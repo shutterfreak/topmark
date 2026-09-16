@@ -82,19 +82,18 @@ ______________________________________________________________________
 
 ## Field serialization and placement
 
-Header placement and field serialization are separate contracts. The selected processor controls
-where the marker-delimited block is placed and which comment affixes surround each physical line.
-Single-line values retain one physical `key: value` line. A value containing semantic LF uses the
-implemented [multiline header field serialization](../dev/multiline-header-fields.md): an empty
-field opener followed by two or more literal continuation records. Every physical continuation line
-receives the selected processor's comment affixes and preserved pre-prefix indentation.
+Header placement and field rendering are separate contracts. The selected processor controls where
+the marker-delimited block is placed and which comment affixes surround each physical line. Under
+the target [multiline header field rendering](../dev/multiline-header-fields.md) contract, single-
+line values retain one physical `key: value` line and multiline values use an empty field opener
+followed by pipe-prefixed continuation records. Every physical continuation line receives the
+selected processor's comment affixes and preserved pre-prefix indentation.
 
 Continuation tokens use a fixed extra indentation level rather than aligning with field colons, so
-`align_fields`, field-name length, and compact rendering do not change their canonical position.
-Folded `>` and `>=` continuation records provide deterministic opt-in wrapping for selected
-single-line values. Their presentation boundaries are canonicalized according to the effective
-width, processor affixes, alignment, and preserved indentation; literal record boundaries remain
-semantic and are always preserved.
+`align_fields`, field-name length, and compact rendering do not change their canonical position. For
+fields selected by `formatting.wrap_fields`, TOML line layout becomes prose: nonblank lines join
+with spaces, blank-line runs separate paragraphs, and each paragraph is deterministically wrapped
+according to the effective width, processor affixes, alignment, and preserved indentation.
 
 ______________________________________________________________________
 

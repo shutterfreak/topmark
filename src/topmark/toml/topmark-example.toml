@@ -157,12 +157,13 @@ fields = ["file", "file_relpath"]
 # Copyright statement included in generated headers.
 # copyright = "(c) 2025 Your Name" # Update according to your needs
 
-# Multiline TOML strings become literal continuation records in generated
-# headers. The closing delimiter placement below avoids an implicit terminal
-# semantic newline.
+# Under the target #339 design, multiline TOML strings use pipe-prefixed
+# continuation records in generated headers. Leading and trailing blank lines
+# are trimmed; selected wrapping fields reflow prose paragraphs.
 # notice = """
-# First literal line.
-# Second literal line."""
+# First line.
+# Second line.
+# """
 
 
 # ----------------------------------------------------------------------------
@@ -181,7 +182,7 @@ align_fields = true
 # Unbreakable content may exceed the target and is never hard-split.
 # max_header_line_length = 100
 
-# Fields eligible for automatic folded wrapping. Wrapping is active only when
+# Fields eligible for automatic prose wrapping. Wrapping is active only when
 # the width above is set and a field is listed here.
 wrap_fields = []
 
