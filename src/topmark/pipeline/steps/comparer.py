@@ -12,8 +12,8 @@
 
 The comparer rejects malformed headers first. It then prefers one valid structured
 edit as proof of change, falls back to full-image comparison when an updated image
-is available, and finally compares semantic header mappings followed by exact block
-content when the current content is known.
+is available, and otherwise compares the expected canonical header block with the
+current marker-delimited block.
 """
 
 from __future__ import annotations
@@ -32,11 +32,8 @@ from topmark.pipeline.steps.base import BaseStep
 from topmark.pipeline.views import ViewSlot
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
-    from topmark.pipeline.views import BuilderView
     from topmark.pipeline.views import EditView
     from topmark.pipeline.views import HeaderView
     from topmark.pipeline.views import PlannedEdit
@@ -181,28 +178,10 @@ class ComparerStep(BaseStep):
             )
             return
 
-        # Dict-wise comparison using views.
+        # The rendered block is canonical. Header field parsing remains useful for
+        # structural validation, but physical pipe records do not independently
+        # reproduce the configuration-owned prose value.
         header_view: HeaderView | None = ctx.views.header
-        builder_view: BuilderView | None = ctx.views.build
-        existing_dict: Mapping[str, str] = (
-            header_view.mapping if (header_view and header_view.mapping) else {}
-        )
-        expected_dict: Mapping[str, str] = (
-            builder_view.selected if (builder_view and builder_view.selected) else {}
-        )
-        ctx.status.comparison = (
-            ComparisonStatus.UNCHANGED
-            if existing_dict == expected_dict
-            else ComparisonStatus.CHANGED
-        )
-        logger.trace("Existing header dict: %s", existing_dict)
-        logger.trace("Expected header dict: %s", expected_dict)
-
-        # Block fallback: compare rendered vs known existing block text.
-        # If field content is equal but formatting/order/spacing differs, optionally
-        # mark as CHANGED so the CLI can propose a formatting update. A missing header
-        # has known empty content, allowing a rendered markers-only block to be compared
-        # without treating absent views in other states as empty.
         render_view: RenderView | None = ctx.views.render
         existing_block: str | None = (
             ""
@@ -211,17 +190,15 @@ class ComparerStep(BaseStep):
             if header_view
             else None
         )
-        if (
-            ctx.status.comparison == ComparisonStatus.UNCHANGED
-            and existing_block is not None
-            and render_view
-            and render_view.block is not None
-        ) and existing_block != render_view.block:
-            if header_view and header_view.block is not None:
-                ctx.diagnostics.add_info(
-                    "Header fields unchanged, rendered header block text differs "
-                    "→ formatting change",
-                )
+        if existing_block is not None and render_view and render_view.block is not None:
+            ctx.status.comparison = (
+                ComparisonStatus.UNCHANGED
+                if existing_block == render_view.block
+                else ComparisonStatus.CHANGED
+            )
+            logger.trace("Existing header block: %s", existing_block)
+            logger.trace("Expected header block: %s", render_view.block)
+        else:
             ctx.status.comparison = ComparisonStatus.CHANGED
 
         # BOM remediation is a standalone byte mutation even when header content is compliant.
