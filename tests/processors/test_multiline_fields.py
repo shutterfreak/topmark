@@ -134,6 +134,15 @@ def test_pipe_continuations_allow_colon_bearing_prose() -> None:
     assert result.fields == {"notice": "Note: read the documentation."}
 
 
+def test_empty_field_opener_parses_as_an_empty_value() -> None:
+    """An opener without pipe records retains the ordinary empty-value form."""
+    result, context = _parse(PoundHeaderProcessor(), _pound_payload("notice:"))
+
+    assert result.fields == {"notice": ""}
+    assert (result.success_count, result.error_count) == (1, 0)
+    assert context.diagnostics.items == []
+
+
 def test_unselected_multiline_value_uses_only_pipe_records() -> None:
     """Unselected multiline content retains its logical layout with pipes."""
     rendered: list[str] = PoundHeaderProcessor().render_header_lines(
@@ -307,6 +316,14 @@ def test_every_builtin_family_wraps_prose_with_pipe_records(
             ("field:", "|= old syntax"),
             "header:missing-continuation-body",
         ),
+        (
+            ("|missing separator",),
+            "header:missing-continuation-body",
+        ),
+        (
+            ("field:", "|missing separator", "| ignored"),
+            "header:missing-continuation-body",
+        ),
     ],
 )
 def test_malformed_pipe_continuations_have_safe_diagnostics(
@@ -318,6 +335,26 @@ def test_malformed_pipe_continuations_have_safe_diagnostics(
 
     assert result.error_count == 1
     assert any(code in item.message for item in context.diagnostics.items)
+
+
+@pytest.mark.parametrize(
+    ("payload", "code"),
+    [
+        (("field: contains\0nul",), "content:nul"),
+        (("field:", "| contains\0nul"), "content:nul"),
+        (("field\0:",), "content:nul"),
+    ],
+)
+def test_invalid_scalar_and_pipe_values_are_rejected_during_parsing(
+    payload: tuple[str, ...],
+    code: str,
+) -> None:
+    """Field validation rejects unsafe parsed content in either structural form."""
+    result, context = _parse(PoundHeaderProcessor(), _pound_payload(*payload))
+
+    assert result.fields == {}
+    assert (result.success_count, result.error_count) == (0, 1)
+    assert code in context.diagnostics.items[0].message
 
 
 def test_missing_processor_affix_invalidates_pipe_continuation() -> None:

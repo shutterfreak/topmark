@@ -500,6 +500,20 @@ def test_comparer_uses_available_canonical_block_contract(
     assert ctx.diagnostics.items == []
 
 
+def test_comparer_marks_changed_when_an_existing_header_block_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    """An incomplete existing-header view cannot prove canonical equality."""
+    ctx: ProcessingContext = _make_comparer_context(tmp_path / "missing-block.py", rendered=True)
+    ctx.status.header = HeaderStatus.DETECTED
+    ctx.status.generation = GenerationStatus.GENERATED
+    ctx.views.render = RenderView(lines=[], block="# rendered\n")
+
+    ComparerStep()(ctx)
+
+    assert ctx.status.comparison is ComparisonStatus.CHANGED
+
+
 def test_comparer_marks_rendered_markers_only_header_changed_when_header_is_missing(
     tmp_path: Path,
 ) -> None:
