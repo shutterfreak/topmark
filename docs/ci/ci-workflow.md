@@ -279,8 +279,8 @@ nox -s coverage -p 3.14 -- -n auto
 nox -s release_check -- -n auto
 ```
 
-CI intentionally keeps pytest invocations serial inside each job. Job-level matrix parallelism
-already validates supported Python versions and platform behavior, while serial per-job pytest logs
+CI intentionally keeps pytest invocations serial inside each job. Together, the workflow's job-level
+matrices validate supported Python versions and platform behavior, while serial per-job pytest logs
 keep coverage reports and release-gate failures easier to diagnose.
 
 The concrete `3.14` commands shown here reflect the current canonical Python version. That value is
