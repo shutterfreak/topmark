@@ -111,7 +111,7 @@ ______________________________________________________________________
   generator tests and nested mismatch diagnostics.
 - Promoted Python 3.14 to the canonical local-development, QA, documentation, artifact-build, and
   release-tooling interpreter while retaining the Python 3.10-3.14 support matrix; added a tracked
-  `.python-version`, refreshed documented patch releases, and updated CI to uv 0.11.x.
+  `.python-version`, refreshed documented patch releases, and updated CI to uv 0.12.x.
 - Migrated public API `check()` and `strip()` result packaging to consume durable `ProcessingResult`
   snapshots after context reduction, using reduced detail snapshots for public diff exposure while
   preserving existing API DTO behavior.
@@ -594,10 +594,12 @@ ______________________________________________________________________
 - Refined Dependency Review license handling for compound and inaccurate package metadata exposed by
   the lockfile refresh.
 - Updated pre-commit dependencies, including TopMark itself.
-- Raised the minimum supported runtime dependency version for `click` to 8.4.2 to align with the
+- Raised the minimum supported runtime dependency version for `click` to 8.5.0 to align with the
   current validated compatibility baseline.
 - Raised the minimum supported development dependency version for `build` to 1.5.0 and refreshed
   locked development tooling, including `ruff`, `hypothesis`, and `uv`.
+- Raised the supported `uv` development-tool range to `>=0.12.15,<0.13.0` and aligned CI bootstrap
+  jobs with the `0.12.x` selector.
 - Added shared machine-path formatting helpers and regression coverage for Windows-style processing
   machine-output path serialization.
 - Expanded cross-platform filesystem regression coverage for machine-readable path serialization,
