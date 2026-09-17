@@ -158,6 +158,8 @@ ______________________________________________________________________
   materialization while preserving existing comparison, patch-generation, and presentation behavior.
 - Replaced the CLI presentation backend with Rich.
 - Adopted `rich-click` for CLI help rendering while preserving Click runtime semantics.
+- Raised the minimum supported `rich-click` version to 1.9.9 to avoid deprecated Click 8.5 APIs and
+  preserve compatibility with their planned removal in Click 9.
 - Centralized CLI option metadata and command-applicability groups used by diagnostics.
 - Hid singular file-type compatibility aliases from help output while preserving them as accepted
   hidden aliases.
