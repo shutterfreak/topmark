@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -41,6 +42,7 @@ def test_filesystem_docs_writer_writes_relative_page(
     [
         "/absolute.md",
         "../outside.md",
+        r"..\outside.md",
     ],
 )
 def test_filesystem_docs_writer_rejects_escaping_paths(
@@ -48,6 +50,26 @@ def test_filesystem_docs_writer_rejects_escaping_paths(
     path: str,
 ) -> None:
     """The staging writer cannot create files outside its documentation root."""
+    writer = FilesystemDocsWriter(tmp_path / "docs")
+
+    with pytest.raises(ValueError, match="must be relative"):
+        writer.open(path, "w")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows drive semantics only")
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"\rooted.md",
+        r"C:\absolute.md",
+        r"C:drive-relative.md",
+    ],
+)
+def test_filesystem_docs_writer_rejects_windows_rooted_or_drive_paths(
+    tmp_path: Path,
+    path: str,
+) -> None:
+    """The staging writer rejects Windows-rooted and drive-qualified paths."""
     writer = FilesystemDocsWriter(tmp_path / "docs")
 
     with pytest.raises(ValueError, match="must be relative"):

@@ -40,6 +40,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
+from pathlib import PureWindowsPath
 from typing import TYPE_CHECKING
 from typing import Protocol
 from typing import cast
@@ -128,10 +129,18 @@ class FilesystemDocsWriter:
             Open text file handle for the generated page.
 
         Raises:
-            ValueError: If ``name`` is absolute or attempts to escape ``docs_dir``.
+            ValueError: If ``path`` is absolute or attempts to escape ``docs_dir``.
         """
         relative_path: Path = Path(path)
-        if relative_path.is_absolute() or ".." in relative_path.parts:
+        windows_path: PureWindowsPath = PureWindowsPath(path)
+        if (
+            relative_path.is_absolute()
+            or windows_path.is_absolute()
+            or windows_path.drive
+            or windows_path.root
+            or ".." in relative_path.parts
+            or ".." in windows_path.parts
+        ):
             raise ValueError(f"Generated documentation path must be relative: {path!r}")
 
         destination: Path = self.docs_dir / relative_path
