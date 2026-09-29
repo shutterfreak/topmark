@@ -48,7 +48,9 @@ These runtime registry objects participate in stable runtime behavior such as:
 - CLI introspection
 - machine-readable output rendering
 
-> [!NOTE] User-facing documentation intentionally focuses on stable runtime behavior and public CLI
+> [!NOTE]
+>
+> User-facing documentation intentionally focuses on stable runtime behavior and public CLI
 > contracts rather than internal implementation objects.
 
 Advanced registry behavior and overlay mutation semantics are documented here for maintainers,

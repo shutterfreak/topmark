@@ -86,6 +86,68 @@ and is executed only during documentation builds.
 Documentation validation is also integrated into local contributor workflows, CI verification, and
 stable-release validation through `make verify`, `nox`, and GitHub Actions.
 
+### Zensical compatibility pilot
+
+The production MkDocs build and Read the Docs deployment remain authoritative. The Zensical path is
+an exploratory compatibility pilot: it builds an ignored, disposable `.zensical/` tree and does not
+publish a site, replace MkDocs in CI, or modify the source `docs/` tree.
+
+Zensical is intentionally isolated in the `zensical` optional dependency extra. Production MkDocs
+and Read the Docs builds install `.[docs]`; the pilot Nox sessions install `.[docs,zensical]`. For
+direct local Zensical commands, install that pair with `make venv-sync-zensical`.
+
+Use the pilot commands through Make or Nox:
+
+```bash
+make zensical-prepare
+make zensical-build
+make zensical-serve
+make zensical-clean
+
+nox -s zensical
+nox -s zensical_serve
+```
+
+`zensical-build` and its Nox session prepare the staging tree automatically. `zensical-serve` does
+the same once before starting the server; because it watches staged inputs rather than the source
+tree, rerun it after changing source documentation. `zensical-clean` removes the ignored, disposable
+`.zensical/` staging tree, including its generated site and cache.
+
+#### Compatibility bridges
+
+The preparation step preserves the current site output by deliberately bridging the Zensical gaps
+that TopMark uses today:
+
+| Existing MkDocs behavior                                                                 | Pilot bridge                                                                                                                                   | Ownership and removal condition                                                                                                                                          |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Virtual API/CLI pages via `mkdocs-gen-files`                                             | Materialize pages in `.zensical/docs` through the filesystem-capable generator backend.                                                        | TopMark-owned until Zensical offers equivalent generation or TopMark adopts a native alternative.                                                                        |
+| `%%TOPMARK_VERSION%%` and GitHub-alert conversion via `mkdocs-simple-hooks`              | Expand the version macro during staging; enable Zensical-native `callouts` for `> [!NOTE]` syntax.                                             | Version expansion remains a project build transform. Remove callout bridging once the shared configuration can express it directly.                                      |
+| Local snippet inclusion and `rewrite_relative_urls` via `mkdocs-include-markdown-plugin` | Expand TopMark's local Markdown snippets recursively, rewrite their relative links for each destination page, then remove staged `_snippets/`. | A narrow temporary adapter; remove when Zensical supports the required plugin behavior. It rejects unsupported plugin options, remote files, escaping paths, and cycles. |
+| `draft_docs` and excluding private snippets from published pages                         | Skip drafts while copying and remove snippets after expansion.                                                                                 | Keep until equivalent Zensical configuration is available and verified.                                                                                                  |
+
+The staged configuration is derived from `mkdocs.yml` and redirects `mkdocstrings` source discovery
+to `../src`. It retains unsupported plugin entries only because Zensical safely ignores them; the
+preparation bridges above supply their required TopMark behavior.
+
+#### Pilot verification
+
+Build the staged inputs directly when diagnosing the pilot:
+
+```bash
+.venv/bin/zensical build --config-file .zensical/mkdocs.yml --strict
+```
+
+Run the local web server:
+
+```bash
+.venv/bin/zensical serve --config-file .zensical/mkdocs.yml
+```
+
+The preparation tests in `tests/dev_validation/test_zensical_docs_preparation.py` cover staged
+configuration generation, filesystem-backed API generation, version expansion, snippet expansion,
+link rewriting, and unsafe or unsupported include inputs. Compare rendered pages with the production
+MkDocs site before declaring a compatibility gap closed.
+
 ______________________________________________________________________
 
 ## Relationship to CI and validation tooling

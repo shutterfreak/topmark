@@ -134,8 +134,10 @@ while keeping the `setup-uv` built-in cache integration disabled:
 The cache key includes the resolved Python version so caches remain isolated across interpreter
 versions.
 
-> [!NOTE] Keeping a single explicit cache owner avoids noisy cache-reservation race warnings when
-> multiple CI jobs run concurrently with the same bootstrap inputs.
+> [!NOTE]
+>
+> Keeping a single explicit cache owner avoids noisy cache-reservation race warnings when multiple
+> CI jobs run concurrently with the same bootstrap inputs.
 
 The cache is intentionally scoped to dependency/bootstrap acceleration only. It is not used to cache
 project build artifacts, release artifacts, or workflow outputs.

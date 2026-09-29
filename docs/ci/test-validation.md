@@ -273,6 +273,8 @@ Common mappings are:
 | Print CI Python metadata                          | `nox -s print_python_matrix`       |
 | Run a marker-specific test subset                 | `nox -s qa -p 3.14 -- -m <marker>` |
 | Build documentation                               | `nox -s docs`                      |
+| Build the staged Zensical compatibility pilot     | `nox -s zensical`                  |
+| Serve the staged Zensical compatibility pilot     | `nox -s zensical_serve`            |
 | Validate documentation links                      | `nox -s links`                     |
 | Run release checks                                | `nox -s release_check`             |
 | Run pipeline memory/allocation baselines          | `nox -s perf_baseline`             |

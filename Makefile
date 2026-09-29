@@ -69,6 +69,10 @@ help:
 	@echo "  docs-build      Build docs strictly (nox: docs)"
 	@echo "  docs-serve      Serve docs locally (nox: docs_serve)"
 	@echo "  docs-clean      Remove MkDocs build output (site/)"
+	@echo "  zensical-prepare  Prepare disposable Zensical compatibility-pilot inputs"
+	@echo "  zensical-build    Build the staged Zensical compatibility pilot (nox: zensical)"
+	@echo "  zensical-serve    Serve the staged Zensical compatibility pilot (nox: zensical_serve)"
+	@echo "  zensical-clean    Remove the disposable Zensical pilot tree (.zensical/)"
 	@echo ""
 	@echo "Misc:"
 	@echo "  links           Check links in docs/ and tracked Markdown (nox: links)"
@@ -86,6 +90,7 @@ help:
 	@echo "  venv-sync-dev   Sync dev/test/typing extras into .venv"
 	@echo "  venv-sync-all   Sync dev/test/typing/docs extras into .venv"
 	@echo "  venv-sync-docs  Sync docs extras into .venv (removes DEV-only packages from .venv)"
+	@echo "  venv-sync-zensical  Sync docs and Zensical-pilot extras into .venv"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
 	@echo "UV project lock workflow:"
@@ -216,6 +221,22 @@ docs-serve: check-venv
 docs-clean:
 	rm -rf site
 
+.PHONY: zensical-prepare
+zensical-prepare:
+	$(VENV_BIN)/python -m tools.docs.prepare_zensical_docs
+
+.PHONY: zensical-build
+zensical-build: check-venv
+	$(NOX) $(NOX_FLAGS) -s zensical
+
+.PHONY: zensical-serve
+zensical-serve: check-venv
+	$(NOX) $(NOX_FLAGS) -s zensical_serve
+
+.PHONY: zensical-clean
+zensical-clean:
+	rm -rf .zensical
+
 .PHONY: links
 links: check-lychee
 	$(NOX) $(NOX_FLAGS) -s links
@@ -295,6 +316,12 @@ venv-sync-dev: venv
 venv-sync-docs: venv
 	$(UV) sync --extra docs
 	@echo "Synced docs extras into $(VENV)."
+
+# Sync the production docs and isolated Zensical-pilot extras into the shared venv.
+.PHONY: venv-sync-zensical
+venv-sync-zensical: venv
+	$(UV) sync --extra docs --extra zensical
+	@echo "Synced docs and Zensical-pilot extras into $(VENV)."
 
 # Sync the union of dev/test/typing/docs extras into the shared venv.
 # This is the recommended target for local MkDocs development and VS Code import resolution.

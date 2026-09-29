@@ -157,9 +157,11 @@ Canonical single-version jobs such as linting, documentation builds, coverage, A
 and release-artifact construction use the same resolved canonical Python value rather than carrying
 separate hard-coded version literals in the workflow.
 
-> [!NOTE] Shared Python/bootstrap jobs intentionally use explicit `actions/cache` ownership while
-> keeping the `setup-uv` built-in cache integration disabled. This avoids cache-reservation race
-> warnings between concurrent jobs using identical bootstrap inputs.
+> [!NOTE]
+>
+> Shared Python/bootstrap jobs intentionally use explicit `actions/cache` ownership while keeping
+> the `setup-uv` built-in cache integration disabled. This avoids cache-reservation race warnings
+> between concurrent jobs using identical bootstrap inputs.
 
 The API snapshot check is pull-request-only and runs when Python-relevant files change. Its
 schema-versioned JSON is derived from `topmark.api.__all__` and compares normalized callable,
