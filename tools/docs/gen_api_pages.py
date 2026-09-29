@@ -25,8 +25,8 @@ To avoid mkdocs-autorefs duplicate-anchor warnings, it skips generating internal
 In debug/strict modes it also scans *module docstrings* in `src/` for unlinked backticked
 `topmark.*` symbol references and reports actionable `src/...` locations.
 
-Because it's executed as a script (not imported as a package), helpers must be imported via
-absolute module paths (e.g. tools.docs....).
+MkDocs executes this script with ``runpy.run_path`` while the Zensical pilot imports it as a module.
+Helpers therefore use absolute module paths (e.g. tools.docs....).
 """
 
 # pyright: reportMissingModuleSource=false
@@ -41,6 +41,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Protocol
+from typing import cast
 
 import mkdocs_gen_files
 from mkdocs.plugins import get_plugin_logger as get_logger
@@ -72,6 +74,90 @@ if TYPE_CHECKING:
 
 
 logger: PrefixedLogger = get_logger("gen_api_pages")
+
+
+class DocsWriter(Protocol):
+    """Write generated documentation using a virtual or filesystem-backed destination."""
+
+    def open(
+        self,
+        path: str,
+        mode: str = "w",
+    ) -> TextIO:
+        """Open a documentation file relative to the configured documentation root."""
+        ...
+
+    def set_edit_path(
+        self,
+        doc_path: str,
+        src_path: str,
+    ) -> None:
+        """Associate a generated page with its source edit path when supported."""
+        ...
+
+
+class FilesystemDocsWriter:
+    """Write generated pages into an explicit disposable documentation directory.
+
+    MkDocs uses ``mkdocs-gen-files`` to make generated pages virtual for one build. Zensical does
+    not run that plugin, so the compatibility pilot uses this writer to materialize the same pages
+    in a disposable staging tree instead.
+
+    Args:
+        docs_dir: Existing staging documentation directory that receives generated pages.
+    """
+
+    def __init__(
+        self,
+        docs_dir: Path,
+    ) -> None:
+        self.docs_dir: Path = docs_dir.resolve()
+
+    def open(
+        self,
+        path: str,
+        mode: str = "w",
+    ) -> TextIO:
+        """Open a staging file while rejecting paths outside the staging tree.
+
+        Args:
+            path: POSIX documentation path relative to ``docs_dir``.
+            mode: File mode, passed to :func:`open`.
+
+        Returns:
+            Open text file handle for the generated page.
+
+        Raises:
+            ValueError: If ``name`` is absolute or attempts to escape ``docs_dir``.
+        """
+        relative_path: Path = Path(path)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ValueError(f"Generated documentation path must be relative: {path!r}")
+
+        destination: Path = self.docs_dir / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        return cast("TextIO", destination.open(mode, encoding="utf-8"))
+
+    def set_edit_path(
+        self,
+        doc_path: str,
+        src_path: str,
+    ) -> None:
+        """Accept MkDocs edit-path metadata without applying it to staging files.
+
+        Zensical's generated-page edit-link mapping is evaluated separately by the pilot. Keeping
+        this method as a no-op lets the content generator stay independent of the renderer.
+
+        Args:
+            doc_path: Generated documentation path.
+            src_path: Intended source edit path.
+        """
+        del doc_path, src_path
+
+
+# MkDocs receives a virtual writer from mkdocs-gen-files. The Zensical staging command substitutes
+# a filesystem writer only for its explicit pre-build generation step.
+_docs_writer: DocsWriter = mkdocs_gen_files
 
 # --- Constants for Directory Structure ---
 ROOT_PKG: Final = "topmark"
@@ -189,7 +275,7 @@ def generate_cli_reference_pages() -> None:
             body: Pre-rendered Markdown emitted by `topmark ... --output-format markdown`.
         """
         # Open a virtual file in the MkDocs build environment.
-        with mkdocs_gen_files.open(dest, "w") as f:
+        with _docs_writer.open(dest, "w") as f:
             f.write(f"# {title}\n\n")
             f.write("<!-- This page is generated. Do not edit manually. -->\n\n")
             # `body` is already Markdown; write verbatim.
@@ -275,6 +361,21 @@ def _is_package(modname: str) -> bool:
     rel = Path(*modname.split("."))
     pkg_dir: Path = Path("src") / rel
     return pkg_dir.is_dir() and (pkg_dir / "__init__.py").exists()
+
+
+def _internals_doc_path(modname: str) -> str:
+    """Return the generated documentation path for an internal module or package.
+
+    Args:
+        modname: Dotted module or package name.
+
+    Returns:
+        Docs-relative Markdown path for the active output backend.
+    """
+    package_path: str = modname.replace(".", "/")
+    if isinstance(_docs_writer, FilesystemDocsWriter) and _is_package(modname):
+        return f"{API_INTERNALS_DIR}/{package_path}/index.md"
+    return f"{API_INTERNALS_DIR}/{package_path}.md"
 
 
 def _get_member_icon(modname: str) -> str:
@@ -594,7 +695,7 @@ def _write_module_page(name: str, current_doc: str) -> None:
         name: Full dotted module name to document.
         current_doc: Docs-relative output path for the generated Markdown page.
     """
-    with mkdocs_gen_files.open(current_doc, "w") as fd:
+    with _docs_writer.open(current_doc, "w") as fd:
         fd.write(f"# {name}\n\n")
         # Breadcrumbs help users navigate the generated internals tree.
         _write_breadcrumbs(fd, _breadcrumbs_for_module(name, current_doc))
@@ -616,7 +717,7 @@ def _write_internals_index(index_path: str, groups: dict[str, list[str]]) -> Non
         index_path: Docs-relative output path for the generated index page.
         groups: Mapping of top-level `topmark.*` segment to discovered modules.
     """
-    with mkdocs_gen_files.open(index_path, "w") as fd:
+    with _docs_writer.open(index_path, "w") as fd:
         fd.write("# topmark internals index\n\n")
         fd.write(
             "This index groups internal modules by top-level package. "
@@ -625,7 +726,7 @@ def _write_internals_index(index_path: str, groups: dict[str, list[str]]) -> Non
         for group in sorted(groups):
             fd.write(f"## {group}\n\n")
             for mod in sorted(groups[group]):
-                link: str = rel_href(index_path, f"{API_INTERNALS_DIR}/{mod.replace('.', '/')}.md")
+                link: str = rel_href(index_path, _internals_doc_path(mod))
                 # Link label is full dotted path for clarity
                 fd.write(f"- [{mod}]({link})\n")
             fd.write("\n")
@@ -661,7 +762,7 @@ def _write_internals_summary(summary_path: str, groups: dict[str, list[str]]) ->
             rel_entry = f"{pkg.replace('.', '/')}.md"
             top_level_modules.append((pkg, rel_entry))
 
-    with mkdocs_gen_files.open(summary_path, "w") as fd:
+    with _docs_writer.open(summary_path, "w") as fd:
         fd.write("# Internals navigation (generated)\n\n")
         fd.write("<!-- This file is generated. Do not edit manually. -->\n\n")
 
@@ -695,13 +796,13 @@ options:
   filters:
     - "!^_"
 """
-        with mkdocs_gen_files.open(mod_ref_doc, "w") as fd:
+        with _docs_writer.open(mod_ref_doc, "w") as fd:
             fd.write(mod_ref_md)
         src_candidate: str = "src/" + mod.replace(".", "/") + ".py"
         # Link generated pages back to physical source files for edit links.
         src_pkg_init: str = "src/" + mod.replace(".", "/") + "/__init__.py"
         edit_path: str = src_candidate if Path(src_candidate).exists() else src_pkg_init
-        mkdocs_gen_files.set_edit_path(mod_ref_doc, edit_path)  # generated only
+        _docs_writer.set_edit_path(mod_ref_doc, edit_path)  # generated only
         # Scan public API module docstring for unlinked symbol references.
         _scan_module_docstring(mod, edit_path, mod_ref_doc)
 
@@ -724,9 +825,9 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
 
     # Keep edit links correct for packages.
     pkg_src_rel: str = pkg.replace(".", "/")
-    mkdocs_gen_files.set_edit_path(pkg_index_path, f"src/{pkg_src_rel}/__init__.py")
+    _docs_writer.set_edit_path(pkg_index_path, f"src/{pkg_src_rel}/__init__.py")
 
-    with mkdocs_gen_files.open(pkg_index_path, "w") as fd:
+    with _docs_writer.open(pkg_index_path, "w") as fd:
         fd.write(f"# {pkg} package index\n\n")
 
         # Breadcrumbs run from `topmark` down to the current package.
@@ -770,7 +871,9 @@ def _write_package_index(pkg: str, children: set[str]) -> None:
             _write_child_list(fd, sorted(children))
 
 
-def main() -> None:
+def main(
+    docs_writer: DocsWriter | None = None,
+) -> None:
     """Generate MkDocs pages for TopMark and optionally enforce reference hygiene.
 
     This is the entry point invoked during the MkDocs build via mkdocs-gen-files.
@@ -783,6 +886,9 @@ def main() -> None:
     - Generates CLI reference pages under `usage/`
     - Scans module docstrings for unlinked backticked `topmark.*` symbol references
 
+    Args:
+        docs_writer: Optional destination for generated pages. Omit to use MkDocs' virtual writer.
+
     In strict mode (`TOPMARK_DOCS_STRICT_REFS=1`), the build aborts after generation if any
     unlinked backticked TopMark symbols were found in docstrings.
 
@@ -790,7 +896,10 @@ def main() -> None:
         Abort: When strict reference hygiene is enabled and unlinked backticked symbols are found.
         RuntimeError: Fallback when MkDocs Abort cannot be imported.
     """
+    global _docs_writer
     global written_pages
+    if docs_writer is not None:
+        _docs_writer = docs_writer
     groups: dict[str, list[str]] = defaultdict(list)
 
     # 1. Generate pages for every discovered module.
@@ -803,13 +912,20 @@ def main() -> None:
             skipped_import.append((name, f"import failed: {type(e).__name__}: {e}"))
             continue
 
-        current_doc: str = f"{API_INTERNALS_DIR}/{name.replace('.', '/')}.md"
-        _write_module_page(name, current_doc)
-        written_pages += 1
+        is_package: bool = _is_package(name)
+        current_doc: str = _internals_doc_path(name)
+
+        # MkDocs permits a package page (``pkg.md``) and its package index
+        # (``pkg/index.md``) to coexist, resolving both to the latter's directory URL. Zensical
+        # correctly rejects those duplicate destinations. Its staged build retains the package
+        # index, which is the effective MkDocs output and already renders the package docstring.
+        if not (is_package and isinstance(_docs_writer, FilesystemDocsWriter)):
+            _write_module_page(name, current_doc)
+            written_pages += 1
 
         src_rel: str = name.replace(".", "/")
         src_path: str = f"src/{src_rel}/__init__.py" if _is_package(name) else f"src/{src_rel}.py"
-        mkdocs_gen_files.set_edit_path(current_doc, src_path)
+        _docs_writer.set_edit_path(current_doc, src_path)
 
         # Scan module docstring for unlinked backticked TopMark symbol references.
         _scan_module_docstring(name, src_path, current_doc)
@@ -880,8 +996,7 @@ def _run() -> None:
     main()
 
 
-_run()
-
-if __name__ == "__main__":
-    # Already ran via mkdocs-gen-files/run_path; running directly should still work.
-    pass
+# mkdocs-gen-files executes this file with runpy.run_path, whereas the Zensical staging command
+# imports it as a normal module. Keep the former behavior and make the latter side-effect free.
+if __name__ != "tools.docs.gen_api_pages":
+    _run()

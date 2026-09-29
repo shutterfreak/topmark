@@ -74,7 +74,9 @@ render unified diffs for human review. JSON detail output embeds structured per-
 payloads, while NDJSON detail output emits adjacent standalone `diff` records. Machine-readable
 summary output intentionally omits per-file diff payloads and emits a warning on `stderr`.
 
-> [!NOTE] Verbosity, quiet mode and color rendering affect only human-facing TEXT rendering.
+> [!NOTE]
+>
+> Verbosity, quiet mode and color rendering affect only human-facing TEXT rendering.
 
 ______________________________________________________________________
 

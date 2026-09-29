@@ -18,7 +18,9 @@ Sessions:
   - `format_check`: Verify formatting (ruff, mdformat, taplo, mbake).
   - `format`: Apply formatting (ruff, mdformat, taplo, mbake).
   - `docs`: Build MkDocs documentation strictly and validate project-owned hosted routes.
-  - `docs_serve`: Serve docs locally.
+  - `docs_serve`: Serve MkDocs documentation locally.
+  - `zensical`: Build the staged Zensical compatibility pilot strictly.
+  - `zensical_serve`: Serve the staged Zensical compatibility pilot locally.
   - `links`: Lychee link checks for docs/ + tracked Markdown.
   - `links_src`: Lychee link checks for Python sources (docstring URLs).
   - `links_all`: Combined link checks.
@@ -46,6 +48,7 @@ Common invocations:
   - `nox -s lint`
   - `nox -s format_check`
   - `nox -s docs`
+  - `nox -s zensical`
   - `nox -s qa` (runs for all configured Python versions)
   - `nox -s pre_pr` (recommended before opening or updating a PR)
 """
@@ -72,6 +75,7 @@ CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1
 
 DEPS_DEV: Final[str] = ".[dev,typing,test]"
 DEPS_DOCS: Final[str] = ".[docs]"
+DEPS_ZENSICAL: Final[str] = ".[docs,zensical]"
 DEPS_QA: Final[str] = ".[dev,typing,test,docs]"
 
 
@@ -552,12 +556,53 @@ def docs(session: nox.Session) -> None:
 
 @nox.session
 def docs_serve(session: nox.Session) -> None:
-    """Serve the docs locally (dev only)."""
+    """Serve the production MkDocs documentation locally (development only)."""
     session.install(DEPS_DOCS)
 
     session.run(
         "mkdocs",
         "serve",
+    )
+
+
+@nox.session
+def zensical(session: nox.Session) -> None:
+    """Prepare and strictly build the disposable Zensical compatibility pilot."""
+    session.install(DEPS_ZENSICAL)
+
+    session.run(
+        "python",
+        "-m",
+        "tools.docs.prepare_zensical_docs",
+    )
+    session.run(
+        "zensical",
+        "build",
+        "--config-file",
+        ".zensical/mkdocs.yml",
+        "--strict",
+    )
+
+
+@nox.session
+def zensical_serve(session: nox.Session) -> None:
+    """Prepare and serve the staged Zensical compatibility pilot locally.
+
+    The server watches staged inputs. Re-run this session after changing source documentation so the
+    disposable staging tree is regenerated before restarting the server.
+    """
+    session.install(DEPS_ZENSICAL)
+
+    session.run(
+        "python",
+        "-m",
+        "tools.docs.prepare_zensical_docs",
+    )
+    session.run(
+        "zensical",
+        "serve",
+        "--config-file",
+        ".zensical/mkdocs.yml",
     )
 
 

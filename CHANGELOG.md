@@ -98,6 +98,12 @@ ______________________________________________________________________
   memory/allocation baseline generation.
 - Added structured planned-edit metadata (`EditView`, `PlannedEdit`, and `PlanEditKind`) together
   with a single-splice structured unified-diff renderer used for GitHub issue 167 validation work.
+- Added a disposable `make zensical-prepare` staging command for the Zensical compatibility pilot.
+  It materializes generated documentation under `.zensical/docs` without modifying the production
+  MkDocs documentation tree, expands TopMark version macros and local Markdown snippets, and enables
+  Zensical-native callouts. Added strict-build and local-serve Make/Nox entry points for the staged
+  pilot, plus `make zensical-clean` for its disposable output. The alpha Zensical dependency is
+  isolated from the production `docs` extra.
 
 ### Changed - Unreleased
 

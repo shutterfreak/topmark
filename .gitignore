@@ -27,6 +27,7 @@ docs/**/_drafts/
 
 # Documentation (built)
 site/
+.zensical/
 
 # setuptools-scm generated version module
 src/topmark/_version.py
