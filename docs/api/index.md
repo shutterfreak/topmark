@@ -23,15 +23,15 @@ ______________________________________________________________________
 ## Public API
 
 - [Public API overview](public.md)
-- [`topmark.api` reference](reference/topmark.api.md)
-- [`topmark.registry` reference](reference/topmark.registry.md)
+- [`topmark.api` module reference](internals/topmark/api/index.md)
+- [`topmark.registry` module reference](internals/topmark/registry/index.md)
 
 ______________________________________________________________________
 
-## Internal reference
+## Advanced API reference
 
 - [Internal API overview](internals.md)
-- [Generated internal reference](internals/topmark/index.md)
+- [Generated module reference](internals/topmark/index.md)
 
 ______________________________________________________________________
 

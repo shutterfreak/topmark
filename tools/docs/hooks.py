@@ -64,8 +64,6 @@ from tools.docs.docs_utils import fix_backticked_reference_links
 from tools.docs.docs_utils import format_inline_symbols
 from tools.docs.docs_utils import format_line_numbers
 from tools.docs.docs_utils import format_repo_path
-from tools.docs.docs_utils import public_ref_doc_for_symbol
-from tools.docs.docs_utils import rel_href
 from tools.docs.docs_utils import unescape_reference_link_text
 from tools.docs.docs_utils import wrap_actions_blocks_with_raw
 
@@ -400,8 +398,6 @@ def on_page_markdown(
 
             # Emit actionable details (line numbers + recommended fix) at WARNING level
             # so they show up even without debug.
-            from_doc: str = getattr(getattr(page, "file", None), "src_path", "<unknown>")
-
             for seq, sym in enumerate(symbols_sorted, start=1):
                 logger.warning(
                     "%s - [%d] (%s) %s - Fix: [`%s`][%s]",
@@ -412,18 +408,6 @@ def on_page_markdown(
                     sym,
                     sym,
                 )
-
-                if TOPMARK_DOCS_DEBUG is True:
-                    ref_doc: str | None = public_ref_doc_for_symbol(sym)
-                    if ref_doc is not None and from_doc != "<unknown>":
-                        href: str = rel_href(from_doc, ref_doc)
-                        logger.info(
-                            "%s - Alt: [`%s`](%s#%s)",
-                            page_path,
-                            sym,
-                            href,
-                            sym,
-                        )
 
             if TOPMARK_DOCS_STRICT_REFS is True:
                 # Record full set for post-build aggregation; do not stop at the first page.

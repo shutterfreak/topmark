@@ -120,10 +120,15 @@ plugins:
   # 2) Programmatic page generation (e.g. API reference from source code).
   - gen-files:
       scripts:
-        - tools/docs/gen_api_pages.py
+        - tools/docs/gen_cli_reference_pages.py
 
-  # 3) Generates sidebar navigation from a Markdown SUMMARY.md file (used for generated internals pages).
-  - literate-nav
+  # 3) Generates API reference pages and navigation from the package source.
+  - api-autonav:
+      modules: ["src/topmark"]
+      api_root_uri: "api/internals"
+      nav_section_title: "API reference"
+      exclude_private: true
+      on_implicit_namespace_package: skip
 
   # 4) Allows including external Markdown files into pages.
   - include-markdown:
@@ -224,11 +229,8 @@ nav:
   - API:
       - Overview: api/index.md
       - Public API: api/public.md
-      - topmark.api: api/reference/topmark.api.md
-      - topmark.registry: api/reference/topmark.registry.md
       - Internals:
           - Overview: api/internals.md
-          - Reference (generated): api/internals/
   - Development:
       - Overview: dev/index.md
       - Terminology: terminology.md

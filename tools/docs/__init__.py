@@ -12,7 +12,7 @@
 
 This package contains scripts used during MkDocs builds, including:
 - MkDocs simple-hooks (`hooks.py`)
-- mkdocs-gen-files generation (`gen_api_pages.py`)
+- mkdocs-gen-files generation (`gen_cli_reference_pages.py`)
 - Shared utility helpers (`docs_utils.py`)
 
 The code here is only imported/executed in documentation tooling contexts (executed by

@@ -120,14 +120,14 @@ dependencies = [
     "uv>=0.12.15,<0.13.0",
   ]
   docs = [
+    # Generate API-reference pages and navigation from Python modules:
+    "mkdocs-api-autonav>=0.3.1,<0.4.0",
     # Symbol cross-references in Markdown:
     "mkdocs-autorefs>=1.4.3,<2.0.0",
     # Programmatically generate documentation pages:
     "mkdocs-gen-files>=0.5.0,<0.7.0",
     # Markdown content inclusion plugin:
     "mkdocs-include-markdown-plugin>=7.2.0,<8.0.0",
-    # Navigation from a Markdown summary file:
-    "mkdocs-literate-nav>=0.6.2,<0.7.0",
     # Material theme for MkDocs:
     "mkdocs-material>=9.7.0,<10.0.0",
     # Custom page hooks for MkDocs:
@@ -149,7 +149,7 @@ dependencies = [
   ]
   zensical = [
     # Static documentation site generation core for the isolated compatibility pilot:
-    "zensical>=0.0.66,<0.1.0",
+    "zensical>=0.0.67,<0.1.0",
   ]
   test = [
     # Coverage testing framework:

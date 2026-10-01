@@ -19,7 +19,6 @@ from tools.docs.docs_utils import env_flag
 from tools.docs.docs_utils import find_unlinked_backticked_symbols_with_locations
 from tools.docs.docs_utils import fix_backticked_reference_links
 from tools.docs.docs_utils import load_nonlinked_symbols
-from tools.docs.docs_utils import rel_href
 from tools.docs.docs_utils import unescape_reference_link_text
 
 
@@ -85,12 +84,3 @@ def test_unlinked_symbol_discovery_respects_links_fences_and_artifacts() -> None
     )
 
     assert find_unlinked_backticked_symbols_with_locations(markdown) == {"topmark.api.check": {1}}
-
-
-@pytest.mark.dev_validation
-def test_relative_documentation_links_use_posix_paths() -> None:
-    """Documentation links are relative to the source document and platform-neutral."""
-    assert (
-        rel_href("dev/architecture/overview.md", "api/reference/topmark.api.md")
-        == "../../api/reference/topmark.api.md"
-    )
