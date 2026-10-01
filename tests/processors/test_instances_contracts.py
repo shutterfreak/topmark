@@ -18,9 +18,13 @@ import pytest
 
 from tests.helpers.registry import make_file_type
 from topmark.core.errors import ProcessorBindingError
+from topmark.filetypes.instances import get_base_file_type_registry
 from topmark.processors import instances
+from topmark.processors.base import NO_LINE_ANCHOR
 from topmark.processors.base import HeaderProcessor
 from topmark.processors.bindings import ProcessorBinding
+from topmark.processors.builtins.xml import XmlHeaderProcessor
+from topmark.registry.identity import make_qualified_key
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -219,3 +223,47 @@ def test_repeated_compatible_processor_definitions_reuse_one_identity(
 
     assert list(registry) == ["pytest:shared"]
     assert registry["pytest:shared"].processor_class is _ProcessorA
+
+
+@pytest.mark.parametrize(
+    "binding",
+    instances.get_builtin_processor_bindings(),
+    ids=lambda binding: f"{binding.file_type_name}->{binding.processor_class.local_key}",
+)
+def test_builtin_binding_resolves_to_its_declared_filetype_and_processor(
+    binding: ProcessorBinding,
+) -> None:
+    """Each declarative built-in binding resolves through every registry layer."""
+    filetypes: dict[str, FileType] = get_base_file_type_registry()
+    bindings: dict[str, str] = instances.get_base_processor_binding_registry()
+    definitions: dict[str, ProcessorDefinition] = instances.get_base_processor_definition_registry()
+
+    filetype: FileType = filetypes[binding.file_type_name]
+    processor_key: str = make_qualified_key(
+        namespace=binding.namespace,
+        local_key=binding.processor_class.local_key,
+    )
+
+    assert bindings[filetype.qualified_key] == processor_key
+    assert definitions[processor_key].processor_class is binding.processor_class
+
+
+_XML_BUILTIN_BINDINGS: tuple[ProcessorBinding, ...] = tuple(
+    binding
+    for binding in instances.get_builtin_processor_bindings()
+    if issubclass(binding.processor_class, XmlHeaderProcessor)
+)
+
+
+@pytest.mark.parametrize(
+    "binding",
+    _XML_BUILTIN_BINDINGS,
+    ids=lambda binding: binding.file_type_name,
+)
+def test_xml_builtin_bindings_use_character_offset_placement(
+    binding: ProcessorBinding,
+) -> None:
+    """XML-family built-in bindings must opt out of line-based placement."""
+    processor: HeaderProcessor = binding.processor_class()
+
+    assert processor.get_header_insertion_index(["<root/>"]) == NO_LINE_ANCHOR
