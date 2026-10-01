@@ -588,6 +588,10 @@ ______________________________________________________________________
   behavior.
 - Corrected version-command documentation to reflect successful PEP 440 fallback on SemVer
   conversion failure and the established JSON/NDJSON fallback record shapes.
+- Consolidated landing-page and user-configuration explanations around the canonical terminology,
+  discovery, and machine-readable-output references; clarified the distinction between qualified
+  file type identifiers and machine-readable `qualified_key` fields; and aligned navigation labels
+  with their pages.
 
 ### Internal - Unreleased
 

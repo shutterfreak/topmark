@@ -28,7 +28,7 @@ TopMark provides stable and consistent behavior across:
 - probe and diagnostics workflows
 - machine-readable reporting and explainability
 - pre-commit and CI integration
-- stable public Python API overlays and runtime contracts
+- stable public Python API and runtime contracts
 
 ______________________________________________________________________
 
@@ -75,20 +75,10 @@ ______________________________________________________________________
 
 TopMark exposes a small set of dry-run-first CLI commands.
 
-Configuration discovery starts from the resolved discovery anchor before runtime processing begins.
-For filesystem-processing commands, that anchor is derived from the first selected input path when
-available, or from the current working directory otherwise.
-
-Filesystem-processing commands evaluate filesystem identity before runtime processing.
-Filesystem-identity normalization resolves equivalent path spellings, such as symlink spellings, to
-the selected processing path used by runtime processing and machine-readable output. Hard-link
-policy is evaluated as a processing-target eligibility check: if multiple selected paths refer to
-the same filesystem object through hard links, TopMark reports each affected path independently and
-blocks processing for the hard-link group.
-
-For command structure, shared options, applicability rules, and common workflows, see:
-
-- [Command overview](usage/cli.md).
+For command structure, shared options, path-processing semantics, and common workflows, see the
+[command overview](usage/cli.md). The [terminology](terminology.md) and
+[configuration discovery](configuration/discovery.md) pages define the corresponding canonical terms
+and configuration rules.
 
 Core commands: [`check`](usage/commands/check.md), [`strip`](usage/commands/strip.md),
 [`probe`](usage/commands/probe.md), [`config`](usage/commands/config.md),
@@ -116,12 +106,12 @@ TopMark uses a small stable set of exit codes suitable for CI and scripting:
 - `USAGE_ERROR (64)` - CLI usage error (invalid options, unsupported STDIN modes, or positional
   paths on file-agnostic commands)
 
-Additional codes are used for configuration-loading errors and runtime conditions (for example
-`CONFIG_ERROR (78)`, `FILE_NOT_FOUND (66)`). These apply after CLI usage has been accepted.
+Additional codes describe runtime conditions after CLI usage has been accepted (for example,
+`FILE_NOT_FOUND (66)`).
 
 See:
 
-- [`Exit codes`](usage/exit-codes.md)
+- [Exit codes](usage/exit-codes.md)
 - [`check`](usage/commands/check.md)
 - [`strip`](usage/commands/strip.md)
 
@@ -143,22 +133,10 @@ The [`registry`](usage/commands/registry.md) command has the following subcomman
 
 {% include-markdown "\_snippets/output-contract.md" %}
 
-Machine-readable filesystem path fields report selected processing paths. Configuration provenance
-reports resolved configuration sources discovered from the resolved discovery anchor and explicit
-configuration overlays. Both contracts remain stable across supported platforms.
-
-Use [`config dump --show-layers`](usage/commands/config/dump.md) to inspect how configuration is
-built from individual sources and how precedence is applied.
-
-TopMark supports two STDIN modes:
-
-- **List mode**: read newline-delimited paths or patterns via `--files-from -` (or
-  `--include-from -` / `--exclude-from -`)
-- **Content mode**: process one file's content by passing `-` as the sole PATH together with
-  `--stdin-filename NAME`
-
-See [shared input modes](usage/shared-options.md#shared-input-modes) for the full STDIN contract,
-including why TopMark does not provide a `--stdin` option flag.
+For the path-serialization, configuration-provenance, and STDIN contracts, see
+[machine-readable output](usage/machine-output.md),
+[`config dump --show-layers`](usage/commands/config/dump.md), and
+[shared input modes](usage/shared-options.md#shared-input-modes).
 
 ______________________________________________________________________
 

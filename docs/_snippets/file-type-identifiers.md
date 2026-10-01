@@ -11,7 +11,7 @@ topmark:header:end
 -->
 
 TopMark accepts file type identifiers in local form, such as `python`, or qualified form, such as
-`topmark:python`.
+the qualified file type identifier `topmark:python`.
 
 Local identifiers are accepted only when unambiguous. Internally, TopMark normalizes identifiers to
 canonical qualified file type identities before filtering, runtime resolution, policy evaluation,

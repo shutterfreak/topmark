@@ -39,9 +39,9 @@ TopMark supports layered configuration with explicit precedence:
   [Config-loading behavior](./discovery.md#config-loading-behavior-toml-level)).
 - `relative_to` affects only header metadata (e.g., `file_relpath`), not discovery.
 - **File type identifiers** may be written in local form such as `python` or qualified form such as
-  `topmark:python`. TopMark normalizes identifiers to canonical qualified file type identities
-  during configuration normalization. For the user-facing contract, see
-  [Configuration discovery, precedence, and policy](../usage/configuration.md#file-type-identifiers).
+  the qualified file type identifier `topmark:python`. TopMark normalizes identifiers to canonical
+  qualified file type identities during configuration normalization. For the user-facing contract,
+  see [User configuration](../usage/configuration.md#file-type-identifiers).
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 
@@ -93,7 +93,7 @@ ______________________________________________________________________
 ## Configuration flow at a glance
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["Resolve TOML sources<br/>(defaults, user, project from resolved anchor, --config)"]
     B["Validate each whole-source TOML fragment<br/>unknown sections, unknown keys, malformed shapes"]
     C["Extract layered config fragment<br/>source-local sections like [config] and [writer] stay TOML-local"]

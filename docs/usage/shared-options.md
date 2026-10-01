@@ -238,17 +238,9 @@ Layered configuration loading and discovery behavior do not apply to:
 - registry commands
 - [`version`](commands/version.md)
 
-For project-chain configuration loading, discovery starts from the resolved discovery anchor before
-configuration-source identity is established. For file-backed configuration sources,
-configuration-source identity is then based on the resolved configuration-file target. Layered
-provenance, applicability evaluation, and configuration precedence are therefore based on resolved
-configuration targets rather than symlink spellings.
-
-Configuration-source identity is distinct from workspace-root discovery and from processing-target
-identity. Runtime filesystem-processing commands evaluate selected processing paths separately,
-including filesystem-identity normalization and eligibility checks such as hard-link policy. Those
-runtime checks do not affect project-chain discovery, layered provenance, or configuration
-precedence.
+For the discovery-anchor and configuration-source identity rules, see
+[Configuration discovery, precedence, and policy](../configuration/discovery.md). Runtime
+filesystem-processing checks are independent of configuration discovery and precedence.
 
 ______________________________________________________________________
 

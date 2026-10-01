@@ -170,7 +170,7 @@ topmark:python
 topmark:markdown
 ```
 
-TopMark normalizes file type identifiers to canonical qualified keys.
+TopMark normalizes file type identifiers to canonical qualified file type identities.
 
 TopMark also normalizes file type filename rules to canonical POSIX-style registry matching rules.
 Exact-basename rules are preserved, while relative tail-subpath rules are stored and emitted using

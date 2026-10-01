@@ -406,8 +406,9 @@ bom_before_shebang = "remove_bom"
 mixed_line_endings = "preserve"
 ```
 
-Local keys such as `python` are also accepted when unambiguous, but the effective configuration uses
-canonical qualified keys such as `topmark:python`. Example using local key:
+Local identifiers such as `python` are also accepted when unambiguous, but the effective
+configuration uses canonical qualified file type identities such as `topmark:python`. Example using
+a local identifier:
 
 ```toml
 [tool.topmark.policy_by_type."python"]

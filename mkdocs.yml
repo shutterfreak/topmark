@@ -171,12 +171,12 @@ plugins:
 
 nav:
   - Home: index.md
-  - Installation: install.md
+  - Installation guide: install.md
   - Usage:
       - Overview: usage/index.md
       - Getting started: usage/getting-started.md
       - Command overview: usage/cli.md
-      - Configuration discovery, precedence, and policy: usage/configuration.md
+      - User configuration: usage/configuration.md
       - Shared options: usage/shared-options.md
       - Commands:
           - check: usage/commands/check.md
@@ -233,18 +233,18 @@ nav:
           - Overview: api/internals.md
   - Development:
       - Overview: dev/index.md
-      - Terminology: terminology.md
-      - Architecture: dev/architecture.md
-      - Registry model: dev/registry-model.md
+      - Terminology and Canonical Vocabulary: terminology.md
+      - Architecture Overview: dev/architecture.md
+      - Registry Model: dev/registry-model.md
       - Plugins and extensibility: dev/plugins.md
       - Multiline header field rendering: dev/multiline-header-fields.md
       - Resolution: dev/resolution.md
       - Configuration schema: dev/configuration-schema.md
-      - Pipelines (concepts): dev/pipelines.md
-      - Pipelines (reference hub): dev/pipelines-reference.md
+      - Pipelines (Concepts): dev/pipelines.md
+      - Pipelines (Reference): dev/pipelines-reference.md
       - Protocol contracts and conformance: dev/protocol-contracts.md
       - Performance baselines: dev/performance-baselines.md
-      - API Stability: dev/api-stability.md
+      - API stability and snapshot policy: dev/api-stability.md
       - Machine-readable formats: dev/machine-formats.md
       - Documentation pipeline and reference hygiene: dev/documentation-pipeline.md
       - Documentation conventions: dev/documentation-conventions.md

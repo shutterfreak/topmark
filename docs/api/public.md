@@ -196,8 +196,8 @@ run: api.RunResult = api.check(
 
 API overlays, TOML configuration, CLI filters, and effective runtime policy resolution all share
 identical file-type identity semantics. Local identifiers such as `"python"` are also accepted when
-unambiguous. Internally, TopMark normalizes identifiers to canonical qualified keys such as
-`"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
+unambiguous. Internally, TopMark normalizes identifiers to canonical qualified file type identities
+such as `"topmark:python"` before filtering, resolution, policy evaluation, and binding lookup.
 
 Public API execution follows the same architecture as the CLI: immutable configuration, pipeline
 selection, runtime-option construction, processing-context execution, reduction into durable
@@ -375,8 +375,8 @@ TOML-resolution and draft-building portion of this process via
 File type identifiers may be provided either as a local identifier (`"python"`) or as a qualified
 identifier (`"topmark:python"`).
 
-Internally, TopMark normalizes identifiers to canonical qualified keys before filtering, resolution,
-policy evaluation, and binding lookup.
+Internally, TopMark normalizes identifiers to canonical qualified file type identities before
+filtering, resolution, policy evaluation, and binding lookup.
 
 Registry-facing APIs resolve identifiers using
 \[`FileTypeRegistry.resolve_filetype_id(...)`\][topmark.registry.filetypes.FileTypeRegistry.resolve_filetype_id],

@@ -91,7 +91,7 @@ Bindings are resolved independently from file type and processor registration.
 
 ### Qualified key
 
-The canonical internal identifier for a file type.
+The canonical internal identifier for a file type or header processor.
 
 Format:
 
@@ -104,6 +104,9 @@ Example:
 ```text
 topmark:python
 ```
+
+When referring to a user-supplied file type value, use **qualified file type identifier** to
+distinguish it from the `qualified_key` fields emitted by registry and machine-readable payloads.
 
 ### Local identifier
 
