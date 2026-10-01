@@ -19,54 +19,12 @@ TopMark runtime configuration may be provided through:
 - CLI overrides
 - API overlays
 
-Configuration is resolved through layered discovery, normalization, and precedence rules.
-Higher-precedence layers override lower-precedence layers.
-
-Project-chain discovery starts from a discovery anchor: the first input path, or the current working
-directory when no input path is provided. That anchor is resolved before TopMark walks upward
-looking for project configuration files, so symlinked working directories or input anchors follow
-their filesystem targets for discovery.
-
-For file-backed configuration sources, TopMark determines configuration-source identity using the
-resolved configuration-file target. Symlink spellings are not preserved for precedence, scope, or
-applicability evaluation.
-
-Configuration-source identity is distinct from processing-target identity. The hard-link processing
-policy used by runtime file-processing commands such as `check`, `strip`, and `probe` does not
-affect configuration discovery, configuration precedence, scope evaluation, or applicability
-evaluation.
+Configuration is resolved through layered discovery, normalization, and precedence rules; a
+higher-precedence layer overrides a lower-precedence layer. For the complete discovery order,
+discovery-anchor behavior, and configuration-source identity contract, see
+[Configuration discovery, precedence, and policy](../configuration/discovery.md).
 
 {% include-markdown "\_snippets/terminology.md" %}
-
-______________________________________________________________________
-
-## Configuration-source identity
-
-TopMark evaluates file-backed configuration sources using configuration-source identity rather than
-invocation spelling.
-
-Examples such as:
-
-```text
-real/topmark.toml
-link-to-topmark.toml
-```
-
-may refer to the same configuration source.
-
-Configuration precedence, scope evaluation, layered configuration export, and machine-readable
-configuration provenance operate on the resolved configuration-file target. If multiple discovered
-or explicit entries resolve to the same configuration-source identity, TopMark keeps the
-highest-precedence occurrence and reports that source once in layered provenance. This prevents one
-physical configuration file from contributing multiple layers through different path spellings or
-discovery paths.
-
-> [!NOTE]
->
-> This behavior mirrors the processing-path contract used for runtime file processing, but the two
-> identity systems are evaluated independently. Configuration-source identity governs configuration
-> loading and precedence, while processing-target identity governs runtime file-processing behavior
-> such as path selection and hard-link policy enforcement.
 
 ______________________________________________________________________
 
@@ -158,7 +116,7 @@ Example using local identifiers:
 include_file_types = ["python", "markdown"]
 ```
 
-Equivalent configuration using canonical qualified keys:
+Equivalent configuration using canonical qualified file type identifiers:
 
 ```toml
 [files]
@@ -189,7 +147,7 @@ Example using a local identifier:
 header_mutation_mode = "update_only"
 ```
 
-Equivalent configuration using canonical qualified keys:
+Equivalent configuration using canonical qualified file type identifiers:
 
 ```toml
 [policy_by_type."topmark:python"]

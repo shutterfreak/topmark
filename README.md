@@ -34,10 +34,9 @@ It helps teams avoid fragile one-off scripts by providing:
 - layered configuration and policy controls;
 - dry-run-by-default safety;
 - stable CI-friendly exit codes;
-- machine-readable output formats with stable cross-platform path serialization;
+- machine-readable output with stable cross-platform path serialization;
 - transparent file-type resolution diagnostics;
-- deterministic filesystem-identity evaluation, configuration discovery, and configuration-source
-  resolution;
+- deterministic configuration discovery and filesystem processing;
 - configuration, registry, and file-resolution introspection commands;
 - and a public Python API for automation and integration.
 
@@ -107,8 +106,7 @@ ______________________________________________________________________
 
 TopMark started from a simple need: manage consistent file headers in multi-language codebases
 without relying on brittle custom scripts. It began with Python files, expanded to Markdown
-documentation, and matured through the 0.x series into a general-purpose CLI for polyglot
-repositories.
+documentation, and matured into a general-purpose CLI for polyglot repositories.
 
 TopMark is useful when you need to:
 
@@ -136,32 +134,6 @@ Full documentation is hosted on **Read the Docs**:\
 This README provides a compact overview for GitHub and PyPI. Detailed usage, configuration,
 command-reference, API, CI/CD, and contributor documentation live in the generated documentation
 site.
-
-______________________________________________________________________
-
-## Features
-
-- Detect, insert, update, validate, and remove file headers across multiple file types
-- Dry-run by default, with explicit `--apply` required for mutation
-- Comment-aware rendering for line and block comment styles
-- Preserves standard newline styles, shebangs, BOMs, and file-specific comment rules
-- Idempotent behavior designed for repeatable CI and repository automation
-- Layered configuration via `topmark.toml`, `pyproject.toml`, user config, explicit config files,
-  and CLI overrides
-- Deterministic configuration-source identity and layered provenance reporting
-- Policy controls for insertion, update, empty-file behavior, BOM-before-shebang remediation,
-  file-type filtering, and content probing
-- Resolution diagnostics with `topmark probe`
-- Deterministic filesystem-identity evaluation, processing-path selection, and hard-link safety
-- Layered configuration inspection with `topmark config dump --show-layers`
-- Registry introspection with `topmark registry filetypes`, `topmark registry processors`, and
-  `topmark registry bindings`
-- Machine-readable JSON, NDJSON, and Markdown output where supported
-- Stable exit-code contracts for CI and scripting
-- Pre-commit, CI, and Git hook friendly
-- Public Python API for programmatic access to all CLI commands
-- Extensible registry and processor architecture for custom file types and header processors
-- Strictly typed Python implementation using Pyright
 
 ______________________________________________________________________
 
@@ -277,21 +249,11 @@ topmark config dump --show-layers
 topmark registry filetypes
 ```
 
-TopMark evaluates filesystem identity before runtime processing. Filesystem-identity normalization
-resolves equivalent path spellings, such as symlink spellings, to the selected processing path used
-for runtime processing, machine-readable output, and generated filesystem-related header metadata.
-Hard-link policy is evaluated as a processing-target eligibility check: if multiple selected paths
-refer to the same filesystem object through hard links, TopMark reports each affected path
-independently and blocks processing for the hard-link group.
-
-Configuration discovery is evaluated before runtime filesystem processing. For commands that process
-filesystem inputs, project-chain discovery starts from the resolved discovery anchor derived from
-the first selected input path when available, or from the current working directory otherwise.
-
 All available commands, shared options, output formats, machine-readable payload contracts, STDIN
-behavior, and exit codes are documented in:
+behavior, and exit codes are documented in the hosted documentation:
 
 - [Command-line interface (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/cli/)
+- [Shared options (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/shared-options/)
 - [Machine-readable output (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/machine-output/)
 - [Command reference (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/commands/check/)
 - [Exit codes (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/exit-codes/)
@@ -306,7 +268,6 @@ TopMark uses a small, stable set of exit codes for automation:
 - `USAGE_ERROR (64)` - CLI usage error
 - invalid command/option combinations, positional paths on file-agnostic commands, and unsupported
   STDIN modes are reported as usage errors
-- `CONFIG_ERROR (78)` - configuration error
 
 Exit code `2` is reserved for Click-owned parser-level usage errors, such as unknown commands,
 unknown options or invalid option values.

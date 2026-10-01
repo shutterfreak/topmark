@@ -140,7 +140,7 @@ TopMark reserves the namespace `topmark` (the internal constant
 Note: `namespace` is **mandatory** for both file types and processors. The built-in namespace
 `topmark` is reserved for TopMark-provided types.
 
-TopMark normalizes file type identifiers to canonical qualified keys of the form
+TopMark normalizes file type identifiers to canonical qualified file type identities of the form
 `<namespace>:<local_key>`.
 
 TopMark accepts both:

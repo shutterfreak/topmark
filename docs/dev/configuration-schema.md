@@ -65,8 +65,8 @@ File type identifiers in TOML configuration may use either:
 - local identifiers such as `python`
 - canonical qualified file type identities such as `topmark:python`
 
-TopMark normalizes identifiers to canonical qualified keys during configuration normalization before
-resolver, filtering, policy, and binding evaluation.
+TopMark normalizes identifiers to canonical qualified file type identities during configuration
+normalization before resolver, filtering, policy, and binding evaluation.
 
 Local identifiers are accepted only when unambiguous in the effective composed registry.
 
