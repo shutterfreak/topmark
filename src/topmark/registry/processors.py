@@ -25,18 +25,13 @@ Notes:
       from explicit built-in bindings.
     * The canonical identity-oriented processor view is keyed by canonical
       processor key and exposed via `as_mapping()`.
-    * When the environment variable ``TOPMARK_VALIDATE`` is set to a truthy
-      value (``1``, ``true``, ``yes``), lightweight developer validations run
-      on the composed processor mapping.
 """
 
 from __future__ import annotations
 
-import os
 from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
-from typing import Final
 
 from topmark.core.errors import DuplicateProcessorKeyError
 from topmark.core.errors import DuplicateProcessorRegistrationError
@@ -52,30 +47,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from topmark.processors.base import HeaderProcessor
-
-
-_validation_done: bool = False
-_VALIDATION_ENV: Final = "TOPMARK_VALIDATE"
-
-
-def _dev_validate_processors(proc_map: Mapping[str, ProcessorDefinition]) -> None:
-    """Run lightweight developer validations when TOPMARK_VALIDATE is enabled.
-
-    The current checks are intentionally minimal and primarily act as a guard
-    rail during development while the registry model is being refactored.
-
-    Args:
-        proc_map: Composed processor-definition mapping to validate.
-    """
-    global _validation_done
-    if _validation_done:
-        return
-    if os.getenv(_VALIDATION_ENV, "").lower() not in {"1", "true", "yes"}:
-        return
-
-    # Intentionally lightweight: avoid importing other registries or concrete processors
-    # to prevent type-check-time import cycles.
-    _validation_done = True
 
 
 def _validate_processor_class(processor_class: object) -> type[HeaderProcessor]:
@@ -203,8 +174,6 @@ class HeaderProcessorRegistry:
                     new_class=owner_label(proc_cls),
                 )
             seen[qualified_key] = proc_cls
-
-        _dev_validate_processors(base)
 
         cls._cache_by_qualified_key = MappingProxyType(base)
         return dict(base)

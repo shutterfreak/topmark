@@ -267,6 +267,8 @@ ______________________________________________________________________
 - Replaced TopMark's custom API-page and navigation generation with `api-autonav`, which now
   generates the complete module reference, including `topmark.api` and `topmark.registry`, while
   retaining TopMark-owned CLI/configuration exports and docstring-reference hygiene.
+- Replaced the obsolete `TOPMARK_VALIDATE` runtime hook with ordinary parameterized registry and
+  processor-placement tests, so these invariants run in the normal test and coverage suites.
 
 ### Removed - Unreleased
 

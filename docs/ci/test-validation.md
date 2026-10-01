@@ -89,7 +89,7 @@ markers so exclusions remain visible in the central pytest configuration.
 | Marker                | Purpose                                                                                                                                                             | CI expectation                                       |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                                                                                           | Run where the host filesystem can exercise them.     |
-| `dev_validation`      | Developer validation tests for internal invariants such as registry integrity, test-layout consistency, and pytest marker hygiene.                                  | Included in normal test runs.                        |
+| `dev_validation`      | Developer validation tests for repository-internal invariants such as test-layout consistency and pytest marker hygiene.                                            | Included in normal test runs.                        |
 | `exit_code`           | Tests that validate the CLI exit-code contract.                                                                                                                     | Included in normal test runs.                        |
 | `hypothesis_slow`     | Long-running property tests.                                                                                                                                        | Skipped in CI unless explicitly selected.            |
 | `integration`         | Environment-dependent integration checks that exercise interactions with external tooling, the operating system, or shell features (for example, shell completion). | Run selectively where the environment supports them. |
@@ -98,14 +98,17 @@ ______________________________________________________________________
 
 ## Developer Validation Tests
 
-The `dev_validation` marker identifies tests that check internal invariants rather than user-facing
-behavior.
+The `dev_validation` marker identifies repository-internal invariant tests rather than user-facing
+behavior. Run them explicitly when working on repository tooling or test infrastructure:
+
+```bash
+pytest -m dev_validation
+# or run the QA session and select the marker:
+nox -s qa -p 3.14 -- -m dev_validation
+```
 
 Typical examples live under `tests/dev_validation/` and include:
 
-- registry consistency between processors and file types;
-- sanity checks for internal plugin mappings;
-- placement-strategy checks for XML/HTML-like processors;
 - test-package layout checks that keep Python test directories importable by absolute package name.
 - pytest marker declarations and marker-expression consistency.
 
@@ -116,11 +119,12 @@ import pytest
 
 
 @pytest.mark.dev_validation
-def test_registered_processors_map_to_existing_filetypes() -> None: ...
+def test_pytest_markers_are_declared() -> None: ...
 ```
 
-These tests are part of the normal test suite. Developer-validation checks are part of the normal
-test path and do not require a dedicated CI job.
+These tests are part of the normal test suite and do not require a dedicated CI job. Registry and
+processor-placement invariants are ordinary parameterized tests: they run in the normal test suite,
+are included in its coverage report, and do not require a runtime environment variable.
 
 ______________________________________________________________________
 
@@ -215,45 +219,6 @@ CI keeps pytest execution serial inside each job even though local parallel exec
 The workflow already uses job-level parallelism for the supported Python matrix and the
 cross-platform filesystem checks. Keeping per-job pytest execution serial makes coverage artifacts,
 release-gate diagnostics, and failure logs easier to compare across runs.
-
-______________________________________________________________________
-
-## Runtime Validation Hooks
-
-Some internal validation checks can also be enabled at runtime with `TOPMARK_VALIDATE=1`.
-
-```bash
-TOPMARK_VALIDATE=1 pytest -q
-# or when running the CLI during development
-TOPMARK_VALIDATE=1 topmark registry processors --output-format json
-# or:
-pytest -m dev_validation
-# or run the QA session and select the marker:
-nox -s qa -p 3.14 -- -m dev_validation
-```
-
-Runtime validation is intended for development and debugging. It should remain lightweight and must
-not introduce end-user overhead unless explicitly enabled.
-
-______________________________________________________________________
-
-## What Developer Validation Checks
-
-Developer-validation checks include:
-
-- **Registry integrity**: every registered header processor maps to an existing canonical file type
-  identity.
-- **Placement strategy for XML/HTML**: processors based on `XmlHeaderProcessor` must signal the
-  character-offset strategy by returning `NO_LINE_ANCHOR` from `get_header_insertion_index()`.
-- **Test package layout**: every directory under `tests/` that contains Python modules must include
-  an `__init__.py` marker so test modules have stable absolute package names.
-- **Pytest marker hygiene**: every custom marker used by the test suite is declared in
-  `pyproject.toml`, and marker expressions referenced by project tooling remain aligned with the
-  declared marker set.
-
-These checks avoid accidental miswiring, such as registering a processor under a typo key, help
-prevent XML/HTML-like processors from regressing into line-based insertion behavior, and keep the
-test suite aligned with TopMark's absolute-import convention.
 
 ______________________________________________________________________
 
