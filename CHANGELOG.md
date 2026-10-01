@@ -107,6 +107,8 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Avoid duplicate project-owned hosted-route validation in the `release_full` Nox session while
+  retaining the strict normal and link-check documentation builds.
 - Enabled Ruff's function-annotation checks across the repository, tightened MkDocs hook and test
   fixture types, and retained narrow suppressions for deliberately unannotated API snapshot
   fixtures.

@@ -643,8 +643,17 @@ def links_site(session: nox.Session) -> None:
     Note:
       - This session is network-dependent.
       - It is intentionally separate from `links` (which is pre-build and fast).
+      - Pass ``-- --skip-project-links`` when a preceding `docs` session has already validated
+        project-owned hosted routes.
     """
     session.install(DEPS_DOCS)
+
+    allowed_posargs: frozenset[str] = frozenset({"--skip-project-links"})
+    unknown_posargs: set[str] = set(session.posargs) - allowed_posargs
+    if unknown_posargs:
+        unknown: str = ", ".join(sorted(unknown_posargs))
+        raise ValueError(f"links_site received unsupported argument(s): {unknown}")
+    skip_project_links: bool = "--skip-project-links" in session.posargs
 
     # Build docs strictly so generated pages exist.
     session.run(
@@ -656,13 +665,16 @@ def links_site(session: nox.Session) -> None:
         external=True,
     )
 
-    session.run(
-        "python",
-        CHECK_PROJECT_DOCS_LINKS_SCRIPT,
-        "--site-dir",
-        "site",
-        "--stats",
-    )
+    if skip_project_links:
+        session.log("Skipping project-route validation; it was already run by docs.")
+    else:
+        session.run(
+            "python",
+            CHECK_PROJECT_DOCS_LINKS_SCRIPT,
+            "--site-dir",
+            "site",
+            "--stats",
+        )
 
     # Lychee can take a directory and will scan supported formats within.
     site_dir: str = str(pathlib.Path("site").resolve())
@@ -952,6 +964,8 @@ def release_full(session: nox.Session) -> None:
         "nox",
         "-s",
         "links_site",
+        "--",
+        "--skip-project-links",
         external=True,
     )
     session.run(
