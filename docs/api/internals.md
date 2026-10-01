@@ -46,9 +46,8 @@ See also:
 - [Machine-readable output](../usage/machine-output.md)
 - [Terminology and Canonical Vocabulary](../terminology.md)
 
-This section provides generated per-module reference pages (see `tools/docs/gen_api_pages.py`). They
-are not added individually to the navigation in order to keep the sidebar compact. Use the search
-box to find symbols, or browse the generated paths under `/api/internals/topmark/...`.
+This section provides generated per-module reference pages. Use the search box to find symbols, or
+browse the generated paths under `/api/internals/topmark/...`.
 
 The generated internals span multiple architectural layers:
 
@@ -70,22 +69,9 @@ semantics are documented in
 [Configuration discovery](../configuration/discovery.md#configuration-source-identity), and
 [Terminology and Canonical Vocabulary](../terminology.md).
 
-These pages are generated automatically during the MkDocs build and should not be edited manually.
-
-The generated reference pages reflect internal implementation structure and may evolve more
-frequently than the stable public API surface or documented machine-readable contracts.
-
-Any changes should be made in the corresponding Python source files under `src/`.
+> [!INFO]
+>
+> The generated reference pages mirror TopMark's implementation structure and may evolve more
+> frequently than the stable public API surface or documented machine-readable contracts.
 
 Browse the generated internals index: [`topmark` internals](internals/topmark/index.md)
-
-Internal modules are documented for maintainers and advanced integrations, but they intentionally
-evolve more flexibly than:
-
-- `topmark.api`
-- CLI contracts
-- machine-readable JSON and NDJSON contracts
-- canonical file type identity semantics
-
-You can also browse the full generated tree from the sidebar under **API → Internals → Reference
-(generated)**.

@@ -12,7 +12,7 @@
 
 This module centralizes small, deterministic helpers used by:
 - `tools/docs/hooks.py` (MkDocs simple-hooks)
-- `tools/docs/gen_api_pages.py` (mkdocs-gen-files script)
+- `tools/docs/gen_cli_reference_pages.py` (mkdocs-gen-files script)
 
 It intentionally contains small utilities only:
 - Markdown link/reference hygiene helpers (including mdformat bracket unescape)
@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import os
 import re
-from pathlib import Path
 from re import Match
 from typing import TYPE_CHECKING
 from typing import Any
@@ -50,7 +49,6 @@ if TYPE_CHECKING:
 __all__ = (
     "MAX_INLINE_SYMBOLS",
     "NONLINKED_SYMBOLS",
-    "PUBLIC_API_PREFIXES",
     "apply_outside_fenced_blocks",
     "context_lines",
     "env_flag",
@@ -60,22 +58,12 @@ __all__ = (
     "format_line_numbers",
     "format_repo_path",
     "load_nonlinked_symbols",
-    "public_ref_doc_for_symbol",
-    "rel_href",
     "should_enforce_link",
     "strip_repo_prefix",
     "unescape_reference_link_text",
     "wrap_actions_blocks_with_raw",
 )
 
-
-# ---------- config: public API surfaces ----------
-
-# Modules/prefixes to skip from internals (documented on the Public API page)
-PUBLIC_API_PREFIXES: tuple[str, ...] = (
-    "topmark.api",
-    "topmark.registry",
-)
 
 # ---------- helpers: docstring symbol reference hygiene ----------
 
@@ -579,39 +567,3 @@ def context_lines(
     if source_file:
         out.append(f"Source file (context): {source_file}")
     return out
-
-
-# ---------- helpers: docs link helpers ----------
-
-
-def rel_href(from_doc: str, to_doc: str) -> str:
-    """Compute a POSIX relative href from one docs file to another.
-
-    Args:
-        from_doc: Docs-relative source path (e.g. `dev/architecture.md`).
-        to_doc: Docs-relative target path.
-
-    Returns:
-        A POSIX-style relative href (slashes), suitable for Markdown links.
-    """
-    from_dir: str = str(Path(from_doc).parent) or "."
-    rel: str = os.path.relpath(to_doc, start=from_dir)
-    return rel.replace(os.sep, "/")
-
-
-def public_ref_doc_for_symbol(sym: str) -> str | None:
-    """Return the public reference doc for a symbol, if it belongs to a public surface.
-
-    Uses `PUBLIC_API_PREFIXES` and the convention that public reference pages live under
-    `api/reference/<module>.md`.
-
-    Args:
-        sym: Fully-qualified symbol name.
-
-    Returns:
-        Docs-relative reference page path when the symbol is under a public surface; otherwise None.
-    """
-    for prefix in PUBLIC_API_PREFIXES:
-        if sym == prefix or sym.startswith(prefix + "."):
-            return f"api/reference/{prefix}.md"
-    return None

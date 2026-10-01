@@ -39,8 +39,8 @@ from typing import Final
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-from tools.docs.gen_api_pages import FilesystemDocsWriter
-from tools.docs.gen_api_pages import main as generate_api_pages
+from tools.docs.gen_cli_reference_pages import FilesystemDocsWriter
+from tools.docs.gen_cli_reference_pages import main as generate_api_pages
 
 if TYPE_CHECKING:
     from urllib.parse import SplitResult
@@ -94,10 +94,13 @@ def _write_staging_config() -> None:
     config_text: str = SOURCE_CONFIG.read_text(encoding="utf-8")
     source_paths: Final[str] = '          paths: ["src"]'
     staging_paths: Final[str] = '          paths: ["../src"]'
-    if source_paths not in config_text:
-        raise RuntimeError("Could not locate mkdocstrings source paths in mkdocs.yml")
+    source_modules: Final[str] = '      modules: ["src/topmark"]'
+    staging_modules: Final[str] = '      modules: ["../src/topmark"]'
+    if source_paths not in config_text or source_modules not in config_text:
+        raise RuntimeError("Could not locate API source paths in mkdocs.yml")
 
     config_text = config_text.replace(source_paths, staging_paths, 1)
+    config_text = config_text.replace(source_modules, staging_modules, 1)
     plugins_marker: Final[str] = "plugins:\n"
     if plugins_marker not in config_text:
         raise RuntimeError("Could not locate the plugins section in mkdocs.yml")

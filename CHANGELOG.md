@@ -264,6 +264,9 @@ ______________________________________________________________________
   or TOML, public API, configuration-export, JSON/NDJSON, or Python model values. `--write-mode` now
   converts to a private `CliWriteMode` boundary enum before runtime option assembly maps it onto the
   existing `OutputTarget` and `FileWriteStrategy` types.
+- Replaced TopMark's custom API-page and navigation generation with `api-autonav`, which now
+  generates the complete module reference, including `topmark.api` and `topmark.registry`, while
+  retaining TopMark-owned CLI/configuration exports and docstring-reference hygiene.
 
 ### Removed - Unreleased
 
