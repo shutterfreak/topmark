@@ -121,7 +121,7 @@ dependencies = [
   ]
   docs = [
     # Generate API-reference pages and navigation from Python modules:
-    "mkdocs-api-autonav>=0.3.1,<0.4.0",
+    "mkdocs-api-autonav>=0.3.1,<0.5.0",
     # Symbol cross-references in Markdown:
     "mkdocs-autorefs>=1.4.3,<2.0.0",
     # Programmatically generate documentation pages:
