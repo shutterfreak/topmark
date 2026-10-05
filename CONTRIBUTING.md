@@ -453,7 +453,15 @@ Follow the Conventional Commits specification:
 - `feat(cli): add --skip-unsupported flag`
 - `fix(renderer): avoid duplicate header insertion`
 
-Keep messages short (≤72 chars) and use the body to explain *why*.
+Keep titles short (≤72 chars) and use the body to explain *why*. For a non-trivial message, pass the
+title and each body paragraph as separate `-m` arguments. This preserves paragraph breaks; do not
+write literal `\n` escape sequences in the message.
+
+```bash
+git commit \
+  -m "docs: clarify contributor setup" \
+  -m "Explain the required pre-commit reinstall after changing Python."
+```
 
 The `commit-msg` hook validates the allowed type and structural punctuation locally. GitHub also
 validates pull request titles using the same allowed types, including after title edits. Neither
