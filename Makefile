@@ -9,31 +9,32 @@
 # topmark:header:end
 
 .DEFAULT_GOAL := help
-NOX ?= nox
+UV ?= uv
+# Nox is a project development dependency.  Running it through uv keeps its
+# version and the nox-uv plugin aligned with the project's locked dev extra.
+NOX ?= $(UV) run --extra dev nox
 NOX_FLAGS ?= --no-verbose       # keep quiet by default; CI can override
 PYTEST_PAR ?= # e.g. set PYTEST_PAR="-n auto" or "-n 4" for pytest-capable targets
 PY ?= python
 VENV := .venv
-VENV_BIN := $(VENV)/bin
-UV ?= uv
 
 PUBLIC_API_JSON := tests/api/public_api_snapshot.json
 
 # Simple tool presence checks
-.PHONY: check-venv
-check-venv:
-	@command -v $(NOX) >/dev/null 2>&1 || \
-		(echo "❌ nox not found. Install with: pipx install nox" && exit 1)
+.PHONY: check-uv
+check-uv:
+	@command -v $(UV) >/dev/null 2>&1 || \
+		(echo "❌ uv not found. Install uv for your platform and ensure it is on PATH. See CONTRIBUTING.md." && exit 1)
+
+.PHONY: check-nox
+check-nox: check-uv
+	@$(NOX) --version >/dev/null 2>&1 || \
+		(echo "❌ Nox could not run through the project's dev extra. See CONTRIBUTING.md for setup help." && exit 1)
 
 .PHONY: check-lychee
 check-lychee:
 	@command -v lychee >/dev/null 2>&1 || \
-		(echo "❌ lychee not found. Install with: brew install lychee" && exit 1)
-
-.PHONY: check-uv
-check-uv:
-	@$(UV) --version >/dev/null 2>&1 || \
-		(echo "❌ uv is unavailable or cannot run. Install uv and ensure it is on PATH." && exit 1)
+		(echo "❌ lychee not found. Install Lychee for your platform and ensure it is on PATH. See CONTRIBUTING.md." && exit 1)
 
 .PHONY: help
 help:
@@ -85,27 +86,30 @@ help:
 	@echo "  api-snapshot-update      Regenerate the structured public API snapshot (interactive)"
 	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
 	@echo ""
-	@echo "Local editor venv (optional, for Pyright/import resolution in IDE):"
-	@echo "  venv            Create .venv via uv"
+	@echo "Local editor environment (optional, for Pyright/import resolution in IDE):"
+	@echo "  venv            Create an empty .venv via uv (sync targets create it when needed)"
 	@echo "  venv-sync-dev   Sync dev/test/typing extras into .venv"
 	@echo "  venv-sync-all   Sync dev/test/typing/docs extras into .venv"
-	@echo "  venv-sync-docs  Sync docs extras into .venv (removes DEV-only packages from .venv)"
-	@echo "  venv-sync-zensical  Sync docs and Zensical-pilot extras into .venv"
+	@echo "  venv-sync-docs  Sync docs extras into .venv (removes dev/test/typing packages)"
+	@echo "  venv-sync-zensical  Sync docs and Zensical-pilot extras into .venv (removes dev/test/typing packages)"
+	@echo "  venv-sync-all-zensical  Sync dev/test/typing/docs and Zensical-pilot extras into .venv"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
 	@echo "UV project lock workflow:"
 	@echo "  uv-lock         Generate or refresh uv.lock from pyproject.toml"
 	@echo "  uv-lock-upgrade Refresh uv.lock with dependency upgrades"
+	@echo ""
+	@echo "Setup and platform notes: see CONTRIBUTING.md"
 
 .PHONY: test
-test: check-venv
+test: check-nox
 	@echo "Running tests via nox..."
 	# We pass -- followed by the variable.
 	# If PYTEST_PAR is empty, it does nothing; if it has "-n auto", pytest receives it.
 	$(NOX) $(NOX_FLAGS) -s qa -- $(PYTEST_PAR)
 
 .PHONY: coverage
-coverage: check-venv
+coverage: check-nox
 	$(NOX) $(NOX_FLAGS) -s coverage -- $(PYTEST_PAR)
 
 .PHONY: coverage-erase
@@ -113,23 +117,23 @@ coverage-erase:
 	@rm -rf .coverage coverage.xml coverage.json htmlcov .coverage.*
 
 .PHONY: verify
-verify: check-venv
+verify: check-nox
 	@echo "Running non-destructive checks via nox..."
 	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s code_hygiene -s links -s docs
 	@echo "All quality checks passed!"
 
 .PHONY: pre-pr
-pre-pr: check-venv
+pre-pr: check-nox
 	@echo "Running recommended local pre-PR validation via nox..."
 	$(NOX) $(NOX_FLAGS) -s pre_pr -- $(PYTEST_PAR)
 
 .PHONY: release-check
-release-check: check-venv
+release-check: check-nox
 	@echo "Running release gate (deterministic) via nox..."
 	$(NOX) $(NOX_FLAGS) -s release_check -- $(PYTEST_PAR)
 
 .PHONY: package-check
-package-check: check-venv
+package-check: check-nox
 	@echo "Running packaging sanity checks via nox..."
 	$(NOX) $(NOX_FLAGS) -s package_check
 
@@ -142,7 +146,7 @@ JOBS ?= 5
 RELEASE_PYTHONS = $(shell $(NOX) -l | awk '{print $$1}' | grep '^qa_api-' | cut -d'-' -f2 | sort -V)
 
 .PHONY: release-full
-release-full: check-venv check-lychee
+release-full: check-nox check-lychee
 	@echo "Running full release gate for versions: $(RELEASE_PYTHONS) (serial gates + parallel Python matrix)..."
 	# Serial, non-matrix gates first:
 	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s code_hygiene -s docs -s links_all -s package_check
@@ -150,41 +154,41 @@ release-full: check-venv check-lychee
 	$(MAKE) -j $(JOBS) $(addprefix release-qa-api-,$(RELEASE_PYTHONS))
 
 # Per-Python release gate that reuses one env for: pytest + api snapshot + pyright
-release-qa-api-%: check-venv
+release-qa-api-%: check-nox
 	@echo "QA+API snapshot (one env) for Python $*"
 	$(NOX) $(NOX_FLAGS) -s qa_api -p $* -- $(PYTEST_PAR)
 
 .PHONY: lint
-lint: check-venv
+lint: check-nox
 	$(NOX) $(NOX_FLAGS) -s lint
 
 .PHONY: lint-fixall
-lint-fixall: check-venv
+lint-fixall: check-nox
 	$(NOX) $(NOX_FLAGS) -s lint_fixall
 
 .PHONY: format-check
-format-check: check-venv
+format-check: check-nox
 	$(NOX) $(NOX_FLAGS) -s format_check
 
 .PHONY: format
-format: check-venv
+format: check-nox
 	$(NOX) $(NOX_FLAGS) -s format
 
 .PHONY: format-docstrings
 format-docstrings: check-uv
 	@echo "Auto-formatting docstrings (settings from pyproject.toml)..."
-	$(VENV_BIN)/pydocstringformatter --write src/topmark/ tools/
+	$(UV) run --extra dev pydocstringformatter --write src/topmark/ tools/
 
 .PHONY: docstring-links
-docstring-links: check-venv
+docstring-links: check-nox
 	$(NOX) $(NOX_FLAGS) -s docstring_links
 
 .PHONY: docs-hygiene
-docs-hygiene: check-venv
+docs-hygiene: check-nox
 	$(NOX) $(NOX_FLAGS) -s docs_hygiene
 
 .PHONY: code-hygiene
-code-hygiene:
+code-hygiene: check-nox
 	$(NOX) $(NOX_FLAGS) -s code_hygiene
 
 .PHONY: hygiene
@@ -192,29 +196,29 @@ hygiene: docs-hygiene code-hygiene
 
 # Run pytest directly (no nox) with the current interpreter
 .PHONY: pytest
-pytest:
+pytest: check-uv
 	@echo "Running pytest locally -- skipping Hypothesis slow tests"
-	pytest $(PYTEST_PAR) -m "not hypothesis_slow" -q
+	$(UV) run --extra dev --extra typing --extra test pytest $(PYTEST_PAR) -m "not hypothesis_slow" -q
 
 .PHONY: pytest-full
-pytest-full:
+pytest-full: check-uv
 	@echo "Running all pytest locally -- including Hypothesis slow tests"
-	pytest $(PYTEST_PAR) -q
+	$(UV) run --extra dev --extra typing --extra test pytest $(PYTEST_PAR) -q
 
 .PHONY: property-test
-property-test: check-venv
+property-test: check-nox
 	$(NOX) $(NOX_FLAGS) -s property_test
 
 .PHONY: perf-baseline
-perf-baseline: check-venv
+perf-baseline: check-nox
 	$(NOX) $(NOX_FLAGS) -s perf_baseline
 
 .PHONY: docs-build
-docs-build: check-venv
+docs-build: check-nox
 	$(NOX) $(NOX_FLAGS) -s docs
 
 .PHONY: docs-serve
-docs-serve: check-venv
+docs-serve: check-nox
 	$(NOX) $(NOX_FLAGS) -s docs_serve
 
 .PHONY: docs-clean
@@ -222,15 +226,15 @@ docs-clean:
 	rm -rf site
 
 .PHONY: zensical-prepare
-zensical-prepare:
-	$(VENV_BIN)/python -m tools.docs.prepare_zensical_docs
+zensical-prepare: check-uv
+	$(UV) run --extra docs --extra zensical $(PY) -m tools.docs.prepare_zensical_docs
 
 .PHONY: zensical-build
-zensical-build: check-venv
+zensical-build: check-nox
 	$(NOX) $(NOX_FLAGS) -s zensical
 
 .PHONY: zensical-serve
-zensical-serve: check-venv
+zensical-serve: check-nox
 	$(NOX) $(NOX_FLAGS) -s zensical_serve
 
 .PHONY: zensical-clean
@@ -238,35 +242,35 @@ zensical-clean:
 	rm -rf .zensical
 
 .PHONY: links
-links: check-lychee
+links: check-nox check-lychee
 	$(NOX) $(NOX_FLAGS) -s links
 
 .PHONY: links-src
-links-src: check-lychee
+links-src: check-nox check-lychee
 	$(NOX) $(NOX_FLAGS) -s links_src
 
 .PHONY: links-all
-links-all: check-lychee
+links-all: check-nox check-lychee
 	$(NOX) $(NOX_FLAGS) -s links_all
 
 .PHONY: links-site
-links-site: check-lychee
+links-site: check-nox check-lychee
 	$(NOX) $(NOX_FLAGS) -s links_site
 
 .PHONY: api-snapshot
-api-snapshot: check-venv
+api-snapshot: check-nox
 	$(NOX) $(NOX_FLAGS) -s api_snapshot
 
 # Local fast check (current interpreter only)
 .PHONY: api-snapshot-dev
-api-snapshot-dev: check-venv
-	@$(VENV_BIN)/pytest -qq tests/api/test_public_api_snapshot.py tests/api/test_api_snapshot_generator.py && \
+api-snapshot-dev: check-uv
+	@$(UV) run --extra dev --extra typing --extra test pytest -qq tests/api/test_public_api_snapshot.py tests/api/test_api_snapshot_generator.py && \
 	echo "✅ Public API snapshot unchanged."
 
 # Update snapshot (interactive)
 .PHONY: .api-snapshot-update
-.api-snapshot-update: check-venv
-	@$(VENV_BIN)/$(PY) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
+.api-snapshot-update: check-uv
+	@$(UV) run --extra dev --extra typing --extra test $(PY) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
 	@if git diff --quiet -- "$(PUBLIC_API_JSON)" ; then \
 		echo "✅ Public API snapshot unchanged: $(PUBLIC_API_JSON)"; \
 	else \
@@ -282,7 +286,7 @@ api-snapshot-update:
 
 # Fail if snapshot differs from index
 .PHONY: api-snapshot-ensure-clean
-api-snapshot-ensure-clean: check-venv
+api-snapshot-ensure-clean: check-nox
 	@if git diff --quiet -- "$(PUBLIC_API_JSON)"; then \
 		echo "✅ Public API snapshot clean: $(PUBLIC_API_JSON)"; \
 	else \
@@ -302,10 +306,12 @@ venv: check-uv
 		echo "Creating $(VENV) via uv..." && \
 		$(UV) venv $(VENV) \
 		)
-	@echo "Activate with: source $(VENV_BIN)/activate"
+	@echo "Activation is optional: uv run can execute project commands directly."
+	@echo "POSIX shells: source $(VENV)/bin/activate"
+	@echo "PowerShell: $(VENV)\\Scripts\\Activate.ps1"
 
 .PHONY: venv-sync-dev
-venv-sync-dev: venv
+venv-sync-dev: check-uv
 	$(UV) sync --extra dev --extra typing --extra test
 	@echo "Synced dev/test/typing extras into $(VENV)."
 
@@ -313,22 +319,29 @@ venv-sync-dev: venv
 # NOTE: running this will remove dev/test/typing tools which are not part of the docs environment.
 # Prefer venv-sync-all for a combined environment.
 .PHONY: venv-sync-docs
-venv-sync-docs: venv
+venv-sync-docs: check-uv
 	$(UV) sync --extra docs
 	@echo "Synced docs extras into $(VENV)."
 
 # Sync the production docs and isolated Zensical-pilot extras into the shared venv.
 .PHONY: venv-sync-zensical
-venv-sync-zensical: venv
+venv-sync-zensical: check-uv
 	$(UV) sync --extra docs --extra zensical
 	@echo "Synced docs and Zensical-pilot extras into $(VENV)."
 
 # Sync the union of dev/test/typing/docs extras into the shared venv.
 # This is the recommended target for local MkDocs development and VS Code import resolution.
 .PHONY: venv-sync-all
-venv-sync-all: venv
+venv-sync-all: check-uv
 	$(UV) sync --extra dev --extra typing --extra test --extra docs
 	@echo "Synced dev/test/typing/docs extras into $(VENV)."
+
+# Sync the union of dev/test/typing/docs/zensical extras into the shared venv.
+# This is the recommended combined environment when working on the Zensical pilot.
+.PHONY: venv-sync-all-zensical
+venv-sync-all-zensical: check-uv
+	$(UV) sync --extra dev --extra typing --extra test --extra docs --extra zensical
+	@echo "Synced dev/test/typing/docs and Zensical-pilot extras into $(VENV)."
 
 .PHONY: venv-clean
 venv-clean:

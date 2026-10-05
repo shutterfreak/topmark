@@ -27,18 +27,23 @@ ______________________________________________________________________
 
 - **Python 3.10-3.14**
 - **Git**
-- **make** (for convenience targets)
-- **uv** (install and keep it on your `PATH`)
-- **nox** (installed as part of the project extras / QA workflow)
+- **make** (for convenience targets; use Git Bash or WSL when running them on Windows)
+- **uv** (install it for your operating system and keep it on your `PATH`)
+- **Lychee** (only for the local `make links*` targets; install it for your operating system and
+  keep it on your `PATH`)
 
-The tracked `.python-version` selects Python 3.14, the newest supported version, as the default
-local development and canonical QA interpreter. The full supported range remains Python 3.10-3.14.
+Nox is a project-managed development dependency. Make targets run it through `uv`, using the locked
+`dev` extra and its matching `nox-uv` plugin; do not install it separately.
 
-Optional (for local testing across multiple versions):
+The tracked `.python-version` lists the exact supported interpreter patch releases. Pyenv selects
+Python 3.14.8 first, making it the default local-development and canonical QA interpreter. The full
+supported range remains Python 3.10-3.14.
+
+Optional, on systems using pyenv, for local testing across multiple versions:
 
 ```bash
-pyenv install 3.14.6 3.13.14 3.12.13 3.11.15 3.10.20
-pyenv local 3.14.6 3.13.14 3.12.13 3.11.15 3.10.20
+pyenv install 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
+pyenv local 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
 ```
 
 All official Python releases are available from the official
@@ -53,8 +58,7 @@ ______________________________________________________________________
 git clone https://github.com/shutterfreak/topmark.git
 cd topmark
 
-# Create the local editor environment (optional but recommended)
-make venv
+# Create and sync the local editor environment (optional but recommended)
 make venv-sync-dev
 
 # Run the recommended local pre-PR validation gate
@@ -72,7 +76,8 @@ make pytest     # supports PYTEST_PAR="-n auto"
 >
 > `.venv` is the standard local development environment for IDE integration and interactive work. It
 > is managed with `uv` and primarily exists for editor support and local tooling integration.
-> Automated validation and CI-parity checks still run through isolated `nox` environments.
+> Automated validation and CI-parity checks still run through isolated Nox environments. The
+> Makefile invokes Nox through the project's locked `dev` extra.
 
 For the full installation and development-environment setup guide, see:
 
@@ -276,10 +281,10 @@ ______________________________________________________________________
 
 ## Type Checking
 
-Run strict **Pyright** type checks via `nox`:
+Run strict **Pyright** type checks via project-managed Nox:
 
 ```bash
-nox -s qa -p 3.14
+uv run --extra dev nox -s qa -p 3.14
 ```
 
 Or run all verification checks (format, lint, links, docs):

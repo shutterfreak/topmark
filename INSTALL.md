@@ -34,9 +34,10 @@ ______________________________________________________________________
 ### Development and contribution
 
 - Git
-- `make`
-- `uv`
-- `nox`
+- `make` (use Git Bash or WSL when running Make targets on Windows)
+- `uv` (install it for your operating system and keep it on your `PATH`)
+- Lychee (only for the local `make links*` targets; install it for your operating system and keep it
+  on your `PATH`)
 - optionally `pyenv` for managing multiple Python versions
 
 TopMark supports macOS, Linux, and Windows.
@@ -111,19 +112,25 @@ cd topmark
 A project-local `.venv` is the recommended environment for editor integration and interactive
 development. `uv` manages this environment directly.
 
-Automated validation environments used by CI and quality checks are still created and managed by
-`nox` (via the `uv` backend), ensuring reproducible and isolated validation environments while
-keeping the local developer workflow simple.
+Automated validation environments used by CI and quality checks are still created and managed by Nox
+(via the `uv` backend), ensuring reproducible and isolated validation environments while keeping the
+local developer workflow simple. Nox is a project-managed development dependency: the Makefile runs
+it through `uv` using the locked `dev` extra and matching `nox-uv` plugin.
 
 ```bash
-make venv
 make venv-sync-all  # syncs dev/docs/test/typing extras into .venv
 ```
 
-Activate it:
+Activation is optional because `uv run` can execute project commands directly. To activate it:
 
 ```bash
 source .venv/bin/activate
+```
+
+In PowerShell, use:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
 To deactivate:
@@ -176,8 +183,8 @@ In practice, Pyright is usually run via `nox` sessions:
 Run QA for a specific Python version (example: 3.13):
 
 ```bash
-nox -s qa -p 3.13
-nox -s qa_api -p 3.13
+uv run --extra dev nox -s qa -p 3.13
+uv run --extra dev nox -s qa_api -p 3.13
 ```
 
 Long-running Hypothesis hardening tests (manual, opt-in):
@@ -213,12 +220,12 @@ topmark version
 
 ______________________________________________________________________
 
-## `nox` basics
+## Nox basics
 
 ```bash
-nox -l               # list sessions
-nox -s qa -p 3.12    # run QA for a single Python
-nox -s qa -- -k foo  # forward args to pytest (after --)
+uv run --extra dev nox -l               # list sessions
+uv run --extra dev nox -s qa -p 3.12    # run QA for a single Python
+uv run --extra dev nox -s qa -- -k foo  # forward args to pytest (after --)
 ```
 
 ______________________________________________________________________
