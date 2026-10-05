@@ -269,6 +269,10 @@ ______________________________________________________________________
   retaining TopMark-owned CLI/configuration exports and docstring-reference hygiene.
 - Replaced the obsolete `TOPMARK_VALIDATE` runtime hook with ordinary parameterized registry and
   processor-placement tests, so these invariants run in the normal test and coverage suites.
+- Updated the contributor toolchain workflow to run project-managed Nox through the locked `dev`
+  extra, refreshed the tracked pyenv interpreter patch releases, added a combined
+  `venv-sync-all-zensical` target, and clarified platform-neutral setup guidance for `uv`, Lychee,
+  and Windows Make usage.
 
 ### Removed - Unreleased
 
