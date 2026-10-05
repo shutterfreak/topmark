@@ -37,6 +37,8 @@ workflows rather than correctness-validation or release-gating checks.
 - [CI workflow](./ci-workflow.md) - validates repository source trees, documentation, tests, typing,
   linting, API snapshots, canonical coverage reporting through GitHub artifacts and Codecov, and
   release artifacts produced from trusted CI runs.
+- [Pull request title validation](./pull-request-title.md) - enforces Conventional Commit structure
+  for pull request titles without checking out untrusted pull-request code.
 - [Codecov coverage policy](./codecov.md) - documents the repository-level Codecov configuration,
   project-coverage comparison threshold, informational patch status, and pull request comments.
 - [Setup Python + nox action](./setup-python-nox-action.md) - documents the shared Python, uv,
@@ -83,6 +85,7 @@ Use this family of pages as follows:
 | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
 | What should I run before opening or updating a pull request?     | [Test validation](./test-validation.md)                             |
 | What runs on pull requests and pushes?                           | [CI workflow](./ci-workflow.md)                                     |
+| How are pull request titles validated?                           | [Pull request title validation](./pull-request-title.md)            |
 | How is canonical coverage generated and published?               | [CI workflow](./ci-workflow.md#artifact-handling)                   |
 | How does Codecov evaluate pull request coverage?                 | [Codecov coverage policy](./codecov.md)                             |
 | How are Python, uv, and nox bootstrapped in CI jobs?             | [Setup Python + nox action](./setup-python-nox-action.md)           |

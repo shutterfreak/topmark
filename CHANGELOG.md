@@ -273,6 +273,9 @@ ______________________________________________________________________
   extra, refreshed the tracked pyenv interpreter patch releases, added a combined
   `venv-sync-all-zensical` target, and clarified platform-neutral setup guidance for `uv`, Lychee,
   and Windows Make usage.
+- Enforced Conventional Commit structure for local commit messages and GitHub pull request titles,
+  with contributor guidance for reinstalling pre-commit after changing the default Python
+  interpreter.
 
 ### Removed - Unreleased
 

@@ -36,6 +36,7 @@ ______________________________________________________________________
 - Git
 - `make` (use Git Bash or WSL when running Make targets on Windows)
 - `uv` (install it for your operating system and keep it on your `PATH`)
+- `pre-commit` (install globally with `uv tool install pre-commit`)
 - Lychee (only for the local `make links*` targets; install it for your operating system and keep it
   on your `PATH`)
 - optionally `pyenv` for managing multiple Python versions
@@ -119,6 +120,21 @@ it through `uv` using the locked `dev` extra and matching `nox-uv` plugin.
 
 ```bash
 make venv-sync-all  # syncs dev/docs/test/typing extras into .venv
+```
+
+Install the repository hooks, including Conventional Commit validation:
+
+```bash
+uv tool install pre-commit
+pre-commit install --install-hooks
+```
+
+After changing the default Python interpreter, reinstall the `uv`-managed launcher and refresh the
+hooks:
+
+```bash
+uv tool install pre-commit --force
+pre-commit install --install-hooks
 ```
 
 Activation is optional because `uv run` can execute project commands directly. To activate it:

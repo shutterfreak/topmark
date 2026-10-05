@@ -204,6 +204,14 @@ Run all hooks after an update:
 pre-commit run --all-files
 ```
 
+When the default Python interpreter changes, reinstall the `uv`-managed pre-commit launcher and
+refresh the installed hooks before running them:
+
+```bash
+uv tool install pre-commit --force
+pre-commit install --install-hooks
+```
+
 GitHub Action dependencies are maintained separately through SHA-pinned workflow references,
 Dependabot, and the GitHub Action pin audit.
 
