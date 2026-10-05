@@ -12,6 +12,8 @@ topmark:header:end
 
 - GitHub workflows:
   - [CI workflow](../../ci/ci-workflow.md) - source-tree validation and CI orchestration
+  - [Pull request title validation](../../ci/pull-request-title.md) - Conventional Commit structure
+    for pull request titles
   - [Codecov coverage policy](../../ci/codecov.md) - project and patch coverage statuses, pull
     request comments, and comparison policy
   - [Release workflow](../../ci/release-workflow.md) - release pipeline and package publication

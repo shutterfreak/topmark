@@ -107,7 +107,8 @@ ______________________________________________________________________
 
 - Update `CHANGELOG.md` for user-visible changes and material API, configuration, CI, dependency, or
   contributor-workflow changes.
-- Follow Conventional Commits for commit and pull-request titles.
-- Keep Conventional Commit titles at or below 72 characters.
+- Use Conventional Commit titles in the form `<type>[optional scope]: <short summary>` and keep
+  titles at or below 72 characters. Use commit bodies for non-trivial rationale, compatibility
+  impact, or follow-up context; PR bodies should summarize changes, validation, and related issues.
 - In handoff summaries, describe the outcome, list relevant validation, and call out remaining
   external configuration or follow-up work.

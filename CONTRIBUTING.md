@@ -29,6 +29,7 @@ ______________________________________________________________________
 - **Git**
 - **make** (for convenience targets; use Git Bash or WSL when running them on Windows)
 - **uv** (install it for your operating system and keep it on your `PATH`)
+- **pre-commit** (install globally with `uv tool install pre-commit`)
 - **Lychee** (only for the local `make links*` targets; install it for your operating system and
   keep it on your `PATH`)
 
@@ -394,13 +395,23 @@ Pre-commit hooks are optional but recommended. They mirror many checks used by `
 provide fast feedback before opening a pull request.
 
 ```bash
-pre-commit install
+uv tool install pre-commit
+pre-commit install --install-hooks
 pre-commit run --all-files
 pre-commit autoupdate
 ```
 
+After changing the default Python interpreter, reinstall the `uv`-managed pre-commit launcher and
+refresh the hooks:
+
+```bash
+uv tool install pre-commit --force
+pre-commit install --install-hooks
+```
+
 Common repository-local hooks include:
 
+- `conventional-pre-commit` - validates Conventional Commit structure at the `commit-msg` stage
 - `topmark-check` - validates headers without mutating files
 - `topmark-apply` - updates headers when run manually
 - Ruff, Taplo, mdformat, Pyright, pydoclint, and repository hygiene checks
@@ -443,6 +454,11 @@ Follow the Conventional Commits specification:
 - `fix(renderer): avoid duplicate header insertion`
 
 Keep messages short (≤72 chars) and use the body to explain *why*.
+
+The `commit-msg` hook validates the allowed type and structural punctuation locally. GitHub also
+validates pull request titles using the same allowed types, including after title edits. Neither
+check decides whether the selected type accurately describes the change; that remains reviewer
+judgment.
 
 ### Pull request checklist
 
