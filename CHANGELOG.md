@@ -452,9 +452,9 @@ ______________________________________________________________________
   ignore-and-continue loading behavior.
 - Rejected noncanonical leading-zero prerelease and development identifiers instead of emitting
   invalid SemVer-compatible numeric segments.
-- Fixed Read the Docs publication of the strict Zensical build by invoking the newly installed `uv`
-  package through Python, then creating the required custom-builder HTML output directory before
-  copying the staged site.
+- Fixed Read the Docs publication of the strict Zensical build by invoking its newly installed `uv`
+  and Zensical packages through Python, then creating the required custom-builder HTML output
+  directory before copying the staged site.
 
 ### Documentation - Unreleased
 

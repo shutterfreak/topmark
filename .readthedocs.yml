@@ -27,10 +27,12 @@ build:
       - python -m uv pip install --system -e .[docs]
     build:
       html:
-        # Materialize and build TopMark-owned inputs with only relative Zensical paths:
+        # Materialize TopMark-owned inputs with only relative Zensical paths:
         - python -m tools.docs.prepare_zensical_docs
-        - zensical build --config-file .zensical/zensical.toml --strict
-        # RTD explicitly requires custom builders to create the output-format directory themselves:
-        - mkdir -p "$READTHEDOCS_OUTPUT/html/"
-        # Copy the generated documentation to the output-format directory:
-        - cp -a .zensical/site/. "$READTHEDOCS_OUTPUT/html/"
+        # Invoke Zensical as a module: RTD jobs do not preserve installed script PATH entries.
+        - python -m zensical build --config-file .zensical/zensical.toml --strict
+    post_build:
+      # RTD explicitly requires custom builders to create the output-format directory themselves:
+      - mkdir -p "$READTHEDOCS_OUTPUT/html/"
+      # Copy the generated documentation to the output-format directory:
+      - cp -a .zensical/site/. "$READTHEDOCS_OUTPUT/html/"
