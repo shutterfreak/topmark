@@ -16,14 +16,20 @@ version: 2
 
 # Set the OS, Python version, and other tools you might need
 build:
-  os: ubuntu-24.04
+  os: ubuntu-26.04
   tools:
     python: "3.14"
-  commands:
-    # Install uv, then install the project with its production Zensical docs extra.
-    - python -m pip install uv
-    - uv pip install --system -e .[docs]
-    # Materialize and build TopMark-owned inputs with only relative Zensical paths.
-    - python -m tools.docs.prepare_zensical_docs
-    - zensical build --config-file .zensical/zensical.toml --strict
-    - cp -a .zensical/site/. "$READTHEDOCS_OUTPUT/html/"
+  jobs:
+    install:
+      # Install uv, then install the project with its production Zensical docs extra:
+      - python -m pip install uv
+      - uv pip install --system -e .[docs]
+    build:
+      html:
+        # Materialize and build TopMark-owned inputs with only relative Zensical paths:
+        - python -m tools.docs.prepare_zensical_docs
+        - zensical build --config-file .zensical/zensical.toml --strict
+        # RTD explicitly requires custom builders to create the output-format directory themselves:
+        - mkdir -p "$READTHEDOCS_OUTPUT/html/"
+        # Copy the generated documentation to the output-format directory:
+        - cp -a .zensical/site/. "$READTHEDOCS_OUTPUT/html/"
