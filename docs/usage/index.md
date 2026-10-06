@@ -23,7 +23,7 @@ Start here if you want to:
 
 - install TopMark and complete a safe first run;
 - run TopMark from the CLI;
-- upgrade an existing repository to TopMark 1.0;
+- upgrade an existing repository across a TopMark major-version boundary;
 - configure header fields, policies, filtering, and file discovery;
 - understand configuration-discovery anchors, project-chain discovery, and layered precedence;
 - understand filesystem-identity evaluation, processing paths, symlink normalization, and hard-link
@@ -36,8 +36,10 @@ ______________________________________________________________________
 ## Common starting points
 
 - [Getting started](getting-started.md) - install TopMark and complete a safe first run.
-- [Upgrading to TopMark 1.0](upgrading-to-1.0.md) - migrate repositories from earlier TopMark
-  versions.
+- [Upgrading TopMark](upgrading.md) - choose the guide for the major-version boundaries your
+  repository crosses.
+  - [Upgrading to TopMark 2.0](upgrading-to-2.0.md) - migrate repositories from 1.0.x.
+  - [Upgrading to TopMark 1.0](upgrading-to-1.0.md) - migrate repositories from 0.11.x or earlier.
 - [Command overview](cli.md) - understand the CLI structure and shared command behavior.
 - [Shared options](shared-options.md) - learn about global options, dry-run behavior, verbosity, and
   output selection.

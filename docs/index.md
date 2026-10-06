@@ -34,19 +34,19 @@ ______________________________________________________________________
 
 ## Start here
 
-| Goal                                                                 | Recommended page                                      |
-| -------------------------------------------------------------------- | ----------------------------------------------------- |
-| Install TopMark and complete a safe first run                        | [Getting started](usage/getting-started.md)           |
-| Understand the CLI structure and shared behavior                     | [Command overview](usage/cli.md)                      |
-| Configure discovery, layered runtime behavior, and policies          | [Configuration](usage/configuration.md)               |
-| Understand repository filtering and file discovery                   | [Filtering](usage/filtering.md)                       |
-| Understand machine-readable output, processing paths, and provenance | [Machine-readable output](usage/machine-output.md)    |
-| Validate repositories in CI                                          | [CI integration](usage/ci.md)                         |
-| Integrate TopMark with pre-commit                                    | [Pre-commit integration](usage/pre-commit.md)         |
-| Understand stable exit-code behavior                                 | [Exit codes](usage/exit-codes.md)                     |
-| Upgrade older repositories to TopMark 1.0                            | [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md) |
-| Use the public Python API                                            | [Public API](api/public.md)                           |
-| Contribute to TopMark                                                | [Contributing](contributing.md)                       |
+| Goal                                                                 | Recommended page                                   |
+| -------------------------------------------------------------------- | -------------------------------------------------- |
+| Install TopMark and complete a safe first run                        | [Getting started](usage/getting-started.md)        |
+| Understand the CLI structure and shared behavior                     | [Command overview](usage/cli.md)                   |
+| Configure discovery, layered runtime behavior, and policies          | [Configuration](usage/configuration.md)            |
+| Understand repository filtering and file discovery                   | [Filtering](usage/filtering.md)                    |
+| Understand machine-readable output, processing paths, and provenance | [Machine-readable output](usage/machine-output.md) |
+| Validate repositories in CI                                          | [CI integration](usage/ci.md)                      |
+| Integrate TopMark with pre-commit                                    | [Pre-commit integration](usage/pre-commit.md)      |
+| Understand stable exit-code behavior                                 | [Exit codes](usage/exit-codes.md)                  |
+| Upgrade an existing repository                                       | [Upgrading TopMark](usage/upgrading.md)            |
+| Use the public Python API                                            | [Public API](api/public.md)                        |
+| Contribute to TopMark                                                | [Contributing](contributing.md)                    |
 
 ______________________________________________________________________
 

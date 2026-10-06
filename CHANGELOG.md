@@ -610,6 +610,8 @@ ______________________________________________________________________
   discovery, and machine-readable-output references; clarified the distinction between qualified
   file type identifiers and machine-readable `qualified_key` fields; and aligned navigation labels
   with their pages.
+- Added a version-boundary upgrade landing page and a focused 1.0.x-to-2.0 migration guide, while
+  preserving the published 0.11.x-to-1.0 guide URL.
 
 ### Internal - Unreleased
 
