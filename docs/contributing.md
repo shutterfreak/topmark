@@ -50,7 +50,7 @@ Important repository entry points:
 - `INSTALL.md` - canonical installation and contributor setup guide
 - `CONTRIBUTING.md` - canonical contributor guide
 - `CHANGELOG.md` - release history and compatibility notes
-- `docs/` - MkDocs documentation source
+- `docs/` - Zensical documentation source
 - `src/topmark/` - TopMark package source code
 - `tests/` - test suite
 - `Makefile` - local development and validation commands

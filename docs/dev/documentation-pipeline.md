@@ -22,7 +22,7 @@ It is intended for contributors and maintainers working on:
 - API documentation
 - Internal architecture docs
 - Docstring quality and reference hygiene
-- MkDocs and `mkdocs-gen-files` integration
+- Zensical production builds and TopMark-owned preparation
 
 This page focuses on the documentation-generation and validation pipeline itself rather than general
 documentation authoring conventions. Detailed writing conventions, workflow-page structure, heading
@@ -36,7 +36,7 @@ ______________________________________________________________________
 This page documents:
 
 - generated documentation architecture;
-- MkDocs integration and generation hooks;
+- Zensical integration and generation bridges;
 - API and docstring scanning behavior;
 - documentation hygiene validation;
 - snippet and draft handling;
@@ -68,12 +68,12 @@ TopMark's documentation build consists of three coordinated layers:
    - Located under `docs/`
    - Includes DEV documentation, guides, and architecture notes
 1. **Generated Markdown**
-   - Produced at build time by `mkdocs-gen-files`
+   - Materialized in the disposable Zensical input tree by TopMark-owned tooling
    - Includes CLI/configuration reference output
 1. **Generated API internals**
    - Produced from `src/topmark/` by `api-autonav`
 1. **Build-time validation and hygiene**
-   - Enforced via MkDocs hooks, custom tooling, and shared helpers
+   - Enforced via Zensical, custom tooling, and shared helpers
    - Ensures symbol references, snippet includes, and generated pages remain consistent,
      deterministic, and maintainable
 
@@ -88,68 +88,58 @@ and is executed only during documentation builds.
 Documentation validation is also integrated into local contributor workflows, CI verification, and
 stable-release validation through `make verify`, `nox`, and GitHub Actions.
 
-### Zensical compatibility pilot
+### Production Zensical build
 
-The production MkDocs build and Read the Docs deployment remain authoritative. The Zensical path is
-an exploratory compatibility pilot: it builds an ignored, disposable `.zensical/` tree and does not
-publish a site, replace MkDocs in CI, or modify the source `docs/` tree.
+Zensical is the authoritative production builder for local validation, CI, and Read the Docs. Every
+build first creates an ignored, disposable `.zensical/` input tree; source `docs/` remains
+unchanged. Use `make docs-build` for the strict build and output-parity gate, `make docs-serve` for
+a local server, and `make docs-clean` to remove the disposable tree. Restart the server after
+source-documentation, snippet, or generated-reference-input changes because it watches staged inputs
+only.
 
-Zensical is intentionally isolated in the `zensical` optional dependency extra. Production MkDocs
-and Read the Docs builds install `.[docs]`; the pilot Nox sessions install `.[docs,zensical]`. For
-direct local Zensical commands, install that pair with `make venv-sync-zensical`.
-
-Use the pilot commands through Make or Nox:
-
-```bash
-make zensical-prepare
-make zensical-build
-make zensical-serve
-make zensical-clean
-
-nox -s zensical
-nox -s zensical_serve
-```
-
-`zensical-build` and its Nox session prepare the staging tree automatically. `zensical-serve` does
-the same once before starting the server; because it watches staged inputs rather than the source
-tree, rerun it after changing source documentation. `zensical-clean` removes the ignored, disposable
-`.zensical/` staging tree, including its generated site and cache.
+The repository uses Zensical's native `zensical.toml` format. It is read only by `zensical`; TopMark
+no longer runs an MkDocs command or declares MkDocs/Material/plugin packages as direct production
+dependencies.
 
 #### Compatibility bridges
 
 The preparation step preserves the current site output by deliberately bridging the Zensical gaps
 that TopMark uses today:
 
-| Existing MkDocs behavior                                                                 | Pilot bridge                                                                                                                                   | Ownership and removal condition                                                                                                                                          |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Virtual CLI/configuration pages via `mkdocs-gen-files`                                   | Materialize TopMark-owned CLI/configuration pages in `.zensical/docs` through the filesystem-capable generator backend.                        | Keep while TopMark's CLI Markdown exporters remain custom.                                                                                                               |
-| Internal API pages and navigation via `api-autonav`                                      | Reuse the shared `api-autonav` configuration after rewriting its `src/topmark` path for `.zensical/`.                                          | Native Zensical support owns this tree; keep the shared route root aligned with MkDocs.                                                                                  |
-| `%%TOPMARK_VERSION%%` and GitHub-alert conversion via `mkdocs-simple-hooks`              | Expand the version macro during staging; enable Zensical-native `callouts` for `> [!NOTE]` syntax.                                             | Version expansion remains a project build transform. Remove callout bridging once the shared configuration can express it directly.                                      |
-| Local snippet inclusion and `rewrite_relative_urls` via `mkdocs-include-markdown-plugin` | Expand TopMark's local Markdown snippets recursively, rewrite their relative links for each destination page, then remove staged `_snippets/`. | A narrow temporary adapter; remove when Zensical supports the required plugin behavior. It rejects unsupported plugin options, remote files, escaping paths, and cycles. |
-| `draft_docs` and excluding private snippets from published pages                         | Skip drafts while copying and remove snippets after expansion.                                                                                 | Keep until equivalent Zensical configuration is available and verified.                                                                                                  |
+| Prior behavior                               | Retained TopMark bridge                                                                                   | Owner and removal condition                                                                                    |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Virtual CLI/configuration pages              | Materialize pages in `.zensical/docs` through `FilesystemDocsWriter`.                                     | TopMark docs maintainers; keep while exporters remain custom.                                                  |
+| API pages and navigation                     | Use Zensical-native `api-autonav` after rebasing source paths to `../src`.                                | Zensical owns this feature; retain only the source-path rewrite while staging is needed.                       |
+| Version expansion and GitHub alerts          | Expand `%%TOPMARK_VERSION%%`; use native `callouts` for alerts.                                           | TopMark owns version expansion; no alert bridge remains.                                                       |
+| Local snippets with rewritten relative links | Expand only current local Markdown directives recursively, rewrite links, and delete staged `_snippets/`. | TopMark docs maintainers; remove when `zensical/backlog#127` supplies the required behavior and parity passes. |
+| Draft and private inputs                     | Omit `_drafts` while copying and delete private snippets after expansion.                                 | TopMark docs maintainers; remove only after an equivalent production configuration is verified.                |
 
-The staged configuration is derived from `mkdocs.yml` and redirects `mkdocstrings` source discovery
-to `../src`. It retains unsupported plugin entries only because Zensical safely ignores them; the
-preparation bridges above supply their required TopMark behavior.
+The staged configuration is derived from `zensical.toml` and redirects `mkdocstrings` and
+`api-autonav` source discovery to `../src`. It contains no ignored production plugins; the bridges
+above supply the deliberately owned behavior.
 
-#### Pilot verification
+#### Verification and rollback
 
-Build the staged inputs directly when diagnosing the pilot:
+Build the staged inputs directly when diagnosing production failures:
 
 ```bash
-.venv/bin/zensical build --config-file .zensical/mkdocs.yml --strict
+.venv/bin/zensical build --config-file .zensical/zensical.toml --strict
 ```
 
 Run the local web server:
 
 ```bash
-.venv/bin/zensical serve --config-file .zensical/mkdocs.yml
+.venv/bin/zensical serve --config-file .zensical/zensical.toml
 ```
 
-The preparation tests in `tests/dev_validation/test_zensical_docs_preparation.py` cover staged
-configuration generation, filesystem-backed API generation, version expansion, snippet expansion,
-link rewriting, and unsafe or unsupported include inputs. Compare rendered pages with the production
-MkDocs site before declaring a compatibility gap closed.
+`tests/dev_validation/test_zensical_docs_preparation.py` covers every bridge, including unsafe or
+unsupported include inputs. `tools/docs/check_zensical_parity.py`, run by the docs Nox session and
+CI, verifies required routes, navigation targets, search output, and representative rendered pages.
+
+Until the first successful production deployment, recover by restoring the last known-good release
+or commit and running its `make docs-build`; its lockfile and configuration restore the prior
+builder atomically. Do not edit a failed deployment in place. Record the failing build URL and use
+the successful release revision as the rollback target.
 
 ______________________________________________________________________
 
@@ -157,7 +147,7 @@ ______________________________________________________________________
 
 Documentation validation is intentionally layered and deterministic:
 
-- MkDocs performs rendering-time validation;
+- Zensical performs rendering-time validation;
 - `tools/docs/` performs deterministic repository hygiene and prose-hygiene checks;
 - `make verify` and `nox` integrate documentation validation into contributor workflows;
 - GitHub Actions enforce documentation validation in CI.
@@ -369,7 +359,7 @@ docs/**/_drafts/
 
 are:
 
-- Ignored by MkDocs navigation
+- Omitted from the staging copy
 - Ignored by version control
 - Safe for work-in-progress documentation
 - optionally visible when serving documentation locally (marked as draft)
@@ -384,9 +374,9 @@ docs/_snippets/
 
 are:
 
-- intended for inclusion via plugins such as `include-markdown`;
+- intended for inclusion through TopMark's staging expander;
 - not standalone pages;
-- explicitly excluded via `exclude_docs` in `mkdocs.yml`;
+- removed after expansion so they cannot publish as pages;
 - intended only for stable reusable documentation fragments.
 
 Markdown documentation hygiene is validated through:
@@ -414,7 +404,7 @@ The Markdown hygiene validation performs repository-hygiene checks for:
 - include targets resolving outside `docs/`;
 - nested snippet includes;
 - accidental macOS `._*` files under documentation sources;
-- Markdown files under `docs/` missing from `mkdocs.yml` navigation;
+- Markdown files under `docs/` missing from the `zensical.toml` navigation;
 - emoji in Markdown headings;
 - missing section separators between level-2 headings.
 

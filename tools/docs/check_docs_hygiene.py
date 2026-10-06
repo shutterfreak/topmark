@@ -18,8 +18,8 @@ This tool validates two documentation surfaces:
 * Markdown snippet/include, navigation, heading, and section-structure hygiene under ``docs/``.
 
 The checks are intentionally syntactic and deterministic. They are not a substitute for human
-review, strict MkDocs builds, or link checking. They catch small authoring mistakes that are easy to
-miss in rendered documentation.
+review, strict Zensical builds, or link checking. They catch small authoring mistakes that are
+easy to miss in rendered documentation.
 
 Usage:
     # Default: scan Python docstrings under src/
@@ -243,14 +243,14 @@ HORIZONTAL_RULE_RE: Final[re.Pattern[str]] = re.compile(
 RELATIVE_LINK_RE: Final[re.Pattern[str]] = re.compile(
     r"\[[^\]]+\]\((?!https?://|mailto:|#|/)(?P<target>[^)]+)\)",
 )
-MKDOCS_NAV_PATH_RE: Final[re.Pattern[str]] = re.compile(
+ZENSICAL_NAV_PATH_RE: Final[re.Pattern[str]] = re.compile(
     r"(?P<path>[A-Za-z0-9_./-]+\.md)(?:[#?][^\s'\"]*)?",
 )
 
 SNIPPET_INCLUDE_PREFIX: Final[str] = r"\_snippets/"
 SNIPPET_DIR: Final[Path] = Path("docs/_snippets")
 DOCS_DIR: Final[Path] = Path("docs")
-MKDOCS_CONFIG: Final[Path] = Path("mkdocs.yml")
+ZENSICAL_CONFIG: Final[Path] = Path("zensical.toml")
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -402,13 +402,13 @@ def _is_snippet(path: Path) -> bool:
 
 
 def _is_nav_exempt(path: Path) -> bool:
-    """Return True when a Markdown file is exempt from MkDocs nav membership.
+    """Return True when a Markdown file is exempt from Zensical nav membership.
 
     Args:
         path: Candidate Markdown file.
 
     Returns:
-        True when the file is allowed to exist outside the MkDocs nav.
+        True when the file is allowed to exist outside the Zensical nav.
     """
     return _is_snippet(path)
 
@@ -418,8 +418,8 @@ def _allows_relative_links(path: Path) -> bool:
     """Return True when a snippet intentionally allows relative links.
 
     Relative links in snippets are allowed when they are intended to be rewritten relative to the
-    consuming page by mkdocs-include-markdown-plugin. Shared navigation snippets and shared note
-    snippets may centralize such links safely.
+    consuming page by TopMark's staging-time snippet expander. Shared navigation snippets and shared
+    note snippets may centralize such links safely.
 
     Args:
         path: Candidate Markdown snippet.
@@ -432,45 +432,33 @@ def _allows_relative_links(path: Path) -> bool:
     )
 
 
-def _extract_mkdocs_nav_block(text: str) -> str:
-    """Extract the top-level MkDocs `nav` block from a config file.
+def _extract_zensical_nav_block(text: str) -> str:
+    """Return TOML text containing the Zensical navigation paths.
 
     Args:
-        text: Contents of `mkdocs.yml`.
+        text: Contents of `zensical.toml`.
 
     Returns:
-        The raw nav block text, or an empty string if no top-level nav block is present.
+        The configuration text. Navigation is the only TopMark TOML surface containing Markdown
+        source paths, so the existing path extraction remains intentionally narrow.
     """
-    lines: list[str] = text.splitlines()
-    nav_lines: list[str] = []
-    in_nav = False
-    for line in lines:
-        if not in_nav:
-            if line == "nav:":
-                in_nav = True
-                nav_lines.append(line)
-            continue
-
-        if line and not line.startswith((" ", "-")):
-            break
-        nav_lines.append(line)
-    return "\n".join(nav_lines)
+    return text
 
 
-def _extract_nav_markdown_paths(mkdocs_config: Path) -> set[Path]:
-    """Extract Markdown paths referenced by the MkDocs nav section.
+def _extract_nav_markdown_paths(zensical_config: Path) -> set[Path]:
+    """Extract Markdown paths referenced by the Zensical nav section.
 
     Args:
-        mkdocs_config: Path to `mkdocs.yml`.
+        zensical_config: Path to `zensical.toml`.
 
     Returns:
         Docs-root-relative Markdown paths referenced by the nav section.
     """
-    if not mkdocs_config.exists():
+    if not zensical_config.exists():
         return set()
 
-    nav_block: str = _extract_mkdocs_nav_block(mkdocs_config.read_text(encoding="utf-8"))
-    return {Path(match.group("path")) for match in MKDOCS_NAV_PATH_RE.finditer(nav_block)}
+    nav_block: str = _extract_zensical_nav_block(zensical_config.read_text(encoding="utf-8"))
+    return {Path(match.group("path")) for match in ZENSICAL_NAV_PATH_RE.finditer(nav_block)}
 
 
 def _mask_code_regions(text: str, *, ignore_inline: bool = False) -> str:
@@ -725,7 +713,7 @@ def check_docs_hygiene(
 
     Hard failures cover objective problems:
     - accidental macOS ``._*`` resource files under documentation sources;
-    - Markdown files under ``docs/`` that are missing from ``mkdocs.yml`` nav;
+    - Markdown files under ``docs/`` that are missing from ``zensical.toml`` nav;
     - emoji in Markdown headings;
     - malformed or broken ``include-markdown`` paths;
     - nested snippet includes;
@@ -750,7 +738,7 @@ def check_docs_hygiene(
     diagnostics: list[Diagnostic] = []
     normal_markdown_files: list[Path] = []
     included_targets: set[Path] = set()
-    nav_paths: set[Path] = _extract_nav_markdown_paths(MKDOCS_CONFIG)
+    nav_paths: set[Path] = _extract_nav_markdown_paths(ZENSICAL_CONFIG)
 
     for path in md_files:
         if any(part.startswith("._") for part in path.parts):
@@ -789,7 +777,7 @@ def check_docs_hygiene(
                             path=path,
                             line=None,
                             message=(
-                                "Markdown file under docs/ is missing from mkdocs.yml nav: "
+                                "Markdown file under docs/ is missing from zensical.toml nav: "
                                 f"{docs_relative_path.as_posix()}"
                             ),
                         )
@@ -978,7 +966,7 @@ def check_docs_hygiene(
         print(f"Markdown files checked: {len(md_files)}")
         print(f"Normal Markdown files checked: {len(normal_markdown_files)}")
         print(f"Snippets checked: {len(snippets)}")
-        print(f"MkDocs nav entries checked: {len(nav_paths)}")
+        print(f"Zensical nav entries checked: {len(nav_paths)}")
         print(f"Errors found: {len(errors)}")
         print(f"Warnings found: {len(warnings)}")
 

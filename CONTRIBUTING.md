@@ -305,23 +305,16 @@ make docs-build   # strict build
 make docs-serve   # local live-reload server
 ```
 
-The MkDocs path remains the authoritative documentation build. To evaluate the disposable Zensical
-compatibility pilot instead, use:
+Zensical is the production documentation builder. `make docs-build` materializes a disposable
+`.zensical/docs/` tree, strictly builds it, and validates TopMark's route, navigation, search, and
+representative-page parity contract. `make docs-serve` prepares that tree before serving it; restart
+the server after changing source documentation, snippets, or generated-reference inputs because it
+serves a prepared staging snapshot. `make docs-clean` removes the disposable output.
 
-```bash
-make venv-sync-zensical  # install docs plus the isolated pilot dependency
-make zensical-build  # prepare and strictly build the staged pilot
-make zensical-serve  # prepare and serve the staged pilot
-make zensical-clean  # remove all disposable pilot output
-```
-
-The Zensical server watches the staged `.zensical/docs/` tree, so restart it after changing source
-documentation. The alpha Zensical dependency is isolated from the production `docs` extra. See
-[Documentation pipeline](./docs/dev/documentation-pipeline.md) for the temporary compatibility
-bridges and pilot scope.
-
-MkDocs configuration lives in `mkdocs.yml`, and documentation dependencies are installed from the
-`docs` extra declared in `pyproject.toml` and resolved through `uv.lock`.
+The native `zensical.toml` configuration is the sole production documentation configuration.
+Documentation dependencies are installed from the `docs` extra declared in `pyproject.toml` and
+resolved through `uv.lock`. See [Documentation pipeline](./docs/dev/documentation-pipeline.md) for
+the owned bridges, removal conditions, and rollback procedure.
 
 The generated documentation site is available at:
 

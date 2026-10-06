@@ -49,7 +49,7 @@ help:
 	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
 	@echo "  format-docstrings  Auto-format docstrings using pydocstringformatter"
 	@echo "  docstring-links Enforce Python docstring link style"
-	@echo "  docs-hygiene    Check Markdown/MkDocs documentation hygiene"
+	@echo "  docs-hygiene    Check Markdown/Zensical documentation hygiene"
 	@echo "  code-hygiene    Check Python comments/docstrings/string prose hygiene"
 	@echo "  hygiene         Run all prose/documentation hygiene checks"
 	@echo "Tests:"
@@ -69,11 +69,7 @@ help:
 	@echo "Docs:"
 	@echo "  docs-build      Build docs strictly (nox: docs)"
 	@echo "  docs-serve      Serve docs locally (nox: docs_serve)"
-	@echo "  docs-clean      Remove MkDocs build output (site/)"
-	@echo "  zensical-prepare  Prepare disposable Zensical compatibility-pilot inputs"
-	@echo "  zensical-build    Build the staged Zensical compatibility pilot (nox: zensical)"
-	@echo "  zensical-serve    Serve the staged Zensical compatibility pilot (nox: zensical_serve)"
-	@echo "  zensical-clean    Remove the disposable Zensical pilot tree (.zensical/)"
+	@echo "  docs-clean      Remove disposable Zensical build output (.zensical/)"
 	@echo ""
 	@echo "Misc:"
 	@echo "  links           Check links in docs/ and tracked Markdown (nox: links)"
@@ -91,8 +87,6 @@ help:
 	@echo "  venv-sync-dev   Sync dev/test/typing extras into .venv"
 	@echo "  venv-sync-all   Sync dev/test/typing/docs extras into .venv"
 	@echo "  venv-sync-docs  Sync docs extras into .venv (removes dev/test/typing packages)"
-	@echo "  venv-sync-zensical  Sync docs and Zensical-pilot extras into .venv (removes dev/test/typing packages)"
-	@echo "  venv-sync-all-zensical  Sync dev/test/typing/docs and Zensical-pilot extras into .venv"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
 	@echo "UV project lock workflow:"
@@ -223,22 +217,6 @@ docs-serve: check-nox
 
 .PHONY: docs-clean
 docs-clean:
-	rm -rf site
-
-.PHONY: zensical-prepare
-zensical-prepare: check-uv
-	$(UV) run --extra docs --extra zensical $(PY) -m tools.docs.prepare_zensical_docs
-
-.PHONY: zensical-build
-zensical-build: check-nox
-	$(NOX) $(NOX_FLAGS) -s zensical
-
-.PHONY: zensical-serve
-zensical-serve: check-nox
-	$(NOX) $(NOX_FLAGS) -s zensical_serve
-
-.PHONY: zensical-clean
-zensical-clean:
 	rm -rf .zensical
 
 .PHONY: links
@@ -323,25 +301,12 @@ venv-sync-docs: check-uv
 	$(UV) sync --extra docs
 	@echo "Synced docs extras into $(VENV)."
 
-# Sync the production docs and isolated Zensical-pilot extras into the shared venv.
-.PHONY: venv-sync-zensical
-venv-sync-zensical: check-uv
-	$(UV) sync --extra docs --extra zensical
-	@echo "Synced docs and Zensical-pilot extras into $(VENV)."
-
 # Sync the union of dev/test/typing/docs extras into the shared venv.
-# This is the recommended target for local MkDocs development and VS Code import resolution.
+# This is the recommended target for local Zensical development and VS Code import resolution.
 .PHONY: venv-sync-all
 venv-sync-all: check-uv
 	$(UV) sync --extra dev --extra typing --extra test --extra docs
 	@echo "Synced dev/test/typing/docs extras into $(VENV)."
-
-# Sync the union of dev/test/typing/docs/zensical extras into the shared venv.
-# This is the recommended combined environment when working on the Zensical pilot.
-.PHONY: venv-sync-all-zensical
-venv-sync-all-zensical: check-uv
-	$(UV) sync --extra dev --extra typing --extra test --extra docs --extra zensical
-	@echo "Synced dev/test/typing/docs and Zensical-pilot extras into $(VENV)."
 
 .PHONY: venv-clean
 venv-clean:

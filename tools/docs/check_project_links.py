@@ -10,7 +10,7 @@
 #
 # topmark:header:end
 
-"""Validate TopMark-hosted documentation links against a local MkDocs build.
+"""Validate TopMark-hosted documentation links against a local Zensical build.
 
 Links to TopMark's own ``/en/latest/`` Read the Docs routes describe the documentation produced by
 the current source tree. Checking those URLs over the network during a pull request is brittle
@@ -265,7 +265,7 @@ def parse_args(
         "--site-dir",
         type=Path,
         default=Path("site"),
-        help="Rendered MkDocs directory (default: site)",
+        help="Rendered Zensical directory (default: site)",
     )
     parser.add_argument(
         "--stats",

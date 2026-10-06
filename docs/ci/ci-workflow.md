@@ -105,13 +105,13 @@ ______________________________________________________________________
 | `python-metadata`   | Resolve supported and canonical Python versions for CI jobs             | `nox`, `pyproject.toml`                    |
 | `lint`              | Validate formatting, linting, typing, and docstring links               | `nox`, `ruff`, `pyright`                   |
 | `pre-commit`        | Run configured pre-commit hooks                                         | `pre-commit`                               |
-| `docs`              | Build the documentation site in strict mode                             | `nox`, `mkdocs`                            |
+| `docs`              | Prepare and strictly build the production documentation site            | `nox`, `zensical`                          |
 | `tests`             | Run the supported Python test matrix                                    | `nox`, `pytest`                            |
 | `filesystem-tests`  | Run canonical Python tests across macOS and Windows filesystems         | `nox`, `pytest`                            |
 | `coverage`          | Generate and publish canonical coverage reports                         | `nox`, `coverage.py`, `pytest`, Codecov    |
 | `api-snapshot`      | Check structured public API contracts for source-changing pull requests | `nox`, `tools/api_snapshot.py`             |
 | `links`             | Validate links in source Markdown files                                 | `lycheeverse/lychee-action`, `lychee.toml` |
-| `links-site`        | Validate links in the rendered MkDocs site, including generated pages   | `mkdocs`, `lycheeverse/lychee-action`      |
+| `links-site`        | Validate links in the rendered Zensical site, including generated pages | `zensical`, `lycheeverse/lychee-action`    |
 | `release-artifacts` | Build and upload release artifacts for version tags                     | `uv build`, `actions/upload-artifact`      |
 
 Most jobs delegate validation to nox sessions so local development and CI share the same stable
@@ -171,11 +171,11 @@ for the full supported-Python matrix.
 
 Documentation integrity is validated at multiple levels:
 
-- the `docs` job runs a strict MkDocs build and maps TopMark-hosted documentation URLs to local
+- the `docs` job runs a strict Zensical build and maps TopMark-hosted documentation URLs to local
   rendered routes;
 - the `links` job validates relative links and third-party URLs in source Markdown files;
-- the `links-site` job validates links in the rendered site, including generated API pages, and
-  repeats the project-owned hosted-route check against that build.
+- the `links-site` job validates project-owned hosted routes against the rendered site, including
+  generated API pages; its Lychee step checks only third-party network URLs.
 
 Generated API pages and pages introduced by the current pull request are visible only after the site
 is built. Source-only network checks cannot validate that proposed state reliably.
