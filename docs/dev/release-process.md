@@ -169,8 +169,8 @@ Before tagging a release:
    - record important lower-bound, security, or contributor-workflow changes in the appropriate
      changelog section.
 
-1. Review upgrade and migration guidance ([Upgrading to TopMark 1.0](../usage/upgrading-to-1.0.md))
-   if the release changes:
+1. Review upgrade and migration guidance ([Upgrading TopMark](../usage/upgrading.md)) if the release
+   changes:
 
    - CLI behavior or options;
    - runtime configuration structure or policy semantics;

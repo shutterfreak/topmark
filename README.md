@@ -182,12 +182,12 @@ TopMark stable releases are published on [PyPI](https://pypi.org/project/topmark
 pip install topmark
 ```
 
-> [!NOTE] **Upgrading from 0.11.x or earlier**
+> [!NOTE] **Upgrading an existing repository**
 >
-> If you are upgrading from TopMark 0.11.x or earlier, review the migration guide before changing
-> existing configuration, CI jobs, or pre-commit hooks:
+> Review the applicable major-version migration guide before changing existing configuration, CI
+> jobs, or pre-commit hooks:
 >
-> - [Upgrading to TopMark 1.0 (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/upgrading-to-1.0/)
+> - [Upgrading TopMark (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/upgrading/)
 
 ### From source
 

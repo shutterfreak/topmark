@@ -50,9 +50,9 @@ TopMark 1.0 includes breaking changes to:
 - TOML configuration structure and runtime policy settings;
 - TEXT, Markdown, JSON, and NDJSON output contracts.
 
-Before upgrading an existing repository, review:
+Before upgrading an existing repository, choose the applicable version-boundary guide:
 
-- [Upgrading to TopMark 1.0](usage/upgrading-to-1.0.md)
+- [Upgrading TopMark](usage/upgrading.md)
 
 ______________________________________________________________________
 
