@@ -240,7 +240,7 @@ that relied on older payload names, outcome-keyed summaries, or older registry s
 
 ### Documentation and generated-site behavior
 
-Documentation validation is stricter than before. Generated API/reference pages, strict MkDocs
+Documentation validation is stricter than before. Generated API/reference pages, strict Zensical
 builds, built-site link checks, documentation hygiene, code-prose hygiene, and changelog heading
 validation are now part of the local and release validation ecosystem.
 

@@ -30,7 +30,7 @@ ______________________________________________________________________
 
 - `src/topmark/` contains the Python package.
 - `tests/` mirrors the package and contains integration and developer-validation tests.
-- `docs/` contains the MkDocs documentation source.
+- `docs/` contains the Zensical documentation source.
 - `tools/` contains repository maintenance and validation utilities.
 - `.github/` contains CI, release, and dependency-maintenance automation.
 - `noxfile.py` defines canonical isolated validation sessions.

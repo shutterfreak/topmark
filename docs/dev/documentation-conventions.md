@@ -18,7 +18,7 @@ templates, and validation expectations for the 1.x line.
 These conventions apply to:
 
 - repository-level Markdown files;
-- generated MkDocs documentation under `docs/`;
+- generated Zensical documentation under `docs/`;
 - reusable documentation snippets;
 - generated command and API documentation;
 - documentation validation tooling;
@@ -292,11 +292,11 @@ files:
   `README.md` on PyPI, or when the rendered documentation is the intended destination;
 - prefer stable hosted landing pages over unnecessary deep links.
 
-Do not validate TopMark's own `https://topmark.readthedocs.io/en/latest/` routes against the
-deployed site during pull-request checks. The deployment still represents the base branch and cannot
-contain pages introduced by the pull request. Documentation builds instead run
-`tools/docs/check_project_links.py`, which maps those URLs to the local `site/` output and validates
-routes and fragments against the proposed documentation tree.
+Do not validate TopMark's own `https://topmark.readthedocs.io/` routes against the deployed site
+during pull-request checks. The deployment still represents the base branch and cannot contain pages
+introduced by the pull request. Documentation builds instead run
+`tools/docs/check_project_links.py`, which maps those URLs to the local `.zensical/site/` output and
+validates routes and fragments against the proposed documentation tree.
 
 Lychee continues to validate third-party URLs over the network. Its exclusion for TopMark's hosted
 documentation is paired with the local route checker and must not be removed independently.
@@ -756,16 +756,15 @@ Snippets must not include other snippets.
 ### Snippet links
 
 Snippets may contain relative Markdown links when those links are intended to resolve from the
-including page. TopMark uses `mkdocs-include-markdown-plugin`; during MkDocs rendering, relative
-links inside included snippets are resolved against the including page context. Depth-specific
-snippet variants are therefore usually unnecessary.
+including page. TopMark's Zensical preparation step rewrites those links against the including-page
+context. Depth-specific snippet variants are therefore usually unnecessary.
 
 Shared navigation snippets named `related-pages*.md` are also allowed to contain relative links when
 they centralize navigation for a tightly scoped documentation family.
 
 ### Include path conventions
 
-Snippet includes use `mkdocs-include-markdown-plugin` and are resolved from `docs/`.
+Snippet includes use TopMark's Zensical preparation bridge and are resolved from `docs/`.
 
 Use docs-root-relative include paths with the underscore escaped for formatter stability:
 
@@ -809,12 +808,12 @@ navigation integrity, command synchronization, generated-page verification, and 
 
 Automated validation includes:
 
-- strict MkDocs builds;
-- project-owned hosted-route and fragment checking against the local MkDocs build;
+- strict Zensical builds;
+- project-owned hosted-route and fragment checking against the local Zensical build;
 - third-party network link checking;
 - heading consistency checks;
 - emoji-in-heading rejection;
-- `mkdocs.yml` nav membership checks for files under `docs/`;
+- `zensical.toml` nav membership checks for files under `docs/`;
 - level-2 section-separator validation;
 - command-page structure validation;
 - snippet include validation;
@@ -833,9 +832,9 @@ The validation fails on objective problems such as:
 - nested snippet includes;
 - malformed docs-root-relative include paths;
 - include targets that resolve outside `docs/`;
-- TopMark-hosted documentation routes or fragments absent from the local MkDocs build;
+- TopMark-hosted documentation routes or fragments absent from the local Zensical build;
 - accidental macOS `._*` resource files under documentation sources;
-- Markdown files under `docs/` missing from `mkdocs.yml` nav;
+- Markdown files under `docs/` missing from the `zensical.toml` nav;
 - emoji in Markdown headings;
 - level-2 sections that are not separated by a horizontal rule.
 

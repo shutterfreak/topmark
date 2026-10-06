@@ -32,8 +32,7 @@ on:
       - ".taplo.toml"
       - ".python-version"
       - "Makefile"
-      - "mkdocs.yml"
-      - "mkdocs.linkcheck.yml"
+      - "zensical.toml"
       - "codecov.yml"
       - ".readthedocs.yml"
       - "pyproject.toml"
@@ -88,8 +87,7 @@ jobs:
               - 'tools/docs/**'
               - '.github/actions/setup-python-nox/**'
               - '.mdformat.toml'
-              - 'mkdocs.yml'
-              - 'mkdocs.linkcheck.yml'
+              - 'zensical.toml'
               - 'lychee.toml'
               - '.readthedocs.yml'
               - 'pyproject.toml'
@@ -115,8 +113,7 @@ jobs:
               - '.taplo.toml'
               - '.python-version'
               - 'Makefile'
-              - 'mkdocs.yml'
-              - 'mkdocs.linkcheck.yml'
+              - 'zensical.toml'
               - '.readthedocs.yml'
               - 'pyproject.toml'
               - 'uv.lock'
@@ -528,16 +525,21 @@ jobs:
         run: |
           uv pip install --system -e .[docs]
 
-      - name: Build docs (linkcheck config)
+      - name: Prepare and build Zensical docs
         run: |
-          mkdocs build -f mkdocs.linkcheck.yml --strict
+          python -m tools.docs.prepare_zensical_docs
+          zensical build --config-file .zensical/zensical.toml --strict
+
+      - name: Validate Zensical output parity
+        run: |
+          python tools/docs/check_zensical_parity.py --site-dir .zensical/site
 
       - name: Validate project-owned hosted documentation routes
         run: |
-          python tools/docs/check_project_links.py --site-dir site --stats
+          python tools/docs/check_project_links.py --site-dir .zensical/site --stats
 
       - name: Check links in built site
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
           args: >-
-            --config lychee.toml --no-progress --quiet --root-dir ${{ github.workspace }}/site site
+            --config lychee.toml --no-progress --quiet --root-dir ${{ github.workspace }}/.zensical/site .zensical/site

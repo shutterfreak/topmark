@@ -20,8 +20,10 @@ build:
   tools:
     python: "3.14"
   commands:
-    # Install uv, then install the project with docs extras into the RTD build environment.
+    # Install uv, then install the project with its production Zensical docs extra.
     - python -m pip install uv
     - uv pip install --system -e .[docs]
-    # Tell MkDocs to output the built site to the correct Read the Docs directory.
-    - mkdocs build --site-dir $READTHEDOCS_OUTPUT/html
+    # Materialize and build TopMark-owned inputs with only relative Zensical paths.
+    - python -m tools.docs.prepare_zensical_docs
+    - zensical build --config-file .zensical/zensical.toml --strict
+    - cp -a .zensical/site/. "$READTHEDOCS_OUTPUT/html/"

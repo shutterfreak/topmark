@@ -62,7 +62,7 @@ ______________________________________________________________________
 - Added repository-level Codecov policy that compares project coverage with the pull request base,
   permits a 0.25 percentage-point decline, reports patch coverage informationally, and limits pull
   request comments to actual coverage changes.
-- Added offline validation that maps TopMark-hosted documentation URLs to the locally built MkDocs
+- Added offline validation that maps TopMark-hosted documentation URLs to the locally built Zensical
   site, preventing pull-request checks from depending on pages not yet deployed to Read the Docs.
 - Added repository-level `AGENTS.md` guidance that directs coding agents to TopMark's canonical
   contributor policies, compatibility constraints, validation commands, optional parallel pytest
@@ -98,12 +98,6 @@ ______________________________________________________________________
   memory/allocation baseline generation.
 - Added structured planned-edit metadata (`EditView`, `PlannedEdit`, and `PlanEditKind`) together
   with a single-splice structured unified-diff renderer used for GitHub issue 167 validation work.
-- Added a disposable `make zensical-prepare` staging command for the Zensical compatibility pilot.
-  It materializes generated documentation under `.zensical/docs` without modifying the production
-  MkDocs documentation tree, expands TopMark version macros and local Markdown snippets, and enables
-  Zensical-native callouts. Added strict-build and local-serve Make/Nox entry points for the staged
-  pilot, plus `make zensical-clean` for its disposable output. The alpha Zensical dependency is
-  isolated from the production `docs` extra.
 
 ### Changed - Unreleased
 
@@ -276,11 +270,20 @@ ______________________________________________________________________
 - Enforced Conventional Commit structure for local commit messages and GitHub pull request titles,
   with contributor guidance for reinstalling pre-commit after changing the default Python
   interpreter.
+- Made Zensical the production documentation builder for the 2.0 release: replaced the MkDocs
+  configuration with native `zensical.toml`, and migrated local validation, CI, and Read the Docs to
+  a disposable staged build. The build materializes TopMark-owned compatibility bridges and
+  validates required routes, navigation, search, and representative pages.
+- Excluded all project-owned Read the Docs URLs from Lychee's network checks; the staged Zensical
+  route checker validates those proposed routes and fragments locally, while Lychee checks
+  third-party URLs.
 
 ### Removed - Unreleased
 
 - Removed obsolete internal result-list machine serialization helpers and legacy CLI machine emitter
   wrappers after JSON and NDJSON output converged on durable-result stream emitters.
+- Removed the production MkDocs/Material configuration, hooks, unsupported plugin integrations, and
+  associated compatibility typing stub from the documentation toolchain.
 
 ### Breaking Changes - Unreleased
 

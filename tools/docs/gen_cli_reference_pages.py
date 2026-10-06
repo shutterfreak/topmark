@@ -10,19 +10,15 @@
 
 """Generate TopMark-specific CLI reference pages and audit API docstrings.
 
-This script is executed as a script via runpy.run_path by mkdocs-gen-files
-during the MkDocs build.
-
-``api-autonav`` generates all Python-module pages and navigation. This script retains only
-TopMark-specific generated content:
+Zensical's native ``api-autonav`` generates all Python-module pages and navigation. This script
+retains only TopMark-specific generated content:
 
 * CLI-derived reference pages under `usage/` and `configuration/`.
 
 In debug/strict modes it also scans *module docstrings* in `src/` for unlinked backticked
 `topmark.*` symbol references and reports actionable `src/...` locations.
 
-MkDocs executes this script with ``runpy.run_path`` while the Zensical pilot imports it as a module.
-Helpers therefore use absolute module paths (e.g. tools.docs....).
+The production staging command imports this module and explicitly supplies a filesystem writer.
 """
 
 # pyright: reportMissingModuleSource=false
@@ -31,6 +27,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import logging
 import pkgutil
 import subprocess
 import sys
@@ -40,12 +37,9 @@ from typing import TYPE_CHECKING
 from typing import Protocol
 from typing import cast
 
-import mkdocs_gen_files
-from mkdocs.plugins import get_plugin_logger as get_logger
-
 import topmark
 
-# Use absolute module reference (MkDocs):
+# Use an absolute module reference from the documentation preparation command:
 from tools.docs.docs_utils import NONLINKED_SYMBOLS
 from tools.docs.docs_utils import context_lines
 from tools.docs.docs_utils import env_flag
@@ -61,10 +55,7 @@ if TYPE_CHECKING:
     from typing import Final
     from typing import TextIO
 
-    from mkdocs.plugins import PrefixedLogger
-
-
-logger: PrefixedLogger = get_logger("gen_cli_reference_pages")
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class DocsWriter(Protocol):
@@ -82,9 +73,8 @@ class DocsWriter(Protocol):
 class FilesystemDocsWriter:
     """Write generated pages into an explicit disposable documentation directory.
 
-    MkDocs uses ``mkdocs-gen-files`` to make generated pages virtual for one build. Zensical does
-    not run that plugin, so the compatibility pilot uses this writer to materialize the same pages
-    in a disposable staging tree instead.
+    Zensical does not run ``mkdocs-gen-files``, so this writer materializes the pages in the
+    disposable production staging tree instead.
 
     Args:
         docs_dir: Existing staging documentation directory that receives generated pages.
@@ -130,10 +120,6 @@ class FilesystemDocsWriter:
         return cast("TextIO", destination.open(mode, encoding="utf-8"))
 
 
-# MkDocs receives a virtual writer from mkdocs-gen-files. The Zensical staging command substitutes
-# a filesystem writer only for its explicit pre-build generation step.
-_docs_writer: DocsWriter = mkdocs_gen_files
-
 # --- Constants for Directory Structure ---
 ROOT_PKG: Final = "topmark"
 API_INTERNALS_DIR: Final = "api/internals"
@@ -147,7 +133,7 @@ if TOPMARK_DOCS_DEBUG is True:
     logger.info("Debug logging enabled (TOPMARK_DOCS_DEBUG resolves to True)")
 
 # Fail the docs build when unlinked backticked symbol references are found in docstrings.
-# Useful with `mkdocs build --strict` to enforce reference hygiene.
+# Useful with the strict Zensical build to enforce reference hygiene.
 TOPMARK_DOCS_STRICT_REFS: bool = env_flag("TOPMARK_DOCS_STRICT_REFS", default=False)
 if TOPMARK_DOCS_STRICT_REFS is True:
     logger.info(
@@ -198,7 +184,7 @@ def _run_topmark_markdown(*args: str) -> str:
     return proc.stdout
 
 
-def generate_cli_reference_pages() -> None:
+def generate_cli_reference_pages(docs_writer: DocsWriter) -> None:
     """Generate documentation for TopMark CLI features.
 
     This invokes the app's own 'filetypes' and 'processors' commands which
@@ -246,8 +232,8 @@ def generate_cli_reference_pages() -> None:
             title: Page title to render at the top.
             body: Pre-rendered Markdown emitted by `topmark ... --output-format markdown`.
         """
-        # Open a virtual file in the MkDocs build environment.
-        with _docs_writer.open(dest, "w") as f:
+        # Open a materialized file in the Zensical staging environment.
+        with docs_writer.open(dest, "w") as f:
             f.write(f"# {title}\n\n")
             f.write("<!-- This page is generated. Do not edit manually. -->\n\n")
             # `body` is already Markdown; write verbatim.
@@ -326,7 +312,7 @@ def _scan_module_docstring(modname: str, src_path: str, current_doc: str) -> Non
     """Audit the module docstring for unlinked symbol references.
 
     This function parses the Python source to find the docstring, then checks
-    if backticked text (e.g. `topmark.some_func`) has a matching MkDocs anchor.
+    if backticked text (e.g. `topmark.some_func`) has a matching API anchor.
 
     Args:
         modname: Name of the module.
@@ -462,8 +448,8 @@ def validate_docstring_links() -> None:
     contributors can repair them in one pass.
 
     Raises:
-        Abort: When strict reference hygiene is enabled and unlinked backticked symbols are found.
-        RuntimeError: Fallback when MkDocs Abort cannot be imported.
+        RuntimeError: When strict reference hygiene is enabled and unlinked backticked symbols are
+            found.
     """
     _DOCSTRING_REF_FINDINGS.clear()
     skipped_import.clear()
@@ -491,13 +477,7 @@ def validate_docstring_links() -> None:
             "Set TOPMARK_DOCS_STRICT_REFS=0 to disable strict mode."
         )
 
-        # Prefer MkDocs' Abort for a clean failure without a traceback.
-        try:
-            from mkdocs.exceptions import Abort
-        except Exception as err:  # pragma: no cover
-            raise RuntimeError(message) from err
-
-        raise Abort(message)
+        raise RuntimeError(message)
 
     # --- Summary (printed only if TOPMARK_DOCS_DEBUG is set) ---
     if TOPMARK_DOCS_DEBUG is True:
@@ -519,31 +499,21 @@ def main(
 ) -> None:
     """Generate TopMark-owned pages and optionally enforce reference hygiene.
 
-    This is the entry point invoked during the MkDocs build via mkdocs-gen-files.
-
-    ``api-autonav`` owns Python-module page generation. This function writes CLI/configuration
-    exports while retaining the source-docstring audit.
+    Zensical's native ``api-autonav`` owns Python-module page generation. This function writes
+    CLI/configuration exports while retaining the source-docstring audit.
 
     Args:
-        docs_writer: Optional destination for generated pages. Omit to use MkDocs' virtual writer.
+        docs_writer: Destination for the generated staging pages.
+
+    Raises:
+        ValueError: If no filesystem writer is supplied.
 
     """
-    global _docs_writer
-    if docs_writer is not None:
-        _docs_writer = docs_writer
+    if docs_writer is None:
+        raise ValueError("A filesystem documentation writer is required for Zensical staging")
 
     # Enforce source-docstring reference hygiene before generating CLI/configuration pages.
     validate_docstring_links()
 
     # TopMark CLI/configuration exports:
-    generate_cli_reference_pages()
-
-
-def _run() -> None:
-    main()
-
-
-# mkdocs-gen-files executes this file with runpy.run_path, whereas the Zensical staging command
-# imports it as a normal module. Keep the former behavior and make the latter side-effect free.
-if __name__ != "tools.docs.gen_cli_reference_pages":
-    _run()
+    generate_cli_reference_pages(docs_writer)

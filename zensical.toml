@@ -1,0 +1,187 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : zensical.toml
+#   file_relpath : zensical.toml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+[project]
+site_name        = "TopMark"
+site_description = "A tool to inspect, validate, and manage file headers in codebases."
+site_author      = "Olivier Biot"
+copyright        = "Copyright &copy; 2025 Olivier Biot. Licensed under the MIT license."
+site_url         = "https://topmark.readthedocs.io/"
+repo_name        = "shutterfreak/topmark"
+repo_url         = "https://github.com/shutterfreak/topmark"
+edit_uri         = "edit/main/docs/"
+extra_javascript = ["assets/version-warning.js"]
+
+nav = [
+  { Home = "index.md" },
+  { "Installation guide" = "install.md" },
+  { Usage = [
+    { Overview = "usage/index.md" },
+    { "Getting started" = "usage/getting-started.md" },
+    { "Command overview" = "usage/cli.md" },
+    { "User configuration" = "usage/configuration.md" },
+    { "Shared options" = "usage/shared-options.md" },
+    { Commands = [
+      { check = "usage/commands/check.md" },
+      { strip = "usage/commands/strip.md" },
+      { probe = "usage/commands/probe.md" },
+      { config = [
+        { Overview = "usage/commands/config.md" },
+        { check = "usage/commands/config/check.md" },
+        { dump = "usage/commands/config/dump.md" },
+        { defaults = "usage/commands/config/defaults.md" },
+        { init = "usage/commands/config/init.md" },
+      ] },
+      { registry = [
+        { Overview = "usage/commands/registry.md" },
+        { filetypes = "usage/commands/registry/filetypes.md" },
+        { processors = "usage/commands/registry/processors.md" },
+        { bindings = "usage/commands/registry/bindings.md" },
+      ] },
+      { version = "usage/commands/version.md" },
+    ] },
+    { Guides = [
+      { "Upgrading to 1.0" = "usage/upgrading-to-1.0.md" },
+      { "Filtering recipes" = "usage/filtering.md" },
+      { "Header placement" = "usage/header-placement.md" },
+      { Policies = "usage/policies.md" },
+      { "Machine-readable output" = "usage/machine-output.md" },
+      { "Pre-commit" = "usage/pre-commit.md" },
+      { "CI integration" = "usage/ci.md" },
+    ] },
+    { Registry = [
+      { "Supported file types" = "usage/generated/filetypes.md" },
+      { "Registered processors" = "usage/generated/processors.md" },
+      { "Registered bindings" = "usage/generated/bindings.md" },
+    ] },
+    { "Exit codes" = "usage/exit-codes.md" },
+  ] },
+  { Configuration = [
+    { Overview = "configuration/index.md" },
+    { "Discovery and precedence" = "configuration/discovery.md" },
+    { "Example TOML document" = "configuration/generated/example-config.md" },
+    { "Default TOML settings" = "configuration/generated/config-defaults.md" },
+  ] },
+  { "CI/CD" = [
+    { Overview = "ci/index.md" },
+    { "Test and validation architecture" = "ci/test-validation.md" },
+    { Workflows = [
+      { "CI workflow" = "ci/ci-workflow.md" },
+      { "Pull request title validation" = "ci/pull-request-title.md" },
+      { "Codecov coverage policy" = "ci/codecov.md" },
+      { "Published artifact validation" = "ci/published-artifact-validation.md" },
+      { "Release workflow" = "ci/release-workflow.md" },
+      { Dependabot = "ci/dependabot.md" },
+      { "Dependency review" = "ci/dependency-review.md" },
+      { "GitHub Action pin audit" = "ci/action-pin-audit.md" },
+    ] },
+    { Actions = [
+      { "Setup Python + nox action" = "ci/setup-python-nox-action.md" },
+    ] },
+  ] },
+  { Contributing = "contributing.md" },
+  { API = [
+    { Overview = "api/index.md" },
+    { "Public API" = "api/public.md" },
+    { Internals = [
+      { Overview = "api/internals.md" },
+    ] },
+  ] },
+  { Development = [
+    { Overview = "dev/index.md" },
+    { "Terminology and Canonical Vocabulary" = "terminology.md" },
+    { "Architecture Overview" = "dev/architecture.md" },
+    { "Registry Model" = "dev/registry-model.md" },
+    { "Plugins and extensibility" = "dev/plugins.md" },
+    { "Multiline header field rendering" = "dev/multiline-header-fields.md" },
+    { Resolution = "dev/resolution.md" },
+    { "Configuration schema" = "dev/configuration-schema.md" },
+    { "Pipelines (Concepts)" = "dev/pipelines.md" },
+    { "Pipelines (Reference)" = "dev/pipelines-reference.md" },
+    { "Protocol contracts and conformance" = "dev/protocol-contracts.md" },
+    { "Performance baselines" = "dev/performance-baselines.md" },
+    { "API stability and snapshot policy" = "dev/api-stability.md" },
+    { "Machine-readable formats" = "dev/machine-formats.md" },
+    { "Documentation pipeline and reference hygiene" = "dev/documentation-pipeline.md" },
+    { "Documentation conventions" = "dev/documentation-conventions.md" },
+    { "Dependency baseline maintenance" = "dev/dependency-maintenance.md" },
+    { "Release process" = "dev/release-process.md" },
+    { "Road to 1.0" = "dev/road-to-1.0.md" },
+    { Roadmap = "dev/roadmap.md" },
+  ] },
+]
+
+  [project.validation.links]
+  absolute_links = "relative_to_docs"
+
+  [project.theme]
+  variant = "modern"
+  language = "en"
+  logo = "assets/topmark-logo.png"
+  favicon = "assets/favicon.ico"
+  features = [
+    "content.code.copy",
+    "navigation.footer",
+    "navigation.instant.progress",
+    "navigation.instant",
+    "navigation.path",
+    "navigation.sections",
+    "navigation.tabs.sticky",
+    "navigation.tabs",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+    "search.suggest",
+  ]
+
+  [project.markdown_extensions]
+  md_in_html = {}
+  toc.permalink = true
+  admonition = {}
+  pymdownx.details = {}
+  pymdownx.tasklist.custom_checkbox = true
+  attr_list = {}
+  def_list = {}
+  pymdownx.superfences.custom_fences = [
+    { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+    { name = "flow", class = "highlight", format = "pymdownx.superfences.fence_code_format" },
+  ]
+  pymdownx.highlight.anchor_linenums = true
+  pymdownx.highlight.line_spans = "__span"
+  pymdownx.highlight.pygments_lang_class = true
+
+  [project.plugins.search]
+
+  [project.plugins.callouts]
+
+  [project.plugins.api-autonav]
+  modules                       = ["src/topmark"]
+  api_root_uri                  = "api/internals"
+  nav_section_title             = "API reference"
+  exclude_private               = true
+  on_implicit_namespace_package = "skip"
+
+  [project.plugins.mkdocstrings]
+  default_handler = "python"
+
+    [project.plugins.mkdocstrings.handlers.python]
+    paths = ["src"]
+
+      [project.plugins.mkdocstrings.handlers.python.options]
+      docstring_style       = "google"
+      show_signature        = true
+      separate_signature    = true
+      show_source           = true
+      show_root_heading     = true
+      members_order         = "source"
+      inherited_members     = false
+      show_if_no_docstring  = false
+      merge_init_into_class = true
+      filters               = ["!^_", "!^__"]

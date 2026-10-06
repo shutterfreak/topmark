@@ -8,22 +8,22 @@
 #
 # topmark:header:end
 
-"""Prepare disposable documentation inputs for the Zensical compatibility pilot.
+"""Prepare production Zensical documentation inputs in a disposable staging tree.
 
-The production MkDocs build remains authoritative. It uses MkDocs plugins and hooks which Zensical
-does not currently execute from the shared ``mkdocs.yml``. This module bridges only TopMark's
-observed uses of those unsupported features in an ignored ``.zensical/`` staging tree:
+Zensical is the production builder. This module bridges only TopMark-owned uses of unsupported
+MkDocs plugins in an ignored ``.zensical/`` staging tree:
 
-* ``mkdocs-gen-files`` becomes materialized API and CLI pages through ``FilesystemDocsWriter``;
-* ``mkdocs-simple-hooks`` version-token replacement happens before the Zensical build, while
-  GitHub-style callouts use Zensical's native ``callouts`` module;
+* ``mkdocs-gen-files`` becomes materialized CLI/configuration pages through
+  ``FilesystemDocsWriter``;
+* version-token replacement happens before the Zensical build, while GitHub-style callouts use
+  Zensical's native ``callouts`` module;
 * ``mkdocs-include-markdown-plugin`` becomes a strict local-snippet expander with link rewriting;
 * MkDocs ``draft_docs`` and the private ``_snippets/`` files are excluded from publishable inputs.
 
 The include implementation is intentionally *not* a general replacement for the upstream plugin:
 it accepts only TopMark's current local Markdown-file directive form and fails for anything else.
 Remove these bridges when Zensical provides compatible native support and the pilot no longer needs
-them. This command never modifies ``docs/`` or the production MkDocs configuration.
+them. This command never modifies ``docs/`` or the production configuration.
 """
 
 from __future__ import annotations
@@ -39,6 +39,8 @@ from typing import Final
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
+import tomlkit
+
 from tools.docs.gen_cli_reference_pages import FilesystemDocsWriter
 from tools.docs.gen_cli_reference_pages import main as generate_api_pages
 
@@ -47,10 +49,10 @@ if TYPE_CHECKING:
 
 REPOSITORY_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 SOURCE_DOCS_DIR: Final[Path] = REPOSITORY_ROOT / "docs"
-SOURCE_CONFIG: Final[Path] = REPOSITORY_ROOT / "mkdocs.yml"
+SOURCE_CONFIG: Final[Path] = REPOSITORY_ROOT / "zensical.toml"
 STAGING_ROOT: Final[Path] = REPOSITORY_ROOT / ".zensical"
 STAGING_DOCS_DIR: Final[Path] = STAGING_ROOT / "docs"
-STAGING_CONFIG: Final[Path] = STAGING_ROOT / "mkdocs.yml"
+STAGING_CONFIG: Final[Path] = STAGING_ROOT / "zensical.toml"
 VERSION_TOKEN: Final[str] = "%%TOPMARK_VERSION%%"  # noqa: S105 - documentation macro, not a secret
 SNIPPETS_DIRNAME: Final[str] = "_snippets"
 INCLUDE_MARKDOWN_RE: Final[re.Pattern[str]] = re.compile(
@@ -82,33 +84,31 @@ def _ignore_docs_copy(
 def _write_staging_config() -> None:
     """Derive a Zensical config whose relative paths are rooted in ``.zensical``.
 
-    The pilot intentionally retains the existing MkDocs-shaped configuration. Zensical ignores the
-    unsupported generation and hook plugins while the explicit preparation step supplies generated
-    pages and TopMark-specific Markdown transformations. ``mkdocstrings`` needs a path back to the
-    repository's source tree. Zensical's native ``callouts`` module replaces the ignored MkDocs
-    page-Markdown hook for GitHub-style alerts.
+    The production configuration uses Zensical-native modules. The explicit preparation step
+    supplies TopMark-owned generated pages and Markdown transformations. ``mkdocstrings`` needs a
+    path back to the repository's source tree.
 
     Raises:
         RuntimeError: If the expected mkdocstrings source-path setting is no longer present.
     """
-    config_text: str = SOURCE_CONFIG.read_text(encoding="utf-8")
-    source_paths: Final[str] = '          paths: ["src"]'
-    staging_paths: Final[str] = '          paths: ["../src"]'
-    source_modules: Final[str] = '      modules: ["src/topmark"]'
-    staging_modules: Final[str] = '      modules: ["../src/topmark"]'
-    if source_paths not in config_text or source_modules not in config_text:
-        raise RuntimeError("Could not locate API source paths in mkdocs.yml")
+    config: tomlkit.TOMLDocument = tomlkit.parse(SOURCE_CONFIG.read_text(encoding="utf-8"))
+    try:
+        project = config["project"]
+        api_autonav = project["plugins"]["api-autonav"]
+        mkdocstrings_python = project["plugins"]["mkdocstrings"]["handlers"]["python"]
+    except (KeyError, TypeError) as error:
+        raise RuntimeError("Could not locate API source paths in zensical.toml") from error
 
-    config_text = config_text.replace(source_paths, staging_paths, 1)
-    config_text = config_text.replace(source_modules, staging_modules, 1)
-    plugins_marker: Final[str] = "plugins:\n"
-    if plugins_marker not in config_text:
-        raise RuntimeError("Could not locate the plugins section in mkdocs.yml")
+    if api_autonav["modules"] != ["src/topmark"] or mkdocstrings_python["paths"] != ["src"]:
+        raise RuntimeError("Could not locate API source paths in zensical.toml")
 
-    config_text = config_text.replace(plugins_marker, f"{plugins_marker}  - callouts\n", 1)
-    config_text += "\n# Generated by tools/docs/prepare_zensical_docs.py; do not edit.\n"
-    config_text += "docs_dir: docs\nsite_dir: site\n"
-    STAGING_CONFIG.write_text(config_text, encoding="utf-8")
+    project["docs_dir"] = "docs"
+    project["site_dir"] = "site"
+    api_autonav["modules"] = ["../src/topmark"]
+    mkdocstrings_python["paths"] = ["../src"]
+    staging_text: str = tomlkit.dumps(config)
+    staging_text += "\n# Generated by tools/docs/prepare_zensical_docs.py; do not edit.\n"
+    STAGING_CONFIG.write_text(staging_text, encoding="utf-8")
 
 
 def _installed_topmark_version() -> str:
@@ -324,7 +324,7 @@ def _expand_include_markdown_directives(docs_dir: Path) -> None:
 
 
 def prepare() -> None:
-    """Recreate the complete disposable Zensical documentation input tree.
+    """Recreate the complete production Zensical documentation input tree.
 
     Raises:
         RuntimeError: If required project documentation inputs are missing.
@@ -346,7 +346,7 @@ def main() -> None:
     """Prepare inputs and print the exact follow-up Zensical build command."""
     prepare()
     print(f"Prepared disposable Zensical docs in {STAGING_DOCS_DIR.relative_to(REPOSITORY_ROOT)}")
-    print("Next: .venv/bin/zensical build --config-file .zensical/mkdocs.yml --strict")
+    print("Next: .venv/bin/zensical build --config-file .zensical/zensical.toml --strict")
 
 
 if __name__ == "__main__":
