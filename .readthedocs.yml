@@ -23,7 +23,8 @@ build:
     install:
       # Install uv, then install the project with its production Zensical docs extra:
       - python -m pip install uv
-      - uv pip install --system -e .[docs]
+      # Invoke uv as a Python module: RTD jobs do not preserve the installed script's PATH entry.
+      - python -m uv pip install --system -e .[docs]
     build:
       html:
         # Materialize and build TopMark-owned inputs with only relative Zensical paths:
