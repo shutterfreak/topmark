@@ -277,6 +277,7 @@ ______________________________________________________________________
 - Excluded all project-owned Read the Docs URLs from Lychee's network checks; the staged Zensical
   route checker validates those proposed routes and fragments locally, while Lychee checks
   third-party URLs.
+- Updated the Read the Docs build to its structured job model on Ubuntu 26.04.
 
 ### Removed - Unreleased
 
@@ -451,6 +452,8 @@ ______________________________________________________________________
   ignore-and-continue loading behavior.
 - Rejected noncanonical leading-zero prerelease and development identifiers instead of emitting
   invalid SemVer-compatible numeric segments.
+- Fixed Read the Docs publication of the strict Zensical build by creating the required
+  custom-builder HTML output directory before copying the staged site.
 
 ### Documentation - Unreleased
 
