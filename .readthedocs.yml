@@ -20,6 +20,9 @@ build:
   tools:
     python: "3.14"
   jobs:
+    # setuptools-scm needs release-tag history for the version token in generated documentation.
+    post_checkout:
+      - git fetch --unshallow || true
     install:
       # Install uv, then install the project with its production Zensical docs extra:
       - python -m pip install uv

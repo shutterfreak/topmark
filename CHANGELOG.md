@@ -455,6 +455,8 @@ ______________________________________________________________________
 - Fixed Read the Docs publication of the strict Zensical build by invoking its newly installed `uv`
   and Zensical packages through Python, then creating the required custom-builder HTML output
   directory before copying the staged site.
+- Fixed Read the Docs version-token expansion by unshallowing its checkout before setuptools-scm
+  derives the installed TopMark version from release tags.
 
 ### Documentation - Unreleased
 

@@ -118,6 +118,12 @@ The staged configuration is derived from `zensical.toml` and redirects `mkdocstr
 `api-autonav` source discovery to `../src`. It contains no ignored production plugins; the bridges
 above supply the deliberately owned behavior.
 
+Version expansion reads the installed TopMark distribution metadata, which `setuptools-scm` derives
+from Git tags. Read the Docs unshallows its checkout in `.readthedocs.yml` before installing TopMark
+so the generated `%%TOPMARK_VERSION%%` value can see the nearest release tag. For local
+documentation work, run `make venv-sync-all` after changing Git history or branches to refresh
+editable package metadata before serving the site.
+
 #### Verification and rollback
 
 Build the staged inputs directly when diagnosing production failures:
