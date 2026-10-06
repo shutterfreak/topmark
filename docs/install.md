@@ -41,16 +41,13 @@ For a guided first setup, continue with:
 
 ______________________________________________________________________
 
-## Upgrade from TopMark 0.11.x or earlier
+## Upgrade an existing repository
 
-TopMark 1.0 includes breaking changes to:
+TopMark major releases can change CLI, configuration, and machine-output contracts. Before
+upgrading, identify the installed version and follow every major-version guide your repository
+crosses.
 
-- CLI options and reporting behavior;
-- pre-commit hook arguments;
-- TOML configuration structure and runtime policy settings;
-- TEXT, Markdown, JSON, and NDJSON output contracts.
-
-Before upgrading an existing repository, choose the applicable version-boundary guide:
+Choose the applicable version-boundary guide:
 
 - [Upgrading TopMark](usage/upgrading.md)
 
