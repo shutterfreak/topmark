@@ -373,6 +373,11 @@ TopMark uses a two-stage release pipeline:
 
 This design avoids executing repository-controlled build logic in the privileged release workflow.
 
+For a concrete release, maintainers use one GitHub milestone named `TopMark X.Y.Z`. It contains only
+release-scoped issues and provides a progress view; the release-control issue remains the canonical
+checklist and dependency record. The milestone closes after the final tag, GitHub Release, and
+published-artifact validation succeed.
+
 For detailed maintainer release guidance, release architecture, prerelease handling, and
 published-artifact validation behavior, see:
 
@@ -521,6 +526,8 @@ Between tags, development builds may report SCM-derived versions such as:
 
 ### Before release
 
+1. Create or review the `TopMark X.Y.Z` GitHub milestone and confirm it includes each release gate.
+
 1. Refresh `tests/api/public_api_snapshot.json` if the public API changed.
 
 1. Update [`CHANGELOG.md`](./CHANGELOG.md).
@@ -536,6 +543,8 @@ Between tags, development builds may report SCM-derived versions such as:
 
 > [!NOTE] CI must succeed on the tag push, including artifact upload, before the release workflow
 > runs.
+
+Close the milestone only after the GitHub Release and published-artifact validation succeed.
 
 For the complete maintainer release process, including prerelease flow, artifact validation, and
 recovery guidance, see:

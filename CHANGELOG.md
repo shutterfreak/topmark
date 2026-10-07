@@ -612,6 +612,8 @@ ______________________________________________________________________
   with their pages.
 - Added a version-boundary upgrade landing page and a focused 1.0.x-to-2.0 migration guide, while
   preserving the published 0.11.x-to-1.0 guide URL.
+- Documented the GitHub release-milestone convention: one scoped milestone per concrete release,
+  closed only after publication and published-artifact validation.
 
 ### Internal - Unreleased
 

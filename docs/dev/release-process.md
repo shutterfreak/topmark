@@ -150,9 +150,28 @@ release workflow.
 
 ______________________________________________________________________
 
+## Release planning and milestones
+
+Use one GitHub milestone for each release whose scope has become concrete. Name it `TopMark X.Y.Z`
+and assign only release-scoped issues: the release-control issue, its blocking sub-issues, and other
+work that must complete before the release is published.
+
+Use the release-control issue as the canonical checklist and dependency record. The milestone
+provides the repository-level release scope, progress view, and issue filter; it is not a second
+backlog. Do not add non-blocking strategic or follow-up work merely because it is related to the
+release.
+
+Create a milestone without a due date unless a release date is an explicit commitment. Close it only
+after the final tag, GitHub Release, and published-artifact validation have succeeded.
+
+______________________________________________________________________
+
 ## Maintainer release checklist
 
 Before tagging a release:
+
+1. Create or review the `TopMark X.Y.Z` GitHub milestone. Confirm it contains every release gate and
+   no non-blocking follow-up work.
 
 1. If the public API changed intentionally, run `make api-snapshot-update` and review the structured
    diff in `tests/api/public_api_snapshot.json`. Confirm the snapshot is equal across Python
@@ -263,6 +282,8 @@ Recommended sequence:
 1. Confirm the GitHub Release was created.
 
 1. Run published artifact validation against PyPI.
+
+1. Close the corresponding GitHub milestone after published-artifact validation succeeds.
 
 Example validation run:
 
