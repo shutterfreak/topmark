@@ -37,6 +37,7 @@ ______________________________________________________________________
 | Understand dependency license and vulnerability review   | [Dependency review](ci/dependency-review.md)                                         |
 | Maintain dependency compatibility and resolved baselines | [Dependency baseline maintenance](dev/dependency-maintenance.md)                     |
 | Understand releases and publication                      | [Release process](dev/release-process.md)                                            |
+| Track concrete release scope                             | [Release process](dev/release-process.md#release-planning-and-milestones)            |
 | Review public API stability                              | [Public API](api/public.md)                                                          |
 | Review internal API reference                            | [Internal API reference](api/internals.md)                                           |
 
