@@ -123,6 +123,7 @@ Supported Python-version selections are:
 | `3.12` | Validate Python 3.12 only                        |
 | `3.13` | Validate Python 3.13 only                        |
 | `3.14` | Validate Python 3.14 only                        |
+| `3.15` | Validate Python 3.15 only                        |
 
 Supported runtime logging selections are:
 
@@ -158,6 +159,7 @@ and across supported Python versions:
 - 3.12
 - 3.13
 - 3.14
+- 3.15
 
 The `platform` and `python-version` workflow inputs can reduce the matrix to a single platform or
 single Python version when reproducing or diagnosing platform-specific installation or runtime

@@ -55,10 +55,31 @@ PACKAGE_NAME: Final = "topmark"
 DISPLAY_NAME: Final = "TopMark"
 
 # Supported Python version range
-MIN_VERSION_MAJOR: Final[int] = 3
-MIN_VERSION_MINOR: Final[int] = 10
-MAX_VERSION_MAJOR: Final[int] = 3
-MAX_VERSION_MINOR: Final[int] = 15
+MIN_SUPPORTED_PYTHON_MAJOR: Final[int] = 3
+MIN_SUPPORTED_PYTHON_MINOR: Final[int] = 10
+MIN_SUPPORTED_PYTHON: Final[tuple[int, int]] = (
+    MIN_SUPPORTED_PYTHON_MAJOR,
+    MIN_SUPPORTED_PYTHON_MINOR,
+)
+MIN_SUPPORTED_PYTHON_STR: Final[str] = f"{MIN_SUPPORTED_PYTHON_MAJOR}.{MIN_SUPPORTED_PYTHON_MINOR}"
+
+MAX_SUPPORTED_PYTHON_MAJOR: Final[int] = 3
+MAX_SUPPORTED_PYTHON_MINOR: Final[int] = 15
+MAX_SUPPORTED_PYTHON: Final[tuple[int, int]] = (
+    MAX_SUPPORTED_PYTHON_MAJOR,
+    MAX_SUPPORTED_PYTHON_MINOR,
+)
+MAX_SUPPORTED_PYTHON_STR: Final[str] = f"{MAX_SUPPORTED_PYTHON_MAJOR}.{MAX_SUPPORTED_PYTHON_MINOR}"
+
+EXCLUSIVE_MAX_SUPPORTED_PYTHON_MAJOR: Final[int] = 3
+EXCLUSIVE_MAX_SUPPORTED_PYTHON_MINOR: Final[int] = 16
+EXCLUSIVE_MAX_SUPPORTED_PYTHON: Final[tuple[int, int]] = (
+    EXCLUSIVE_MAX_SUPPORTED_PYTHON_MAJOR,
+    EXCLUSIVE_MAX_SUPPORTED_PYTHON_MINOR,
+)
+EXCLUSIVE_MAX_SUPPORTED_PYTHON_STR: Final[str] = (
+    f"{EXCLUSIVE_MAX_SUPPORTED_PYTHON_MAJOR}.{EXCLUSIVE_MAX_SUPPORTED_PYTHON_MINOR}"
+)
 
 
 class DependencyInfo(TypedDict):
@@ -142,9 +163,7 @@ except (ImportError, PackageNotFoundError):
     _version = "0.0.0.dev0"
     _description = "A Python CLI to inspect and manage license headers."
     _license = "MIT"
-    _requires_python = (
-        f">={MIN_VERSION_MAJOR}.{MIN_VERSION_MINOR},<{MAX_VERSION_MAJOR}.{MAX_VERSION_MINOR}"
-    )
+    _requires_python = f">={MIN_SUPPORTED_PYTHON_STR},<{EXCLUSIVE_MAX_SUPPORTED_PYTHON_STR}"
     _dep_buckets = {"core": []}
 
 TOPMARK: Final = _topmark

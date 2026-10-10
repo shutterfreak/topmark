@@ -158,8 +158,8 @@ nox -s print_python_matrix
 Typical local validation commands remain:
 
 ```bash
-nox -s qa -p 3.14
-nox -s coverage -p 3.14
+nox -s qa -p 3.15
+nox -s coverage -p 3.15
 ```
 
 The concrete canonical Python version shown above is expected to move when the supported Python

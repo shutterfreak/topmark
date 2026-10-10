@@ -25,7 +25,7 @@ ______________________________________________________________________
 
 ## Prerequisites
 
-- **Python 3.10-3.14**
+- **Python 3.10-3.15**
 - **Git**
 - **make** (for convenience targets; use Git Bash or WSL when running them on Windows)
 - **uv** (install it for your operating system and keep it on your `PATH`)
@@ -37,14 +37,18 @@ Nox is a project-managed development dependency. Make targets run it through `uv
 `dev` extra and its matching `nox-uv` plugin; do not install it separately.
 
 The tracked `.python-version` lists the exact supported interpreter patch releases. Pyenv selects
-Python 3.14.8 first, making it the default local-development and canonical QA interpreter. The full
-supported range remains Python 3.10-3.14.
+the first entry, making Python 3.15 the default local-development and canonical QA interpreter. The
+full supported range is Python 3.10-3.15. Python 3.10 remains in the validation matrix during its
+EOL compatibility window; contributors must preserve its compatibility while it is listed in that
+range. Use the current canonical interpreter for ordinary local work. See the
+[Python support policy (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/python-support/)
+for the support lifecycle and current transition dates.
 
 Optional, on systems using pyenv, for local testing across multiple versions:
 
 ```bash
-pyenv install 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
-pyenv local 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
+pyenv install 3.15.0 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
+pyenv local 3.15.0 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
 ```
 
 All official Python releases are available from the official
@@ -285,7 +289,7 @@ ______________________________________________________________________
 Run strict **Pyright** type checks via project-managed Nox:
 
 ```bash
-uv run --extra dev nox -s qa -p 3.14
+uv run --extra dev nox -s qa -p 3.15
 ```
 
 Or run all verification checks (format, lint, links, docs):
@@ -332,7 +336,7 @@ ______________________________________________________________________
 
 ## API Stability
 
-TopMark maintains a stable public 1.x API across Python 3.10-3.14.
+TopMark maintains a stable public 1.x API across Python 3.10-3.15.
 
 ```bash
 make api-snapshot-dev           # quick local check

@@ -157,6 +157,12 @@ Canonical single-version jobs such as linting, documentation builds, coverage, A
 and release-artifact construction use the same resolved canonical Python value rather than carrying
 separate hard-coded version literals in the workflow.
 
+The `pre-commit` job is the deliberate exception. The repository self-tests the released `v1.0.1`
+TopMark hook declared in `.pre-commit-config.yaml`; that release supports Python 3.10-3.14 but not
+Python 3.15. It therefore runs under Python 3.14 until the configuration is updated to an immutable
+TopMark 2.0 release tag. The supported-version Nox matrix continues to validate the current source
+tree on Python 3.15.
+
 > [!NOTE]
 >
 > Shared Python/bootstrap jobs intentionally use explicit `actions/cache` ownership while keeping
@@ -256,8 +262,8 @@ nox -s format_check
 nox -s lint
 nox -s docstring_links
 nox -s docs
-nox -s qa -p 3.14
-nox -s coverage -p 3.14
+nox -s qa -p 3.15
+nox -s coverage -p 3.15
 ```
 
 The `filesystem-tests` job runs the same canonical `qa` session on macOS and Windows. Linux QA is
@@ -276,8 +282,8 @@ workflow, for example:
 make pre-pr PYTEST_PAR="-n auto"
 make test PYTEST_PAR="-n auto"
 nox -s pre_pr -- -n auto
-nox -s qa -p 3.14 -- -n auto
-nox -s coverage -p 3.14 -- -n auto
+nox -s qa -p 3.15 -- -n auto
+nox -s coverage -p 3.15 -- -n auto
 nox -s release_check -- -n auto
 ```
 
@@ -285,7 +291,7 @@ CI intentionally keeps pytest invocations serial inside each job. Together, the 
 matrices validate supported Python versions and platform behavior, while serial per-job pytest logs
 keep coverage reports and release-gate failures easier to diagnose.
 
-The concrete `3.14` commands shown here reflect the current canonical Python version. That value is
+The concrete `3.15` commands shown here reflect the current canonical Python version. That value is
 resolved from project metadata and is expected to move when the supported Python range moves.
 
 Run link checks with:
@@ -298,7 +304,7 @@ nox -s links_site
 Run the API snapshot check with:
 
 ```bash
-nox -s api_snapshot -p 3.14
+nox -s api_snapshot -p 3.15
 ```
 
 CI uses the resolved canonical Python value for this session rather than hard-coding the version in

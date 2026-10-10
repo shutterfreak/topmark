@@ -17,9 +17,11 @@ import importlib.metadata as importlib_metadata
 import re
 import sys
 from email.message import Message
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import tomlkit
 
 import topmark.core.constants as constants
 from topmark.core.constants import DependencyInfo
@@ -85,7 +87,7 @@ def test_constants_use_stable_fallbacks_when_distribution_metadata_is_unavailabl
     assert reloaded.TOPMARK_VERSION == "0.0.0.dev0"
     assert reloaded.DESCRIPTION == "A Python CLI to inspect and manage license headers."
     assert reloaded.LICENSE == "MIT"
-    assert reloaded.REQUIRES_PYTHON == ">=3.10,<3.15"
+    assert reloaded.REQUIRES_PYTHON == ">=3.10,<3.16"
     assert reloaded.DEPENDENCIES == []
     assert reloaded.DEV_DEPENDENCIES == []
     assert reloaded.DOCS_DEPENDENCIES == []
@@ -104,7 +106,7 @@ def test_dependency_metadata_buckets_core_and_extra_requirements(
     package_metadata["Name"] = "TopMark"
     package_metadata["Summary"] = "Metadata-backed summary"
     package_metadata["License-Expression"] = "MIT"
-    package_metadata["Requires-Python"] = ">=3.10,<3.15"
+    package_metadata["Requires-Python"] = ">=3.10,<3.16"
     package_metadata["Requires-Dist"] = "click>=8.2"
     package_metadata["Requires-Dist"] = "coverage; extra == 'test'"
     package_metadata["Requires-Dist"] = "mkdocs; extra == 'docs'"
@@ -138,7 +140,7 @@ def test_dependency_metadata_buckets_core_and_extra_requirements(
     assert reloaded.TOPMARK == "TopMark"
     assert reloaded.DESCRIPTION == "Metadata-backed summary"
     assert reloaded.LICENSE == "MIT"
-    assert reloaded.REQUIRES_PYTHON == ">=3.10,<3.15"
+    assert reloaded.REQUIRES_PYTHON == ">=3.10,<3.16"
     assert [
         DependencyInfo(
             name="click",
@@ -225,10 +227,18 @@ def test_public_constants_expose_stable_identity_markers_and_newline_contracts()
     """Low-level constants should expose stable values used across project layers."""
     assert constants.PACKAGE_NAME == "topmark"
     assert constants.DISPLAY_NAME == "TopMark"
-    assert constants.MIN_VERSION_MAJOR == 3
-    assert constants.MIN_VERSION_MINOR == 10
-    assert constants.MAX_VERSION_MAJOR == 3
-    assert constants.MAX_VERSION_MINOR == 15
+    assert constants.MIN_SUPPORTED_PYTHON_MAJOR == 3
+    assert constants.MIN_SUPPORTED_PYTHON_MINOR == 10
+    assert constants.MIN_SUPPORTED_PYTHON == (3, 10)
+    assert constants.MIN_SUPPORTED_PYTHON_STR == "3.10"
+    assert constants.MAX_SUPPORTED_PYTHON_MAJOR == 3
+    assert constants.MAX_SUPPORTED_PYTHON_MINOR == 15
+    assert constants.MAX_SUPPORTED_PYTHON == (3, 15)
+    assert constants.MAX_SUPPORTED_PYTHON_STR == "3.15"
+    assert constants.EXCLUSIVE_MAX_SUPPORTED_PYTHON_MAJOR == 3
+    assert constants.EXCLUSIVE_MAX_SUPPORTED_PYTHON_MINOR == 16
+    assert constants.EXCLUSIVE_MAX_SUPPORTED_PYTHON == (3, 16)
+    assert constants.EXCLUSIVE_MAX_SUPPORTED_PYTHON_STR == "3.16"
     assert constants.TOPMARK_NAMESPACE == "topmark"
     assert constants.TOPMARK_START_MARKER == "topmark:header:start"
     assert constants.TOPMARK_END_MARKER == "topmark:header:end"
@@ -250,3 +260,14 @@ def test_public_constants_expose_stable_identity_markers_and_newline_contracts()
         == constants.STANDARD_NEWLINE_SET
     )
     assert constants.STANDARD_NEWLINE_RE == r"\r\n|\n|\r"
+
+
+def test_project_requires_python_matches_runtime_support_bounds() -> None:
+    """Published Python metadata must match the runtime support interval."""
+    project_root = Path(__file__).resolve().parents[2]
+    document = tomlkit.parse((project_root / "pyproject.toml").read_text(encoding="utf-8"))
+    expected = (
+        f">={constants.MIN_SUPPORTED_PYTHON_STR},<{constants.EXCLUSIVE_MAX_SUPPORTED_PYTHON_STR}"
+    )
+
+    assert document["project"]["requires-python"] == expected

@@ -36,6 +36,8 @@ ______________________________________________________________________
 ## Common starting points
 
 - [Getting started](getting-started.md) - install TopMark and complete a safe first run.
+- [Python support policy](python-support.md) - find the supported-runtime range, lifecycle, and EOL
+  compatibility window.
 - [Upgrading TopMark](upgrading.md) - choose the guide for the major-version boundaries your
   repository crosses.
   - [Upgrading to TopMark 2.0](upgrading-to-2.0.md) - migrate repositories from 1.0.x.
