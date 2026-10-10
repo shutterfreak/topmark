@@ -157,6 +157,12 @@ Canonical single-version jobs such as linting, documentation builds, coverage, A
 and release-artifact construction use the same resolved canonical Python value rather than carrying
 separate hard-coded version literals in the workflow.
 
+The `pre-commit` job is the deliberate exception. The repository self-tests the released `v1.0.1`
+TopMark hook declared in `.pre-commit-config.yaml`; that release supports Python 3.10-3.14 but not
+Python 3.15. It therefore runs under Python 3.14 until the configuration is updated to an immutable
+TopMark 2.0 release tag. The supported-version Nox matrix continues to validate the current source
+tree on Python 3.15.
+
 > [!NOTE]
 >
 > Shared Python/bootstrap jobs intentionally use explicit `actions/cache` ownership while keeping

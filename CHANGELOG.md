@@ -101,6 +101,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- The CI pre-commit job now uses Python 3.14 while its self-hosted configuration remains pinned to
+  the released TopMark v1.0.1 hooks, which do not support Python 3.15. The source-tree test matrix
+  continues to validate current TopMark code on Python 3.15.
 - Expanded Python support through 3.15 across package metadata, runtime validation, Nox-derived CI,
   published artifact validation, and release tooling while retaining Python 3.10-3.14 support.
 - Documented the Python support lifecycle: maintained CPython release series are supported, and the
