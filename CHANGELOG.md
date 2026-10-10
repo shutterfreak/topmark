@@ -101,6 +101,11 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Expanded Python support through 3.15 across package metadata, runtime validation, Nox-derived CI,
+  published artifact validation, and release tooling while retaining Python 3.10-3.14 support.
+- Documented the Python support lifecycle: maintained CPython release series are supported, and the
+  most recently EOL series remains compatibility-supported for one year. Python 3.10 is retained
+  through 1 October 2027 under that policy.
 - Avoid duplicate project-owned hosted-route validation in the `release_full` Nox session while
   retaining the strict normal and link-check documentation builds.
 - Enabled Ruff's function-annotation checks across the repository, tightened MkDocs hook and test

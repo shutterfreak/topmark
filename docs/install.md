@@ -16,6 +16,11 @@ This page summarizes TopMark installation and development-environment setup.
 
 The canonical installation and contributor setup guide lives at the repository root in `INSTALL.md`.
 
+TopMark currently supports Python 3.10-3.15. Python 3.10 is in its temporary EOL compatibility
+window; use Python 3.11 or later for new or security-sensitive deployments. See the
+[Python support policy](usage/python-support.md) for the supported-version lifecycle and transition
+dates.
+
 Read the canonical installation guide on GitHub:
 
 - <https://github.com/shutterfreak/topmark/blob/main/INSTALL.md>

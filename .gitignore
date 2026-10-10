@@ -34,6 +34,7 @@ src/topmark/_version.py
 
 # Virtual environments
 .venv/
+.venv-*/
 
 # Legacy pip-centric requirements and constraints pins:
 requirements*.txt

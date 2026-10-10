@@ -175,7 +175,7 @@ Before tagging a release:
 
 1. If the public API changed intentionally, run `make api-snapshot-update` and review the structured
    diff in `tests/api/public_api_snapshot.json`. Confirm the snapshot is equal across Python
-   3.10-3.14 with `make api-snapshot`.
+   3.10-3.15 with `make api-snapshot`.
 
 1. Update `CHANGELOG.md`.
 

@@ -15,10 +15,12 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 
-from topmark.core.constants import MAX_VERSION_MAJOR
-from topmark.core.constants import MAX_VERSION_MINOR
-from topmark.core.constants import MIN_VERSION_MAJOR
-from topmark.core.constants import MIN_VERSION_MINOR
+from topmark.core.constants import MAX_SUPPORTED_PYTHON_MAJOR
+from topmark.core.constants import MAX_SUPPORTED_PYTHON_MINOR
+from topmark.core.constants import MAX_SUPPORTED_PYTHON_STR
+from topmark.core.constants import MIN_SUPPORTED_PYTHON_MAJOR
+from topmark.core.constants import MIN_SUPPORTED_PYTHON_MINOR
+from topmark.core.constants import MIN_SUPPORTED_PYTHON_STR
 from topmark.core.constants import TOPMARK
 from topmark.core.constants import TOPMARK_VERSION
 from topmark.version.convert import convert_pep440_to_semver
@@ -81,13 +83,13 @@ def compute_version_text(
 def check_python_version() -> None:
     """Check if the current Python version is supported by TopMark."""
     current_version: tuple[int, int] = (sys.version_info[0], sys.version_info[1])
-    min_version: tuple[int, int] = (MIN_VERSION_MAJOR, MIN_VERSION_MINOR)
-    max_version: tuple[int, int] = (MAX_VERSION_MAJOR, MAX_VERSION_MINOR)
-    if current_version < min_version or current_version >= max_version:
+    min_version: tuple[int, int] = (MIN_SUPPORTED_PYTHON_MAJOR, MIN_SUPPORTED_PYTHON_MINOR)
+    max_version: tuple[int, int] = (MAX_SUPPORTED_PYTHON_MAJOR, MAX_SUPPORTED_PYTHON_MINOR)
+    if current_version < min_version or current_version > max_version:
         print(  # noqa: T201
             f"Error: {TOPMARK} v{TOPMARK_VERSION} requires "
-            f"Python {MIN_VERSION_MAJOR}.{MIN_VERSION_MINOR} through "
-            f"{MAX_VERSION_MAJOR}.{MAX_VERSION_MINOR - 1}.\n"
+            f"Python {MIN_SUPPORTED_PYTHON_STR} through "
+            f"{MAX_SUPPORTED_PYTHON_STR}.\n"
             f"Current version: {sys.version.split()[0]}",
             file=sys.stderr,
         )
