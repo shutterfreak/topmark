@@ -16,6 +16,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from topmark.core.constants import EXCLUSIVE_MAX_SUPPORTED_PYTHON
+from topmark.core.constants import EXCLUSIVE_MAX_SUPPORTED_PYTHON_STR
+from topmark.core.constants import MAX_SUPPORTED_PYTHON
+from topmark.core.constants import MAX_SUPPORTED_PYTHON_STR
+from topmark.core.constants import MIN_SUPPORTED_PYTHON
+from topmark.core.constants import MIN_SUPPORTED_PYTHON_STR
 from topmark.utils import version as version_utils
 from topmark.utils.version import ComputedVersion
 from topmark.utils.version import check_python_version
@@ -137,8 +143,8 @@ def test_legacy_and_canonical_runtime_paths_have_semantic_parity(
 @pytest.mark.parametrize(
     "version_info",
     [
-        (3, 10, 0),
-        (3, 14, 9),
+        (*MIN_SUPPORTED_PYTHON, 0),
+        (*MAX_SUPPORTED_PYTHON, 9),
     ],
 )
 def test_check_python_version_accepts_supported_runtime(
@@ -156,7 +162,7 @@ def test_check_python_version_accepts_supported_runtime(
     [
         ((2, 7, 18), "2.7.18"),
         ((3, 9, 0), "3.9.0"),
-        ((3, 15, 0), "3.15.0"),
+        ((*EXCLUSIVE_MAX_SUPPORTED_PYTHON, 0), f"{EXCLUSIVE_MAX_SUPPORTED_PYTHON_STR}.0"),
         ((4, 0, 0), "4.0.0"),
     ],
 )
@@ -175,5 +181,7 @@ def test_check_python_version_exits_for_unsupported_runtime(
 
     assert exc_info.value.code == 1
     captured: str = capsys.readouterr().err
-    assert "requires Python 3.10 through 3.14" in captured
+    assert (
+        f"requires Python {MIN_SUPPORTED_PYTHON_STR} through {MAX_SUPPORTED_PYTHON_STR}" in captured
+    )
     assert f"Current version: {version_text}" in captured

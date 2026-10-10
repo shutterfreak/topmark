@@ -37,6 +37,7 @@ ______________________________________________________________________
 | Goal                                                                 | Recommended page                                   |
 | -------------------------------------------------------------------- | -------------------------------------------------- |
 | Install TopMark and complete a safe first run                        | [Getting started](usage/getting-started.md)        |
+| Understand Python runtime support and EOL transitions                | [Python support policy](usage/python-support.md)   |
 | Understand the CLI structure and shared behavior                     | [Command overview](usage/cli.md)                   |
 | Configure discovery, layered runtime behavior, and policies          | [Configuration](usage/configuration.md)            |
 | Understand repository filtering and file discovery                   | [Filtering](usage/filtering.md)                    |

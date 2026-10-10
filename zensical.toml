@@ -56,6 +56,7 @@ nav = [
       { "Filtering recipes" = "usage/filtering.md" },
       { "Header placement" = "usage/header-placement.md" },
       { Policies = "usage/policies.md" },
+      { "Python support policy" = "usage/python-support.md" },
       { "Machine-readable output" = "usage/machine-output.md" },
       { "Pre-commit" = "usage/pre-commit.md" },
       { "CI integration" = "usage/ci.md" },

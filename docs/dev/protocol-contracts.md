@@ -147,5 +147,5 @@ For each new or changed protocol:
    flow, not protocol metadata.
 1. Treat public or plugin-facing member changes as compatibility changes; update documentation,
    focused tests, and the changelog when observable behavior changes.
-1. Run strict Pyright for Python 3.10 and 3.14. Run pytest only for executable behavior changes.
+1. Run strict Pyright for Python 3.10 and 3.15. Run pytest only for executable behavior changes.
 1. Interpret protocol coverage through this policy rather than as a target percentage.

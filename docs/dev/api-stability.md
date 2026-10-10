@@ -12,7 +12,7 @@ topmark:header:end
 
 # API stability and snapshot policy
 
-TopMark maintains a stable public 1.x Python API across all supported Python versions (3.10-3.14)
+TopMark maintains a stable public 1.x Python API across all supported Python versions (3.10-3.15)
 using a JSON-based snapshot test.
 
 The snapshot system protects the documented public execution surface exposed through `topmark.api`,
@@ -132,7 +132,7 @@ runtime values fail generation instead of receiving an opaque fallback token.
 Annotations are normalized from authored declarations and controlled runtime typing metadata.
 Built-in and `typing` generics, unions, literals, forward references, nested aliases, and
 `Required`/`NotRequired` wrappers use stable public or logical names. Assignment-based `TypeAlias`
-declarations are therefore detected consistently on Python 3.10-3.14 without requiring Python 3.12's
+declarations are therefore detected consistently on Python 3.10-3.15 without requiring Python 3.12's
 `TypeAliasType`. Recursive aliases remain named references rather than being expanded indefinitely.
 
 Defaults use JSON-safe typed records. Absence, explicit `None`, booleans, numbers, strings, tuples,
@@ -200,7 +200,7 @@ make api-snapshot
 ```
 
 This executes the snapshot tests for all supported Python versions defined in the `nox` matrix
-(3.10-3.14). It corresponds to running:
+(3.10-3.15). It corresponds to running:
 
 ```bash
 nox -s api_snapshot
@@ -284,7 +284,7 @@ evolve independently as long as:
 - the documented public API remains stable;
 - documented machine-readable output contracts remain stable;
 - canonical identifier semantics remain stable.
-- **Supported Python range:** 3.10-3.14 (`nox` matrix). Future Python minor releases will be added
+- **Supported Python range:** 3.10-3.15 (`nox` matrix). Future Python minor releases will be added
   once validated by CI and release tooling.
 - **File under version control:**\
   `tests/api/public_api_snapshot.json` must always be checked in and tracked.

@@ -104,7 +104,7 @@ behavior. Run them explicitly when working on repository tooling or test infrast
 ```bash
 pytest -m dev_validation
 # or run the QA session and select the marker:
-nox -s qa -p 3.14 -- -m dev_validation
+nox -s qa -p 3.15 -- -m dev_validation
 ```
 
 Typical examples live under `tests/dev_validation/` and include:
@@ -147,19 +147,19 @@ rather than a replacement for GitHub CI.
 The public API snapshot is a schema-versioned structural equality check derived from
 `topmark.api.__all__`. It protects callable signatures, exported dataclass and TypedDict contracts,
 public type-alias expressions, enum members, and the deliberately narrow ordinary-class category.
-Use `make api-snapshot-dev` for the current interpreter, `make api-snapshot` for Python 3.10-3.14,
+Use `make api-snapshot-dev` for the current interpreter, `make api-snapshot` for Python 3.10-3.15,
 and `make api-snapshot-update` only for an intentional, reviewed golden-file change.
 
 Run the full default test suite through nox on the canonical Python version:
 
 ```bash
-nox -s qa -p 3.14
+nox -s qa -p 3.15
 ```
 
 Generate the canonical local coverage report:
 
 ```bash
-nox -s coverage -p 3.14
+nox -s coverage -p 3.15
 ```
 
 This generates local HTML, XML, and JSON reports without publishing them. The dedicated CI coverage
@@ -184,7 +184,7 @@ pytest -m dev_validation
 Or run the same marker selection through nox:
 
 ```bash
-nox -s qa -p 3.14 -- -m dev_validation
+nox -s qa -p 3.15 -- -m dev_validation
 ```
 
 Run slow property tests only when intentionally investigating property-test behavior:
@@ -209,9 +209,9 @@ make test PYTEST_PAR="-n auto"
 make coverage PYTEST_PAR="-n auto"
 make release-check PYTEST_PAR="-n auto"
 nox -s pre_pr -- -n auto
-nox -s qa -p 3.14 -- -n auto
-nox -s qa_api -p 3.14 -- -n auto
-nox -s coverage -p 3.14 -- -n auto
+nox -s qa -p 3.15 -- -n auto
+nox -s qa_api -p 3.15 -- -n auto
+nox -s coverage -p 3.15 -- -n auto
 nox -s release_check -- -n auto
 ```
 
@@ -232,11 +232,11 @@ Common mappings are:
 | Need                                              | Preferred command                  |
 | ------------------------------------------------- | ---------------------------------- |
 | Run the recommended local pre-PR gate             | `make pre-pr`                      |
-| Run the main quality gate on the canonical Python | `nox -s qa -p 3.14`                |
-| Generate canonical coverage data                  | `nox -s coverage -p 3.14`          |
-| Run local pytest in parallel                      | `nox -s qa -p 3.14 -- -n auto`     |
+| Run the main quality gate on the canonical Python | `nox -s qa -p 3.15`                |
+| Generate canonical coverage data                  | `nox -s coverage -p 3.15`          |
+| Run local pytest in parallel                      | `nox -s qa -p 3.15 -- -n auto`     |
 | Print CI Python metadata                          | `nox -s print_python_matrix`       |
-| Run a marker-specific test subset                 | `nox -s qa -p 3.14 -- -m <marker>` |
+| Run a marker-specific test subset                 | `nox -s qa -p 3.15 -- -m <marker>` |
 | Build documentation                               | `nox -s docs`                      |
 | Build production Zensical documentation           | `nox -s docs`                      |
 | Serve production Zensical documentation           | `nox -s docs_serve`                |
