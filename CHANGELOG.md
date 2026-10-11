@@ -101,6 +101,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Pinned release-critical Linux validation, artifact, publication, and published-artifact jobs to
+  Ubuntu 24.04; added an explicit canonical-Python Ubuntu 26.04 compatibility job; and removed
+  prerelease Python resolution now that the supported matrix targets final Python releases.
 - Machine-readable JSON and NDJSON metadata now includes normalized process-stable Python runtime
   provenance (`python_version` and `machine`) while preserving the additive, backward-compatible
   envelope contract.

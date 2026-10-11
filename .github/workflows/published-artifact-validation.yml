@@ -34,7 +34,7 @@ on:
         type: choice
         options:
           - all
-          - ubuntu-latest
+          - ubuntu-24.04
           - macos-latest
           - windows-latest
       python-version:
@@ -75,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.platform == 'all' && '["ubuntu-latest", "macos-latest", "windows-latest"]' || format('["{0}"]', inputs.platform)) }}
+        os: ${{ fromJSON(inputs.platform == 'all' && '["ubuntu-24.04", "macos-latest", "windows-latest"]' || format('["{0}"]', inputs.platform)) }}
         python-version: ${{ fromJSON(inputs.python-version == 'all' && '["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]' || format('["{0}"]', inputs.python-version)) }}
 
     steps:
@@ -83,7 +83,6 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-          allow-prereleases: true
 
       - name: Show Python and pip versions
         shell: bash
