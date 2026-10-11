@@ -148,7 +148,9 @@ Produces a single machine-readable JSON document:
   "meta": {
     "tool": "topmark",
     "version": "<package version>",
-    "platform": "darwin"
+    "platform": "darwin",
+    "python_version": "3.15.0",
+    "machine": "arm64"
   },
   "version_info": {
     "version": "<package version>",
@@ -170,7 +172,7 @@ topmark version --output-format ndjson
 Produces one machine-readable NDJSON record per line:
 
 ```json
-{"kind":"version","meta":{"tool":"topmark","version":"<package version>","platform":"darwin"},"version":{"version":"<package version>","version_format":"pep440"}}
+{"kind":"version","meta":{"tool":"topmark","version":"<package version>","platform":"darwin","python_version":"3.15.0","machine":"arm64"},"version":{"version":"<package version>","version_format":"pep440"}}
 ```
 
 - Each line is a self-contained machine-readable output record.

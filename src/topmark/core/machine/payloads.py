@@ -21,8 +21,8 @@ This module is intentionally:
 It provides small, stable "global" payloads used across multiple commands:
 
 - `build_meta_payload()`:
-    A minimal `{tool, version}` mapping. This is stable for the lifetime of the
-    process and is therefore cached.
+    A small process-stable runtime provenance mapping. This is stable for the
+    lifetime of the process and is therefore cached.
 
 If a payload needs keys/kinds/domains, import those from
 [`topmark.core.machine.schemas`][topmark.core.machine.schemas] (not from a serializer/emitter).
@@ -30,6 +30,8 @@ If a payload needs keys/kinds/domains, import those from
 
 from __future__ import annotations
 
+import platform
+import sys
 from functools import lru_cache
 
 from topmark.core.constants import TOPMARK
@@ -50,22 +52,24 @@ def build_meta_payload() -> MetaPayload:
     lifetime of the process.
 
     Returns:
-        A `BaseMetaPayload` mapping with keys:
+        A `MetaPayload` mapping with keys:
         - `tool`: Tool name
         - `version`: Tool version
         - `platform`: Execution platform
+        - `python_version`: Normalized full interpreter-release string
+        - `machine`: Runtime CPU architecture identifier
 
     Notes:
         - This function deliberately excludes output-specific fields such as
           `detail_level`.
-        - Use `with_detail_level()` to derive a full `MetaPayload` when needed.
+        - Use `with_detail_level()` to derive a `DetailedMetaPayload` when needed.
     """
-    import sys
-
     return MetaPayload(
         tool=TOPMARK,
         version=TOPMARK_VERSION,
         platform=sys.platform,
+        python_version=platform.python_version(),
+        machine=platform.machine(),
     )
 
 
@@ -76,7 +80,7 @@ def with_detail_level(
 ) -> DetailedMetaPayload:
     """Derive a full machine metadata payload with detail-level information.
 
-    This helper augments a cached [`BaseMetaPayload`] with a
+    This helper augments a cached [`MetaPayload`] with a
     [`DetailLevel`] derived from CLI options.
 
     Args:
@@ -85,7 +89,7 @@ def with_detail_level(
             (e.g. `--long`).
 
     Returns:
-        A `MetaPayload` including `detail_level` set to either
+        A `DetailedMetaPayload` including `detail_level` set to either
         `DetailLevel.BRIEF` or `DetailLevel.LONG`.
 
     Notes:
@@ -97,5 +101,7 @@ def with_detail_level(
         tool=meta["tool"],
         version=meta["version"],
         platform=meta["platform"],
+        python_version=meta["python_version"],
+        machine=meta["machine"],
         detail_level=DetailLevel.LONG if show_details else DetailLevel.BRIEF,
     )

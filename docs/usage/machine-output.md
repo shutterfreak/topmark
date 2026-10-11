@@ -93,8 +93,9 @@ Stable contract surface:
   command-specific documented payload keys.
 - `ndjson` output is a sequence of newline-delimited JSON objects. Each record has `kind`, `meta`,
   and a payload stored under the key named by `kind`.
-- Baseline `meta` fields are `tool`, `version`, and `platform`. Some command families also emit
-  `detail_level` to describe a machine-facing projection such as `brief` or `long`.
+- Baseline `meta` fields are `tool`, `version`, `platform`, `python_version`, and `machine`. Some
+  command families also emit `detail_level` to describe a machine-facing projection such as `brief`
+  or `long`.
 - Documented command-specific payload fields, path serialization rules, diagnostics shapes, summary
   rows, result payloads, probe payloads, registry identities, version payloads, and diff payloads
   are stable for the current major release line.
@@ -187,6 +188,8 @@ Shape:
     "tool": "topmark",
     "version": "<package version>",
     "platform": "darwin",
+    "python_version": "3.15.0",
+    "machine": "arm64",
     "detail_level": "brief" // or "long"
   }
 }
@@ -197,6 +200,10 @@ Notes:
 - `version` reflects the resolved TopMark package version (normally PEP 440), derived from Git tags
   via `setuptools-scm`. Examples are illustrative only.
 - `platform` is a short runtime identifier (e.g., from `sys.platform`).
+- `python_version` is the normalized full interpreter-release string (for example, `"3.15.0"`).
+  Along with `platform` and `machine`, it provides process-stable runtime provenance without
+  exposing executable paths, compiler details, build flags, or raw `sys.version` text.
+- `machine` is the runtime CPU architecture identifier (for example, `"arm64"`).
 - `detail_level` is machine-facing and distinguishes the default projection (`"brief"`) from the
   expanded projection requested via `--long` (`"long"`) when a command surface emits that field.
   Registry machine-readable output currently includes `detail_level`; other command families may
@@ -266,7 +273,7 @@ conventions across domains:
 - Decomposed identities use `namespace` + `local_key`.
 - Relationship references use `*_key` (for example `file_type_key`, `processor_key`).
 - `detail_level` is an **extended metadata field** rather than baseline metadata:
-  - baseline metadata is `tool`, `version`, `platform`
+  - baseline metadata is `tool`, `version`, `platform`, `python_version`, and `machine`
   - `detail_level` is emitted only by command families whose machine-readable output exposes a brief
     vs long projection
 

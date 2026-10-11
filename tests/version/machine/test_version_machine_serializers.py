@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.helpers.machine import machine_meta
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.schemas import MetaPayload
 from topmark.version import runtime as version_runtime
 from topmark.version.machine.envelopes import iter_version_ndjson_records
 from topmark.version.machine.payloads import VersionPayloadResult
@@ -29,15 +29,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from pytest import MonkeyPatch
-
-
-def _machine_meta() -> MetaPayload:
-    """Return stable test metadata payload."""
-    return MetaPayload(
-        tool="topmark",
-        version="test",
-        platform="test",
-    )
 
 
 @pytest.mark.parametrize(
@@ -51,7 +42,7 @@ def test_version_serializer_rejects_human_output_formats(fmt: OutputFormat) -> N
     """Version machine serializer should fail closed for human formats."""
     with pytest.raises(ValueError) as exc_info:
         serialize_version(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             fmt=fmt,
             semver=False,
         )
@@ -78,7 +69,7 @@ def test_version_ndjson_emits_diagnostic_after_semver_fallback(
 
     records: list[dict[str, object]] = list(
         iter_version_ndjson_records(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             semver=True,
         )
     )
@@ -110,24 +101,20 @@ def test_runtime_fallback_propagates_through_payload_and_machine_formats(
     assert isinstance(payload_result.err, ValueError)
 
     json_output: str | Iterator[str] = serialize_version(
-        meta=_machine_meta(),
+        meta=machine_meta(),
         fmt=OutputFormat.JSON,
         semver=True,
     )
     assert isinstance(json_output, str)
     json_envelope: dict[str, object] = json.loads(json_output)
     assert json_envelope == {
-        "meta": {
-            "tool": "topmark",
-            "version": "test",
-            "platform": "test",
-        },
+        "meta": machine_meta(),
         "version_info": payload_result.payload,
     }
 
     records: list[dict[str, object]] = list(
         iter_version_ndjson_records(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             semver=True,
         )
     )
@@ -135,11 +122,7 @@ def test_runtime_fallback_propagates_through_payload_and_machine_formats(
         "version",
         "diagnostic",
     ]
-    assert records[0]["meta"] == {
-        "tool": "topmark",
-        "version": "test",
-        "platform": "test",
-    }
+    assert records[0]["meta"] == machine_meta()
     assert records[0]["version"] == payload_result.payload
     assert records[1]["diagnostic"] == {
         "domain": "version",
@@ -152,7 +135,7 @@ def test_version_ndjson_serializer_yields_single_newline_terminated_chunk() -> N
     """Version NDJSON serializer keeps the CLI-friendly chunk contract."""
     chunks: list[str] = list(
         serialize_version(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             fmt=OutputFormat.NDJSON,
             semver=False,
         )

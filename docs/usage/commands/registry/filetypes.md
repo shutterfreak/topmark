@@ -142,8 +142,8 @@ JSON output emits one machine-readable document with shared metadata and a `file
 }
 ```
 
-- `meta` contains shared machine metadata, including `tool`, `version`, `platform`, and
-  `detail_level`.
+- `meta` contains shared machine metadata, including `tool`, `version`, `platform`,
+  `python_version`, `machine`, and `detail_level`.
 - `filetypes` is a list of file type entries.
 - Brief entries include `local_key`, `namespace`, `qualified_key`, and `description`.
 - Long entries add matching, processing, and policy fields such as `bound`, `extensions`,

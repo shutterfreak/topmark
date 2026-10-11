@@ -78,11 +78,15 @@ class MachineMetaKey(str, Enum):
         TOOL: Executable/tool name.
         VERSION: TopMark version string.
         PLATFORM: Execution platform identifier.
+        PYTHON_VERSION: Normalized full interpreter-release string.
+        MACHINE: Runtime CPU architecture identifier.
     """
 
     TOOL = "tool"
     VERSION = "version"
     PLATFORM = "platform"
+    PYTHON_VERSION = "python_version"
+    MACHINE = "machine"
 
 
 class MachineDomain(str, Enum):
@@ -148,11 +152,15 @@ class MetaPayload(TypedDict, total=True):
         tool: Name of the tool (e.g. "topmark").
         version: Tool version string.
         platform: Execution platform (e.g. "darwin", "linux").
+        python_version: Normalized full interpreter-release string (e.g. "3.15.0").
+        machine: Runtime CPU architecture identifier (e.g. "arm64").
     """
 
     tool: str
     version: str
     platform: str
+    python_version: str
+    machine: str
 
 
 class DetailedMetaPayload(MetaPayload, total=True):
@@ -167,7 +175,7 @@ class DetailedMetaPayload(MetaPayload, total=True):
 
     Notes:
         Inherits the base metadata fields from `MetaPayload`:
-        `tool`, `version`, and `platform`.
+        `tool`, `version`, `platform`, `python_version`, and `machine`.
     """
 
     detail_level: DetailLevel

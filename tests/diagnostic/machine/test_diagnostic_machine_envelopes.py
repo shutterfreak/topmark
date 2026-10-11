@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from topmark.core.machine.schemas import MetaPayload
+from tests.helpers.machine import machine_meta
 from topmark.diagnostic.machine.envelopes import iter_diagnostic_ndjson_records
 from topmark.diagnostic.model import Diagnostic
 from topmark.diagnostic.model import DiagnosticLevel
@@ -60,11 +60,6 @@ class _OpaqueLevel:
         return "opaque-level"
 
 
-def _machine_meta() -> MetaPayload:
-    """Return stable test metadata payload."""
-    return MetaPayload(tool="topmark", version="test", platform="test")
-
-
 def test_diagnostic_ndjson_records_use_stable_domain_and_message_shape() -> None:
     """Shared diagnostic records should preserve domain, level, and message keys."""
     diagnostics = _Diagnostics(
@@ -73,7 +68,7 @@ def test_diagnostic_ndjson_records_use_stable_domain_and_message_shape() -> None
 
     records: list[dict[str, object]] = list(
         iter_diagnostic_ndjson_records(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             domain="config",
             diagnostics=diagnostics,
         )
@@ -82,7 +77,7 @@ def test_diagnostic_ndjson_records_use_stable_domain_and_message_shape() -> None
     assert records == [
         {
             "kind": "diagnostic",
-            "meta": {"tool": "topmark", "version": "test", "platform": "test"},
+            "meta": machine_meta(),
             "diagnostic": {
                 "domain": "config",
                 "level": "warning",
@@ -100,7 +95,7 @@ def test_diagnostic_ndjson_accepts_string_valued_external_levels() -> None:
 
     records: list[dict[str, object]] = list(
         iter_diagnostic_ndjson_records(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             domain="external",
             diagnostics=diagnostics,
         )
@@ -121,7 +116,7 @@ def test_diagnostic_ndjson_falls_back_to_stringified_levels() -> None:
 
     records: list[dict[str, object]] = list(
         iter_diagnostic_ndjson_records(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             domain="external",
             diagnostics=diagnostics,
         )
