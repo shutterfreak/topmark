@@ -197,7 +197,16 @@ Before tagging a release:
    - pre-commit hook behavior;
    - stable runtime or reporting contracts.
 
+   Add every new version-boundary migration guide to the [Upgrading TopMark](../usage/upgrading.md)
+   choice table, and preserve the published URLs of earlier guides.
+
 1. Ensure release notes match the intended semantic-versioning impact.
+
+   For a major release, include a link to the applicable version-boundary migration guide in the
+   GitHub Release description. For example, the TopMark 2.0 release must link to
+   [Upgrading to TopMark 2.0](../usage/upgrading-to-2.0.md). The release workflow generates GitHub
+   release notes automatically, so add this release-specific migration link when reviewing the
+   created release.
 
    The snapshot is an equality guard; maintainers still interpret compatibility and choose the
    release tag. Package versions are derived from Git tags through `setuptools-scm`.

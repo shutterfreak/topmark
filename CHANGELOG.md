@@ -30,6 +30,8 @@ ______________________________________________________________________
 >
 > Consumers should review the **Breaking Changes** and **Notes** sections before upgrading
 > automation, CI jobs, golden tests, machine-output parsers, or plugin/custom file-type definitions.
+> Follow [Upgrading to TopMark 2.0](docs/usage/upgrading-to-2.0.md) for the complete, actionable
+> migration path.
 >
 > In particular:
 >
