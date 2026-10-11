@@ -365,6 +365,10 @@ ______________________________________________________________________
 
 ### Fixed - Unreleased
 
+- Fixed header scanning so marker-shaped text in source content, strings, docstrings, and test
+  fixtures does not make an otherwise valid TopMark header malformed.
+- Added a tracked-source TopMark self-check to the local `pre_pr` validation gate, catching
+  repository-wide header-detection regressions before pull requests are opened.
 - Rejected unsafe header field names and values before processor rendering, including line breaks,
   control characters, reserved TopMark markers, ambiguous names, and processor-specific comment
   terminators, without producing partial render, diff, patch, or write output.

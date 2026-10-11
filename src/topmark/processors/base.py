@@ -1541,17 +1541,43 @@ class HeaderProcessor:
         if not buf:
             return HeaderBounds(kind=BoundsKind.NONE)
 
-        # --- Preflight: marker-shape scan (format-agnostic) --------------------
+        # --- Preflight: marker-shape scan --------------------------------------
+        #
+        # Only directive lines participate in structural validation. A source file
+        # can legitimately mention a marker in a string literal, docstring, or test
+        # fixture; treating every substring as a directive makes those mentions look
+        # like malformed headers.
+        def marker_directives(line: str) -> tuple[bool, bool]:
+            """Return marker directives present in a single physical line."""
+            has_start: bool = self.line_has_directive(line, TOPMARK_START_MARKER)
+            has_end: bool = self.line_has_directive(line, TOPMARK_END_MARKER)
+            if has_start or has_end:
+                return has_start, has_end
+
+            candidate: str = line.strip()
+            if self.line_prefix:
+                if not candidate.startswith(self.line_prefix):
+                    return False, False
+                candidate = candidate.removeprefix(self.line_prefix)
+            if self.line_suffix:
+                if not candidate.endswith(self.line_suffix):
+                    return False, False
+                candidate = candidate.removesuffix(self.line_suffix)
+
+            has_combined_markers: bool = (
+                candidate.strip() == f"{TOPMARK_START_MARKER} {TOPMARK_END_MARKER}"
+            )
+            return has_combined_markers, has_combined_markers
+
         start_idxs: list[int] = []
         end_idxs: list[int] = []
         i: int
         ln: str
         for i, ln in enumerate(buf):
-            # Accept either exact directive lines or markers inside a single-line comment
-            # wrapper; the more exact check (line_has_directive) happens later.
-            if TOPMARK_START_MARKER in ln:
+            has_start, has_end = marker_directives(ln)
+            if has_start:
                 start_idxs.append(i)
-            if TOPMARK_END_MARKER in ln:
+            if has_end:
                 end_idxs.append(i)
 
         if end_idxs and not start_idxs:
@@ -1597,8 +1623,7 @@ class HeaderProcessor:
         # dangling markers make the overall shape malformed.
         open_start: int | None = None
         for marker_idx, marker_line in enumerate(buf):
-            has_start: bool = TOPMARK_START_MARKER in marker_line
-            has_end: bool = TOPMARK_END_MARKER in marker_line
+            has_start, has_end = marker_directives(marker_line)
             if has_start and has_end:
                 return HeaderBounds(
                     kind=BoundsKind.MALFORMED,

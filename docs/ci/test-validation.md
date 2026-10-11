@@ -140,9 +140,10 @@ Run the recommended local pre-PR validation gate before opening or updating a pu
 make pre-pr
 ```
 
-The pre-PR gate runs formatting checks, lint checks, documentation hygiene, a strict docs build, the
-canonical Python QA session, and the public API snapshot check. It is a local confidence shortcut
-rather than a replacement for GitHub CI.
+The pre-PR gate runs formatting checks, lint checks, documentation hygiene, a strict docs build, a
+self-check of every tracked file through the current TopMark checkout, the canonical Python QA
+session, and the public API snapshot check. It is a local confidence shortcut rather than a
+replacement for GitHub CI.
 
 The public API snapshot is a schema-versioned structural equality check derived from
 `topmark.api.__all__`. It protects callable signatures, exported dataclass and TypedDict contracts,

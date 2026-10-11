@@ -75,6 +75,13 @@ class _MissingCharOffsetProcessor(_CharOffsetProcessor):
         return None
 
 
+class _PrefixOnlyHeaderProcessor(ExampleHeaderProcessor):
+    """Processor double without a configured line suffix."""
+
+    local_key = "prefix-only"
+    line_suffix = ""
+
+
 @dataclass
 class _Context:
     views: Views
@@ -419,6 +426,45 @@ def test_header_bounds_select_first_of_multiple_complete_headers_deterministical
     )
 
     assert (bounds.kind, bounds.start, bounds.end) == (BoundsKind.SPAN, 0, 2)
+
+
+@pytest.mark.parametrize(
+    ("processor", "incidental_marker_lines"),
+    [
+        (ExampleHeaderProcessor(), [f'value = "{TOPMARK_END_MARKER}"\n']),
+        (ExampleHeaderProcessor(), [f'value = "{TOPMARK_START_MARKER}"\n']),
+        (
+            ExampleHeaderProcessor(),
+            [f'value = "{TOPMARK_START_MARKER} {TOPMARK_END_MARKER}"\n'],
+        ),
+        (ExampleHeaderProcessor(), [f'value = "{TOPMARK_START_MARKER}"\n'] * 2),
+        (ExampleHeaderProcessor(), [f"// {TOPMARK_START_MARKER}\n"]),
+        (_PrefixOnlyHeaderProcessor(), [f"// {TOPMARK_START_MARKER} prose\n"]),
+    ],
+)
+def test_header_bounds_ignore_marker_substrings_outside_directives(
+    processor: HeaderProcessor,
+    incidental_marker_lines: list[str],
+) -> None:
+    """Marker-shaped source content does not make a valid header malformed."""
+    line_suffix: str = f" {processor.line_suffix}" if processor.line_suffix else ""
+    lines: list[str] = [
+        f"// {TOPMARK_START_MARKER}{line_suffix}\n",
+        f"// {TOPMARK_END_MARKER}{line_suffix}\n",
+        *incidental_marker_lines,
+    ]
+
+    bounds: HeaderBounds = processor.get_header_bounds(
+        lines=lines,
+        newline_style="\n",
+    )
+
+    assert (bounds.kind, bounds.start, bounds.end, bounds.reason) == (
+        BoundsKind.SPAN,
+        0,
+        2,
+        None,
+    )
 
 
 @pytest.mark.parametrize(

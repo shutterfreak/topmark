@@ -28,6 +28,7 @@ Sessions:
   - `code_hygiene`: Enforce lightweight Python prose hygiene (custom tool).
   - `qa`: Per-Python session that runs pytest and pyright.
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
+  - `self_check`: Verify that the current TopMark checkout accepts every tracked file.
   - `pre_pr`: Recommended local pre-PR validation gate.
   - `api_snapshot`: Public API snapshot test (per Python).
   - `property_test`: Long-running property tests (opt-in).
@@ -317,6 +318,7 @@ def pre_pr(session: nox.Session) -> None:
         "docs_hygiene",
         "code_hygiene",
         "docs",
+        "self_check",
     )
     for session_name in serial_sessions:
         session.run(
@@ -342,6 +344,18 @@ def pre_pr(session: nox.Session) -> None:
         "api_snapshot",
         "-p",
         CANONICAL_PYTHON,
+        external=True,
+    )
+
+
+@nox.session(python=CANONICAL_PYTHON)
+def self_check(session: nox.Session) -> None:
+    """Verify that the current TopMark checkout accepts every tracked file."""
+    session.install(".")
+    session.run(
+        "topmark",
+        "check",
+        *get_git_files(session),
         external=True,
     )
 
