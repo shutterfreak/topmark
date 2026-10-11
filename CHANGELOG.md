@@ -49,6 +49,11 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added a scheduled, manually dispatchable Python lifecycle audit that compares released CPython
+  series and EOL transitions with TopMark metadata and support policy, then idempotently maintains
+  maintainer-reviewed tracking issues without changing the compatibility contract automatically. It
+  creates one series-tracking issue from official release candidates, updates it for newer RCs and
+  final releases, and runs every Monday.
 - Added configuration-owned multiline header field rendering: multiline fields use structural `|`
   continuation lines, and incidental leading and trailing blank lines in TOML values are trimmed.
   Fields selected by `formatting.wrap_fields` preserve paragraph boundaries and reflow each
