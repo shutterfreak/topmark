@@ -56,6 +56,7 @@ jobs:
       pull-requests: read
     outputs:
       python_changed: ${{ steps.filter.outputs.python }}
+      ci_changed: ${{ steps.filter.outputs.ci }}
       docs_changed: ${{ steps.filter.outputs.docs }}
       markdown_links_changed: ${{ steps.filter.outputs.markdown_links }}
       precommit_changed: ${{ steps.filter.outputs.precommit }}
@@ -78,6 +79,8 @@ jobs:
               - 'uv.lock'
               - 'noxfile.py'
               - 'codecov.yml'
+            ci:
+              - '.github/workflows/ci.yml'
             docs:
               - 'docs/**'
               - 'README.md'
@@ -131,12 +134,14 @@ jobs:
             echo "| Group          | Changed                                    |"
             echo "| -------------- | ------------------------------------------ |"
             echo "| Python         | ${{ steps.filter.outputs.python }}         |"
+            echo "| CI workflow    | ${{ steps.filter.outputs.ci }}             |"
             echo "| Documentation  | ${{ steps.filter.outputs.docs }}           |"
             echo "| Markdown links | ${{ steps.filter.outputs.markdown_links }} |"
             echo "| Pre-commit     | ${{ steps.filter.outputs.precommit }}      |"
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "python_changed=${{ steps.filter.outputs.python }}"
+          echo "ci_changed=${{ steps.filter.outputs.ci }}"
           echo "docs_changed=${{ steps.filter.outputs.docs }}"
           echo "markdown_links_changed=${{ steps.filter.outputs.markdown_links }}"
           echo "precommit_changed=${{ steps.filter.outputs.precommit }}"
@@ -404,7 +409,7 @@ jobs:
   ubuntu-26-04:
     name: Ubuntu 26.04 compatibility
     needs: [changes, python-metadata]
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
+    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' || needs.changes.outputs.ci_changed == 'true' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:

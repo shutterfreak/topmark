@@ -125,7 +125,8 @@ Release-critical Linux jobs explicitly use `ubuntu-24.04`, preventing a rolling 
 image migration from changing the primary validation or release environment without review. The
 separate `ubuntu-26-04` job runs the canonical Python QA session on Ubuntu 26.04, providing an
 explicit forward-compatibility signal while the supported Python matrix remains pinned to Ubuntu
-24.04.
+24.04. It runs for Python-relevant changes and whenever its defining CI workflow changes, so edits
+to the compatibility gate are validated by that gate on pull requests.
 
 Filesystem-sensitive behavior is validated separately by the `filesystem-tests` job. The supported
 Python-version matrix already runs canonical Linux QA on Ubuntu, so `filesystem-tests` focuses on
