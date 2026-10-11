@@ -112,6 +112,10 @@ The release trust boundary is intentionally strict, explicit, and deterministic:
 The workflow uses concurrency keyed by the CI run commit SHA so repeated release attempts for the
 same commit cannot run concurrently.
 
+All release-workflow jobs explicitly use `ubuntu-24.04`. This keeps the privileged publishing path
+independent of rolling `ubuntu-latest` image migrations. Cross-platform compatibility remains the
+responsibility of the CI and published-artifact validation workflows.
+
 ______________________________________________________________________
 
 ## Jobs and validation scope

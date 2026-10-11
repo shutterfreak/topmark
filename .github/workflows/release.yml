@@ -26,7 +26,7 @@ concurrency:
 jobs:
   preflight:
     name: Resolve release context
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_release: ${{ steps.set.outputs.should_release }}
       tag: ${{ steps.set.outputs.tag }}
@@ -152,7 +152,7 @@ jobs:
     name: Verify downloaded release artifacts
     needs: [preflight]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       tag: ${{ needs.preflight.outputs.tag }}
       tag_no_v: ${{ needs.preflight.outputs.tag_no_v }}
@@ -279,7 +279,7 @@ jobs:
     name: Publish to PyPI/TestPyPI
     needs: [preflight, details]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: ${{ needs.details.outputs.channel }} # 'testpypi' for rc/a/b, else 'pypi'
     env:
       RELEASE_TOOLING_PYTHON: "3.15"
@@ -447,7 +447,7 @@ jobs:
     name: Create GitHub Release
     needs: [preflight, details, publish-package]
     if: ${{ needs.preflight.outputs.should_release == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
