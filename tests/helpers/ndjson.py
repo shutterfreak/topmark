@@ -30,8 +30,6 @@ import json
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_mapping
 
-REQUIRED_META_KEYS: frozenset[str] = frozenset({"tool", "version", "platform"})
-
 
 def parse_ndjson_records(output: str) -> list[dict[str, object]]:
     """Parse all non-empty NDJSON records from CLI output.
@@ -136,49 +134,3 @@ def record_kinds(records: list[dict[str, object]]) -> list[str]:
         assert isinstance(kind_obj, str), "NDJSON record must contain a string 'kind' field"
         kinds.append(kind_obj)
     return kinds
-
-
-def assert_ndjson_meta(
-    meta_obj: object,
-    *,
-    expected_detail_level: str | None = None,
-) -> dict[str, object]:
-    """Assert common TopMark machine-readable output metadata for an NDJSON record.
-
-    This helper validates the standard machine metadata fields currently used by
-    TopMark's NDJSON-emitting command surfaces and returns the normalized
-    metadata mapping for any additional assertions in the calling test.
-
-    The baseline NDJSON metadata contract requires ``tool``, ``version``, and
-    ``platform``. Some command surfaces also emit ``detail_level``; when an
-    expected detail level is supplied, this helper validates it only if the
-    field is present.
-
-    Args:
-        meta_obj: Candidate metadata object, typically ``record["meta"]``.
-        expected_detail_level: Expected machine ``detail_level`` value when that
-            field is emitted by the command surface.
-
-    Returns:
-        The validated metadata mapping.
-
-    Raises:
-        AssertionError: If the metadata object is not a mapping, if required
-            baseline fields are missing, or if a present ``detail_level`` does
-            not match the expected value.
-    """
-    assert is_mapping(meta_obj)
-
-    meta: dict[str, object] = as_object_dict(meta_obj)
-
-    for key in REQUIRED_META_KEYS:
-        assert key in meta
-        assert isinstance(meta[key], str)
-
-    detail_level_obj: object | None = meta.get("detail_level")
-    if detail_level_obj is not None:
-        assert isinstance(detail_level_obj, str)
-        if expected_detail_level is not None:
-            assert detail_level_obj == expected_detail_level
-
-    return meta

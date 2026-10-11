@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
-from tests.helpers.ndjson import assert_ndjson_meta
+from tests.helpers.machine import assert_machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from topmark.cli.keys import CliCmd
@@ -237,7 +237,10 @@ def test_config_check_ndjson_record_order() -> None:
     assert len(records) >= 3
 
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
 
     kinds: list[str] = record_kinds(records)
     assert kinds[:3] == ["config", "config_diagnostics", "config_check"]
@@ -264,7 +267,10 @@ def test_config_check_ndjson_flattens_staged_diagnostics_in_order(tmp_path: Path
 
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
 
     messages: list[str] = _extract_diagnostic_messages_from_ndjson(records)
 
@@ -302,7 +308,10 @@ def test_config_check_ndjson_config_diagnostics_record_shape() -> None:
     record: dict[str, object] = records[1]
 
     assert record.get("kind") == "config_diagnostics"
-    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+    assert_machine_meta(
+        record.get("meta"),
+        expected_detail_level="brief",
+    )
 
     diagnostics_obj: object | None = record.get("config_diagnostics")
     assert is_mapping(diagnostics_obj)
@@ -331,7 +340,10 @@ def test_config_check_ndjson_summary_record_uses_strict() -> None:
     record: dict[str, object] = records[2]
 
     assert record.get("kind") == "config_check"
-    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+    assert_machine_meta(
+        record.get("meta"),
+        expected_detail_level="brief",
+    )
 
     config_check_summary_obj: object | None = record.get("config_check")
     assert is_mapping(config_check_summary_obj)
@@ -358,7 +370,10 @@ def test_config_check_ndjson_third_record_uses_config_check_container_not_summar
     record: dict[str, object] = records[2]
 
     assert record.get("kind") == "config_check"
-    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+    assert_machine_meta(
+        record.get("meta"),
+        expected_detail_level="brief",
+    )
 
     assert "config_check" in record
     assert "summary" not in record

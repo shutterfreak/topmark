@@ -151,8 +151,8 @@ bindings, unbound file types, and unused processors:
 }
 ```
 
-- `meta` contains shared machine metadata, including `tool`, `version`, `platform`, and
-  `detail_level`.
+- `meta` contains shared machine metadata, including `tool`, `version`, `platform`,
+  `python_version`, `machine`, and `detail_level`.
 - `bindings` contains the effective file type ↔ processor relationships.
 - Brief binding entries include `file_type_key` and `processor_key`.
 - Long binding entries add descriptive identity fields such as `file_type_local_key`,

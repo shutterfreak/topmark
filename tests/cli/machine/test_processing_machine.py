@@ -51,7 +51,8 @@ from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from tests.helpers.console import CapturedConsole
 from tests.helpers.console import make_captured_console
 from tests.helpers.json import parse_json_object
-from tests.helpers.ndjson import assert_ndjson_meta
+from tests.helpers.machine import assert_machine_meta
+from tests.helpers.machine import machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.paths import symlink_or_skip
@@ -65,7 +66,6 @@ from topmark.cli.emitters.machine import emit_processing_stream_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.schemas import MetaPayload
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
@@ -106,15 +106,6 @@ def _processing_result(tmp_path: Path) -> tuple[FrozenConfig, ProcessingResult]:
     cfg: FrozenConfig = make_frozen_config()
     ctx: ProcessingContext = make_pipeline_context(path=tmp_path / "example.py", cfg=cfg)
     return cfg, ProcessingResult.from_context(ctx)
-
-
-def _machine_meta() -> MetaPayload:
-    """Return stable test metadata payload for machine-envelope builders."""
-    return MetaPayload(
-        tool="topmark",
-        version="test",
-        platform="test",
-    )
 
 
 def _empty_resolved_toml_sources() -> ResolvedTopmarkTomlSources:
@@ -195,7 +186,7 @@ def test_config_machine_emitters_reject_human_output_formats(
         if emitter is emit_config_machine:
             emit_config_machine(
                 console=captured.console,
-                meta=_machine_meta(),
+                meta=machine_meta(),
                 config=cfg,
                 resolved_toml=_empty_resolved_toml_sources(),
                 fmt=fmt,
@@ -203,14 +194,14 @@ def test_config_machine_emitters_reject_human_output_formats(
         elif emitter is emit_config_diagnostics_machine:
             emit_config_diagnostics_machine(
                 console=captured.console,
-                meta=_machine_meta(),
+                meta=machine_meta(),
                 config=cfg,
                 fmt=fmt,
             )
         else:
             emit_config_check_machine(
                 console=captured.console,
-                meta=_machine_meta(),
+                meta=machine_meta(),
                 config=cfg,
                 resolved_toml=_empty_resolved_toml_sources(),
                 strict=True,
@@ -443,7 +434,7 @@ def test_emit_processing_stream_json_machine_emits_stream_json_payload(
 
     emit_processing_stream_json_machine(
         console=captured.console,
-        meta=_machine_meta(),
+        meta=machine_meta(),
         config=cfg,
         resolved_toml=_empty_resolved_toml_sources(),
         events=(
@@ -476,7 +467,7 @@ def test_emit_processing_stream_machine_emits_stream_ndjson_payload(
 
     emit_processing_stream_machine(
         console=captured.console,
-        meta=_machine_meta(),
+        meta=machine_meta(),
         config=cfg,
         resolved_toml=_empty_resolved_toml_sources(),
         events=(
@@ -685,7 +676,7 @@ def test_processing_json_detail_path_serializes_windows_style_path_as_posix(
     )
 
     payload: dict[str, object] = build_processing_results_stream_json_envelope(
-        meta=_machine_meta(),
+        meta=machine_meta(),
         config=cfg,
         resolved_toml=_empty_resolved_toml_sources(),
         events=iter_machine_processing_stream([processing_result], command=command),
@@ -926,7 +917,10 @@ def test_processing_ndjson_kinds_with_summary(tmp_path: Path, command: str) -> N
     assert records
 
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
 
     kinds: list[str] = record_kinds(records)
     for record, kind_obj in zip(records, kinds, strict=False):
@@ -972,7 +966,7 @@ def test_processing_ndjson_detail_path_serializes_windows_style_path_as_posix(
 
     records: list[dict[str, object]] = list(
         iter_processing_results_stream_ndjson_records(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=cfg,
             resolved_toml=_empty_resolved_toml_sources(),
             events=iter_machine_processing_stream([processing_result], command=command),
@@ -1066,7 +1060,10 @@ def test_processing_ndjson_summary_rows_do_not_use_legacy_key_label_shape(
     assert records
 
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
 
     summary_records_found: int = 0
     for record in records:
@@ -1121,7 +1118,10 @@ def test_processing_ndjson_strict_config_warning_emits_machine_diagnostics(
 
     diagnostic_messages: list[str] = []
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
         if record.get("kind") != "diagnostic":
             continue
 

@@ -23,7 +23,7 @@ from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
-from tests.helpers.ndjson import assert_ndjson_meta
+from tests.helpers.machine import assert_machine_meta
 from tests.helpers.ndjson import parse_single_ndjson_record
 from tests.helpers.version import SEMVER_RE
 from topmark.cli.keys import CliCmd
@@ -146,7 +146,7 @@ def test_version_ndjson_format(use_semver: bool) -> None:
 
     assert payload.get("kind") == "version"
 
-    meta: dict[str, object] = assert_ndjson_meta(
+    meta: dict[str, object] = assert_machine_meta(
         payload.get("meta"),
         expected_detail_level="brief",
     )

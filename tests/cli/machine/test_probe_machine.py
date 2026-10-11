@@ -31,7 +31,8 @@ from tests.helpers.config_diagnostics import assert_overlap_warning_text
 from tests.helpers.console import CapturedConsole
 from tests.helpers.console import make_captured_console
 from tests.helpers.json import parse_json_object
-from tests.helpers.ndjson import assert_ndjson_meta
+from tests.helpers.machine import assert_machine_meta
+from tests.helpers.machine import machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.ndjson import record_payload
@@ -43,7 +44,6 @@ from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.main import cli
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.schemas import MetaPayload
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.core.typing_guards import is_mapping
@@ -62,15 +62,6 @@ if TYPE_CHECKING:
 
     from topmark.config.model import FrozenConfig
     from topmark.pipeline.context.model import ProcessingContext
-
-
-def _machine_meta() -> MetaPayload:
-    """Return stable test metadata payload for machine-emitter tests."""
-    return MetaPayload(
-        tool="topmark",
-        version="test",
-        platform="test",
-    )
 
 
 def _empty_resolved_toml_sources() -> ResolvedTopmarkTomlSources:
@@ -496,7 +487,10 @@ def test_probe_ndjson_output_includes_brief_meta_on_each_record(
     assert records
 
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
 
 
 def test_probe_ndjson_symlink_input_serializes_canonical_target_path(
@@ -789,7 +783,7 @@ def test_emit_probe_stream_json_machine_emits_stream_json_payload(
 
     emit_probe_stream_json_machine(
         console=captured.console,
-        meta=_machine_meta(),
+        meta=machine_meta(),
         config=cfg,
         resolved_toml=_empty_resolved_toml_sources(),
         events=(
@@ -821,7 +815,7 @@ def test_emit_probe_stream_machine_emits_stream_ndjson_payload(
 
     emit_probe_stream_machine(
         console=captured.console,
-        meta=_machine_meta(),
+        meta=machine_meta(),
         config=cfg,
         resolved_toml=_empty_resolved_toml_sources(),
         events=(

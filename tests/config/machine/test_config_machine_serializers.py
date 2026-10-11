@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 import topmark.config.machine.serializers as config_serializers
+from tests.helpers.machine import machine_meta
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.machine.payloads import build_config_diagnostics_counts_payload
 from topmark.config.machine.serializers import serialize_config
@@ -26,7 +27,6 @@ from topmark.config.machine.serializers import serialize_config_diagnostics
 from topmark.config.machine.serializers import serialize_config_diagnostics_ndjson
 from topmark.config.machine.serializers import serialize_config_json
 from topmark.core.formats import OutputFormat
-from topmark.core.machine.schemas import MetaPayload
 from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 if TYPE_CHECKING:
@@ -34,11 +34,6 @@ if TYPE_CHECKING:
     from topmark.config.model import MutableConfig
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
     from topmark.toml.machine.schemas import TomlProvenancePayload
-
-
-def _machine_meta() -> MetaPayload:
-    """Return stable test metadata payload."""
-    return MetaPayload(tool="topmark", version="test", platform="test")
 
 
 def _empty_resolved_toml_sources() -> ResolvedTopmarkTomlSources:
@@ -67,7 +62,7 @@ def test_config_serializers_reject_human_output_formats(fmt: OutputFormat) -> No
 
     with pytest.raises(ValueError) as exc_info:
         serialize_config(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=config,
             fmt=fmt,
             resolved_toml=resolved_toml,
@@ -76,7 +71,7 @@ def test_config_serializers_reject_human_output_formats(fmt: OutputFormat) -> No
 
     with pytest.raises(ValueError) as exc_info:
         serialize_config_check(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=config,
             resolved_toml=resolved_toml,
             strict=False,
@@ -87,7 +82,7 @@ def test_config_serializers_reject_human_output_formats(fmt: OutputFormat) -> No
 
     with pytest.raises(ValueError) as exc_info:
         serialize_config_diagnostics(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=config,
             fmt=fmt,
         )
@@ -99,7 +94,7 @@ def test_config_json_exposes_effective_wrapping_formatting() -> None:
     draft: MutableConfig = mutable_config_from_defaults()
     default_payload = json.loads(
         serialize_config_json(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=draft.freeze(),
             resolved_toml=_empty_resolved_toml_sources(),
         )
@@ -114,7 +109,7 @@ def test_config_json_exposes_effective_wrapping_formatting() -> None:
     ]
     configured_payload = json.loads(
         serialize_config_json(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=draft.freeze(),
             resolved_toml=_empty_resolved_toml_sources(),
         )
@@ -138,7 +133,7 @@ def test_config_diagnostics_ndjson_streams_counts_before_diagnostics() -> None:
     records = [
         json.loads(line)
         for line in serialize_config_diagnostics_ndjson(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=config,
         )
     ]
@@ -163,7 +158,7 @@ def test_config_json_requires_resolved_toml_for_layered_output() -> None:
         match="resolved_toml is required when show_config_layers=True",
     ):
         serialize_config_json(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=_default_config(),
             resolved_toml=None,  # type: ignore[arg-type] - runtime guard for untyped callers.
             show_config_layers=True,
@@ -191,7 +186,7 @@ def test_config_json_wraps_toml_provenance_errors(
         match="Unable to serialize config provenance for machine-readable output",
     ) as exc_info:
         serialize_config_json(
-            meta=_machine_meta(),
+            meta=machine_meta(),
             config=_default_config(),
             resolved_toml=_empty_resolved_toml_sources(),
             show_config_layers=True,

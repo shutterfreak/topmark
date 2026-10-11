@@ -145,8 +145,8 @@ JSON output emits one machine-readable document with shared metadata and a `proc
 }
 ```
 
-- `meta` contains shared machine metadata, including `tool`, `version`, `platform`, and
-  `detail_level`.
+- `meta` contains shared machine metadata, including `tool`, `version`, `platform`,
+  `python_version`, `machine`, and `detail_level`.
 - `processors` is a list of processor entries.
 - Brief entries include `local_key`, `namespace`, `qualified_key`, and `description`.
 - Long entries add binding and rendering-capability fields such as `bound`, `line_indent`,

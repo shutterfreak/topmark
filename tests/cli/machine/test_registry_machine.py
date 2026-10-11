@@ -20,7 +20,7 @@ import pytest
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
-from tests.helpers.ndjson import assert_ndjson_meta
+from tests.helpers.machine import assert_machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
 from tests.helpers.ndjson import record_payload
@@ -223,7 +223,10 @@ def _string_ref_record_payload(record: dict[str, object]) -> str:
 
 def _assert_default_brief_detail_level(payload: dict[str, object]) -> None:
     """Assert that machine JSON metadata defaults to brief detail level."""
-    assert_ndjson_meta(payload.get("meta"), expected_detail_level="brief")
+    assert_machine_meta(
+        payload.get("meta"),
+        expected_detail_level="brief",
+    )
 
 
 @pytest.mark.parametrize(
@@ -244,7 +247,10 @@ def test_registry_filetypes_machine_json(
     payload: dict[str, object] = parse_json_object(result.output)
 
     assert set(payload.keys()) == {"meta", "filetypes"}
-    assert_ndjson_meta(payload.get("meta"), expected_detail_level=expected_detail_level)
+    assert_machine_meta(
+        payload.get("meta"),
+        expected_detail_level=expected_detail_level,
+    )
 
     filetypes_obj: object | None = payload.get("filetypes")
     assert is_any_list(filetypes_obj)
@@ -298,7 +304,10 @@ def test_registry_processors_machine_json(
     payload: dict[str, object] = parse_json_object(result.output)
 
     assert set(payload.keys()) == {"meta", "processors"}
-    assert_ndjson_meta(payload.get("meta"), expected_detail_level=expected_detail_level)
+    assert_machine_meta(
+        payload.get("meta"),
+        expected_detail_level=expected_detail_level,
+    )
 
     processors_obj: object | None = payload.get("processors")
     assert is_any_list(processors_obj)
@@ -360,7 +369,10 @@ def test_registry_bindings_machine_json(
         "unbound_filetypes",
         "unused_processors",
     }
-    assert_ndjson_meta(payload.get("meta"), expected_detail_level=expected_detail_level)
+    assert_machine_meta(
+        payload.get("meta"),
+        expected_detail_level=expected_detail_level,
+    )
 
     bindings_obj: object | None = payload.get("bindings")
     assert is_any_list(bindings_obj)
@@ -464,7 +476,10 @@ def test_registry_filetypes_machine_ndjson(
 
     payloads: list[dict[str, object]] = []
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level=expected_detail_level)
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level=expected_detail_level,
+        )
         payloads.append(record_payload(record))
 
     assert [payload["qualified_key"] for payload in payloads] == [
@@ -503,7 +518,10 @@ def test_registry_processors_machine_ndjson(
 
     payloads: list[dict[str, object]] = []
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level=expected_detail_level)
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level=expected_detail_level,
+        )
         payloads.append(record_payload(record))
 
     assert [payload["qualified_key"] for payload in payloads] == [
@@ -555,7 +573,10 @@ def test_registry_bindings_machine_ndjson(
     unused_entries: list[dict[str, object]] = []
 
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level=expected_detail_level)
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level=expected_detail_level,
+        )
         kind_obj: object | None = record.get("kind")
         assert isinstance(kind_obj, str)
 

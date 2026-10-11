@@ -46,7 +46,7 @@ from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from tests.helpers.json import parse_json_object
-from tests.helpers.ndjson import assert_ndjson_meta
+from tests.helpers.machine import assert_machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import parse_single_ndjson_record
 from tests.helpers.ndjson import record_kinds
@@ -389,7 +389,10 @@ def test_config_dump_ndjson_kinds() -> None:
 
     kind_obj: object | None = record.get("kind")
     assert isinstance(kind_obj, str)
-    assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+    assert_machine_meta(
+        record.get("meta"),
+        expected_detail_level="brief",
+    )
     kinds: set[str] = {kind_obj}
 
     assert kinds == {"config"}
@@ -411,7 +414,10 @@ def test_config_dump_ndjson_show_layers_kinds() -> None:
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     assert len(records) == 2
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
 
     assert record_kinds(records) == ["config_provenance", "config"]
 
@@ -470,7 +476,10 @@ def test_config_dump_ndjson_show_layers_defaults_layer_shape() -> None:
     records: list[dict[str, object]] = parse_ndjson_records(result.output)
     assert len(records) == 2
     for record in records:
-        assert_ndjson_meta(record.get("meta"), expected_detail_level="brief")
+        assert_machine_meta(
+            record.get("meta"),
+            expected_detail_level="brief",
+        )
 
     first_record: dict[str, object] = records[0]
 

@@ -258,6 +258,8 @@ All machine-readable output includes a `meta` object:
 - `tool`: the tool name (always `"topmark"`)
 - `version`: the TopMark package version (PEP 440)
 - `platform`: short runtime identifier (e.g. `sys.platform`)
+- `python_version`: normalized full interpreter-release string (e.g. `3.15.0`)
+- `machine`: runtime CPU architecture identifier (e.g. `arm64`)
 - `detail_level`: optional machine-facing projection level for some commands:
   - `"brief"` for default machine-readable output
   - `"long"` when `--long` / detailed projection is requested

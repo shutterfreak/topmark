@@ -21,7 +21,7 @@ from tests.cli.conftest import assert_SUCCESS_or_WOULD_CHANGE
 from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from tests.helpers.json import parse_json_object
-from tests.helpers.ndjson import assert_ndjson_meta
+from tests.helpers.machine import assert_machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -80,6 +80,8 @@ def test_json_outputs_keep_baseline_meta_contract(args: list[str]) -> None:
     assert isinstance(meta.get("tool"), str)
     assert isinstance(meta.get("version"), str)
     assert isinstance(meta.get("platform"), str)
+    assert isinstance(meta.get("python_version"), str)
+    assert isinstance(meta.get("machine"), str)
 
 
 def test_processing_json_summary_keeps_baseline_meta_contract(tmp_path: Path) -> None:
@@ -107,6 +109,8 @@ def test_processing_json_summary_keeps_baseline_meta_contract(tmp_path: Path) ->
     assert isinstance(meta.get("tool"), str)
     assert isinstance(meta.get("version"), str)
     assert isinstance(meta.get("platform"), str)
+    assert isinstance(meta.get("python_version"), str)
+    assert isinstance(meta.get("machine"), str)
 
 
 @pytest.mark.parametrize(
@@ -176,7 +180,7 @@ def _assert_ndjson_record_envelopes(records: list[dict[str, object]]) -> None:
     for record in records:
         kind_obj: object | None = record.get(MachineKey.KIND.value)
         assert isinstance(kind_obj, str)
-        assert_ndjson_meta(
+        assert_machine_meta(
             record.get(MachineKey.META.value),
             expected_detail_level="brief",
         )
