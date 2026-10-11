@@ -75,6 +75,13 @@ class _MissingCharOffsetProcessor(_CharOffsetProcessor):
         return None
 
 
+class _PrefixOnlyHeaderProcessor(ExampleHeaderProcessor):
+    """Processor double without a configured line suffix."""
+
+    local_key = "prefix-only"
+    line_suffix = ""
+
+
 @dataclass
 class _Context:
     views: Views
@@ -422,25 +429,32 @@ def test_header_bounds_select_first_of_multiple_complete_headers_deterministical
 
 
 @pytest.mark.parametrize(
-    "incidental_marker_lines",
+    ("processor", "incidental_marker_lines"),
     [
-        [f'value = "{TOPMARK_END_MARKER}"\n'],
-        [f'value = "{TOPMARK_START_MARKER}"\n'],
-        [f'value = "{TOPMARK_START_MARKER} {TOPMARK_END_MARKER}"\n'],
-        [f'value = "{TOPMARK_START_MARKER}"\n'] * 2,
+        (ExampleHeaderProcessor(), [f'value = "{TOPMARK_END_MARKER}"\n']),
+        (ExampleHeaderProcessor(), [f'value = "{TOPMARK_START_MARKER}"\n']),
+        (
+            ExampleHeaderProcessor(),
+            [f'value = "{TOPMARK_START_MARKER} {TOPMARK_END_MARKER}"\n'],
+        ),
+        (ExampleHeaderProcessor(), [f'value = "{TOPMARK_START_MARKER}"\n'] * 2),
+        (ExampleHeaderProcessor(), [f"// {TOPMARK_START_MARKER}\n"]),
+        (_PrefixOnlyHeaderProcessor(), [f"// {TOPMARK_START_MARKER} prose\n"]),
     ],
 )
 def test_header_bounds_ignore_marker_substrings_outside_directives(
+    processor: HeaderProcessor,
     incidental_marker_lines: list[str],
 ) -> None:
     """Marker-shaped source content does not make a valid header malformed."""
+    line_suffix: str = f" {processor.line_suffix}" if processor.line_suffix else ""
     lines: list[str] = [
-        f"// {TOPMARK_START_MARKER} !\n",
-        f"// {TOPMARK_END_MARKER} !\n",
+        f"// {TOPMARK_START_MARKER}{line_suffix}\n",
+        f"// {TOPMARK_END_MARKER}{line_suffix}\n",
         *incidental_marker_lines,
     ]
 
-    bounds: HeaderBounds = ExampleHeaderProcessor().get_header_bounds(
+    bounds: HeaderBounds = processor.get_header_bounds(
         lines=lines,
         newline_style="\n",
     )
