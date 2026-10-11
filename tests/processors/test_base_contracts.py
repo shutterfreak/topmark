@@ -422,6 +422,38 @@ def test_header_bounds_select_first_of_multiple_complete_headers_deterministical
 
 
 @pytest.mark.parametrize(
+    "incidental_marker_lines",
+    [
+        [f'value = "{TOPMARK_END_MARKER}"\n'],
+        [f'value = "{TOPMARK_START_MARKER}"\n'],
+        [f'value = "{TOPMARK_START_MARKER} {TOPMARK_END_MARKER}"\n'],
+        [f'value = "{TOPMARK_START_MARKER}"\n'] * 2,
+    ],
+)
+def test_header_bounds_ignore_marker_substrings_outside_directives(
+    incidental_marker_lines: list[str],
+) -> None:
+    """Marker-shaped source content does not make a valid header malformed."""
+    lines: list[str] = [
+        f"// {TOPMARK_START_MARKER} !\n",
+        f"// {TOPMARK_END_MARKER} !\n",
+        *incidental_marker_lines,
+    ]
+
+    bounds: HeaderBounds = ExampleHeaderProcessor().get_header_bounds(
+        lines=lines,
+        newline_style="\n",
+    )
+
+    assert (bounds.kind, bounds.start, bounds.end, bounds.reason) == (
+        BoundsKind.SPAN,
+        0,
+        2,
+        None,
+    )
+
+
+@pytest.mark.parametrize(
     ("processor", "lines", "expected"),
     [
         (
