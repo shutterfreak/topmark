@@ -1,0 +1,69 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : python-lifecycle-audit.yml
+#   file_relpath : .github/workflows/python-lifecycle-audit.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+name: Python Lifecycle Audit
+
+on:
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Report issue changes without creating or updating issues"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit-python-lifecycle:
+    name: Track Python release and EOL transitions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-python-nox
+        with:
+          python-version: "3.x"
+
+      - name: Resolve lifecycle decisions
+        run: uv run --extra dev python tools/ci/audit_python_lifecycle.py > lifecycle-decisions.json
+
+      - name: Maintain lifecycle tracking issues
+        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9.0.0
+        env:
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const decisions = JSON.parse(fs.readFileSync("lifecycle-decisions.json", "utf8"));
+            const dryRun = process.env.DRY_RUN === "true";
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo, state: "open", per_page: 100,
+            });
+            core.info(`Maintainer decisions required: ${decisions.length}`);
+            for (const { marker, title, body } of decisions) {
+              const existing = issues.find((issue) => issue.body?.includes(marker));
+              if (dryRun) {
+                core.notice(`${existing ? "Would update" : "Would create"} #${existing?.number ?? "new"}: ${title}`);
+              } else if (existing) {
+                await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, title, body, labels: ["maintenance", "release"] });
+              } else {
+                await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ["maintenance", "release"] });
+              }
+            }

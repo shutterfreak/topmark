@@ -34,7 +34,7 @@ ______________________________________________________________________
 
 | Python series | Upstream status | TopMark status                                 |
 | ------------- | --------------- | ---------------------------------------------- |
-| 3.11–3.15     | Maintained      | Supported                                      |
+| 3.11-3.15     | Maintained      | Supported                                      |
 | 3.10          | EOL             | Compatibility-supported through 1 October 2027 |
 
 Python 3.10 reached upstream EOL on 1 October 2026. Its temporary TopMark support gives existing

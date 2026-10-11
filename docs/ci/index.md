@@ -74,6 +74,9 @@ and maintenance expectations than repository-source validation or release public
   changes against the project's vulnerability-severity and SPDX license policies.
 - [GitHub Action pin audit](./action-pin-audit.md) - audits GitHub Action pin consistency across
   workflows and local composite actions, with an explicit local repair mode for stale repeated refs.
+- [Python lifecycle audit](./python-lifecycle-audit.md) - tracks CPython final-release and EOL
+  transitions through maintainer-reviewed GitHub issues without changing TopMark support
+  automatically.
 
 ______________________________________________________________________
 
@@ -96,6 +99,7 @@ Use this family of pages as follows:
 | How are dependency updates handled?                              | [Dependabot](./dependabot.md)                                       |
 | How are dependency licenses and vulnerabilities reviewed?        | [Dependency review](./dependency-review.md)                         |
 | How do we audit or locally repair GitHub Action pin consistency? | [GitHub Action pin audit](./action-pin-audit.md)                    |
+| How are CPython release and EOL transitions reviewed?            | [Python lifecycle audit](./python-lifecycle-audit.md)               |
 
 ______________________________________________________________________
 

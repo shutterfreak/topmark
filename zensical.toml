@@ -86,6 +86,7 @@ nav = [
       { Dependabot = "ci/dependabot.md" },
       { "Dependency review" = "ci/dependency-review.md" },
       { "GitHub Action pin audit" = "ci/action-pin-audit.md" },
+      { "Python lifecycle audit" = "ci/python-lifecycle-audit.md" },
     ] },
     { Actions = [
       { "Setup Python + nox action" = "ci/setup-python-nox-action.md" },
