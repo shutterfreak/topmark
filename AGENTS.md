@@ -125,9 +125,9 @@ Additional rules:
 - Run `make links-site` when changing documentation links or link-validation behavior.
 - Run `make api-snapshot-dev` when touching the stable public API.
 - Run `make api-snapshot-update` only for an intentional, reviewed public API change.
-- For behavior-changing code, run `make coverage` when feasible, inspect changed executable lines,
-  and report the coverage result or why it was not run. Coverage is a diagnostic, not a
-  percentage-driven release gate.
+- For behavior-changing code, run `make coverage` when feasible, then inspect changed executable
+  lines and branches with `make coverage-changed`; report the diagnostic result or why it was not
+  run. Coverage is a diagnostic, not a percentage-driven release gate.
 - After dependency edits, update `uv.lock` with `make uv-lock` or `make uv-lock-upgrade`, as
   appropriate.
 - Report checks that were not run and the reason they were skipped.

@@ -32,6 +32,7 @@ ______________________________________________________________________
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Set up a local development environment                   | [Installation guide](install.md)                                                     |
 | Run local pre-PR validation                              | [Test validation](ci/test-validation.md)                                             |
+| Diagnose coverage for changed local source lines         | [Test validation](ci/test-validation.md#local-test-selection)                        |
 | Understand contribution workflow and validation commands | [CONTRIBUTING.md](https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md) |
 | Understand project architecture                          | [Architecture](dev/architecture.md)                                                  |
 | Understand documentation conventions                     | [Documentation conventions](dev/documentation-conventions.md)                        |

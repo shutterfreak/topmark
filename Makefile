@@ -57,6 +57,7 @@ help:
 	@echo "  pytest          Run tests with current interpreter (no nox), skipping Hypothesis slow tests; supports PYTEST_PAR=-n auto"
 	@echo "  pytest-full     Run all tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
 	@echo "  coverage        Run coverage testing; supports PYTEST_PAR=-n auto"
+	@echo "  coverage-changed  Diagnose uncovered changed source lines; run coverage first"
 	@echo "  coverage-erase  Erase coverage testing output (.coverage coverage.xml coverage.json htmlcov .coverage.*)"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo "  perf-baseline   Run pipeline memory/allocation baselines (manual, opt-in)"
@@ -105,6 +106,10 @@ test: check-nox
 .PHONY: coverage
 coverage: check-nox
 	$(NOX) $(NOX_FLAGS) -s coverage -- $(PYTEST_PAR)
+
+.PHONY: coverage-changed
+coverage-changed: check-nox
+	$(NOX) $(NOX_FLAGS) -s coverage_changed -- $(COVERAGE_CHANGED_ARGS)
 
 .PHONY: coverage-erase
 coverage-erase:
