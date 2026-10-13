@@ -516,6 +516,7 @@ TOPMARK_TOML_SCHEMA: Final[TomlSchema] = TomlSchema(
             name=TomlSection.FILES,
             allowed_keys=frozenset(
                 {
+                    Toml.KEY_OPT_IN_FILE_TYPES,
                     Toml.KEY_INCLUDE_FILE_TYPES,
                     Toml.KEY_EXCLUDE_FILE_TYPES,
                     Toml.KEY_INCLUDE_FROM,

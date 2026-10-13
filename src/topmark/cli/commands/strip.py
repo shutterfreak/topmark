@@ -202,6 +202,7 @@ def strip_command(
     include_patterns: list[str],
     exclude_patterns: list[str],
     # common_file_type_filtering_options:
+    opt_in_file_types: list[str],
     include_file_types: list[str],
     exclude_file_types: list[str],
     # policy_options (shared):
@@ -251,6 +252,7 @@ def strip_command(
             Use ``-`` to read patterns from STDIN.
         include_patterns: Glob patterns to *include* (intersection).
         exclude_patterns: Glob patterns to *exclude* (subtraction).
+        opt_in_file_types: Authorize the given opt-in file type identifiers.
         include_file_types: Restrict processing to the given file type identifiers.
         exclude_file_types: Exclude processing for the given file type identifiers.
         allow_content_probe: Shared policy override controlling whether
@@ -362,6 +364,7 @@ def strip_command(
         no_config=no_config,
         config_paths=config_files,
         strict=strict,
+        opt_in_file_types=opt_in_file_types,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         align_fields=None,  # Not relevant for `strip``

@@ -79,6 +79,19 @@ class ContentGate(Enum):
     ALWAYS = "always"  # use sparingly
 
 
+class FileTypeActivation(str, Enum):
+    """Authorization policy declared by a file type.
+
+    ``DEFAULT`` types may be processed when bound. ``OPT_IN`` types remain
+    discoverable and matchable, but require explicit project authorization.
+    ``NEVER`` types are recognisable only and may never be processed.
+    """
+
+    DEFAULT = "default"
+    OPT_IN = "opt-in"
+    NEVER = "never"
+
+
 @runtime_checkable
 class ContentMatcher(Protocol):
     """Protocol for content-based file type matchers.
@@ -239,10 +252,9 @@ class FileType:
             POSIX-normalized subpaths; use `filenames` for exact basename or
             relative tail-subpath rules.
         description: Human-readable description of the file type.
-        skip_processing: When ``True``, the pipeline **recognizes** files of this
-            type but intentionally **skips header processing** (e.g. JSON without
-            comments, LICENSE files). This lets discovery work while keeping writes
-            disabled by design.
+        activation: Declared processing authorization. ``never`` types are
+            recognized but never processed; ``opt-in`` types require explicit
+            project consent; ``default`` types follow normal processing.
         content_matcher: Optional content matcher
             that performs *content-based* recognition when name-based heuristics are
             ambiguous. TopMark calls this **last** in `matches` after
@@ -305,9 +317,7 @@ class FileType:
     patterns: list[str]
     description: str
 
-    # When True, TopMark recognizes this file type but will skip header processing.
-    # Useful for formats that do not support comments (e.g., JSON), marker files, or LICENSE texts.
-    skip_processing: bool = False
+    activation: FileTypeActivation = FileTypeActivation.DEFAULT
     # Call-back for checking the file type based on the file contents rather than the file name
     content_matcher: ContentMatcher | None = None
     # Gate defining when the matcher should trigger a match

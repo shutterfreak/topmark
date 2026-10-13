@@ -382,7 +382,7 @@ class FileTypeRegistry:
                     extensions=tuple(ft.extensions or ()),
                     filenames=tuple(ft.filenames or ()),
                     patterns=tuple(ft.patterns or ()),
-                    skip_processing=ft.skip_processing,
+                    activation=ft.activation,
                     content_matcher=ft.content_matcher is not None,
                     header_policy=ft.header_policy.to_dict(),
                 )
@@ -405,7 +405,7 @@ class FileTypeRegistry:
                     extensions=tuple(ft.extensions or ()),
                     filenames=tuple(ft.filenames or ()),
                     patterns=tuple(ft.patterns or ()),
-                    skip_processing=ft.skip_processing,
+                    activation=ft.activation,
                     content_matcher=ft.content_matcher is not None,
                     header_policy=ft.header_policy.to_dict(),
                 )

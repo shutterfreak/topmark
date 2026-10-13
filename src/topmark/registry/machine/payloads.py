@@ -92,12 +92,17 @@ def _serialize_processor_ref(item: ProcessorInfo) -> ProcessorRefEntry:
     )
 
 
-def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
+def build_filetypes_payload(
+    *,
+    show_details: bool,
+    activation: str | None = None,
+) -> FileTypesPayload:
     """Build the registry payload for `topmark registry filetypes`.
 
     Args:
         show_details: If True, include matching rules, binding state, and
             structured policy metadata.
+        activation: Optional declared activation filter.
 
     Returns:
         List of file type entries, sorted by canonical file type key.
@@ -106,6 +111,8 @@ def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
 
     payload: FileTypesPayload = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
+        if activation is not None and item["activation"] != activation:
+            continue
         if show_details:
             payload.append(
                 FileTypeDetailEntry(
@@ -117,7 +124,7 @@ def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
                     extensions=list(item["extensions"]),
                     filenames=list(item["filenames"]),
                     patterns=list(item["patterns"]),
-                    skip_processing=item["skip_processing"],
+                    activation=item["activation"],
                     has_content_matcher=item["has_content_matcher"],
                     has_insert_checker=item["has_insert_checker"],
                     policy=_serialize_filetype_policy(item["policy"]),
@@ -130,6 +137,7 @@ def build_filetypes_payload(*, show_details: bool) -> FileTypesPayload:
                     namespace=item["namespace"],
                     qualified_key=item["qualified_key"],
                     description=item["description"],
+                    activation=item["activation"],
                 )
             )
 
@@ -177,7 +185,11 @@ def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
     return processors
 
 
-def build_bindings_payload(*, show_details: bool) -> BindingsPayload:
+def build_bindings_payload(
+    *,
+    show_details: bool,
+    activation: str | None = None,
+) -> BindingsPayload:
     """Build the registry payload for `topmark registry bindings`.
 
     Shape:
@@ -190,6 +202,7 @@ def build_bindings_payload(*, show_details: bool) -> BindingsPayload:
     Args:
         show_details: If True, expand bindings and reference entries with
             identity/description objects.
+        activation: Optional declared activation filter.
 
     Returns:
         A `BindingsPayload` dict whose lists are deterministically sorted.
@@ -197,6 +210,12 @@ def build_bindings_payload(*, show_details: bool) -> BindingsPayload:
     raw_bindings: list[BindingInfo] = list_bindings()
     raw_filetypes: list[FileTypeInfo] = list_filetypes()
     raw_processors: list[ProcessorInfo] = list_processors()
+    if activation is not None:
+        keys: set[str] = {
+            item["qualified_key"] for item in raw_filetypes if item["activation"] == activation
+        }
+        raw_filetypes = [item for item in raw_filetypes if item["qualified_key"] in keys]
+        raw_bindings = [item for item in raw_bindings if item["file_type_key"] in keys]
 
     bindings: BindingEntriesPayload = []
     for item in sorted(raw_bindings, key=lambda it: str(it["file_type_key"])):

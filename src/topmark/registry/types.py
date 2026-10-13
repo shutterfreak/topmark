@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
 
+from topmark.filetypes.model import FileTypeActivation
 from topmark.registry.identity import make_qualified_key
 
 if TYPE_CHECKING:
@@ -47,7 +48,7 @@ class FileTypeMeta:
     extensions: tuple[str, ...] = ()
     filenames: tuple[str, ...] = ()
     patterns: tuple[str, ...] = ()
-    skip_processing: bool = False
+    activation: FileTypeActivation = FileTypeActivation.DEFAULT
     content_matcher: bool = False
 
     header_policy: dict[str, object] = field(default_factory=_empty_header_policy)

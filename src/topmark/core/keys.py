@@ -45,6 +45,7 @@ class ArgKey(str, Enum):
     INCLUDE_FROM = "include_from"
     EXCLUDE_FROM = "exclude_from"
     FILES_FROM = "files_from"
+    OPT_IN_FILE_TYPES = "opt_in_file_types"
     INCLUDE_FILE_TYPES = "include_file_types"
     EXCLUDE_FILE_TYPES = "exclude_file_types"
 
@@ -107,3 +108,6 @@ class ArgKey(str, Enum):
 
     # Machine metadata payload
     META = "meta_payload"
+
+    # Registry
+    ACTIVATION = "activation"

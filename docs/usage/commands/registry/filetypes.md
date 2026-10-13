@@ -76,8 +76,8 @@ introspection.
 
 See [file-type filtering](../../filtering.md#file-type-filtering) for the full identifier contract.
 
-This command exposes the effective runtime file type view after registry composition and
-configuration normalization.
+This command exposes the effective composed file type view. Its output is static and independent of
+project configuration discovery, file-type filters, and opt-in authorization.
 
 ______________________________________________________________________
 
@@ -94,6 +94,12 @@ The `--long` flag controls the level of detail for all formats.
 
 This flag controls the data/detail depth across all formats. TEXT-oriented verbosity (`-v`) affects
 presentation (e.g., headings) and does not change the data fields emitted.
+
+### Activation filter
+
+`--activation {default,opt-in,never}` filters entries by their declared activation in every output
+format. It is registry introspection only: it neither supplies opt-in consent nor reflects a
+project's effective configuration.
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
@@ -115,7 +121,7 @@ Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 - Extensions (comma-separated)
 - Filenames (comma-separated exact-basename and tail-subpath matching rules)
 - Patterns (comma-separated)
-- `skip_processing` (`true`/`false`)
+- `activation` (`default`, `opt-in`, or `never`)
 - `has_content_matcher` (`true`/`false`)
 - `header_policy` (structured policy fields)
 - Bound (`true`/`false`)
@@ -145,10 +151,9 @@ JSON output emits one machine-readable document with shared metadata and a `file
 - `meta` contains shared machine metadata, including `tool`, `version`, `platform`,
   `python_version`, `machine`, and `detail_level`.
 - `filetypes` is a list of file type entries.
-- Brief entries include `local_key`, `namespace`, `qualified_key`, and `description`.
+- Brief entries include `local_key`, `namespace`, `qualified_key`, `description`, and `activation`.
 - Long entries add matching, processing, and policy fields such as `bound`, `extensions`,
-  `filenames`, `patterns`, `skip_processing`, `has_content_matcher`, `has_insert_checker`, and
-  `policy`.
+  `filenames`, `patterns`, `activation`, `has_content_matcher`, `has_insert_checker`, and `policy`.
 
 NDJSON output emits one machine-readable record per file type:
 
@@ -183,11 +188,14 @@ topmark registry filetypes
 # Detailed list (human)
 topmark registry filetypes --long
 
+# Inspect types that require explicit processing consent
+topmark registry filetypes --activation opt-in
+
 # Detailed Markdown table (ideal for project docs)
 topmark registry filetypes --long --output-format markdown
 
 # JSON for scripting
-topmark registry filetypes --long --output-format json | jq '.filetypes[] | select(.skip_processing == false) | .qualified_key'
+topmark registry filetypes --activation default --output-format json | jq -r '.filetypes[].qualified_key'
 
 # NDJSON for streaming
 topmark registry filetypes --output-format ndjson | jq -r '.filetype.qualified_key'
@@ -224,10 +232,12 @@ ______________________________________________________________________
 ## Notes
 
 - File types define how files are matched and classified.
-- The output is independent of project configuration discovery.
+- The output is independent of project configuration discovery, file-type filters, and opt-in
+  authorization.
 - Processor-dispatch behavior is determined by bindings (see [`registry bindings`](bindings.md)).
 - The effective runtime file type view is composed from built-in definitions plus runtime overlays.
-- A file type may be present but not processed if it is unbound or marked `skip_processing`.
+- A file type may be present but not processed when it is unbound, requires opt-in consent, or has
+  `activation = never`.
 - `--quiet` is not supported for registry commands; use output-format options instead if you need
   non-TEXT output.
 
@@ -248,7 +258,7 @@ In practice, specificity follows this order:
 1. **Extensions** (e.g., `.py`, `.md`, `.json`)
 
 If multiple candidates remain tied, TopMark prefers the more "headerable" choice (that is, file
-types not marked `skip_processing = true`).
+types whose activation is not `never`).
 
 ### Path-suffix matching
 
@@ -297,7 +307,7 @@ In these cases, TopMark may use:
 - content matchers
 - insert checkers
 - headerability rules
-- `skip_processing` semantics
+- activation semantics
 
 to determine which effective file type should apply.
 

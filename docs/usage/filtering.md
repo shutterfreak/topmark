@@ -268,6 +268,18 @@ TOML:
 include_file_types = ["python", "markdown"]
 ```
 
+### Recipe: Authorize an opt-in file type
+
+File-type inclusion and exclusion remain discovery filters. To authorize a type declared as
+`opt-in`, use explicit consent instead:
+
+```toml
+[files]
+opt_in_file_types = ["topmark:json-as-jsonc"]
+```
+
+The equivalent CLI option is repeatable: `--opt-in-file-type topmark:json-as-jsonc`.
+
 ### Recipe: Exclude generated/virtualenv folders
 
 TOML:

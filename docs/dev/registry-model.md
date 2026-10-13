@@ -155,6 +155,7 @@ Each file type has:
 - extensions
 - filename rules
 - resolver and matching metadata
+- declared activation (`default`, `opt-in`, or `never`)
 
 Examples of local identifiers:
 
@@ -205,6 +206,9 @@ Bindings define:
 - which processor participates in header operations.
 
 This separation prevents implicit side effects between identity registration and processor binding.
+
+A binding is valid only for a type whose activation is not `never`. The binding registry rejects an
+attempt to bind a `never` type, including an accidental binding introduced through an overlay.
 
 ______________________________________________________________________
 
@@ -320,20 +324,26 @@ flowchart LR
 
 ______________________________________________________________________
 
-## Recognized vs supported file types
+## Recognition, activation, and binding
 
 A file type is **recognized** if its file type identifier exists in
 \[`FileTypeRegistry`\][topmark.registry.filetypes.FileTypeRegistry].
 
-A file type is supported if it is **recognized** and has an effective binding through
+A file type is **bound** if it has an effective binding through
 \[`BindingRegistry`\][topmark.registry.bindings.BindingRegistry] to a registered processor
 definition in \[`HeaderProcessorRegistry`\][topmark.registry.processors.HeaderProcessorRegistry].
 
-A file type may be recognized but still unbound.
+Activation and binding are separate dimensions:
 
-- it participates in discovery and filtering;
-- it may appear in results depending on the selected report scope;
-- no header insertion or removal is attempted.
+- `default` types are authorized by default but still require a binding to be processable;
+- `opt-in` types remain recognized and matchable, but require explicit configuration or CLI consent
+  as well as a binding;
+- `never` types remain recognized and matchable, are intentionally unbound, and cannot acquire a
+  binding.
+
+Accordingly, a type is **processable** only when it is recognized, authorized by activation, and
+bound. A recognized unbound type still participates in discovery and filtering and may appear in
+results, but no header insertion or removal is attempted.
 
 ______________________________________________________________________
 
@@ -446,6 +456,9 @@ Overlay operations may:
 - register or unregister file types;
 - register or unregister processors;
 - bind or unbind processors to file types.
+
+Binding a file type declared `never` is rejected. Runtime overlays may not override that declared
+non-processable state.
 
 Overlay mutations are:
 
@@ -591,6 +604,10 @@ topmark registry bindings
 ```
 
 These commands expose the effective composed runtime registry view.
+
+`registry filetypes` and `registry bindings` can filter that static view by declared activation with
+`--activation {default,opt-in,never}`. Registry output does not consume project configuration or
+dynamic opt-in consent.
 
 Use:
 

@@ -164,6 +164,28 @@ mixed_line_endings = "reject" # or "preserve"
 retaining each existing non-header terminator. Both settings may also appear in
 `[policy_by_type.<file-type>]`.
 
+### File-type activation
+
+File types now declare an activation policy independently of processor bindings and discovery
+filters. Default types process normally when bound; opt-in types require project consent; never
+types remain recognized but cannot be processed or bound to a processor.
+
+Use `[files].opt_in_file_types` to authorize an opt-in type in project configuration:
+
+```toml
+[files]
+opt_in_file_types = ["topmark:json-as-jsonc"]
+```
+
+The equivalent CLI option is repeatable and accepts comma-separated values:
+
+```bash
+topmark check --opt-in-file-type topmark:json-as-jsonc .
+```
+
+`include_file_types` and `exclude_file_types` remain resolver filters. They do not authorize an
+opt-in type; exclusion remains a veto even when a type is explicitly opted in.
+
 ______________________________________________________________________
 
 ## CI, pre-commit, and shell automation
@@ -211,6 +233,10 @@ Machine-readable summary mode intentionally omits per-file diffs and writes a wa
 error. Consumers should ignore unknown fields and unknown NDJSON kinds so later additive changes do
 not break parsing. See [Machine-readable output](machine-output.md) for schemas and examples.
 
+Registry file-type records and the public `FileTypeInfo` DTO now use `activation` instead of
+`skip_processing`. Update JSON/NDJSON parsers and API integrations that read the former boolean
+field.
+
 ______________________________________________________________________
 
 ## Public API and custom file types
@@ -236,6 +262,27 @@ filenames = ("config\\settings.py",)
 filenames = ("config/settings.py",)
 ```
 
+`FileType.skip_processing` has been removed. Use the typed activation declaration instead:
+
+```python
+from topmark.filetypes.model import FileType
+from topmark.filetypes.model import FileTypeActivation
+
+file_type = FileType(
+    local_key="license_text",
+    namespace="example",
+    extensions=[],
+    filenames=["LICENSE"],
+    patterns=[],
+    description="License text",
+    activation=FileTypeActivation.NEVER,
+)
+```
+
+Use `FileTypeActivation.DEFAULT` for ordinary processable types and `FileTypeActivation.OPT_IN` for
+types requiring project consent. Plugin-provided declarations use the same policy; a `NEVER` type
+cannot become processable through configuration or a processor binding.
+
 ______________________________________________________________________
 
 ## Release checklist
@@ -250,10 +297,13 @@ Before adopting 2.0 in a repository:
 - Review multiline fields, `formatting.max_header_line_length`, and `formatting.wrap_fields` before
   enabling canonical wrapping.
 - Decide whether BOM-before-shebang remediation or mixed-line-ending preservation is required.
+- Add `files.opt_in_file_types` or `--opt-in-file-type` for each opt-in type your project needs; do
+  not rely on include filters as authorization.
 - Regenerate JSON/NDJSON fixtures for POSIX paths and structured diff records; separate standard
   output from standard error.
 - Pass `report="all"` to public API calls that require complete result lists.
-- Validate custom `FileType.filenames` rules as portable relative POSIX rules.
+- Replace custom or plugin `skip_processing` declarations with `FileTypeActivation.NEVER`, and
+  validate `FileType.filenames` rules as portable relative POSIX rules.
 
 ______________________________________________________________________
 

@@ -19,6 +19,7 @@ import pytest
 from tests.helpers.registry import make_file_type
 from topmark.core.errors import ProcessorBindingError
 from topmark.core.errors import UnknownFileTypeError
+from topmark.filetypes.model import FileTypeActivation
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
@@ -131,6 +132,36 @@ def test_binding_registry_rejects_unknown_processor() -> None:
                 processor_key="pytest:missing_processor",
             )
     finally:
+        FileTypeRegistry.unregister_by_local_key(ft.local_key)
+
+
+def test_binding_registry_rejects_never_processable_filetype() -> None:
+    """A never-processable type cannot acquire a processor binding."""
+    ft: FileType = make_file_type(
+        local_key="tmp_never_processable",
+        extensions=[".tnp"],
+        filenames=[],
+        patterns=[],
+        description="never processable test type",
+        activation=FileTypeActivation.NEVER,
+    )
+
+    class NeverProcessor(HeaderProcessor):
+        namespace = "test"
+        local_key = "never_processable_processor"
+
+    proc_def: ProcessorDefinition | None = None
+    FileTypeRegistry.register(ft)
+    try:
+        proc_def = HeaderProcessorRegistry.register(processor_class=NeverProcessor)
+        with pytest.raises(ProcessorBindingError, match="cannot be bound"):
+            BindingRegistry.bind(
+                file_type_key=ft.qualified_key,
+                processor_key=proc_def.qualified_key,
+            )
+    finally:
+        if proc_def is not None:
+            HeaderProcessorRegistry.unregister(proc_def.qualified_key)
         FileTypeRegistry.unregister_by_local_key(ft.local_key)
 
 
@@ -297,6 +328,35 @@ def test_binding_registry_compose_rejects_unknown_base_processor(
         )
 
         with pytest.raises(ProcessorBindingError, match="unknown processor"):
+            BindingRegistry.as_mapping()
+    finally:
+        FileTypeRegistry.unregister_by_local_key(ft.local_key)
+
+
+def test_binding_registry_compose_rejects_never_processable_base_filetype(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Composed bindings must reject an accidental binding for a never type."""
+    ft: FileType = make_file_type(
+        local_key="tmp_never_base_binding",
+        extensions=[".tnb"],
+        filenames=[],
+        patterns=[],
+        description="never processable base binding test type",
+        activation=FileTypeActivation.NEVER,
+    )
+
+    def _base_registry() -> dict[str, str]:
+        return {ft.qualified_key: "pytest:unused_processor"}
+
+    FileTypeRegistry.register(ft)
+    try:
+        monkeypatch.setattr(
+            "topmark.processors.instances.get_base_processor_binding_registry",
+            _base_registry,
+        )
+
+        with pytest.raises(ProcessorBindingError, match="Never-processable"):
             BindingRegistry.as_mapping()
     finally:
         FileTypeRegistry.unregister_by_local_key(ft.local_key)

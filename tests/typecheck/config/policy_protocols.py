@@ -12,15 +12,16 @@
 
 from __future__ import annotations
 
+__all__ = [
+    "verify_frozen_config_policy_protocol",
+]
+
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.config.policy import HasPolicyConfig
-
-__all__ = [
-    "verify_frozen_config_policy_protocol",
-]
 
 
 def verify_frozen_config_policy_protocol(

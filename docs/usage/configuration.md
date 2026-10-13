@@ -99,6 +99,7 @@ File type identifiers participate in stable runtime behavior such as:
 
 - `include_file_types`
 - `exclude_file_types`
+- `opt_in_file_types`
 - `policy_by_type`
 - CLI file-type filters
 - API file-type filters and policy overlays
@@ -129,6 +130,21 @@ Exclude filters work the same way:
 [files]
 exclude_file_types = ["topmark:yaml"]
 ```
+
+### Opt-in activation
+
+File-type filters do not grant processing authorization. A file type declared `opt-in` requires
+explicit consent through `opt_in_file_types`:
+
+```toml
+[files]
+opt_in_file_types = ["topmark:json-as-jsonc"]
+```
+
+As with filters, local identifiers are accepted only when unambiguous and TopMark normalizes them to
+canonical qualified identities. File types declared `default` need no entry. File types declared
+`never` cannot be made processable by configuration, and an exclusion filter remains a veto even for
+an explicitly opted-in type.
 
 > [NOTE] Internally, TopMark normalizes configured file type identifiers to canonical qualified
 > identities before filtering, runtime resolution, policy evaluation, diagnostics, and registry
@@ -249,6 +265,10 @@ topmark check --include-file-types python .
 
 ```bash
 topmark check --include-file-types topmark:python .
+```
+
+```bash
+topmark check --opt-in-file-type topmark:json-as-jsonc .
 ```
 
 ```python

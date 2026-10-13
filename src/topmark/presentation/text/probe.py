@@ -182,6 +182,10 @@ def _render_probe_selected_details_text(
     else:
         lines.append(f"  selected processor: {probe.selected_processor.qualified_key}")
 
+    if probe.activation is not None:
+        lines.append(f"  activation: {probe.activation}")
+        lines.append(f"  activation authorized: {'yes' if probe.activation_authorized else 'no'}")
+
     return lines
 
 

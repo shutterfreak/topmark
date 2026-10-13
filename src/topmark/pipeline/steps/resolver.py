@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 from topmark.core.constants import VALUE_NOT_SET
 from topmark.core.logging import get_logger
+from topmark.filetypes.model import FileTypeActivation
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -58,6 +59,7 @@ def _ensure_resolution_probe(
     if ctx.resolution_probe is None:
         ctx.resolution_probe = probe_resolution_for_path(
             ctx.path,
+            opt_in_file_types=ctx.config.opt_in_file_types or None,
             include_file_types=ctx.config.include_file_types or None,
             exclude_file_types=ctx.config.exclude_file_types or None,
         )
@@ -96,9 +98,9 @@ def apply_probe_resolution_to_context(
         ctx.file_type = file_type
         logger.debug("File '%s' resolved to type: %s", ctx.path, file_type.qualified_key)
 
-        if file_type.skip_processing:
+        if file_type.activation == FileTypeActivation.NEVER:
             logger.info(
-                "Skipping header processing for '%s' (file type '%s' marked skip_processing=True)",
+                "Skipping header processing for '%s' (file type '%s' is never processable)",
                 ctx.path,
                 file_type.local_key,
             )
@@ -107,6 +109,16 @@ def apply_probe_resolution_to_context(
                 f"File type '{file_type.local_key}' "
                 f"(namespace: {file_type.namespace}) recognized; "
                 "headers are not supported for this format."
+            )
+            ctx.diagnostics.add_info(reason)
+            ctx.request_halt(reason=reason, at_step=step)
+            return
+
+        if probe.status == ResolutionProbeStatus.ACTIVATION_BLOCKED:
+            ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
+            reason = (
+                f"File type '{file_type.local_key}' requires explicit opt-in; "
+                f"add it to files.opt_in_file_types or pass --opt-in-file-type."
             )
             ctx.diagnostics.add_info(reason)
             ctx.request_halt(reason=reason, at_step=step)

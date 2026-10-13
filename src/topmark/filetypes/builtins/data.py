@@ -23,8 +23,8 @@ Notes:
     - JSONC detection is content-based via
       [`topmark.filetypes.detectors.jsonc.looks_like_jsonc`][] and gated to
       run only for ``.json`` files.
-    - Plain JSON is recognized but marked ``skip_processing=True`` to avoid
-      inserting headers into a format that does not permit comments.
+    - Plain JSON is recognized with ``activation=never`` to avoid inserting
+      headers into a format that does not permit comments.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from topmark.filetypes.checks.json_like import json_like_can_insert
 from topmark.filetypes.detectors.jsonc import looks_like_jsonc
 from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
 from topmark.filetypes.model import ContentGate
+from topmark.filetypes.model import FileTypeActivation
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
 if TYPE_CHECKING:
@@ -61,7 +62,7 @@ FILETYPES: list[FileType] = [
         filenames=[],
         patterns=[],
         description="JSON (no comments; unheaderable)",
-        skip_processing=True,
+        activation=FileTypeActivation.NEVER,
     ),
     BUILTIN_FILETYPE_FACTORY(
         local_key="json-as-jsonc",
@@ -69,7 +70,7 @@ FILETYPES: list[FileType] = [
         filenames=[],
         patterns=[],
         description="JSON with comments (JSONC/CJSON)",
-        skip_processing=False,
+        activation=FileTypeActivation.OPT_IN,
         content_matcher=looks_like_jsonc,
         content_gate=ContentGate.IF_EXTENSION,
         header_policy=FileTypeHeaderPolicy(
@@ -85,7 +86,6 @@ FILETYPES: list[FileType] = [
         filenames=[],
         patterns=[],
         description="JSON with comments (JSONC/CJSON)",
-        skip_processing=False,
         header_policy=FileTypeHeaderPolicy(
             supports_shebang=False,
             pre_header_blank_after_block=1,
@@ -110,7 +110,7 @@ FILETYPES: list[FileType] = [
         filenames=["py.typed"],
         patterns=[],
         description="PEP 561 marker (single-token file)",
-        skip_processing=True,
+        activation=FileTypeActivation.NEVER,
     ),
     BUILTIN_FILETYPE_FACTORY(
         local_key="toml",

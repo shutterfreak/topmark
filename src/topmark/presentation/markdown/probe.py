@@ -116,6 +116,12 @@ def _render_probe_selected_details_markdown(
         f"- **Reason:** `{probe.reason}`",
         f"- **Selected file type:** {selected_file_type}{selected_file_type_score}",
         f"- **Selected processor:** {selected_processor}",
+        (
+            f"- **Activation:** `{probe.activation}` "
+            f"(authorized: `{str(probe.activation_authorized).lower()}`)"
+            if probe.activation is not None
+            else "- **Activation:** `<none>`"
+        ),
         f"- **Candidates:** {len(probe.candidates)}",
     ]
 

@@ -31,6 +31,7 @@ from typing import cast
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import ContentMatcher
 from topmark.filetypes.model import FileType
+from topmark.filetypes.model import FileTypeActivation
 from topmark.filetypes.model import InsertChecker
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.processors.base import HeaderProcessor
@@ -60,7 +61,7 @@ def make_file_type(
     header_policy: FileTypeHeaderPolicy | None = None,
     pre_insert_checker: InsertChecker | None = None,
     matches: Callable[[Path], bool] | None = None,
-    skip_processing: bool = False,
+    activation: FileTypeActivation = FileTypeActivation.DEFAULT,
 ) -> FileType:
     """Create a minimal `FileType` instance for tests.
 
@@ -92,7 +93,7 @@ def make_file_type(
         matches: Optional matcher used by file discovery and file-type filtering. If not provided,
             `matches` defaults to a small matcher that checks extensions, filename tails, regex
             patterns (fullmatch), then falls back to content_matcher.
-        skip_processing: Whether this file type is known but has no headers.
+        activation: Declared processing authorization for this file type.
 
     Returns:
         A duck-typed `FileType` instance.
@@ -171,7 +172,7 @@ def make_file_type(
             extensions=extensions if extensions is not None else [],
             filenames=filenames if filenames is not None else [],
             patterns=patterns if patterns is not None else [],
-            skip_processing=skip_processing,
+            activation=activation,
             content_matcher=content_matcher,
             content_gate=content_gate,
             header_policy=header_policy or FileTypeHeaderPolicy(),
@@ -184,7 +185,7 @@ def make_file_type(
         extensions=extensions if extensions is not None else [],
         filenames=filenames if filenames is not None else [],
         patterns=patterns if patterns is not None else [],
-        skip_processing=skip_processing,
+        activation=activation,
         content_matcher=content_matcher,
         content_gate=content_gate,
         header_policy=header_policy or FileTypeHeaderPolicy(),

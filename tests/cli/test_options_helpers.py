@@ -180,20 +180,33 @@ def test_enum_value_help_text_marks_raw_string_default_and_boundary_spellings() 
 
 
 def test_common_file_type_filtering_options_accept_csv_and_hidden_aliases() -> None:
-    """File type filters should accept comma lists and hidden singular aliases."""
+    """File type filters and opt-in authorization should accept repeated CSV values."""
 
     @click.command()
     @common_file_type_filtering_options
     def command(
+        opt_in_file_types: tuple[str, ...],
         include_file_types: tuple[str, ...],
         exclude_file_types: tuple[str, ...],
     ) -> None:
-        click.echo(",".join(include_file_types) + "|" + ",".join(exclude_file_types))
+        click.echo(
+            "|".join(
+                (
+                    ",".join(opt_in_file_types),
+                    ",".join(include_file_types),
+                    ",".join(exclude_file_types),
+                )
+            )
+        )
 
     runner = CliRunner()
     result: Result = runner.invoke(
         command,
         [
+            CliOpt.OPT_IN_FILE_TYPE,
+            "json-as-jsonc,custom-json",
+            CliOpt.OPT_IN_FILE_TYPE,
+            "plugin-json",
             CliOpt.INCLUDE_FILE_TYPES,
             "python,, toml",
             CliOpt.INCLUDE_FILE_TYPE,
@@ -206,7 +219,7 @@ def test_common_file_type_filtering_options_accept_csv_and_hidden_aliases() -> N
     )
 
     assert_SUCCESS(result)
-    assert result.output == "python,toml,markdown|json,xml\n"
+    assert result.output == "json-as-jsonc,custom-json,plugin-json|python,toml,markdown|json,xml\n"
 
 
 def test_common_header_field_options_accepts_header_overrides() -> None:

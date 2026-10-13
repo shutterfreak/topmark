@@ -57,6 +57,7 @@ def serialize_filetypes(
     fmt: OutputFormat,
     meta: MetaPayload,
     show_details: bool,
+    activation: str | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
 
@@ -64,6 +65,7 @@ def serialize_filetypes(
         fmt: Target output format (JSON or NDJSON).
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        activation: Optional declared activation filter.
 
     Returns:
         - JSON: pretty-printed JSON string (no trailing newline)
@@ -79,12 +81,14 @@ def serialize_filetypes(
         return serialize_filetypes_json(
             meta=meta,
             show_details=show_details,
+            activation=activation,
         )
 
     if fmt == OutputFormat.NDJSON:
         return serialize_filetypes_ndjson(
             meta=meta,
             show_details=show_details,
+            activation=activation,
         )
 
     # Defensive guard: reached only if a new machine-readable OutputFormat is
@@ -96,12 +100,14 @@ def serialize_filetypes_json(
     *,
     meta: MetaPayload,
     show_details: bool,
+    activation: str | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
 
     Args:
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        activation: Optional declared activation filter.
 
     Returns:
         - JSON: pretty-printed JSON string (no trailing newline)
@@ -109,6 +115,7 @@ def serialize_filetypes_json(
     """
     payload: FileTypesPayload = build_filetypes_payload(
         show_details=show_details,
+        activation=activation,
     )
     envelope: dict[str, object] = build_filetypes_json_envelope(
         meta=meta,
@@ -121,18 +128,21 @@ def serialize_filetypes_ndjson(
     *,
     meta: MetaPayload,
     show_details: bool,
+    activation: str | None = None,
 ) -> Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
 
     Args:
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        activation: Optional declared activation filter.
 
     Returns:
         Iterator of JSON strings (one per record; no trailing newline per item)
     """
     payload: FileTypesPayload = build_filetypes_payload(
         show_details=show_details,
+        activation=activation,
     )
     records: Iterator[dict[str, object]] = iter_filetypes_ndjson_records(
         meta=meta,
@@ -234,6 +244,7 @@ def serialize_bindings(
     fmt: OutputFormat,
     meta: MetaPayload,
     show_details: bool,
+    activation: str | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry bindings`.
 
@@ -241,6 +252,7 @@ def serialize_bindings(
         fmt: Target output format (JSON or NDJSON).
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        activation: Optional declared activation filter.
 
     Returns:
         - JSON: pretty-printed JSON string (no trailing newline)
@@ -256,12 +268,14 @@ def serialize_bindings(
         return serialize_bindings_json(
             meta=meta,
             show_details=show_details,
+            activation=activation,
         )
 
     if fmt == OutputFormat.NDJSON:
         return serialize_bindings_ndjson(
             meta=meta,
             show_details=show_details,
+            activation=activation,
         )
 
     # Defensive guard: reached only if a new machine-readable OutputFormat is
@@ -273,18 +287,21 @@ def serialize_bindings_json(
     *,
     meta: MetaPayload,
     show_details: bool,
+    activation: str | None = None,
 ) -> str:
     """Serialize machine-readable output for `topmark registry bindings`.
 
     Args:
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        activation: Optional declared activation filter.
 
     Returns:
         Pretty-printed JSON string (no trailing newline)
     """
     payload: BindingsPayload = build_bindings_payload(
         show_details=show_details,
+        activation=activation,
     )
     envelope: dict[str, object] = build_bindings_json_envelope(
         meta=meta,
@@ -297,18 +314,21 @@ def serialize_bindings_ndjson(
     *,
     meta: MetaPayload,
     show_details: bool,
+    activation: str | None = None,
 ) -> Iterator[str]:
     """Serialize machine-readable output for `topmark registry bindings`.
 
     Args:
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        activation: Optional declared activation filter.
 
     Returns:
         Iterator of JSON strings (one per record; no trailing newline per item)
     """
     payload: BindingsPayload = build_bindings_payload(
         show_details=show_details,
+        activation=activation,
     )
     records: Iterator[dict[str, object]] = iter_bindings_ndjson_records(
         meta=meta,

@@ -48,9 +48,14 @@ ______________________________________________________________________
 > - Finite-choice CLI option values now require exact lowercase spelling; uppercase and mixed-case
 >   aliases are rejected.
 > - Public API `check()` and `strip()` now default to `report="actionable"` instead of `"all"`.
+> - `FileType.skip_processing` has been removed; custom and plugin file types must declare
+>   `activation=FileTypeActivation.NEVER` for recognized-but-never-processable formats.
 
 ### Added - Unreleased
 
+- Added file-type activation policies: `default`, explicit-consent `opt-in`, and non-overridable
+  `never`. Configure consent with `[files].opt_in_file_types` or repeatable `--opt-in-file-type`;
+  strict JSON is now `never` and content-detected `json-as-jsonc` is opt-in.
 - Added a scheduled, manually dispatchable Python lifecycle audit that compares released CPython
   series and EOL transitions with TopMark metadata and support policy, then idempotently maintains
   maintainer-reviewed tracking issues without changing the compatibility contract automatically. It

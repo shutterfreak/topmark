@@ -243,8 +243,8 @@ Consumers should prefer `qualified_key` or `file_type_key` for durable compariso
 keys.
 
 Configuration payloads emit normalized identifiers. This means `include_file_types`,
-`exclude_file_types`, and `policy_by_type` keys may appear as `topmark:python` even if the user
-supplied `python`.
+`exclude_file_types`, `opt_in_file_types`, and `policy_by_type` keys may appear as `topmark:python`
+even if the user supplied `python`.
 
 See [Registry model](registry-model.md#qualified-vs-local-identifiers) for the full identity
 contract.
@@ -688,8 +688,9 @@ resolved TOML strictness. This strictness is evaluated across staged config-load
 exposes the flattened compatibility diagnostics view.
 
 Resolved runtime configuration snapshots emit normalized file type identifiers. In particular,
-`files.include_file_types`, `files.exclude_file_types`, and `policy_by_type` use canonical qualified
-keys such as `topmark:python` after configuration normalization.
+`files.include_file_types`, `files.exclude_file_types`, `files.opt_in_file_types`, and
+`policy_by_type` use canonical qualified keys such as `topmark:python` after configuration
+normalization.
 
 Example [`config check`](../usage/commands/config/check.md) NDJSON prefix:
 
@@ -778,3 +779,7 @@ See:
 Refer to each command's documentation for its emitted keys and shapes. Registry commands are also
 documented in the schema reference and include the separate
 [`registry bindings`](../usage/commands/registry/bindings.md) machine-readable format.
+
+`registry filetypes` and `registry bindings` may filter their static machine-readable views with
+`--activation {default,opt-in,never}`. This selector applies to declared registry metadata, not to
+configuration-derived opt-in authorization.

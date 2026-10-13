@@ -17,6 +17,7 @@ from typing import ClassVar
 
 from tests.helpers.registry import make_file_type
 from tests.presentation.conftest import find_table_row
+from topmark.filetypes.model import FileTypeActivation
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 from topmark.presentation.markdown.registry import render_bindings_markdown
 from topmark.presentation.markdown.registry import render_filetype_policy_markdown
@@ -98,7 +99,7 @@ def _filetype_item(*, bound: bool = True) -> FileTypeHumanItem:
         extensions=(".py",),
         filenames=("SConstruct", ".vscode/settings.json"),
         patterns=(".*\\.pyi",),
-        skip_processing=False,
+        activation="default",
         has_content_matcher=True,
         has_insert_checker=True,
         policy=_policy_item(),
@@ -435,8 +436,13 @@ def test_build_filetypes_human_report_sorts_and_maps_policy(
     )
 
     with effective_registries(
-        {"beta": beta, "alpha": alpha},
-        {"alpha": _RegistryPresentationProcessor()},
+        {
+            "beta": beta,
+            "alpha": alpha,
+        },
+        {
+            "alpha": _RegistryPresentationProcessor(),
+        },
     ):
         report: FileTypesHumanReport = build_filetypes_human_report(
             show_details=True,
@@ -461,7 +467,9 @@ def test_build_processors_human_report_sorts_and_marks_bound_processors(
     alpha: FileType = make_file_type(local_key="alpha", namespace="test", description="Alpha type")
 
     with effective_registries(
-        {"alpha": alpha},
+        {
+            "alpha": alpha,
+        },
         {
             "alpha": _RegistryPresentationProcessor(),
             "unused": _UnusedRegistryPresentationProcessor(),
@@ -491,7 +499,10 @@ def test_build_bindings_human_report_lists_bindings_unbound_and_unused(
     beta: FileType = make_file_type(local_key="beta", namespace="test", description="Beta type")
 
     with effective_registries(
-        {"beta": beta, "alpha": alpha},
+        {
+            "beta": beta,
+            "alpha": alpha,
+        },
         {
             "alpha": _RegistryPresentationProcessor(),
             "unused": _UnusedRegistryPresentationProcessor(),
@@ -510,3 +521,41 @@ def test_build_bindings_human_report_lists_bindings_unbound_and_unused(
         UnboundFileTypeHumanItem(name="test:beta", description="Beta type"),
     )
     assert [item.qualified_key for item in report.unused_processors] == ["test:registry-unused"]
+
+
+def test_build_bindings_human_report_filters_by_declared_activation(
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """Activation filtering keeps only matching bindings and unbound file types."""
+    default: FileType = make_file_type(
+        local_key="default",
+        namespace="test",
+        description="Default type",
+    )
+    opt_in: FileType = make_file_type(
+        local_key="opt-in",
+        namespace="test",
+        description="Opt-in type",
+        activation=FileTypeActivation.OPT_IN,
+    )
+
+    with effective_registries(
+        {
+            "default": default,
+            "opt-in": opt_in,
+        },
+        {
+            "default": _RegistryPresentationProcessor(),
+        },
+    ):
+        report: BindingsHumanReport = build_bindings_human_report(
+            show_details=False,
+            verbosity_level=0,
+            styled=False,
+            activation=FileTypeActivation.OPT_IN.value,
+        )
+
+    assert report.bindings == ()
+    assert report.unbound_filetypes == (
+        UnboundFileTypeHumanItem(name="test:opt-in", description="Opt-in type"),
+    )

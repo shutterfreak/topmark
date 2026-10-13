@@ -116,7 +116,7 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
                     ", ".join(it.extensions),
                     ", ".join(it.filenames),
                     ", ".join(it.patterns),
-                    "**yes**" if it.skip_processing else "no",
+                    it.activation,
                     "**yes**" if it.has_content_matcher else "no",
                     "**yes**" if it.has_insert_checker else "no",
                     policy_str,

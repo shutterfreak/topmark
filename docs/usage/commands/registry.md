@@ -81,9 +81,14 @@ type identities for deterministic registry identity handling.
 
 See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
 
-Registry commands expose the effective runtime registry view after registry composition and
-configuration normalization. This registry normalization is independent of runtime
-filesystem-identity evaluation for selected processing paths.
+Registry commands expose the effective composed registry view. Their output is static with respect
+to project configuration: configuration discovery, file-type consent, and runtime filtering do not
+affect it. This registry introspection is independent of runtime filesystem-identity evaluation for
+selected processing paths.
+
+`registry filetypes` and `registry bindings` accept `--activation {default,opt-in,never}` to filter
+by a file type's declared activation. The filter is available in TEXT, Markdown, JSON, and NDJSON
+output; it does not change runtime authorization.
 
 ______________________________________________________________________
 

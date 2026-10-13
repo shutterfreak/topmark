@@ -361,6 +361,7 @@ Probe machine-readable output is unaffected by TEXT verbosity or quiet mode. The
 formats expose the same resolution evidence used by the human-facing probe renderers:
 
 - selected file type and selected processor
+- the selected file type's declared activation policy and whether this invocation is authorized
 - probe status and reason
 - all scored candidate file types
 - candidate match signals
@@ -453,6 +454,10 @@ High-level shape:
     "namespace": "topmark",
     "local_key": "html"
   },
+  "activation": {
+    "declared": "default",
+    "authorized": true
+  },
   "candidates": [
     {
       "qualified_key": "topmark:markdown",
@@ -483,6 +488,7 @@ Filtered explicit input shape:
   "reason": "excluded_by_path_filter",
   "selected_file_type": null,
   "selected_processor": null,
+  "activation": null,
   "candidates": []
 }
 ```
@@ -496,6 +502,7 @@ Missing explicit input shape:
   "reason": "no_resolution_probe_result",
   "selected_file_type": null,
   "selected_processor": null,
+  "activation": null,
   "candidates": []
 }
 ```
@@ -542,6 +549,11 @@ Fields:
   unbound, filtered, or missing.
 - `selected_processor`: selected processor identity, or `null` when unresolved, unbound, filtered,
   or missing.
+- `activation`: the activation authorization evaluated for the selected file type, or `null` when no
+  file type reached that stage. When present, it has:
+  - `declared`: the registry declaration (`default`, `opt-in`, or `never`).
+  - `authorized`: whether the declaration permits processing in this invocation. `opt-in` types
+    require explicit consent; `never` types are always `false`.
 - `candidates`: scored candidate file types in deterministic resolution order. Empty for filtered
   explicit inputs, missing explicit inputs, and unsupported paths with no candidates.
 
@@ -1202,6 +1214,9 @@ ______________________________________________________________________
 
 Registry machine-readable output uses `--long` to select brief vs detailed projections. Registry
 commands do not support `--quiet`, and TEXT verbosity does not affect machine-readable output.
+`registry filetypes` and `registry bindings` also accept `--activation {default,opt-in,never}`. That
+filter selects static registry entries; it does not use project configuration or dynamic opt-in
+authorization.
 
 ### [`topmark registry filetypes`](../usage/commands/registry/filetypes.md)
 
@@ -1228,7 +1243,8 @@ Brief entry (default):
   "local_key": "python",
   "namespace": "topmark",
   "qualified_key": "topmark:python",
-  "description": "Python source file"
+  "description": "Python source file",
+  "activation": "default"
 }
 ```
 
@@ -1244,7 +1260,7 @@ Detailed entry (`--long`):
   "extensions": [".py"],
   "filenames": [],
   "patterns": [],
-  "skip_processing": false,
+  "activation": "default",
   "has_content_matcher": false,
   "has_insert_checker": false,
   "policy": {
@@ -1369,6 +1385,11 @@ Auxiliary lists:
   effective binding.
   - brief mode: qualified processor keys as strings
   - long mode: expanded processor reference objects containing identity and description fields
+
+With `--activation`, `bindings` and `unbound_filetypes` are restricted to file types with that
+declared activation. `--activation never` therefore isolates intentionally non-processable unbound
+types; unbound entries from `default` or `opt-in` views identify otherwise potentially processable
+types without a binding.
 
 NDJSON emits:
 

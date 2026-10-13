@@ -128,6 +128,9 @@ def config_to_topmark_toml_table(
     # ---- Files ----
 
     # Deterministic ordering for file types
+    opt_in_file_types_sorted: list[TomlValue] = as_toml_string_list(
+        sorted(config.opt_in_file_types)
+    )
     include_file_types_sorted: list[TomlValue] = as_toml_string_list(
         sorted(config.include_file_types)
     )
@@ -137,6 +140,7 @@ def config_to_topmark_toml_table(
 
     # Build base files_tbl
     files_tbl: TomlTable = {
+        Toml.KEY_OPT_IN_FILE_TYPES: opt_in_file_types_sorted,
         Toml.KEY_INCLUDE_FILE_TYPES: include_file_types_sorted,
         Toml.KEY_EXCLUDE_FILE_TYPES: exclude_file_types_sorted,
         Toml.KEY_CONFIG_FILES: as_toml_string_list(

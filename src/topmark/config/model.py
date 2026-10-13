@@ -133,6 +133,8 @@ class FrozenConfig:
             file paths to add before filtering.
         include_pattern_groups: Glob patterns to include.
         exclude_pattern_groups: Glob patterns to exclude.
+        opt_in_file_types: File-type identifiers explicitly authorized for types
+            declared ``activation=opt-in``.
         include_file_types: Whitelist of file type identifiers to restrict
             file discovery.
         exclude_file_types: Blacklist of file type identifiers to exclude from
@@ -183,6 +185,7 @@ class FrozenConfig:
     exclude_pattern_groups: tuple[PatternGroup, ...]
 
     # File types (linked to file extensions) to process (filter)
+    opt_in_file_types: frozenset[str]
     include_file_types: frozenset[str]
     exclude_file_types: frozenset[str]
 
@@ -275,6 +278,7 @@ class FrozenConfig:
             include_pattern_groups=list(self.include_pattern_groups),
             exclude_pattern_groups=list(self.exclude_pattern_groups),
             files_from=list(self.files_from),
+            opt_in_file_types=set(self.opt_in_file_types),
             include_file_types=set(self.include_file_types),
             exclude_file_types=set(self.exclude_file_types),
             validation_logs=validation_logs,
@@ -334,6 +338,8 @@ class MutableConfig:
             candidate file paths to add before filtering.
         include_pattern_groups: Glob patterns to include.
         exclude_pattern_groups: Glob patterns to exclude.
+        opt_in_file_types: File-type identifiers explicitly authorized for types
+            declared ``activation=opt-in``.
         include_file_types: file type identifiers to process.
         exclude_file_types: file type identifiers to exclude.
         validation_logs: Stage-aware diagnostics collected during config
@@ -369,6 +375,9 @@ class MutableConfig:
 
     include_pattern_groups: list[PatternGroup] = field(default_factory=lambda: [])
     exclude_pattern_groups: list[PatternGroup] = field(default_factory=lambda: [])
+
+    # Explicit authorization for types whose declaration is ``activation=opt-in``.
+    opt_in_file_types: set[str] = field(default_factory=lambda: set[str]())
 
     # File types filter
     include_file_types: set[str] = field(default_factory=lambda: set[str]())
@@ -469,6 +478,7 @@ class MutableConfig:
             include_from=tuple(self.include_from),
             exclude_from=tuple(self.exclude_from),
             files_from=tuple(self.files_from),
+            opt_in_file_types=frozenset(self.opt_in_file_types),
             include_pattern_groups=tuple(self.include_pattern_groups),
             exclude_pattern_groups=tuple(self.exclude_pattern_groups),
             include_file_types=frozenset(self.include_file_types),
@@ -606,6 +616,7 @@ class MutableConfig:
         merged_files: list[str] = other.files or self.files
 
         # File-type filters express a nearest-scope decision rather than a union.
+        merged_opt_in_file_types: set[str] = other.opt_in_file_types or self.opt_in_file_types
         merged_include_file_types: set[str] = other.include_file_types or self.include_file_types
         merged_exclude_file_types: set[str] = other.exclude_file_types or self.exclude_file_types
 
@@ -631,6 +642,7 @@ class MutableConfig:
             files_from=merged_files_from,
             include_pattern_groups=merged_include_pattern_groups,
             exclude_pattern_groups=merged_exclude_pattern_groups,
+            opt_in_file_types=merged_opt_in_file_types,
             include_file_types=merged_include_file_types,
             exclude_file_types=merged_exclude_file_types,
         )
@@ -791,6 +803,12 @@ class MutableConfig:
             if ids != normalized:
                 ids.clear()
                 ids.update(normalized)
+
+        _sanitize_file_type_ids(
+            Toml.KEY_OPT_IN_FILE_TYPES,
+            self.opt_in_file_types,
+            is_exclusion=False,
+        )
 
         _sanitize_file_type_ids(
             Toml.KEY_INCLUDE_FILE_TYPES,

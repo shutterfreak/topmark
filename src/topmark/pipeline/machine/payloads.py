@@ -72,6 +72,7 @@ def build_probe_result_payload(
             "reason": "no_resolution_probe_result",
             "selected_file_type": None,
             "selected_processor": None,
+            "activation": None,
             "candidates": [],
         }
     return result.probe.to_dict()

@@ -43,6 +43,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from topmark.filetypes.model import FileTypeActivation
+
 
 # ---- Plugin-facing structural contracts ----
 
@@ -61,8 +63,7 @@ class PublicFileType(Protocol):
         extensions: File extensions (without dot), for example ("json",).
         filenames: Exact file names (for example, ("Makefile",)).
         patterns: Glob-like patterns.
-        skip_processing: If `True`, TopMark will not add/update/remove a header
-            even if the type matches (still discoverable for reporting).
+        activation: Declared processing authorization for the file type.
         content_matcher: Optional `Callable[[Path], bool]` that returns `True`
             only if the file contents confirm this specific type. Use this to
             disambiguate overlapping extensions. The callable should be cheap
@@ -76,7 +77,7 @@ class PublicFileType(Protocol):
     extensions: Sequence[str]
     filenames: Sequence[str]
     patterns: Sequence[str]
-    skip_processing: bool
+    activation: FileTypeActivation
     content_matcher: Callable[[Path], bool] | None = None
     header_policy_name: str
 

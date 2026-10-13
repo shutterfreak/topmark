@@ -112,6 +112,7 @@ def _build_default_layered_config_toml() -> TomlTable:
             Toml.KEY_FILES_FROM: [],
             Toml.KEY_INCLUDE_PATTERNS: [],
             Toml.KEY_EXCLUDE_PATTERNS: [],
+            Toml.KEY_OPT_IN_FILE_TYPES: [],
             Toml.KEY_INCLUDE_FILE_TYPES: [],
             Toml.KEY_EXCLUDE_FILE_TYPES: [],
             Toml.KEY_FILES: [],

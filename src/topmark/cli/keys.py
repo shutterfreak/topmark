@@ -62,6 +62,7 @@ class CliOpt:
     INCLUDE_FILE_TYPE: Final = "--include-file-type"
     EXCLUDE_FILE_TYPES: Final = "--exclude-file-types"
     EXCLUDE_FILE_TYPE: Final = "--exclude-file-type"
+    OPT_IN_FILE_TYPE: Final = "--opt-in-file-type"
     INCLUDE_FROM: Final = "--include-from"
     EXCLUDE_FROM: Final = "--exclude-from"
     INCLUDE_PATTERNS: Final = "--include"
@@ -128,6 +129,9 @@ class CliOpt:
     # Config root
     CONFIG_ROOT: Final = "--root"
 
+    # Registry
+    ACTIVATION: Final = "--activation"
+
 
 class CliShortOpt:
     """User-facing short option spellings for the TopMark CLI.
@@ -147,3 +151,4 @@ class CliShortOpt:
     INCLUDE_PATTERNS: Final = "-i"
     EXCLUDE_PATTERNS: Final = "-e"
     SHOW_DETAILS: Final = "-l"
+    ACTIVATION: Final = "-a"

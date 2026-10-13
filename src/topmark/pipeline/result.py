@@ -351,6 +351,10 @@ class ProbeSnapshot:
         candidates: Durable scored candidate snapshots.
         selected_file_type: Selected file type identity, if any.
         selected_processor: Selected processor identity, if any.
+        activation: Declared activation policy for the selected file type, if
+            resolution reached activation authorization.
+        activation_authorized: Whether the declared activation policy permits
+            processing for this invocation, if `activation` is available.
     """
 
     path: Path
@@ -359,6 +363,8 @@ class ProbeSnapshot:
     candidates: tuple[ProbeCandidateSnapshot, ...]
     selected_file_type: ProbeSelectionSnapshot | None
     selected_processor: ProbeSelectionSnapshot | None
+    activation: str | None = None
+    activation_authorized: bool | None = None
 
     @classmethod
     def from_probe_result(
@@ -389,6 +395,10 @@ class ProbeSnapshot:
                 ProbeSelectionSnapshot.from_selection(probe.selected_processor)
                 if probe.selected_processor is not None
                 else None
+            ),
+            activation=probe.activation.declared if probe.activation is not None else None,
+            activation_authorized=(
+                probe.activation.authorized if probe.activation is not None else None
             ),
         )
 
@@ -424,6 +434,14 @@ class ProbeSnapshot:
             "reason": self.reason,
             "selected_file_type": _probe_selection_to_dict(self.selected_file_type),
             "selected_processor": _probe_selection_to_dict(self.selected_processor),
+            "activation": (
+                {
+                    "declared": self.activation,
+                    "authorized": self.activation_authorized,
+                }
+                if self.activation is not None and self.activation_authorized is not None
+                else None
+            ),
             "candidates": [
                 {
                     "qualified_key": candidate.qualified_key,

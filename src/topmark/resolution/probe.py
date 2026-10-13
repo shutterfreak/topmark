@@ -35,12 +35,15 @@ class ResolutionProbeStatus(str, Enum):
         RESOLVED: A file type and processor were successfully selected.
         UNSUPPORTED: No file type candidates matched the path.
         NO_PROCESSOR: A file type was selected, but no processor was bound.
+        ACTIVATION_BLOCKED: A selected file type is not currently authorized
+            for processing.
     """
 
     FILTERED = "filtered"
     RESOLVED = "resolved"
     UNSUPPORTED = "unsupported"
     NO_PROCESSOR = "no_processor"
+    ACTIVATION_BLOCKED = "activation_blocked"
 
 
 class ResolutionProbeReason(str, Enum):
@@ -58,6 +61,10 @@ class ResolutionProbeReason(str, Enum):
         HARD_LINK_DUPLICATE: The path shares storage with another selected processing path.
         SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR: The selected file type has no
             associated processor binding.
+        SELECTED_FILE_TYPE_REQUIRES_OPT_IN: The selected file type requires
+            explicit opt-in before it can be processed.
+        SELECTED_FILE_TYPE_NEVER_PROCESSABLE: The selected file type is
+            intentionally never processable.
     """
 
     EXCLUDED_BY_PATH_FILTER = "excluded_by_path_filter"
@@ -68,6 +75,8 @@ class ResolutionProbeReason(str, Enum):
     NO_CANDIDATES = "no_candidates"
     HARD_LINK_DUPLICATE = "hard_link_duplicate"
     SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR = "selected_file_type_has_no_bound_processor"
+    SELECTED_FILE_TYPE_REQUIRES_OPT_IN = "selected_file_type_requires_opt_in"
+    SELECTED_FILE_TYPE_NEVER_PROCESSABLE = "selected_file_type_never_processable"
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -132,6 +141,14 @@ class ResolutionProbeSelection:
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
+class ResolutionProbeActivation:
+    """Declared activation and dynamic authorization for the selected type."""
+
+    declared: str
+    authorized: bool
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ResolutionProbeResult:
     """Probe result explaining file type and processor resolution for one path.
 
@@ -146,6 +163,8 @@ class ResolutionProbeResult:
             unsupported or filtered.
         selected_processor: Selected processor identity, or ``None`` when
             unsupported, unbound, or filtered.
+        activation: Declared activation and dynamic authorization for the
+            selected file type, or ``None`` when no type was selected.
     """
 
     path: Path
@@ -154,3 +173,4 @@ class ResolutionProbeResult:
     candidates: tuple[ResolutionProbeCandidate, ...]
     selected_file_type: ResolutionProbeSelection | None
     selected_processor: ResolutionProbeSelection | None
+    activation: ResolutionProbeActivation | None = None

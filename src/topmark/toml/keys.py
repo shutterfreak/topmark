@@ -96,6 +96,7 @@ class Toml:
     # [files]
     SECTION_FILES: Final[str] = "files"
 
+    KEY_OPT_IN_FILE_TYPES: Final[str] = "opt_in_file_types"
     KEY_INCLUDE_FILE_TYPES: Final[str] = "include_file_types"
     KEY_EXCLUDE_FILE_TYPES: Final[str] = "exclude_file_types"
     KEY_INCLUDE_FROM: Final[str] = "include_from"

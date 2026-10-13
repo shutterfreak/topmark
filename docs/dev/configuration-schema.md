@@ -66,7 +66,7 @@ File type identifiers in TOML configuration may use either:
 - canonical qualified file type identities such as `topmark:python`
 
 TopMark normalizes identifiers to canonical qualified file type identities during configuration
-normalization before resolver, filtering, policy, and binding evaluation.
+normalization before activation authorization, filtering, resolver, policy, and binding evaluation.
 
 Local identifiers are accepted only when unambiguous in the effective composed registry.
 
@@ -345,10 +345,12 @@ topmark:
         optional: true
 
   files:
-    # Runtime filtering order:
-    # 1) Path filters (include/exclude patterns + *_from + files_from)
-    # 2) File type filters (include_file_types / exclude_file_types)
-    # 3) Runtime eligibility (supported vs unsupported processing targets)
+    # Runtime processing order:
+    # 1) File-type activation authorization (opt_in_file_types)
+    # 2) Path filters (include/exclude patterns + *_from + files_from)
+    # 3) File-type filters (include_file_types / exclude_file_types)
+    # 4) Matching, content probing, and scoring
+    # 5) Processor binding and file mutation
     #
     # Filesystem-identity eligibility checks such as hard-link policy are runtime
     # processing concerns and are not represented as configuration schema fields.
@@ -391,6 +393,11 @@ topmark:
       default: []
       description: Exclude these local or canonical qualified file type identifiers.
 
+    opt_in_file_types:
+      type: list[str]
+      default: []
+      description: Explicitly authorize these local or canonical qualified opt-in file type identifiers.
+
     files:
       type: list[path]
       default: []
@@ -400,6 +407,7 @@ topmark:
 At runtime, file type identifiers normalize to canonical qualified keys before:
 
 - resolution and filtering
+- activation authorization
 - policy lookup
 - processor binding lookup
 - probe evaluation

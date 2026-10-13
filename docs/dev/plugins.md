@@ -206,7 +206,6 @@ def provide_filetypes() -> list[FileType]:
             filenames=[],
             patterns=[],
             description="MyLang source files",
-            skip_processing=False,
         )
     ]
 ```
@@ -343,6 +342,8 @@ Important:
   registry data;
 - processor bindings should use canonical qualified file type identifiers for deterministic
   behavior.
+- a file type declared `never` cannot be bound to a processor; use `opt-in` when recognition and
+  matching should remain available but processing requires explicit user consent.
 
 ______________________________________________________________________
 

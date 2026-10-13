@@ -141,8 +141,14 @@ filters and processing-target identity.
   repeated and/or provided as a comma-separated list.
 - `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
   provided as a comma-separated list.
+- `--opt-in-file-type` Authorize processing of the given `opt-in` file type identifiers. May be
+  repeated and/or provided as a comma-separated list.
 
 Exclude rules take precedence over include rules.
+
+File-type filters select or veto candidates; they do not grant activation. Types declared `default`
+need no extra setting, types declared `opt-in` require `--opt-in-file-type` or
+`[files].opt_in_file_types`, and types declared `never` cannot be processed.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
@@ -154,6 +160,7 @@ Examples:
 topmark strip --include-file-types python src/
 topmark strip --include-file-types topmark:python src/
 topmark strip --exclude-file-types topmark:markdown docs/
+topmark strip --opt-in-file-type topmark:json-as-jsonc .
 ```
 
 ### Path-based filters
@@ -401,6 +408,7 @@ ______________________________________________________________________
 | `--exclude-from`                                     | File of patterns to exclude.                                                 |
 | `--include-file-types` / `-t`                        | Restrict to local or qualified TopMark file type identifiers.                |
 | `--exclude-file-types` / `-T`                        | Exclude local or qualified TopMark file type identifiers.                    |
+| `--opt-in-file-type`                                 | Authorize a local or qualified opt-in file type identifier.                  |
 | `--report`                                           | Control reporting scope: actionable, noncompliant, or all.                   |
 | `--allow-content-probe` / `--no-allow-content-probe` | Shared policy override for file-type detection.                              |
 | `--strict` / `--no-strict`                           | Override effective configuration-loading validation strictness for this run. |

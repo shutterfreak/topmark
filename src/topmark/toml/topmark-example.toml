@@ -301,12 +301,14 @@ allow_content_probe = true
 
 [files]
 
-# File discovery, filtering, and runtime selection behavior.
+# File discovery, activation, filtering, and runtime selection behavior.
 #
-# Filtering pipeline:
-#   1. Path-based include/exclude (patterns, *_from, files_from)
-#   2. File type include/exclude (include_file_types / exclude_file_types)
-#   3. Per-file eligibility (supported vs unsupported)
+# Processing pipeline:
+#   1. A file type's declared activation is considered; opt-in types require
+#      explicit consent through opt_in_file_types.
+#   2. Path-based and file-type include/exclude filters select or veto files.
+#   3. Matching, content probing, and scoring select a file type; a processor
+#      binding is then required before TopMark can mutate the file.
 #
 # Include/exclude glob patterns.
 # Patterns in configuration files are evaluated relative to the configuration
@@ -332,6 +334,16 @@ allow_content_probe = true
 # Optional denylist of file type identifiers to exclude (after include/exclude
 # patterns):
 # exclude_file_types = ["html"]
+
+# Explicit processing consent for file types declared "opt-in".
+#
+# This is separate from include_file_types and exclude_file_types: include
+# filters do not activate a type, and exclude filters remain a veto. A type
+# declared "never" is recognized but can never be made processable.
+#
+# Local identifiers are accepted when unambiguous; canonical qualified
+# identifiers are preferred in shared configuration.
+# opt_in_file_types = ["topmark:json-as-jsonc"]
 
 # Optional list of input paths (files/directories) to scan.
 # These are typically specified via CLI.

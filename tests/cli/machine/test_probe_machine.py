@@ -118,6 +118,7 @@ def test_probe_json_output_shape(tmp_path: Path) -> None:
     assert "reason" in probe
     assert "selected_file_type" in probe
     assert "selected_processor" in probe
+    assert "activation" in probe
     assert "candidates" in probe
 
 
@@ -144,6 +145,69 @@ def test_probe_json_output_separates_payload_from_stderr(tmp_path: Path) -> None
     assert result.stderr == ""
     payload: dict[str, object] = parse_json_object(result.stdout)
     assert "probes" in payload
+
+
+def test_probe_cli_opt_in_authorizes_without_implicitly_binding_json_as_jsonc(
+    tmp_path: Path,
+) -> None:
+    """The CLI opt-in option changes authorization but does not create a binding."""
+    file: Path = tmp_path / "settings.json"
+    file.write_text("// commented JSON\n{}\n", encoding="utf-8")
+    runner = CliRunner()
+
+    blocked: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "topmark:json-as-jsonc",
+            str(file),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+    authorized: Result = runner.invoke(
+        cli,
+        [
+            CliCmd.PROBE,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "topmark:json-as-jsonc",
+            CliOpt.OPT_IN_FILE_TYPE,
+            "topmark:json-as-jsonc",
+            str(file),
+            CliOpt.OUTPUT_FORMAT,
+            OutputFormat.JSON.value,
+        ],
+    )
+
+    assert_UNSUPPORTED_FILE_TYPE(blocked)
+    assert_UNSUPPORTED_FILE_TYPE(authorized)
+
+    def get_probe(result: Result) -> dict[str, object]:
+        payload: dict[str, object] = parse_json_object(result.output)
+        probes_obj: object = payload["probes"]
+        assert is_any_list(probes_obj)
+        assert len(probes_obj) == 1
+        probe_obj: object = probes_obj[0]
+        assert is_mapping(probe_obj)
+        return as_object_dict(probe_obj)
+
+    blocked_probe: dict[str, object] = get_probe(blocked)
+    authorized_probe: dict[str, object] = get_probe(authorized)
+    blocked_activation_obj: object = blocked_probe["activation"]
+    authorized_activation_obj: object = authorized_probe["activation"]
+    assert is_mapping(blocked_activation_obj)
+    assert is_mapping(authorized_activation_obj)
+    blocked_activation: dict[str, object] = as_object_dict(blocked_activation_obj)
+    authorized_activation: dict[str, object] = as_object_dict(authorized_activation_obj)
+
+    assert blocked_probe["status"] == "activation_blocked"
+    assert blocked_probe["reason"] == "selected_file_type_requires_opt_in"
+    assert blocked_activation == {"declared": "opt-in", "authorized": False}
+
+    assert authorized_probe["status"] == "no_processor"
+    assert authorized_probe["reason"] == "selected_file_type_has_no_bound_processor"
+    assert authorized_activation == {"declared": "opt-in", "authorized": True}
 
 
 def test_probe_json_content_stdin_uses_payload_stdout_and_cleans_tempfile() -> None:
@@ -456,6 +520,7 @@ def test_probe_ndjson_output_shape(tmp_path: Path) -> None:
     assert "path" in payload
     assert "status" in payload
     assert "reason" in payload
+    assert "activation" in payload
     assert "candidates" in payload
 
     # Ensure no double wrapping (regression test)
@@ -565,6 +630,7 @@ def test_probe_ndjson_reports_explicit_filtered_input(
     assert payload["reason"] == "excluded_by_path_filter"
     assert payload["selected_file_type"] is None
     assert payload["selected_processor"] is None
+    assert payload["activation"] is None
 
     candidates_obj: object = payload["candidates"]
     assert is_any_list(candidates_obj)

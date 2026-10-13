@@ -258,8 +258,10 @@ Common shared options include the following, where supported by the selected com
 | `-q`, `--quiet`                               | Suppress TEXT output, where supported                                                       |
 | `--output-format {text,markdown,json,ndjson}` | Select output format, where machine-readable output is supported                            |
 | `--color` / `--no-color`                      | Enable or disable colorized terminal output, where supported                                |
+| `--opt-in-file-type TYPE`                     | Authorize processing of an opt-in file type; repeatable and comma-separated values allowed  |
 | `--include-file-types`                        | Restrict processing to selected file types, where supported                                 |
 | `--exclude-file-types`                        | Exclude selected file types, where supported                                                |
+| `--activation {default,opt-in,never}`         | Filter declared activation in `registry filetypes` and `registry bindings`                  |
 
 For commands that support `--diff`, presentation depends on the selected output format:
 
@@ -318,6 +320,10 @@ topmark check --include-file-types topmark:python src/
 topmark check --exclude-file-types markdown docs/
 ```
 
+```bash
+topmark check --opt-in-file-type topmark:json-as-jsonc .
+```
+
 File type filters behave consistently across:
 
 - CLI options
@@ -325,7 +331,9 @@ File type filters behave consistently across:
 - API overlays
 - resolution and probe filtering
 
-File type filtering operates after filesystem-identity evaluation and processing-path selection.
+File type filtering operates after filesystem-identity evaluation and processing-path selection. It
+is separate from activation authorization: `--opt-in-file-type` supplies explicit consent for a type
+declared as opt-in, while `--exclude-file-types` remains a veto.
 
 Configuration discovery has already selected project-chain configuration sources from the resolved
 discovery anchor before file type filters are evaluated.

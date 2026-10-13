@@ -88,6 +88,9 @@ See [file-type filtering](../../filtering.md#file-type-filtering) for the full i
 Bindings expose the effective runtime processor-dispatch relationships using canonical qualified
 identities.
 
+The output is static and independent of project configuration discovery, file-type filters, and
+opt-in authorization.
+
 ______________________________________________________________________
 
 ## Output behavior
@@ -103,6 +106,12 @@ Use `--output-format` to pick the output format:
 The `--long` flag controls the detail level for all output formats.
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
+
+### Activation filter
+
+`--activation {default,opt-in,never}` filters bindings and unbound file types by the file type's
+declared activation in every output format. It is introspection only: it does not supply opt-in
+consent or change processor dispatch.
 
 ______________________________________________________________________
 
@@ -126,6 +135,10 @@ Additional sections:
 
 - Unbound file types - recognized file types without an effective processor binding
 - Unused processors - processors not referenced by any effective binding
+
+Use `--activation never` to inspect intentionally non-processable, unbound types. For the `default`
+or `opt-in` filters, an unbound file type identifies an otherwise potentially processable type that
+lacks a processor binding and therefore requires registry attention.
 
 ______________________________________________________________________
 
@@ -193,6 +206,9 @@ topmark registry bindings
 # Detailed list (human)
 topmark registry bindings --long
 
+# Inspect intentionally non-processable types separately
+topmark registry bindings --activation never
+
 # Detailed Markdown table (ideal for project docs)
 topmark registry bindings --long --output-format markdown
 
@@ -241,8 +257,10 @@ ______________________________________________________________________
 
 - Bindings represent the effective runtime processor-dispatch mapping used by TopMark.
 - The effective binding view is composed from built-in bindings plus runtime overlays.
-- The output is independent of project configuration discovery.
-- A file type may be intentionally unbound, for example when it is marked `skip_processing = true`.
+- The output is independent of project configuration discovery, file-type filters, and opt-in
+  authorization.
+- A file type with `activation = never` is intentionally non-processable and therefore unbound;
+  TopMark rejects attempts to bind one to a processor.
 - This command is the best way to debug processor-dispatch issues, missing processor registrations,
   or unexpected runtime bindings.
 - `--quiet` is not supported for registry commands; use output-format options instead if you need

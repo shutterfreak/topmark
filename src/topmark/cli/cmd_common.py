@@ -424,6 +424,7 @@ def build_resolved_toml_sources_and_config_for_plan(
     no_config: bool,
     config_paths: list[str],
     strict: bool | None,
+    opt_in_file_types: list[str],
     include_file_types: list[str],
     exclude_file_types: list[str],
     align_fields: bool | None,
@@ -456,6 +457,7 @@ def build_resolved_toml_sources_and_config_for_plan(
         strict: Optional CLI override for strict config
             checking. `None` means that strictness should be taken from the
             resolved TOML sources.
+        opt_in_file_types: CLI authorization for opt-in file types.
         include_file_types: CLI include file-type filters.
         exclude_file_types: CLI exclude file-type filters.
         align_fields: Optional CLI override for header alignment.
@@ -511,6 +513,7 @@ def build_resolved_toml_sources_and_config_for_plan(
         exclude_from=none_if_empty(plan.exclude_from),
         include_patterns=none_if_empty(plan.include_patterns),
         exclude_patterns=none_if_empty(plan.exclude_patterns),
+        opt_in_file_types=opt_in_file_types,
         include_file_types=include_file_types,
         exclude_file_types=exclude_file_types,
         align_fields=align_fields,
