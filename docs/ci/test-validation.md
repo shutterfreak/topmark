@@ -160,7 +160,7 @@ nox -s qa -p 3.15
 Generate the canonical local coverage report:
 
 ```bash
-nox -s coverage -p 3.15
+make coverage
 ```
 
 This generates local HTML, XML, and JSON reports without publishing them. The dedicated CI coverage
@@ -169,6 +169,29 @@ compares project coverage with the pull request base using the repository's docu
 reports patch coverage informationally. Contributors do not need Codecov credentials for local
 coverage. See the [CI workflow](./ci-workflow.md#artifact-handling) for the reporting and artifact
 model.
+
+Afterwards, run the changed-lines diagnostic:
+
+```bash
+make coverage-changed
+```
+
+It compares changed executable `src/topmark/` lines and branch exits with `coverage.json`, reporting
+uncovered locations with source context. It is informational and does not add CI enforcement or
+modify Codecov policy. The default base is the merge base of `origin/main`, falling back to `main`.
+For a CI-style comparison, `GITHUB_BASE_REF` selects the base branch (preferring its `origin/`
+remote); use `COVERAGE_CHANGED_ARGS="--base <revision>"` or `COVERAGE_CHANGED_BASE` to choose an
+explicit base. The comparison includes staged and unstaged changes, maps renamed files to their
+current paths, and omits deleted files. If `coverage.json` is absent, it reports that coverage was
+not assessed rather than treating the change as covered.
+
+Run `make coverage` after the source and test edits you want to review, then run
+`make coverage-changed` immediately afterwards. A report generated before later source edits can
+have stale execution and line data, producing a misleading assessment. A clean working tree is still
+valid when branch changes are committed because the diagnostic compares the branch with its merge
+base. An unchanged `main` checkout, or a branch that changes only documentation/tooling, has no
+changed package source lines to assess. Stage newly added `src/topmark/` files before running the
+diagnostic: untracked files do not appear in Git's diff.
 
 Inspect the Python metadata consumed by CI:
 
@@ -235,6 +258,7 @@ Common mappings are:
 | Run the recommended local pre-PR gate             | `make pre-pr`                      |
 | Run the main quality gate on the canonical Python | `nox -s qa -p 3.15`                |
 | Generate canonical coverage data                  | `nox -s coverage -p 3.15`          |
+| Diagnose changed-lines coverage                   | `nox -s coverage_changed -p 3.15`  |
 | Run local pytest in parallel                      | `nox -s qa -p 3.15 -- -n auto`     |
 | Print CI Python metadata                          | `nox -s print_python_matrix`       |
 | Run a marker-specific test subset                 | `nox -s qa -p 3.15 -- -m <marker>` |

@@ -121,14 +121,32 @@ make property-test
 
 ### Coverage reporting
 
-Generate the canonical coverage reports locally with:
+After changing code or tests, generate the canonical coverage reports and inspect changed executable
+lines and branches with:
 
 ```bash
 make coverage
+make coverage-changed
 ```
 
 This produces the HTML report in `htmlcov/` together with `coverage.xml` and `coverage.json`.
 Generated coverage files are local diagnostics and are not committed.
+
+Run this pair after each meaningful source or test edit so `coverage.json` describes the source
+currently being compared. A clean working tree is fine when branch changes are already committed:
+the diagnostic compares the branch with its merge base, not only unstaged edits.
+
+The diagnostic is informational: it does not enforce a threshold or change CI/Codecov policy. By
+default it compares the working tree with the merge base of `origin/main` (falling back to `main`),
+so staged and unstaged changes are included. For a CI-style pull-request comparison, set
+`GITHUB_BASE_REF` to the base branch name; for another branch or commit, pass
+`COVERAGE_CHANGED_ARGS="--base <revision>"` or set `COVERAGE_CHANGED_BASE`. Git renames use their
+current path, while deleted files are omitted because they have no current executable lines. Stage
+newly added source files before running the diagnostic because untracked files are not present in
+the Git diff.
+
+If `coverage.json` is absent, the command reports that coverage was not assessed and tells you to
+run `make coverage`; it does not claim the changed code is covered.
 
 GitHub CI runs the same canonical coverage session after the supported Python test matrix succeeds.
 It retains the HTML, XML, and JSON reports as workflow artifacts, publishes a short GitHub Step

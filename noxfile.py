@@ -28,6 +28,7 @@ Sessions:
   - `code_hygiene`: Enforce lightweight Python prose hygiene (custom tool).
   - `qa`: Per-Python session that runs pytest and pyright.
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
+  - `coverage_changed`: Diagnose coverage gaps in changed executable source lines.
   - `self_check`: Verify that the current TopMark checkout accepts every tracked file.
   - `pre_pr`: Recommended local pre-PR validation gate.
   - `api_snapshot`: Public API snapshot test (per Python).
@@ -426,6 +427,21 @@ def coverage(session: nox.Session) -> None:
         "--cov-report=html",
         "--cov-report=xml",
         "--cov-report=json",
+        *session.posargs,
+    )
+
+
+@nox.session(python=CANONICAL_PYTHON)
+def coverage_changed(session: nox.Session) -> None:
+    """Diagnose uncovered changed lines using the canonical JSON coverage report.
+
+    Run the ``coverage`` session first. This is an informational local diagnostic and does not
+    impose a coverage threshold or alter CI/Codecov policy.
+    """
+    session.run(
+        "python",
+        "-m",
+        "tools.coverage_changed",
         *session.posargs,
     )
 

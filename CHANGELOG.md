@@ -53,6 +53,8 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added the non-enforcing `make coverage-changed` contributor diagnostic, which compares changed
+  executable source lines and branches with canonical `coverage.json` after `make coverage`.
 - Added file-type activation policies: `default`, explicit-consent `opt-in`, and non-overridable
   `never`. Configure consent with `[files].opt_in_file_types` or repeatable `--opt-in-file-type`;
   strict JSON is now `never` and content-detected `json-as-jsonc` is opt-in.

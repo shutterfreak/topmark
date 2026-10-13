@@ -279,6 +279,12 @@ nox -s qa -p 3.15
 nox -s coverage -p 3.15
 ```
 
+After generating local coverage data, contributors can run `make coverage-changed` to inspect
+uncovered changed executable source lines and branches. This optional local diagnostic is not a CI
+job, does not upload a report, and does not alter Codecov or pull-request status policy. See
+[Test and validation architecture](./test-validation.md#local-test-selection) for its base-reference
+strategy and missing-report behavior.
+
 The `filesystem-tests` job runs the same canonical `qa` session on macOS and Windows. Linux QA is
 covered by the supported Python-version test matrix on Ubuntu. Local reproduction can validate the
 current machine's filesystem behavior, but it cannot replace the cross-platform GitHub-hosted runs
