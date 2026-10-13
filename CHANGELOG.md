@@ -376,6 +376,8 @@ ______________________________________________________________________
 
 ### Fixed - Unreleased
 
+- Preserved leading and trailing Unicode whitespace in structural multiline header-field records,
+  keeping parsed values and canonical comparison output convergent.
 - Fixed header scanning so marker-shaped text in source content, strings, docstrings, and test
   fixtures does not make an otherwise valid TopMark header malformed.
 - Added a tracked-source TopMark self-check to the local `pre_pr` validation gate, catching

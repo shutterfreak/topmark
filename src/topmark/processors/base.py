@@ -666,6 +666,7 @@ class HeaderProcessor:
                     after_prefix_indent=(
                         self.line_indent + "  " if continuation else self.line_indent
                     ),
+                    preserve_trailing_whitespace=continuation,
                 )
             )
 
@@ -923,6 +924,7 @@ class HeaderProcessor:
         line_suffix: str | None = None,
         header_indent: str = "",
         after_prefix_indent: str | None = None,
+        preserve_trailing_whitespace: bool = False,
     ) -> str:
         """Wrap a single content line using line prefix/suffix, then append a newline.
 
@@ -938,6 +940,8 @@ class HeaderProcessor:
                 header block inside a document (e.g., nested JSONC).
             after_prefix_indent: Indentation to apply after the line prefix
                 (overrides the instance's ``line_indent`` for this line).
+            preserve_trailing_whitespace: Whether trailing whitespace in a
+                structural continuation record must be retained as semantic data.
 
         Returns:
             str: The fully wrapped line (prefix + content + suffix) including the trailing
@@ -962,9 +966,9 @@ class HeaderProcessor:
         if content:
             # Only add after-prefix indentation when there is content to show
             if api:
-                parts.append(api + content.rstrip())
+                parts.append(api + (content if preserve_trailing_whitespace else content.rstrip()))
             else:
-                parts.append(content.rstrip())
+                parts.append(content if preserve_trailing_whitespace else content.rstrip())
         if ls:
             parts.append(ls)
 
@@ -1188,6 +1192,7 @@ class HeaderProcessor:
                         after_prefix_indent=(
                             effective_line_indent + "  " if continuation else effective_line_indent
                         ),
+                        preserve_trailing_whitespace=continuation,
                     )
                 )
 
@@ -1224,6 +1229,7 @@ class HeaderProcessor:
                             if encoded_index == 0
                             else effective_line_indent + "  "
                         ),
+                        preserve_trailing_whitespace=encoded_index > 0,
                     )
                 )
 
