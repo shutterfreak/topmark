@@ -157,7 +157,7 @@ def test_insert_strip_idempotent_roundtrip(
 @given(
     logical_lines=st.lists(
         st.text(
-            alphabet=' abcXYZ0123:|>=\\"',
+            alphabet=' \u00a0\u2003abcXYZ0123:|>=\\"',
             min_size=0,
             max_size=20,
         ),
@@ -173,6 +173,28 @@ def test_multiline_field_round_trip_and_canonical_convergence(
     value: str = "\n".join(logical_lines)
     base_dir: Path = tmp_path_factory.mktemp("multiline-field-cases")
     path: Path = base_dir / f"{uuid4().hex}.py"
+    path.write_text("print('body')\n", encoding="utf-8", newline="")
+
+    mutable: MutableConfig = mutable_config_from_defaults()
+    mutable.header_fields = ["notice"]
+    mutable.field_values = {"notice": value}
+    config: FrozenConfig = mutable.freeze()
+
+    first: ProcessingContext = run_insert(path, config)
+    first_image: str = "".join(materialize_updated_lines(first))
+    path.write_text(first_image, encoding="utf-8", newline="")
+
+    second: ProcessingContext = run_insert(path, config)
+
+    assert second.views.header is not None
+    assert second.views.header.mapping == {"notice": value}
+    assert second.status.comparison is ComparisonStatus.UNCHANGED
+
+
+def test_multiline_field_preserves_outer_unicode_whitespace(tmp_path: Path) -> None:
+    """Structural records preserve Unicode whitespace at each logical-line edge."""
+    value = "\u00a0leading\ntrailing\u2003"
+    path: Path = tmp_path / "unicode-whitespace.py"
     path.write_text("print('body')\n", encoding="utf-8", newline="")
 
     mutable: MutableConfig = mutable_config_from_defaults()
