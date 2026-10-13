@@ -235,6 +235,28 @@ def _assert_default_brief_detail_level(payload: dict[str, object]) -> None:
     )
 
 
+def test_builtin_registry_bindings_reports_json_as_jsonc_slash_binding() -> None:
+    """The public registry view exposes the built-in JSONC-in-JSON binding."""
+    result: Result = _run_registry_command(
+        subcommand=CliCmd.REGISTRY_BINDINGS,
+        fmt="json",
+        show_details=False,
+    )
+    payload: dict[str, object] = parse_json_object(result.output)
+    bindings_obj: object | None = payload.get("bindings")
+    assert is_any_list(bindings_obj)
+    bindings: list[dict[str, object]] = []
+    for item in bindings_obj:
+        assert is_mapping(item)
+        bindings.append(as_object_dict(item))
+
+    binding: dict[str, object] = _binding_entry_by_file_type_key(
+        bindings,
+        "topmark:json-as-jsonc",
+    )
+    assert binding["processor_key"] == "topmark:slash"
+
+
 @pytest.mark.parametrize(
     ("show_details", "expected_detail_level"),
     [(False, "brief"), (True, "long")],

@@ -58,6 +58,8 @@ ______________________________________________________________________
 - Added file-type activation policies: `default`, explicit-consent `opt-in`, and non-overridable
   `never`. Configure consent with `[files].opt_in_file_types` or repeatable `--opt-in-file-type`;
   strict JSON is now `never` and content-detected `json-as-jsonc` is opt-in.
+- Added the slash-header processor binding for content-detected `json-as-jsonc` inputs. Native
+  `.jsonc` files remain separately recognized as `jsonc`; strict `.json` remains unheaderable.
 - Added a scheduled, manually dispatchable Python lifecycle audit that compares released CPython
   series and EOL transitions with TopMark metadata and support policy, then idempotently maintains
   maintainer-reviewed tracking issues without changing the compatibility contract automatically. It
