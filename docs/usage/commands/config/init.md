@@ -60,7 +60,8 @@ ______________________________________________________________________
 - `[header]` - order of fields to render in the header
 - `[formatting]` - layout options such as `align_fields`, `max_header_line_length`, and
   `wrap_fields`
-- `[files]` - file discovery knobs (e.g., `include_file_types`, `exclude_file_types`)
+- `[files]` - file discovery filters and opt-in activation consent (e.g., `include_file_types`,
+  `exclude_file_types`, `opt_in_file_types`)
 
 You can safely edit the generated file to match your project's needs.
 

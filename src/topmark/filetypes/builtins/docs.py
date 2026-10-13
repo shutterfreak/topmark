@@ -27,6 +27,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.filetypes.factory import BUILTIN_FILETYPE_FACTORY
+from topmark.filetypes.model import FileTypeActivation
 
 if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
@@ -38,7 +39,7 @@ FILETYPES: list[FileType] = [
         filenames=["LICENSE", "LICENSE.txt"],
         patterns=[],
         description="License text (keep verbatim)",
-        skip_processing=True,
+        activation=FileTypeActivation.NEVER,
     ),
     BUILTIN_FILETYPE_FACTORY(
         local_key="markdown",

@@ -106,6 +106,7 @@ class FileTypeBriefEntry(TypedDict):
     namespace: str
     qualified_key: str
     description: str
+    activation: str
 
 
 class FileTypeDetailEntry(TypedDict):
@@ -120,7 +121,7 @@ class FileTypeDetailEntry(TypedDict):
     extensions: list[str]
     filenames: list[str]
     patterns: list[str]
-    skip_processing: bool
+    activation: str
     has_content_matcher: bool
     has_insert_checker: bool
     policy: FileTypePolicyEntry

@@ -64,6 +64,14 @@ topmark config check --strict
 topmark check .
 ```
 
+### Opt-in file types in CI
+
+CI uses the same activation policy as local runs. Types declared `default` need no additional
+configuration. If the repository intentionally processes a type declared `opt-in`, record that
+consent in the checked-in configuration with `[files].opt_in_file_types` rather than relying on a
+one-off CI flag. Include/exclude file-type filters remain selection and veto mechanisms; they do not
+grant activation. Types declared `never` cannot be processed in CI or elsewhere.
+
 ______________________________________________________________________
 
 ## Controlling CI output

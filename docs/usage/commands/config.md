@@ -55,6 +55,10 @@ configuration layer for merging.
 
 See [file-type filtering](../filtering.md#file-type-filtering) for the full identifier contract.
 
+The `[files].opt_in_file_types` setting uses the same identifier normalization as file-type filters,
+but has a different purpose: it grants consent only for types declared `opt-in`. Include and exclude
+filters remain selection and veto mechanisms, and cannot make a `never` type processable.
+
 ______________________________________________________________________
 
 ## Input applicability

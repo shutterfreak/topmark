@@ -26,6 +26,13 @@ For advanced use (mutation, direct object access), use
 
 from __future__ import annotations
 
+__all__ = [
+    "list_bindings",
+    "list_filetypes",
+    "list_processors",
+]
+
+
 from typing import TYPE_CHECKING
 
 from topmark.api.types import BindingInfo
@@ -38,12 +45,6 @@ if TYPE_CHECKING:
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.processors.base import HeaderProcessor
     from topmark.registry.types import ProcessorMeta
-
-__all__ = (
-    "list_bindings",
-    "list_filetypes",
-    "list_processors",
-)
 
 
 def _build_filetype_policy_info(policy: FileTypeHeaderPolicy) -> FileTypePolicyInfo:
@@ -79,7 +80,7 @@ def list_filetypes() -> list[FileTypeInfo]:
             extensions=tuple(ft.extensions),
             filenames=tuple(ft.filenames),
             patterns=tuple(ft.patterns),
-            skip_processing=ft.skip_processing,
+            activation=ft.activation.value,
             has_content_matcher=bool(ft.content_matcher),
             has_insert_checker=bool(ft.pre_insert_checker),
             policy=_build_filetype_policy_info(ft.header_policy),

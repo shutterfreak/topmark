@@ -162,6 +162,36 @@ def test_include_file_types_nearest_non_empty_set_wins_across_layers(
     assert resolved_config.draft.include_file_types == {"markdown"}
 
 
+def test_opt_in_file_types_nearest_non_empty_set_wins_across_layers(
+    tmp_path: Path,
+) -> None:
+    """opt_in_file_types uses nearest-wins semantics rather than set union."""
+    root: Path = tmp_path / "root"
+    child: Path = root / "pkg"
+    child.mkdir(parents=True)
+
+    write_toml_document(
+        path=root / "pyproject.toml",
+        content="""
+            [tool.topmark.files]
+            opt_in_file_types = ["topmark:json-as-jsonc"]
+        """,
+    )
+    write_toml_document(
+        path=child / "topmark.toml",
+        content="""
+            [files]
+            opt_in_file_types = ["python"]
+        """,
+    )
+
+    resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        input_paths=[child],
+    )
+
+    assert resolved_config.draft.opt_in_file_types == {"python"}
+
+
 def test_select_applicable_layers_filters_child_scoped_layer(
     tmp_path: Path,
 ) -> None:
@@ -445,6 +475,16 @@ def test_sanitized_config_resolves_runtime_applicability_diagnostics() -> None:
         "Unknown included file types specified" in diagnostic.message
         for diagnostic in sanitized.validation_logs.runtime_applicability.items
     )
+
+
+def test_sanitized_config_normalizes_opt_in_file_type_identifiers() -> None:
+    """Opt-in identifiers use the same canonicalization contract as file-type filters."""
+    draft: MutableConfig = mutable_config_from_defaults()
+    draft.opt_in_file_types = {"json-as-jsonc", "topmark:python"}
+
+    sanitized: FrozenConfig = sanitized_config(draft.freeze())
+
+    assert sanitized.opt_in_file_types == frozenset({"topmark:json-as-jsonc", "topmark:python"})
 
 
 def test_mutable_config_ensure_valid_raises_for_invalid_draft() -> None:

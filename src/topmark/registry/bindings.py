@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 
 from topmark.core.errors import ProcessorBindingError
 from topmark.core.errors import UnknownFileTypeError
+from topmark.filetypes.model import FileTypeActivation
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
 
@@ -95,6 +96,13 @@ class BindingRegistry:
                     message=(
                         "Binding registry contains an entry for unknown file type "
                         f"'{filetype_qualified_key}'."
+                    ),
+                    file_type=filetype_qualified_key,
+                )
+            if file_type.activation is FileTypeActivation.NEVER:
+                raise ProcessorBindingError(
+                    message=(
+                        f"Never-processable file type '{filetype_qualified_key}' cannot be bound."
                     ),
                     file_type=filetype_qualified_key,
                 )
@@ -211,6 +219,11 @@ class BindingRegistry:
             )
             if file_type is None:
                 raise UnknownFileTypeError(file_type=file_type_key)
+            if file_type.activation is FileTypeActivation.NEVER:
+                raise ProcessorBindingError(
+                    message=f"Never-processable file type '{file_type_key}' cannot be bound.",
+                    file_type=file_type_key,
+                )
 
             processor: ProcessorDefinition | None = HeaderProcessorRegistry.get(
                 processor_key,

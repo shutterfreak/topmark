@@ -31,6 +31,7 @@ from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import registry_details_options
+from topmark.cli.options import registry_file_type_activation_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
@@ -84,6 +85,7 @@ if TYPE_CHECKING:
 @common_text_output_verbosity_options
 @registry_details_options
 @common_output_format_options
+@registry_file_type_activation_options
 def registry_filetypes_command(
     *,
     # common_ui_options (verbosity, color):
@@ -92,6 +94,8 @@ def registry_filetypes_command(
     no_color: bool,
     # registry_details_options:
     show_details: bool = False,
+    # registry_file_type_activation_options
+    activation: str | None = None,
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
@@ -103,9 +107,10 @@ def registry_filetypes_command(
     Args:
         verbosity: Increase TEXT output detail.
         color_mode: Set the color mode (default: auto).
-        no_color: bool: If set, disable color mode.
+        no_color: If set, disable color mode.
         show_details: Whether to show extended information about each file type,
-            including associated extensions, filenames, patterns, skip policy, and header policy.
+            including associated extensions, filenames, patterns, activation, and header policy.
+        activation: Optional declared activation filter.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -157,6 +162,7 @@ def registry_filetypes_command(
             meta=meta,
             fmt=fmt,
             show_details=show_details,
+            activation=activation,
         )
         return
 
@@ -165,6 +171,7 @@ def registry_filetypes_command(
         show_details=show_details,
         verbosity_level=verbosity_level,
         styled=enable_color,
+        activation=activation,
     )
 
     if fmt == OutputFormat.MARKDOWN:

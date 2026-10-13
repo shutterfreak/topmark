@@ -251,6 +251,8 @@ file-type-to-processor bindings.
 At the architecture level, the important invariants are:
 
 - identity registration and processor binding are separate concerns;
+- activation authorization is separate from both matching and processor binding;
+- a file type declared `never` cannot be bound or made processable by an overlay;
 - file type filename rules are canonical registry matching rules, not filesystem paths;
 - built-in registry data is never mutated directly;
 - runtime additions and removals are represented as overlay state;

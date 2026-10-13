@@ -31,6 +31,7 @@ from topmark.core.constants import TOPMARK_NAMESPACE
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import ContentMatcher
 from topmark.filetypes.model import FileType
+from topmark.filetypes.model import FileTypeActivation
 from topmark.filetypes.model import InsertChecker
 from topmark.filetypes.policy import FileTypeHeaderPolicy
 
@@ -64,7 +65,7 @@ def make_filetype_factory(*, namespace: str) -> Callable[..., FileType]:
         extensions: list[str] | None = None,
         filenames: list[str] | None = None,
         patterns: list[str] | None = None,
-        skip_processing: bool = False,
+        activation: FileTypeActivation = FileTypeActivation.DEFAULT,
         content_matcher: ContentMatcher | None = None,
         content_gate: ContentGate = ContentGate.NEVER,
         header_policy: FileTypeHeaderPolicy | None = None,
@@ -78,7 +79,7 @@ def make_filetype_factory(*, namespace: str) -> Callable[..., FileType]:
             patterns=patterns if patterns is not None else [],
             description=description,
             header_policy=header_policy or FileTypeHeaderPolicy(),
-            skip_processing=skip_processing,
+            activation=activation,
             content_matcher=content_matcher,
             content_gate=content_gate,
             pre_insert_checker=pre_insert_checker,

@@ -163,8 +163,8 @@
           "required": true
         },
         {
-          "annotation": "bool",
-          "name": "skip_processing",
+          "annotation": "str",
+          "name": "activation",
           "required": true
         },
         {

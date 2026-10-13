@@ -41,7 +41,9 @@ from typing import TYPE_CHECKING
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
+from topmark.filetypes.model import FileTypeActivation
 from topmark.registry.filetypes import FileTypeRegistry
+from topmark.resolution.probe import ResolutionProbeActivation
 from topmark.resolution.probe import ResolutionProbeCandidate
 from topmark.resolution.probe import ResolutionProbeMatchSignals
 from topmark.resolution.probe import ResolutionProbeReason
@@ -324,7 +326,7 @@ def _score_file_type_candidate(
             if base_name.endswith(ext):
                 best_ext = max(best_ext, 50 + min(len(ext), 10))
         s = max(s, best_ext)
-    if not getattr(ft, "skip_processing", False):
+    if ft.activation != FileTypeActivation.NEVER:
         s += 1
     return s
 
@@ -457,6 +459,7 @@ def get_file_type_candidates_for_path(
 def probe_resolution_for_path(
     path: Path,
     *,
+    opt_in_file_types: Collection[str] | None = None,
     include_file_types: Collection[str] | None = None,
     exclude_file_types: Collection[str] | None = None,
 ) -> ResolutionProbeResult:
@@ -468,6 +471,7 @@ def probe_resolution_for_path(
 
     Args:
         path: Filesystem path of the file being resolved.
+        opt_in_file_types: Explicitly authorized opt-in file type identifiers.
         include_file_types: Optional set of file type identifiers to include.
             Frozen config passes canonical qualified keys. Direct callers may
             pass public local identifiers when unambiguous.
@@ -520,12 +524,23 @@ def probe_resolution_for_path(
 
     from topmark.registry.registry import Registry
 
+    activation: FileTypeActivation = best_candidate.file_type.activation
+    authorized: bool = activation.value == "default" or (
+        activation.value == "opt-in"
+        and _matches_file_type_filter(best_candidate.file_type, opt_in_file_types or ())
+    )
     processor: HeaderProcessor | None = Registry.resolve_processor(
         best_candidate.file_type.qualified_key
     )
     selected_processor: ResolutionProbeSelection | None = None
     status = ResolutionProbeStatus.RESOLVED
-    if processor is None:
+    if activation.value == "never":
+        status: ResolutionProbeStatus = ResolutionProbeStatus.ACTIVATION_BLOCKED
+        reason = ResolutionProbeReason.SELECTED_FILE_TYPE_NEVER_PROCESSABLE
+    elif not authorized:
+        status = ResolutionProbeStatus.ACTIVATION_BLOCKED
+        reason = ResolutionProbeReason.SELECTED_FILE_TYPE_REQUIRES_OPT_IN
+    elif processor is None:
         status = ResolutionProbeStatus.NO_PROCESSOR
         reason = ResolutionProbeReason.SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR
     else:
@@ -537,7 +552,7 @@ def probe_resolution_for_path(
 
     probe_candidates: list[ResolutionProbeCandidate] = []
     for rank, draft in enumerate(ranked_drafts, start=1):
-        candidate = draft.candidate
+        candidate: FileTypeCandidate = draft.candidate
         probe_candidates.append(
             ResolutionProbeCandidate(
                 qualified_key=candidate.file_type.qualified_key,
@@ -558,4 +573,8 @@ def probe_resolution_for_path(
         candidates=tuple(probe_candidates),
         selected_file_type=selected_file_type,
         selected_processor=selected_processor,
+        activation=ResolutionProbeActivation(
+            declared=activation.value,
+            authorized=authorized,
+        ),
     )

@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.diagnostic.model import DiagnosticLevel
+from topmark.filetypes.model import FileTypeActivation
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.status import ResolveStatus
@@ -182,7 +183,7 @@ def test_prober_step_preserves_header_unsupported_precedence(
     file_type: FileType = make_file_type(
         local_key="docs",
         extensions=[".md"],
-        skip_processing=True,
+        activation=FileTypeActivation.NEVER,
     )
 
     with effective_registries({"docs": file_type}, {}):
@@ -197,7 +198,7 @@ def test_prober_step_preserves_header_unsupported_precedence(
     assert len(ctx.steps) == 1
     assert isinstance(ctx.steps[0], ProberStep)
     assert ctx.resolution_probe is not None
-    assert ctx.resolution_probe.status == ResolutionProbeStatus.NO_PROCESSOR
+    assert ctx.resolution_probe.status == ResolutionProbeStatus.ACTIVATION_BLOCKED
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
     assert ctx.file_type is file_type
     assert ctx.header_processor is None

@@ -653,20 +653,20 @@ step's `run()` hook completes, the wrapper verifies that the step's primary stat
 remains `PENDING`; if it does, execution is halted with a lifecycle diagnostic. This keeps "step did
 not set state" protection centralized instead of repeating halt logic in individual `hint()` hooks.
 
-| Step                                                             | Responsibility                                                                                            |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, and processor binding                       |
-| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine file type and header processor (see [`Resolution`](resolution.md))                              |
-| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                                            |
-| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                                                  |
-| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                                             |
-| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values and POSIX-serialized metadata paths for the selected processing target |
-| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                                        |
-| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                                       |
-| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                                                     |
-| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                                                     |
-| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff with human-facing display labels                                                    |
-| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                                           |
+| Step                                                             | Responsibility                                                                                                 |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep]       | Run resolution probe and expose scored candidates, selection, activation authorization, and binding outcome    |
+| \[`ResolverStep`\][topmark.pipeline.steps.resolver.ResolverStep] | Determine the selected file type, activation outcome, and header processor (see [`Resolution`](resolution.md)) |
+| \[`SnifferStep`\][topmark.pipeline.steps.sniffer.SnifferStep]    | Fast policy and newline checks                                                                                 |
+| \[`ReaderStep`\][topmark.pipeline.steps.reader.ReaderStep]       | Read file content safely                                                                                       |
+| \[`ScannerStep`\][topmark.pipeline.steps.scanner.ScannerStep]    | Locate existing header bounds                                                                                  |
+| \[`BuilderStep`\][topmark.pipeline.steps.builder.BuilderStep]    | Build expected header field values and POSIX-serialized metadata paths for the selected processing target      |
+| \[`RendererStep`\][topmark.pipeline.steps.renderer.RendererStep] | Render header text                                                                                             |
+| \[`ComparerStep`\][topmark.pipeline.steps.comparer.ComparerStep] | Compare existing vs rendered header                                                                            |
+| \[`StripperStep`\][topmark.pipeline.steps.stripper.StripperStep] | Remove header content                                                                                          |
+| \[`PlannerStep`\][topmark.pipeline.steps.planner.PlannerStep]    | Decide insert / replace / remove plan                                                                          |
+| \[`PatcherStep`\][topmark.pipeline.steps.patcher.PatcherStep]    | Generate unified diff with human-facing display labels                                                         |
+| \[`WriterStep`\][topmark.pipeline.steps.writer.WriterStep]       | Persist changes                                                                                                |
 
 ### View consumer declarations
 

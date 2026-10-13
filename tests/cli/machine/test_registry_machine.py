@@ -58,7 +58,13 @@ class UnusedRegistryProcessor(HeaderProcessor):
 
 
 FILETYPE_BRIEF_KEYS: frozenset[str] = frozenset(
-    {"local_key", "namespace", "qualified_key", "description"}
+    {
+        "local_key",
+        "namespace",
+        "qualified_key",
+        "description",
+        "activation",
+    }
 )
 FILETYPE_DETAIL_KEYS: frozenset[str] = frozenset(
     {
@@ -70,7 +76,7 @@ FILETYPE_DETAIL_KEYS: frozenset[str] = frozenset(
         "extensions",
         "filenames",
         "patterns",
-        "skip_processing",
+        "activation",
         "has_content_matcher",
         "has_insert_checker",
         "policy",

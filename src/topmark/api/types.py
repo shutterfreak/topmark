@@ -372,7 +372,7 @@ class FileTypeInfo(TypedDict, total=True):
         extensions: Known filename extensions (without dots).
         filenames: Exact filenames matched (for example, ``"Makefile"``).
         patterns: Full-match regular-expression patterns.
-        skip_processing: Whether the type is discoverable but not processed.
+        activation: Declared processing authorization for the type.
         has_content_matcher: Whether a content matcher exists.
         has_insert_checker: Whether a header insert checker exists.
         policy: Policy/strategy for header placement.
@@ -389,7 +389,7 @@ class FileTypeInfo(TypedDict, total=True):
     extensions: Sequence[str]
     filenames: Sequence[str]
     patterns: Sequence[str]
-    skip_processing: bool
+    activation: str
     has_content_matcher: bool
     has_insert_checker: bool
     policy: FileTypePolicyInfo

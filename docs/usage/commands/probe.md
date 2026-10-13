@@ -146,9 +146,17 @@ input errors rather than filtered probe results.
   repeated and/or provided as a comma-separated list.
 - `--exclude-file-types / -T` Exclude the given file type identifiers. May be repeated and/or
   provided as a comma-separated list.
+- `--opt-in-file-type` Authorize processing of the given `opt-in` file type identifiers. May be
+  repeated and/or provided as a comma-separated list.
 
 File type identifiers are normalized to canonical qualified file type identities before filtering,
 diagnostics, policy evaluation, and registry resolution.
+
+File-type filters select or veto candidates; they do not grant activation. Types declared `default`
+need no extra setting, types declared `opt-in` require `--opt-in-file-type` or
+`[files].opt_in_file_types`, and types declared `never` cannot be processed. `probe` reports the
+selected type's declared activation, whether it is authorized for this run, and the resulting
+binding or resolution outcome.
 
 {% include-markdown "\_snippets/file-type-identifiers.md" %}
 
@@ -160,6 +168,7 @@ Examples:
 topmark probe --include-file-types python README.md
 topmark probe --include-file-types topmark:markdown README.md
 topmark probe --exclude-file-types topmark:python src/
+topmark probe --opt-in-file-type topmark:json-as-jsonc config.json
 ```
 
 ### Path-based filters
@@ -208,7 +217,8 @@ ______________________________________________________________________
   object, probe reports each affected path as unsupported rather than selecting a source, target,
   winner, or loser path.
 - Candidate visibility: exposes selected file type, processor, candidate scores, match signals,
-  runtime-resolution status, and runtime-resolution reason.
+  declared activation, runtime authorization, runtime-resolution status, and runtime-resolution
+  reason.
 - Idempotency: repeated runs produce identical output for unchanged inputs.
 
 ______________________________________________________________________
@@ -366,6 +376,7 @@ ______________________________________________________________________
 | `--exclude-from`                                     | File of patterns to exclude.                                            |
 | `--include-file-types` / `-t`                        | Restrict to local or qualified file type identifiers.                   |
 | `--exclude-file-types` / `-T`                        | Exclude local or qualified file type identifiers.                       |
+| `--opt-in-file-type`                                 | Authorize a local or qualified opt-in file type identifier.             |
 | `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                 |
 | `--allow-content-probe` / `--no-allow-content-probe` | Shared runtime policy override for file-type detection.                 |
 

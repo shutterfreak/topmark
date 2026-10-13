@@ -113,6 +113,8 @@ class ConfigOverrides:
         exclude_from: Files containing exclude patterns.
         include_patterns: Glob patterns to include.
         exclude_patterns: Glob patterns to exclude.
+        opt_in_file_types: File-type identifiers explicitly authorized for types
+            declared ``activation=opt-in``.
         include_file_types: Whitelist of file type identifiers to restrict
             file discovery.
         exclude_file_types: Blacklist of file type identifiers to exclude from
@@ -146,6 +148,7 @@ class ConfigOverrides:
     exclude_patterns: list[str] | None = None
 
     # Pipeline: filter per type
+    opt_in_file_types: list[str] | None = None
     include_file_types: list[str] | None = None
     exclude_file_types: list[str] | None = None
 
@@ -362,6 +365,10 @@ def apply_config_overrides(
 
     # Absent override values intentionally preserve whatever came from layered
     # config discovery / TOML resolution.
+
+    # Explicit authorization for types whose declaration is ``activation=opt-in``.
+    if overrides.opt_in_file_types is not None:
+        config.opt_in_file_types = {s for s in overrides.opt_in_file_types if s}
 
     # include_file_types / exclude_file_types: set of strings, only override if present
     if overrides.include_file_types is not None:

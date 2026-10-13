@@ -13,7 +13,7 @@
 This suite focuses on resolver behavior only:
 - selecting a FileType using extension, filename-tail, regex pattern, and content gating
 - deterministic tie-breaking by score then name
-- precedence of `skip_processing` and missing processor scenarios
+- precedence of non-processable types and missing processor scenarios
 - registry edge cases and exception safety
 
 Each test overrides the effective registries to remain
@@ -29,12 +29,15 @@ from tests.helpers.pipeline import make_pipeline_context
 from tests.helpers.pipeline import run_resolver
 from tests.helpers.registry import make_file_type
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.model import FrozenConfig
 from topmark.diagnostic.model import DiagnosticLevel
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
+from topmark.filetypes.model import FileTypeActivation
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
+from topmark.pipeline.hints import Hint
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.steps import resolver as resolver_module
@@ -54,6 +57,7 @@ if TYPE_CHECKING:
 
     from tests.conftest import EffectiveRegistries
     from topmark.config.model import FrozenConfig
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.registry.types import ProcessorDefinition
 
@@ -121,8 +125,12 @@ def test_resolve_python_file_resolves_with_processor(
         extensions=[".py"],
     )
 
-    filetypes: dict[str, FileType] = {"python": py_ft}
-    processors: dict[str, HeaderProcessor] = {"python": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        "python": py_ft,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        "python": HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -179,7 +187,7 @@ def test_resolve_unknown_extension_marked_unsupported(
         (DiagnosticLevel.INFO, "No file type associated with this file."),
     ]
     assert len(ctx.diagnostic_hints.items) == 1
-    hint = ctx.diagnostic_hints.items[0]
+    hint: Hint = ctx.diagnostic_hints.items[0]
     assert hint.axis == Axis.RESOLVE
     assert hint.code == KnownCode.DISCOVERY_UNSUPPORTED.value
     assert hint.cluster == Cluster.SKIPPED.value
@@ -204,7 +212,9 @@ def test_resolve_sets_skip_when_no_processor_registered(
         extensions=[".py"],
     )
 
-    filetypes: dict[str, FileType] = {"python": py_ft}
+    filetypes: dict[str, FileType] = {
+        "python": py_ft,
+    }
     processors: dict[str, HeaderProcessor] = {}
     ctx: ProcessingContext = _resolve(
         file,
@@ -224,7 +234,7 @@ def test_resolve_sets_skip_when_no_processor_registered(
         (DiagnosticLevel.INFO, reason),
     ]
     assert len(ctx.diagnostic_hints.items) == 1
-    hint = ctx.diagnostic_hints.items[0]
+    hint: Hint = ctx.diagnostic_hints.items[0]
     assert hint.axis == Axis.RESOLVE
     assert hint.code == KnownCode.DISCOVERY_NO_PROCESSOR.value
     assert hint.cluster == Cluster.SKIPPED.value
@@ -232,21 +242,21 @@ def test_resolve_sets_skip_when_no_processor_registered(
     assert hint.terminal is True
 
 
-def test_resolve_respects_skip_processing_filetype(
+def test_resolve_respects_never_activation_filetype(
     tmp_path: Path,
     effective_registries: EffectiveRegistries,
 ) -> None:
-    """Resolver must set SKIPPED_KNOWN_NO_HEADERS when FileType.skip_processing is True."""
+    """Resolver must halt header processing for a never-processable type."""
     # Create a contrived file that will match our custom FileType by extension.
     file: Path = tmp_path / "readme.md"
     file.write_text("# docs\n", encoding="utf-8")
 
-    # Build a FileType with skip_processing=True
+    # Build a FileType with activation=never.
     ft_name = "docs"
     ft: FileType = make_file_type(
         local_key=ft_name,
         extensions=[".md"],
-        skip_processing=True,
+        activation=FileTypeActivation.NEVER,
     )
 
     # Monkeypatch the file type and processor registries to use our custom type only.
@@ -272,7 +282,7 @@ def test_resolve_respects_skip_processing_filetype(
         (DiagnosticLevel.INFO, reason),
     ]
     assert len(ctx.diagnostic_hints.items) == 1
-    hint = ctx.diagnostic_hints.items[0]
+    hint: Hint = ctx.diagnostic_hints.items[0]
     assert hint.axis == Axis.RESOLVE
     assert hint.code == KnownCode.DISCOVERY_UNSUPPORTED.value
     assert hint.cluster == Cluster.SKIPPED.value
@@ -299,14 +309,20 @@ def test_resolver_reuses_valid_context_probe(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An existing probe is the shared resolution snapshot and must not be recomputed."""
-    file = tmp_path / "source.py"
-    file_type = make_file_type(local_key="python", extensions=[".py"])
+    file: Path = tmp_path / "source.py"
+    file_type: FileType = make_file_type(
+        local_key="python",
+        extensions=[".py"],
+    )
     processor = HeaderProcessor()
 
-    with effective_registries({"python": file_type}, {"python": processor}):
-        cfg = mutable_config_from_defaults().freeze()
-        ctx = make_pipeline_context(file, cfg)
-        probe = probe_resolution_for_path(file)
+    with effective_registries(
+        {"python": file_type},
+        {"python": processor},
+    ):
+        cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+        ctx: ProcessingContext = make_pipeline_context(file, cfg)
+        probe: ResolutionProbeResult = probe_resolution_for_path(file)
         ctx.resolution_probe = probe
 
         def fail_if_recomputed(
@@ -334,25 +350,38 @@ def test_resolver_forwards_effective_file_type_filters_when_creating_probe(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Probe creation receives the context's canonical include and exclude filters."""
-    file = tmp_path / "source.ext"
-    included = make_file_type(local_key="included", extensions=[".ext"])
-    excluded = make_file_type(local_key="excluded", extensions=[".ext"])
-    calls: list[tuple[Path, Collection[str] | None, Collection[str] | None]] = []
+    file: Path = tmp_path / "source.ext"
+    included: FileType = make_file_type(
+        local_key="included",
+        extensions=[".ext"],
+    )
+    excluded: FileType = make_file_type(
+        local_key="excluded",
+        extensions=[".ext"],
+    )
+    calls: list[
+        tuple[Path, Collection[str] | None, Collection[str] | None, Collection[str] | None]
+    ] = []
 
     with effective_registries({"included": included, "excluded": excluded}, {}):
-        draft = mutable_config_from_defaults()
-        draft.include_file_types = {included.qualified_key}
-        draft.exclude_file_types = {excluded.qualified_key}
-        cfg = draft.freeze()
-        ctx = make_pipeline_context(file, cfg)
+        draft: MutableConfig = mutable_config_from_defaults()
+        draft.include_file_types = {
+            included.qualified_key,
+        }
+        draft.exclude_file_types = {
+            excluded.qualified_key,
+        }
+        cfg: FrozenConfig = draft.freeze()
+        ctx: ProcessingContext = make_pipeline_context(file, cfg)
 
         def record_probe(
             path: Path,
             *,
+            opt_in_file_types: Collection[str] | None = None,
             include_file_types: Collection[str] | None = None,
             exclude_file_types: Collection[str] | None = None,
         ) -> ResolutionProbeResult:
-            calls.append((path, include_file_types, exclude_file_types))
+            calls.append((path, include_file_types, exclude_file_types, opt_in_file_types))
             return ResolutionProbeResult(
                 path=path,
                 status=ResolutionProbeStatus.UNSUPPORTED,
@@ -365,7 +394,7 @@ def test_resolver_forwards_effective_file_type_filters_when_creating_probe(
         monkeypatch.setattr(resolver_module, "probe_resolution_for_path", record_probe)
         ResolverStep()(ctx)
 
-    assert calls == [(file, cfg.include_file_types, cfg.exclude_file_types)]
+    assert calls == [(file, cfg.include_file_types, cfg.exclude_file_types, None)]
     assert ctx.resolution_probe is not None
     assert ctx.status.resolve == ResolveStatus.UNSUPPORTED
 
@@ -385,7 +414,9 @@ def test_resolve_can_use_content_gate_when_allowed(
         content_matcher=_ContentHitMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {ft_magic_name: ft_magic}
+    filetypes: dict[str, FileType] = {
+        ft_magic_name: ft_magic,
+    }
     processors: dict[str, HeaderProcessor] = {}
     ctx: ProcessingContext = _resolve(
         file,
@@ -417,9 +448,14 @@ def test_resolve_deterministic_name_tiebreak(
         extensions=[".foo"],
     )
 
-    filetypes: dict[str, FileType] = {ft_ajson_name: ftA, ft_bjson_name: ftB}
+    filetypes: dict[str, FileType] = {
+        ft_ajson_name: ftA,
+        ft_bjson_name: ftB,
+    }
 
-    processors: dict[str, HeaderProcessor] = {ft_ajson_name: HeaderProcessor()}
+    processors: dict[str, HeaderProcessor] = {
+        ft_ajson_name: HeaderProcessor(),
+    }
 
     ctx: ProcessingContext = _resolve(
         file,
@@ -452,8 +488,13 @@ def test_resolve_filename_tail_beats_extension(
         filenames=["app.conf.example"],
     )
 
-    filetypes: dict[str, FileType] = {ft_ext_name: ft_ext, ft_tail_name: ft_tail}
-    processors: dict[str, HeaderProcessor] = {ft_tail_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_ext_name: ft_ext,
+        ft_tail_name: ft_tail,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_tail_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -484,8 +525,13 @@ def test_resolve_pattern_beats_extension(
         patterns=[r".*\.special\.log"],
     )
 
-    filetypes: dict[str, FileType] = {ft_ext_name: ft_ext, ft_pat_name: ft_pat}
-    processors: dict[str, HeaderProcessor] = {ft_pat_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_ext_name: ft_ext,
+        ft_pat_name: ft_pat,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_pat_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -518,8 +564,13 @@ def test_resolve_content_upgrade_over_extension(
         content_matcher=_HitsJsoncMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {ft_json_name: ft_json, ft_jsonc_name: ft_jsonc}
-    processors: dict[str, HeaderProcessor] = {ft_jsonc_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_json_name: ft_json,
+        ft_jsonc_name: ft_jsonc,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_jsonc_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -552,8 +603,13 @@ def test_resolve_gating_if_extension_excludes_when_miss(
         content_matcher=_AlwaysFalseContentMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {ft_json_name: ft_json, ft_jsonc_name: ft_jsonc}
-    processors: dict[str, HeaderProcessor] = {ft_json_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_json_name: ft_json,
+        ft_jsonc_name: ft_jsonc,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_json_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -586,8 +642,13 @@ def test_resolve_gating_if_any_requires_content_hit(
         extensions=[".foo"],
     )
 
-    filetypes: dict[str, FileType] = {ft_any_name: ft_any, ft_ext_name: ft_ext}
-    processors: dict[str, HeaderProcessor] = {ft_ext_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_any_name: ft_any,
+        ft_ext_name: ft_ext,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_ext_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -613,8 +674,12 @@ def test_resolve_gating_if_none_allows_pure_content_match(
         content_matcher=_AlwaysTrueContentMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {ft_magic_name: ft_magic}
-    processors: dict[str, HeaderProcessor] = {ft_magic_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_magic_name: ft_magic,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_magic_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -647,8 +712,13 @@ def test_resolve_content_matcher_exception_is_safe(
         extensions=[".foo"],
     )
 
-    filetypes: dict[str, FileType] = {ft_gate_name: ft_gate, ft_fallback_name: ft_fallback}
-    processors: dict[str, HeaderProcessor] = {ft_fallback_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_gate_name: ft_gate,
+        ft_fallback_name: ft_fallback,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_fallback_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -676,8 +746,12 @@ def test_resolve_filename_tail_backslash_normalization(
         filenames=[r".vscode\settings.json"],
     )
 
-    filetypes: dict[str, FileType] = {ft_vscode_name: ft}
-    processors: dict[str, HeaderProcessor] = {ft_vscode_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_vscode_name: ft,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_vscode_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -710,7 +784,10 @@ def test_resolve_normalized_filename_tail_beats_pattern(
         patterns=[r".*\.json"],
     )
 
-    filetypes: dict[str, FileType] = {ft_tail_name: ft_tail, ft_pat_name: ft_pat}
+    filetypes: dict[str, FileType] = {
+        ft_tail_name: ft_tail,
+        ft_pat_name: ft_pat,
+    }
     processors: dict[str, HeaderProcessor] = {
         ft_tail_name: HeaderProcessor(),
         ft_pat_name: HeaderProcessor(),
@@ -745,8 +822,13 @@ def test_resolve_multi_dot_extension_specificity(
         extensions=[".d.ts"],
     )
 
-    filetypes: dict[str, FileType] = {ft_ts_name: ft_ts, ft_dts_name: ft_dts}
-    processors: dict[str, HeaderProcessor] = {ft_dts_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_ts_name: ft_ts,
+        ft_dts_name: ft_dts,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_dts_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -757,24 +839,28 @@ def test_resolve_multi_dot_extension_specificity(
     assert ctx.file_type and ctx.file_type.local_key == ft_dts_name
 
 
-def test_resolve_skip_processing_overrides_registered_processor(
+def test_resolve_never_activation_overrides_registered_processor(
     tmp_path: Path,
     effective_registries: EffectiveRegistries,
 ) -> None:
-    """skip_processing=True must override even if a processor is registered."""
+    """Never activation must override even if a processor is registered."""
     file: Path = tmp_path / "doc.md"
     file.write_text("# md\n", encoding="utf-8")
 
-    # Build a FileType with skip_processing=True
+    # Build a FileType with activation=never.
     ft_name = "docs"
     ft: FileType = make_file_type(
         local_key=ft_name,
         extensions=[".md"],
-        skip_processing=True,
+        activation=FileTypeActivation.NEVER,
     )
 
-    filetypes: dict[str, FileType] = {ft_name: ft}
-    processors: dict[str, HeaderProcessor] = {ft_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_name: ft,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -783,6 +869,85 @@ def test_resolve_skip_processing_overrides_registered_processor(
     )
     assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_HEADERS_UNSUPPORTED
     assert ctx.header_processor is None
+
+
+def test_probe_opt_in_requires_consent_and_exclusion_remains_a_veto(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """Include filters do not authorize opt-in types, while excludes still win."""
+    file: Path = tmp_path / "document.opt"
+    file.write_text("content\n", encoding="utf-8")
+    file_type: FileType = make_file_type(
+        local_key="optin-doc",
+        extensions=[".opt"],
+        activation=FileTypeActivation.OPT_IN,
+    )
+
+    with effective_registries(
+        {file_type.local_key: file_type},
+        {file_type.local_key: HeaderProcessor()},
+    ):
+        blocked: ResolutionProbeResult = probe_resolution_for_path(
+            file,
+            include_file_types={file_type.qualified_key},
+        )
+        authorized: ResolutionProbeResult = probe_resolution_for_path(
+            file,
+            opt_in_file_types={file_type.qualified_key},
+            include_file_types={file_type.qualified_key},
+        )
+        excluded: ResolutionProbeResult = probe_resolution_for_path(
+            file,
+            opt_in_file_types={file_type.qualified_key},
+            include_file_types={file_type.qualified_key},
+            exclude_file_types={file_type.qualified_key},
+        )
+
+    assert blocked.status is ResolutionProbeStatus.ACTIVATION_BLOCKED
+    assert blocked.reason is ResolutionProbeReason.SELECTED_FILE_TYPE_REQUIRES_OPT_IN
+    assert blocked.activation is not None
+    assert blocked.activation.declared == FileTypeActivation.OPT_IN.value
+    assert blocked.activation.authorized is False
+
+    assert authorized.status is ResolutionProbeStatus.RESOLVED
+    assert authorized.activation is not None
+    assert authorized.activation.authorized is True
+    assert authorized.selected_processor is not None
+
+    assert excluded.status is ResolutionProbeStatus.UNSUPPORTED
+    assert excluded.reason is ResolutionProbeReason.NO_CANDIDATES
+
+
+def test_probe_never_activation_cannot_be_overridden_by_opt_in(
+    tmp_path: Path,
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """Never types remain blocked even when filters and opt-in consent name them."""
+    file: Path = tmp_path / "document.never"
+    file.write_text("content\n", encoding="utf-8")
+    file_type: FileType = make_file_type(
+        local_key="never-doc",
+        extensions=[".never"],
+        activation=FileTypeActivation.NEVER,
+    )
+
+    with effective_registries(
+        {file_type.local_key: file_type},
+        {file_type.local_key: HeaderProcessor()},
+    ):
+        result: ResolutionProbeResult = probe_resolution_for_path(
+            file,
+            opt_in_file_types={file_type.qualified_key},
+            include_file_types={file_type.qualified_key},
+        )
+
+    assert result.status is ResolutionProbeStatus.ACTIVATION_BLOCKED
+    assert result.reason is ResolutionProbeReason.SELECTED_FILE_TYPE_NEVER_PROCESSABLE
+    assert result.activation is not None
+    assert result.activation.declared == FileTypeActivation.NEVER.value
+    assert result.activation.authorized is False
+    assert result.selected_processor is None
 
 
 def test_resolve_empty_registry_means_unsupported(
@@ -830,8 +995,13 @@ def test_resolve_filename_tail_beats_pattern(
         patterns=[r".*\.json"],
     )
 
-    filetypes: dict[str, FileType] = {ft_tail_name: ft_tail, ft_pat_name: ft_pat}
-    processors: dict[str, HeaderProcessor] = {ft_tail_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_tail_name: ft_tail,
+        ft_pat_name: ft_pat,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_tail_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -856,7 +1026,9 @@ def test_resolve_extension_case_sensitivity_current_contract(
         extensions=[".py"],
     )
 
-    filetypes: dict[str, FileType] = {"python": ft_py}
+    filetypes: dict[str, FileType] = {
+        "python": ft_py,
+    }
     processors: dict[str, HeaderProcessor] = {}
     ctx: ProcessingContext = _resolve(
         file,
@@ -897,9 +1069,16 @@ def test_resolve_pattern_fullmatch_not_search(
         extensions=[".bak"],
     )
 
-    filetypes: dict[str, FileType] = {ft_pat_name: ft_pat, ft_bak_name: ft_bak}
-    processors1: dict[str, HeaderProcessor] = {ft_pat_name: HeaderProcessor()}
-    processors2: dict[str, HeaderProcessor] = {ft_bak_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_pat_name: ft_pat,
+        ft_bak_name: ft_bak,
+    }
+    processors1: dict[str, HeaderProcessor] = {
+        ft_pat_name: HeaderProcessor(),
+    }
+    processors2: dict[str, HeaderProcessor] = {
+        ft_bak_name: HeaderProcessor(),
+    }
     cfg: FrozenConfig = mutable_config_from_defaults().freeze()
     ctx1: ProcessingContext = _resolve(
         file1,
@@ -945,8 +1124,13 @@ def test_resolve_gating_if_pattern_requires_content_hit(
         extensions=[".prom"],
     )
 
-    filetypes: dict[str, FileType] = {ft_pat_name: ft_pat, ft_text_name: ft_fallback}
-    processors: dict[str, HeaderProcessor] = {ft_text_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_pat_name: ft_pat,
+        ft_text_name: ft_fallback,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_text_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -980,8 +1164,13 @@ def test_resolve_gating_if_filename_requires_content_hit(
         extensions=[".yaml"],
     )
 
-    filetypes: dict[str, FileType] = {ft_tail_name: ft_fname, ft_yaml_name: ft_fallback}
-    processors: dict[str, HeaderProcessor] = {ft_yaml_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_tail_name: ft_fname,
+        ft_yaml_name: ft_fallback,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_yaml_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -1007,7 +1196,9 @@ def test_resolve_content_only_with_always_gate(
         content_matcher=_AlwaysTrueContentMatcher(),
     )
 
-    filetypes: dict[str, FileType] = {ft_magic_name: ft_magic}
+    filetypes: dict[str, FileType] = {
+        ft_magic_name: ft_magic,
+    }
     processors: dict[str, HeaderProcessor] = {}
     ctx: ProcessingContext = _resolve(
         file,
@@ -1039,8 +1230,13 @@ def test_resolve_tie_with_both_processors_uses_name_asc(
         extensions=[".data"],
     )
 
-    filetypes: dict[str, FileType] = {ft_alpha_name: ft_alpha, ft_beta_name: ft_beta}
-    processors: dict[str, HeaderProcessor] = {ft_alpha_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_alpha_name: ft_alpha,
+        ft_beta_name: ft_beta,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_alpha_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -1066,8 +1262,12 @@ def test_resolve_processor_registry_name_mismatch_leads_to_skip(
     )
 
     # Processor registered under a different key; should not be found.
-    filetypes: dict[str, FileType] = {ft_py_name: ft_py}
-    processors: dict[str, HeaderProcessor] = {"python-variant": HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_py_name: ft_py,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        "python-variant": HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,
@@ -1094,8 +1294,12 @@ def test_resolve_deep_filename_tail_normalization(
         filenames=[r".config\tool/settings.json"],  # backslash in declared tail
     )
 
-    filetypes: dict[str, FileType] = {ft_toolcfg_name: ft_toolcfg}
-    processors: dict[str, HeaderProcessor] = {ft_toolcfg_name: HeaderProcessor()}
+    filetypes: dict[str, FileType] = {
+        ft_toolcfg_name: ft_toolcfg,
+    }
+    processors: dict[str, HeaderProcessor] = {
+        ft_toolcfg_name: HeaderProcessor(),
+    }
     ctx: ProcessingContext = _resolve(
         file,
         filetypes=filetypes,

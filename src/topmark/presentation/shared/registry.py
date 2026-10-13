@@ -100,7 +100,7 @@ class FileTypeHumanItem:
         extensions: Registered filename extensions.
         filenames: Exact registered filenames.
         patterns: Registered path or glob patterns.
-        skip_processing: Whether TopMark recognizes but never mutates this type.
+        activation: Declared processing authorization for this type.
         has_content_matcher: Whether a content matcher is configured.
         has_insert_checker: Whether a pre-insert checker is configured.
         policy: Structured header policy metadata for human-facing rendering.
@@ -116,7 +116,7 @@ class FileTypeHumanItem:
     filenames: tuple[str, ...]
     patterns: tuple[str, ...]
 
-    skip_processing: bool
+    activation: str
     has_content_matcher: bool
     has_insert_checker: bool
 
@@ -250,6 +250,7 @@ def build_filetypes_human_report(
     show_details: bool,
     verbosity_level: int,
     styled: bool,
+    activation: str | None = None,
 ) -> FileTypesHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN.
 
@@ -257,6 +258,7 @@ def build_filetypes_human_report(
         show_details: Whether consumers intend to display extended details.
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
+        activation: Optional declared activation filter.
 
     Returns:
         A `FileTypesHumanReport` with one item per file type.
@@ -273,12 +275,13 @@ def build_filetypes_human_report(
             extensions=tuple(item["extensions"]),
             filenames=tuple(item["filenames"]),
             patterns=tuple(item["patterns"]),
-            skip_processing=item["skip_processing"],
+            activation=item["activation"],
             has_content_matcher=item["has_content_matcher"],
             has_insert_checker=item["has_insert_checker"],
             policy=_build_filetype_policy_human_item(item["policy"]),
         )
         for item in sorted(raw_items, key=lambda it: str(it["qualified_key"]))
+        if activation is None or item["activation"] == activation
     ]
 
     return FileTypesHumanReport(
@@ -336,6 +339,7 @@ def build_bindings_human_report(
     show_details: bool,
     verbosity_level: int,
     styled: bool,
+    activation: str | None = None,
 ) -> BindingsHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN for `bindings`.
 
@@ -343,6 +347,7 @@ def build_bindings_human_report(
         show_details: Whether consumers intend to display extended details.
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
+        activation: Optional declared activation filter.
 
     Returns:
         A `BindingsHumanReport` with effective bindings, unbound file types, and
@@ -351,6 +356,12 @@ def build_bindings_human_report(
     raw_bindings: list[BindingInfo] = list_bindings()
     raw_filetypes: list[FileTypeInfo] = list_filetypes()
     raw_processors: list[ProcessorInfo] = list_processors()
+    if activation is not None:
+        active_keys: set[str] = {
+            item["qualified_key"] for item in raw_filetypes if item["activation"] == activation
+        }
+        raw_filetypes = [item for item in raw_filetypes if item["qualified_key"] in active_keys]
+        raw_bindings = [item for item in raw_bindings if item["file_type_key"] in active_keys]
 
     bindings: list[BindingHumanItem] = [
         BindingHumanItem(

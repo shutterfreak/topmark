@@ -13,8 +13,9 @@ topmark:header:end
 # File type resolution and ambiguity policy
 
 This page documents how TopMark resolves a concrete filesystem path to the most specific matching
-\[`FileType`\][topmark.filetypes.model.FileType], and then to the bound
-\[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor] registered for that file type.
+\[`FileType`\][topmark.filetypes.model.FileType], applies its activation authorization, and then to
+the bound \[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor] registered for that file
+type.
 
 Resolver behavior is deterministic and operates on canonical qualified file type identities such as
 `topmark:python`.
@@ -119,13 +120,13 @@ ______________________________________________________________________
 
 TopMark intentionally separates:
 
+1. runtime configuration resolution and registry composition
+1. activation authorization declaration
 1. discovery filtering
-1. runtime configuration resolution
-1. registry composition
 1. filesystem-identity evaluation
-1. runtime file-type probing
-1. deterministic winner selection
-1. pipeline execution
+1. runtime file-type probing and deterministic winner selection
+1. activation authorization evaluation for the selected type
+1. processor binding lookup and pipeline execution
 
 Filesystem-identity evaluation includes filesystem-identity normalization for equivalent path
 spellings (such as symlinks), processing-path selection, and processing-target eligibility checks
@@ -331,8 +332,8 @@ The current precedence model is:
 1. pattern match
 1. extension match
 
-A small bonus is applied to file types that are not marked `skip_processing=True`, which gives
-header-capable types a stable advantage on otherwise equal matches.
+A small bonus is applied to file types whose activation is not `never`, which gives potentially
+processable types a stable advantage on otherwise equal matches.
 
 More specifically:
 
@@ -420,6 +421,11 @@ the tie-break outcome in the returned
 The probe result surfaces the full candidate set, scores, match signals, selected candidate, and
 reason (`selected_highest_score` or `selected_by_tie_break`). This makes resolution decisions fully
 observable without relying on debug logging alone.
+
+For the selected file type, probe also exposes its declared activation and whether it is authorized
+by the current runtime configuration. A selected `never` type or an unconsented `opt-in` type is
+reported as activation-blocked; an authorized selected type with no binding is reported separately
+as having no processor. This keeps authorization and binding failures distinguishable.
 
 For explicitly requested paths that were filtered before probing, observability is provided through
 synthetic probe results emitted by [`topmark probe`](../usage/commands/probe.md), rather than

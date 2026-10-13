@@ -324,6 +324,7 @@ def emit_filetypes_machine(
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
+    activation: str | None = None,
 ) -> None:
     """Emit `topmark registry filetypes` machine-readable output.
 
@@ -333,11 +334,13 @@ def emit_filetypes_machine(
         fmt: Target machine-readable format (`json` or `ndjson`).
         show_details: If True, include expanded identity, matching, binding,
             and policy fields.
+        activation: Optional declared activation filter.
     """
     serialized: str | Iterator[str] = serialize_filetypes(
         meta=meta,
         fmt=fmt,
         show_details=show_details,
+        activation=activation,
     )
 
     # Do not emit trailing newline for JSON
@@ -378,6 +381,7 @@ def emit_bindings_machine(
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
+    activation: str | None = None,
 ) -> None:
     """Emit `topmark registry bindings` machine-readable output.
 
@@ -387,11 +391,13 @@ def emit_bindings_machine(
         fmt: Target machine-readable format (`json` or `ndjson`).
         show_details: If True, include expanded file type and processor
             identity metadata for each binding plus structured auxiliary lists.
+        activation: Optional declared activation filter.
     """
     serialized: str | Iterator[str] = serialize_bindings(
         meta=meta,
         fmt=fmt,
         show_details=show_details,
+        activation=activation,
     )
 
     # Do not emit trailing newline for JSON

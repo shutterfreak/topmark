@@ -35,6 +35,7 @@ from topmark.filetypes.instances import (
 from topmark.filetypes.instances import get_base_file_type_registry
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
+from topmark.filetypes.model import FileTypeActivation
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -93,12 +94,12 @@ def test_representative_builtin_definitions_protect_resolution_contracts() -> No
     """Representative built-ins keep their registry-facing match definitions."""
     registry: dict[str, FileType] = get_base_file_type_registry()
 
-    assert registry["json"].skip_processing is True
+    assert registry["json"].activation is FileTypeActivation.NEVER
     assert registry["json"].extensions == [".json"]
 
     json_as_jsonc: FileType = registry["json-as-jsonc"]
     assert json_as_jsonc.extensions == [".json"]
-    assert json_as_jsonc.skip_processing is False
+    assert json_as_jsonc.activation is FileTypeActivation.OPT_IN
     assert json_as_jsonc.content_gate is ContentGate.IF_EXTENSION
     assert json_as_jsonc.content_matcher is not None
     assert json_as_jsonc.pre_insert_checker is not None

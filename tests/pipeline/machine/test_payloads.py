@@ -64,6 +64,7 @@ def test_probe_payload_items_iterate_durable_results(tmp_path: Path) -> None:
             "reason": "no_resolution_probe_result",
             "selected_file_type": None,
             "selected_processor": None,
+            "activation": None,
             "candidates": [],
         }
     ]

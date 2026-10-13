@@ -16,6 +16,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
+from topmark.filetypes.model import FileTypeActivation
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.types import FileTypeMeta
 from topmark.registry.types import ProcessorDefinition
@@ -31,7 +32,7 @@ def test_filetype_meta_exposes_qualified_key_and_default_metadata() -> None:
     assert meta.extensions == ()
     assert meta.filenames == ()
     assert meta.patterns == ()
-    assert meta.skip_processing is False
+    assert meta.activation is FileTypeActivation.DEFAULT
     assert meta.content_matcher is False
     assert meta.header_policy == {}
 
@@ -57,7 +58,7 @@ def test_filetype_meta_preserves_explicit_metadata_payloads() -> None:
         extensions=(".rich",),
         filenames=("Richfile",),
         patterns=("*.rich",),
-        skip_processing=True,
+        activation=FileTypeActivation.NEVER,
         content_matcher=True,
         header_policy=header_policy,
     )
@@ -67,7 +68,7 @@ def test_filetype_meta_preserves_explicit_metadata_payloads() -> None:
     assert meta.extensions == (".rich",)
     assert meta.filenames == ("Richfile",)
     assert meta.patterns == ("*.rich",)
-    assert meta.skip_processing is True
+    assert meta.activation is FileTypeActivation.NEVER
     assert meta.content_matcher is True
     assert meta.header_policy is header_policy
 

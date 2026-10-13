@@ -430,6 +430,12 @@ def mutable_config_from_layered_toml_table(
 
         # ---- File-related settings ----
 
+        # Explicit authorization for types whose declaration is ``activation=opt-in``.
+        opt_in_file_types: list[str] = get_string_list_value_checked(
+            files_tbl, Toml.KEY_OPT_IN_FILE_TYPES, where=where_files, diagnostics=merged_diagnostics
+        )
+        draft.opt_in_file_types = set(opt_in_file_types)
+
         # include_file_types
         include_file_types: list[str] = get_string_list_value_checked(
             files_tbl,

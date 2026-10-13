@@ -97,7 +97,7 @@ def render_filetypes_text(
                 lines.append(f"      filenames       : {', '.join(it.filenames)}")
             if it.patterns:
                 lines.append(f"      patterns        : {', '.join(it.patterns)}")
-            lines.append(f"      skip processing : {'yes' if it.skip_processing else 'no'}")
+            lines.append(f"      activation      : {it.activation}")
             lines.append(f"      content matcher : {'yes' if it.has_content_matcher else 'no'}")
             lines.append(f"      insert checker  : {'yes' if it.has_insert_checker else 'no'}")
             policy_str: str = render_filetype_policy_text(

@@ -138,6 +138,12 @@ exclude_from = [".gitignore"]
 exclude_patterns = [".git/"]
 ```
 
+Most file types require no activation configuration: types declared `default` are processed when
+they have a processor binding. A type declared `opt-in` requires explicit consent through
+`[files].opt_in_file_types`; a type declared `never` is recognized but is never processed. See
+[Filtering](filtering.md#recipe-authorize-an-opt-in-file-type) when you need to authorize an opt-in
+type.
+
 Further reading:
 
 - [Configuration discovery, precedence, and policy](./configuration.md)

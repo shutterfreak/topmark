@@ -71,8 +71,8 @@ ______________________________________________________________________
 
 ### File type
 
-A structured definition describing how TopMark recognizes, classifies, and binds processing behavior
-to a file through a [binding](#binding).
+A structured definition describing how TopMark recognizes and classifies a file. Processing behavior
+is separately controlled by [activation](#file-type-activation) and a [binding](#binding).
 
 Represented by \[`FileType`\][topmark.filetypes.model.FileType].
 
@@ -88,6 +88,21 @@ Represented by \[`HeaderProcessor`\][topmark.processors.base.HeaderProcessor].
 An explicit relationship between a file type and a header processor.
 
 Bindings are resolved independently from file type and processor registration.
+
+### File type activation
+
+A declared processing-authorization policy on a file type, independent of matching and binding.
+
+- `default`: eligible for normal processing when bound.
+- `opt-in`: recognized and matchable, but requires explicit runtime consent through
+  `opt_in_file_types` or `--opt-in-file-type` before it can be processed.
+- `never`: recognized and matchable, but never processable; a processor binding is invalid.
+
+### Processable file type
+
+A recognized file type that is authorized by its activation policy and has an effective processor
+binding. A recognized but unbound type, an unconsented `opt-in` type, and a `never` type are not
+processable.
 
 ### Qualified key
 
@@ -237,8 +252,8 @@ platform.
 
 ### Probe
 
-A read-only diagnostic operation exposing resolution candidates, scores, filtering behavior, and
-selected bindings.
+A read-only diagnostic operation exposing resolution candidates, scores, filtering behavior,
+declared activation, dynamic authorization, and selected binding or resolution outcome.
 
 > [!NOTE]
 >

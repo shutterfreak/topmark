@@ -50,6 +50,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.core.errors import UnknownFileTypeError
+from topmark.filetypes.model import FileTypeActivation
 from topmark.registry.bindings import Binding
 from topmark.registry.bindings import BindingRegistry
 from topmark.registry.filetypes import FileTypeRegistry
@@ -165,6 +166,8 @@ class Registry:
         """
         ft_obj: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
         if ft_obj is None:
+            return None
+        if ft_obj.activation is FileTypeActivation.NEVER:
             return None
 
         processor_qualified_key: str | None = BindingRegistry.get_processor_key(

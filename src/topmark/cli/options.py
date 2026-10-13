@@ -55,6 +55,7 @@ from topmark.config.policy import MixedLineEndingsMode
 from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 from topmark.core.logging import get_logger
+from topmark.filetypes.model import FileTypeActivation
 from topmark.pipeline.reporting import ReportScope
 
 if TYPE_CHECKING:
@@ -834,7 +835,8 @@ def common_file_filtering_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
 def common_file_type_filtering_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common file type selection and filtering options.
 
-    Adds file type filtering options: ``--include-file-types``, ``--exclude-file-types``.
+    Adds file type filtering options: ``--opt-in-file-type``, ``--include-file-types``,
+    ``--exclude-file-types``.
     The singular spellings remain accepted as hidden compatibility aliases.
 
     Args:
@@ -843,6 +845,14 @@ def common_file_type_filtering_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     Returns:
         The decorated function.
     """
+    f = option_with_underscore_traps(
+        CliOpt.OPT_IN_FILE_TYPE,
+        ArgKey.OPT_IN_FILE_TYPES,
+        multiple=True,
+        callback=_split_csv_multi_option,
+        help="Authorize processing of opt-in file types. May be repeated.",
+    )(f)
+
     f = option_with_hidden_aliases_and_underscore_traps(
         CliOpt.INCLUDE_FILE_TYPES,
         CliShortOpt.INCLUDE_FILE_TYPES,
@@ -998,8 +1008,36 @@ def registry_details_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ArgKey.SHOW_DETAILS,
         CliShortOpt.SHOW_DETAILS,
         is_flag=True,
-        help="Show extended information (extensions, filenames, patterns, skip policy, "
+        help="Show extended information (extensions, filenames, patterns, activation, "
         "header policy).",
+    )(f)
+
+    return f
+
+
+def registry_file_type_activation_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply file type activation filter for registry commands.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = option_with_underscore_traps(
+        CliOpt.ACTIVATION,
+        ArgKey.ACTIVATION,
+        CliShortOpt.ACTIVATION,
+        type=EnumChoiceParam(
+            FileTypeActivation,
+            case_sensitive=True,
+            kebab_case=True,
+        ),
+        default=None,
+        help=enum_value_help_text(
+            FileTypeActivation,
+            prefix="Filter registry entries by declared file type activation.",
+        ),
     )(f)
 
     return f
