@@ -147,10 +147,10 @@ def test_probe_json_output_separates_payload_from_stderr(tmp_path: Path) -> None
     assert "probes" in payload
 
 
-def test_probe_cli_opt_in_authorizes_without_implicitly_binding_json_as_jsonc(
+def test_probe_cli_opt_in_authorizes_bound_json_as_jsonc_processor(
     tmp_path: Path,
 ) -> None:
-    """The CLI opt-in option changes authorization but does not create a binding."""
+    """The CLI opt-in option authorizes the built-in JSONC slash binding."""
     file: Path = tmp_path / "settings.json"
     file.write_text("// commented JSON\n{}\n", encoding="utf-8")
     runner = CliRunner()
@@ -181,7 +181,7 @@ def test_probe_cli_opt_in_authorizes_without_implicitly_binding_json_as_jsonc(
     )
 
     assert_UNSUPPORTED_FILE_TYPE(blocked)
-    assert_UNSUPPORTED_FILE_TYPE(authorized)
+    assert_SUCCESS(authorized)
 
     def get_probe(result: Result) -> dict[str, object]:
         payload: dict[str, object] = parse_json_object(result.output)
@@ -205,8 +205,8 @@ def test_probe_cli_opt_in_authorizes_without_implicitly_binding_json_as_jsonc(
     assert blocked_probe["reason"] == "selected_file_type_requires_opt_in"
     assert blocked_activation == {"declared": "opt-in", "authorized": False}
 
-    assert authorized_probe["status"] == "no_processor"
-    assert authorized_probe["reason"] == "selected_file_type_has_no_bound_processor"
+    assert authorized_probe["status"] == "resolved"
+    assert authorized_probe["reason"] == "selected_highest_score"
     assert authorized_activation == {"declared": "opt-in", "authorized": True}
 
 

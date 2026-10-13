@@ -89,6 +89,7 @@ _BUILTIN_PROCESSOR_BINDINGS: Final[tuple[ProcessorBinding, ...]] = (
             "go",
             "java",
             "javascript",
+            "json-as-jsonc",
             "jsonc",
             "kotlin",
             "rust",

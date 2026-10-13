@@ -37,8 +37,8 @@ from topmark.pipeline import runner
 from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.pipelines import Pipeline
 from topmark.pipeline.status import HeaderStatus
+from topmark.processors.builtins.slash import SlashHeaderProcessor
 from topmark.processors.types import StripDiagKind
-from topmark.processors.types import StripHeaderResult
 from topmark.runtime.model import RunOptions
 
 if TYPE_CHECKING:
@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
     from tests.helpers.pipeline import BlockSignatures
     from topmark.config.model import FrozenConfig
+    from topmark.config.model import MutableConfig
     from topmark.config.policy import PolicyRegistry
     from topmark.pipeline.protocols import Step
     from topmark.processors.base import HeaderProcessor
@@ -68,19 +69,34 @@ def test_slash_processor_basics(tmp_path: Path) -> None:
     assert ctx.views.header is None
 
 
-def test_slash_processor_with_content_matcher_detects_jsonc_in_json(tmp_path: Path) -> None:
-    """Detect `.json` content as JSONC and confirm no pre-existing header.
+@pytest.mark.parametrize(
+    "opt_in_json_as_jsonc",
+    [False, True],
+)
+def test_slash_processor_with_content_matcher_detects_jsonc_in_json(
+    tmp_path: Path,
+    opt_in_json_as_jsonc: bool,
+) -> None:
+    """Detect JSONC-in-JSON content and enforce its opt-in processor policy.
 
-    Given a ``.json`` source without a TopMark block, the processor resolution should
-    map to the ambiguous `json-as-jsonc` file type (via content matcher) and the scanner
-    should report no existing header.
+    Given a ``.json`` source with an external comment but no TopMark block,
+    content detection should map it to ``json-as-jsonc`` regardless of
+    authorization. Without opt-in, that selected type has no processor; once
+    explicitly authorized, it must resolve to `SlashHeaderProcessor`.
     """
     file: Path = tmp_path / "test.json"
-    cfg: FrozenConfig = mutable_config_from_defaults().freeze()
+    config: MutableConfig = mutable_config_from_defaults()
+    if opt_in_json_as_jsonc:
+        config.opt_in_file_types.add("topmark:json-as-jsonc")
+    cfg: FrozenConfig = config.freeze()
     file.write_text("// JSON with comments\n" + json.dumps({"test": "Value", "try": True}))
 
     ctx: ProcessingContext = run_insert(file, cfg)
     assert ctx.file_type and ctx.file_type.local_key == "json-as-jsonc"
+    if opt_in_json_as_jsonc:
+        assert isinstance(ctx.header_processor, SlashHeaderProcessor)
+    else:
+        assert ctx.header_processor is None
     assert ctx.views.header is None
 
 
