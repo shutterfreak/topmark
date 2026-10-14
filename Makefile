@@ -54,6 +54,7 @@ help:
 	@echo "  hygiene         Run all prose/documentation hygiene checks"
 	@echo "Tests:"
 	@echo "  test            Run the test suite (nox: qa); supports PYTEST_PAR=-n auto"
+	@echo "  smoke           Run the fast marker-selected smoke suite (nox: smoke)"
 	@echo "  pytest          Run tests with current interpreter (no nox), skipping Hypothesis slow tests; supports PYTEST_PAR=-n auto"
 	@echo "  pytest-full     Run all tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
 	@echo "  coverage        Run coverage testing; supports PYTEST_PAR=-n auto"
@@ -102,6 +103,10 @@ test: check-nox
 	# We pass -- followed by the variable.
 	# If PYTEST_PAR is empty, it does nothing; if it has "-n auto", pytest receives it.
 	$(NOX) $(NOX_FLAGS) -s qa -- $(PYTEST_PAR)
+
+.PHONY: smoke
+smoke: check-nox
+	$(NOX) $(NOX_FLAGS) -s smoke
 
 .PHONY: coverage
 coverage: check-nox

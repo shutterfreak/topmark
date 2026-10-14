@@ -274,6 +274,7 @@ markers = [
   "exit_code: tests that validate the CLI exit-code contract",
   "hypothesis_slow: long-running property tests (skipped in CI)",
   "integration: environment-dependent integration checks (e.g., shell completion)",
+  "smoke: minimal cross-cutting checks for early validation feedback",
 ]
 testpaths = ["tests"]
 norecursedirs = [

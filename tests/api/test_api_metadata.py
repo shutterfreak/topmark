@@ -1,14 +1,14 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_api_smoke.py
-#   file_relpath : tests/api/test_api_smoke.py
+#   file         : test_api_metadata.py
+#   file_relpath : tests/api/test_api_metadata.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Basic smoke tests for the public TopMark API surface."""
+"""Public TopMark API metadata and convenience-helper tests."""
 
 from __future__ import annotations
 

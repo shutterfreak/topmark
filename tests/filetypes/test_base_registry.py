@@ -56,6 +56,7 @@ def _iter_declared_builtin_filetypes() -> Iterable[FileType]:
             yield filetype_obj
 
 
+@pytest.mark.smoke
 def test_base_file_type_registry_contains_expected_builtins() -> None:
     """Smoke-test that built-in file types are loaded into the base registry."""
     registry: dict[str, FileType] = get_base_file_type_registry()

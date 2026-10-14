@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import pytest
 import tomlkit
 
 import topmark.toml.defaults as defaults
@@ -22,7 +23,6 @@ from topmark.toml.defaults import load_default_topmark_template_toml_text
 from topmark.toml.defaults import render_default_topmark_toml_text
 
 if TYPE_CHECKING:
-    import pytest
     from _pytest.capture import CaptureResult
 
     from topmark.toml.defaults import DefaultTomlTemplateText
@@ -143,6 +143,7 @@ def test_load_default_template_falls_back_to_independent_parseable_defaults(
     assert captured.err == ""
 
 
+@pytest.mark.smoke
 def test_real_bundled_template_loads_as_utf8_annotated_toml() -> None:
     """The installed resource should remain parseable and retain its annotations."""
     result: DefaultTomlTemplateText = load_default_topmark_template_toml_text()
