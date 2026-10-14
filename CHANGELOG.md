@@ -119,6 +119,10 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Reorganized the Makefile help menu and target layout around the contributor workflow, clarified
+  target documentation, and made API-snapshot confirmation portable across macOS, Linux, Git Bash,
+  and WSL. Consolidated composite `verify` and full-release orchestration in `noxfile.py`; their
+  Make targets now delegate to the canonical Nox sessions.
 - Raised the supported `uv` tooling ceiling through the 0.13 release family, aligned GitHub Actions
   bootstrap jobs with `uv` 0.13.x, and made VS Code validation tasks portable across developer
   shells. VS Code now exposes smoke and coverage tasks and uses the recommended pre-PR validation
