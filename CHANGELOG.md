@@ -119,6 +119,8 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Reorganized repository-tooling tests under `tests/tools/` while retaining `tests/dev_validation/`
+  for repository-invariant checks.
 - Reorganized the Makefile help menu and target layout around the contributor workflow, clarified
   target documentation, and made API-snapshot confirmation portable across macOS, Linux, Git Bash,
   and WSL. Consolidated composite `verify` and full-release orchestration in `noxfile.py`; their

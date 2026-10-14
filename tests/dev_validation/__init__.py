@@ -8,6 +8,6 @@
 #
 # topmark:header:end
 
-"""Developer-validation tests for repository and internal TopMark invariants."""
+"""Developer-validation checks for repository test and marker invariants."""
 
 from __future__ import annotations

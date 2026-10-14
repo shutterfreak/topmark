@@ -1,28 +1,27 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_docs_hygiene_tooling.py
-#   file_relpath : tests/dev_validation/test_docs_hygiene_tooling.py
+#   file         : test_docs_hygiene.py
+#   file_relpath : tests/tools/docs/test_docs_hygiene.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Developer-validation tests for documentation-hygiene tooling."""
+"""Tests for documentation-hygiene tooling."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
-import pytest
 
 from tools.docs.check_docs_hygiene import iter_markdown_files
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
 
-@pytest.mark.dev_validation
+
 def test_markdown_discovery_excludes_draft_documentation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

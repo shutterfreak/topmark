@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_perf_baseline_tooling.py
-#   file_relpath : tests/dev_validation/test_perf_baseline_tooling.py
+#   file         : test_pipeline_memory_baseline.py
+#   file_relpath : tests/tools/perf/test_pipeline_memory_baseline.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -18,8 +18,6 @@ executing the benchmarks themselves.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
-import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,7 +36,6 @@ def _repository_scenario(
     return next(scenario for scenario in scenarios if scenario.name == "repo_many_small_mixed")
 
 
-@pytest.mark.dev_validation
 def test_repository_perf_suite_uses_pruned_pipeline_modes() -> None:
     """Repository perf suite compares only pruned pipeline modes."""
     from tools.perf import pipeline_memory_baseline as baseline
@@ -51,7 +48,6 @@ def test_repository_perf_suite_uses_pruned_pipeline_modes() -> None:
     )
 
 
-@pytest.mark.dev_validation
 def test_repository_perf_suite_uses_many_file_scenario() -> None:
     """Repository perf suite targets the synthetic many-file workload."""
     from tools.perf import pipeline_memory_baseline as baseline
@@ -61,7 +57,6 @@ def test_repository_perf_suite_uses_many_file_scenario() -> None:
     assert baseline.REPOSITORY_FILE_COUNT > 1
 
 
-@pytest.mark.dev_validation
 def test_repository_perf_scenario_generates_expected_file_count(
     tmp_path: Path,
 ) -> None:
@@ -78,7 +73,6 @@ def test_repository_perf_scenario_generates_expected_file_count(
     assert len(files) == baseline.REPOSITORY_FILE_COUNT
 
 
-@pytest.mark.dev_validation
 def test_measurement_from_mapping_accepts_repository_fields() -> None:
     """Measurement JSON rehydration preserves repository aggregate fields."""
     from tools.perf import pipeline_memory_baseline as baseline

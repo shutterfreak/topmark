@@ -1,20 +1,18 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_code_hygiene_tooling.py
-#   file_relpath : tests/dev_validation/test_code_hygiene_tooling.py
+#   file         : test_code_hygiene.py
+#   file_relpath : tests/tools/docs/test_code_hygiene.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Developer-validation tests for code-prose hygiene tooling."""
+"""Tests for code-prose hygiene tooling."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
-import pytest
 
 from tools.docs.check_code_hygiene import check_python_file
 from tools.docs.check_code_hygiene import iter_python_files
@@ -23,8 +21,9 @@ from tools.docs.check_code_hygiene import main
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
 
-@pytest.mark.dev_validation
+
 def test_python_file_check_reports_smart_punctuation_in_prose(tmp_path: Path) -> None:
     """The checker reports smart punctuation in strings and comments with source lines."""
     source_path: Path = tmp_path / "sample.py"
@@ -45,7 +44,6 @@ def test_python_file_check_reports_smart_punctuation_in_prose(tmp_path: Path) ->
     ]
 
 
-@pytest.mark.dev_validation
 def test_python_file_discovery_skips_excluded_environments(tmp_path: Path) -> None:
     """Python discovery excludes generated environment trees while retaining source files."""
     included_path: Path = tmp_path / "tools" / "check.py"
@@ -57,7 +55,6 @@ def test_python_file_discovery_skips_excluded_environments(tmp_path: Path) -> No
     assert list(iter_python_files((tmp_path,))) == [included_path]
 
 
-@pytest.mark.dev_validation
 def test_code_hygiene_main_returns_failure_with_actionable_diagnostic(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

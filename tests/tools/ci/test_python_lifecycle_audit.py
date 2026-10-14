@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_python_lifecycle_audit.py
-#   file_relpath : tests/dev_validation/test_python_lifecycle_audit.py
+#   file_relpath : tests/tools/ci/test_python_lifecycle_audit.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

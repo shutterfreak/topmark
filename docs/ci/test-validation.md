@@ -89,7 +89,7 @@ markers so exclusions remain visible in the central pytest configuration.
 | Marker                | Purpose                                                                                                                                                             | CI expectation                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                                                                                           | Run where the host filesystem can exercise them.                                  |
-| `dev_validation`      | Developer validation tests for repository-internal invariants such as test-layout consistency and pytest marker hygiene.                                            | Included in normal test runs.                                                     |
+| `dev_validation`      | Developer-validation checks for repository invariants such as test-layout consistency and pytest marker hygiene.                                                    | Included in normal test runs.                                                     |
 | `exit_code`           | Tests that validate the CLI exit-code contract.                                                                                                                     | Included in normal test runs.                                                     |
 | `hypothesis_slow`     | Long-running property tests.                                                                                                                                        | Skipped in CI unless explicitly selected.                                         |
 | `integration`         | Environment-dependent integration checks that exercise interactions with external tooling, the operating system, or shell features (for example, shell completion). | Run selectively where the environment supports them.                              |
@@ -99,8 +99,9 @@ ______________________________________________________________________
 
 ## Developer Validation Tests
 
-The `dev_validation` marker identifies repository-internal invariant tests rather than user-facing
-behavior. Run them explicitly when working on repository tooling or test infrastructure:
+The `dev_validation` marker identifies repository-internal invariant checks rather than user-facing
+behavior. It is reserved for test-suite and validation-taxonomy invariants. Run them explicitly when
+working on test infrastructure:
 
 ```bash
 pytest -m dev_validation
@@ -108,7 +109,7 @@ pytest -m dev_validation
 nox -s qa -p 3.15 -- -m dev_validation
 ```
 
-Typical examples live under `tests/dev_validation/` and include:
+The marked checks live under `tests/dev_validation/` and include:
 
 - test-package layout checks that keep Python test directories importable by absolute package name.
 - pytest marker declarations and marker-expression consistency.
@@ -126,6 +127,15 @@ def test_pytest_markers_are_declared() -> None: ...
 These tests are part of the normal test suite and do not require a dedicated CI job. Registry and
 processor-placement invariants are ordinary parameterized tests: they run in the normal test suite,
 are included in its coverage report, and do not require a runtime environment variable.
+
+Executable tests for repository maintenance and validation tools live under `tests/tools/`,
+mirroring the relevant `tools/` subdirectories. Select them by path rather than applying the
+`dev_validation` marker:
+
+```bash
+pytest tests/tools
+pytest tests/tools/docs
+```
 
 ______________________________________________________________________
 
@@ -211,7 +221,7 @@ Inspect the Python metadata consumed by CI:
 nox -s print_python_matrix
 ```
 
-Run only developer-validation tests:
+Run only developer-validation invariant checks:
 
 ```bash
 pytest -m dev_validation

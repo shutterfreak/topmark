@@ -138,9 +138,9 @@ Run the local web server:
 .venv/bin/zensical serve --config-file .zensical/zensical.toml
 ```
 
-`tests/dev_validation/test_zensical_docs_preparation.py` covers every bridge, including unsafe or
-unsupported include inputs. `tools/docs/check_zensical_parity.py`, run by the docs Nox session and
-CI, verifies required routes, navigation targets, search output, and representative rendered pages.
+`tests/tools/docs/test_zensical_preparation.py` covers every bridge, including unsafe or unsupported
+include inputs. `tools/docs/check_zensical_parity.py`, run by the docs Nox session and CI, verifies
+required routes, navigation targets, search output, and representative rendered pages.
 
 Until the first successful production deployment, recover by restoring the last known-good release
 or commit and running its `make docs-build`; its lockfile and configuration restore the prior
