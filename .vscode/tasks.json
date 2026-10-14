@@ -9,31 +9,18 @@
 // topmark:header:end
 
 {
-  // VS Code Tasks for quick linting & type checking from the Command Palette
+  // VS Code tasks for common validation workflows from the Command Palette.
   "version": "2.0.0",
-  "options": {
-    // Prefer virtualenv binaries when present
-    "shell": {
-      "executable": "/bin/bash",
-      "args": ["-lc"]
-    },
-    "env": {
-      "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
-    }
-  },
   "tasks": [
     {
-      "label": "Make: Verify",
+      "label": "Make: Verification checks",
       "type": "shell",
       "command": "make verify",
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      },
+      "group": "test",
       "problemMatcher": []
     },
     {
-      "label": "Make: Format Check",
+      "label": "Make: Format checks",
       "type": "shell",
       "command": "make format-check",
       "group": "test",
@@ -47,24 +34,48 @@
       "problemMatcher": []
     },
     {
-      "label": "Make: Docs Hygiene",
+      "label": "Make: Documentation hygiene",
       "type": "shell",
       "command": "make docs-hygiene",
       "group": "test",
       "problemMatcher": []
     },
     {
-      "label": "Make: Code Hygiene",
+      "label": "Make: Code hygiene",
       "type": "shell",
       "command": "make code-hygiene",
       "group": "test",
       "problemMatcher": []
     },
     {
-      "label": "Nox: QA",
+      "label": "Nox: Smoke tests",
       "type": "shell",
-      "command": "nox -s qa",
+      "command": "uv run --extra dev nox -s smoke",
       "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Nox: QA (all supported Python versions)",
+      "type": "shell",
+      "command": "uv run --extra dev nox -s qa",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Nox: Coverage",
+      "type": "shell",
+      "command": "uv run --extra dev nox -s coverage",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Nox: Pre-PR validation (recommended)",
+      "type": "shell",
+      "command": "uv run --extra dev nox -s pre_pr",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
       "problemMatcher": []
     }
   ]
