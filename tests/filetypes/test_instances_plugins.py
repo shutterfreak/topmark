@@ -10,6 +10,9 @@
 
 """Tests plugin entry-point discovery integration with the registry (Google style)."""
 
+# Allow testing private helper functions directly without inline comment overhead.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from types import ModuleType
@@ -19,12 +22,8 @@ from typing import Any
 from typing import cast
 
 from tests.helpers.registry import make_file_type
-from topmark.filetypes.instances import (
-    _iter_builtin_filetypes,  # pyright: ignore[reportPrivateUsage]
-)
-from topmark.filetypes.instances import (
-    _iter_plugin_filetypes,  # pyright: ignore[reportPrivateUsage]
-)
+from topmark.filetypes.instances import _iter_builtin_filetypes
+from topmark.filetypes.instances import _iter_plugin_filetypes
 from topmark.filetypes.instances import get_base_file_type_registry
 from topmark.registry.filetypes import FileTypeRegistry
 

@@ -14,6 +14,9 @@ These tests verify that representative built-in file types are loaded into the
 cached base registry exposed by `topmark.filetypes.instances`.
 """
 
+# Allow testing private helper functions directly without inline comment overhead.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from importlib import import_module
@@ -26,12 +29,10 @@ import pytest
 
 from tests.helpers.registry import make_file_type
 from topmark.core.constants import TOPMARK_NAMESPACE
-from topmark.filetypes.instances import _BUILTIN_MODULES  # pyright: ignore[reportPrivateUsage]
-from topmark.filetypes.instances import _dedupe_by_local_key  # pyright: ignore[reportPrivateUsage]
-from topmark.filetypes.instances import _generate_registry  # pyright: ignore[reportPrivateUsage]
-from topmark.filetypes.instances import (
-    _iter_plugin_filetypes,  # pyright: ignore[reportPrivateUsage]
-)
+from topmark.filetypes.instances import _BUILTIN_MODULES
+from topmark.filetypes.instances import _dedupe_by_local_key
+from topmark.filetypes.instances import _generate_registry
+from topmark.filetypes.instances import _iter_plugin_filetypes
 from topmark.filetypes.instances import get_base_file_type_registry
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType

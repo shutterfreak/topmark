@@ -16,17 +16,6 @@
     "editor.detectIndentation": false,
     // Enable default formatting on save for all languages where a formatter is configured.
     "editor.formatOnSave": true,
-    // Configure code actions to run on save for all languages.
-    // This is where linters' auto-fixes and import organization are triggered.
-    "editor.codeActionsOnSave": {
-        // Runs general auto-fixes provided by *any* supporting linter extension.
-        "source.fixAll": "explicit",
-        // Specifically for Ruff's auto-fixable issues.
-        "source.fixAll.ruff": "explicit",
-        // For organizing imports, which Ruff also handles.
-        "source.organizeImports": "explicit"
-    },
-
     // --- Language-Specific Settings ---
 
     "makefile.configureOnOpen": false,
@@ -40,11 +29,10 @@
         // Set Ruff as the default formatter for Python files.
         "editor.defaultFormatter": "charliermarsh.ruff",
 
-        // Reiterate or ensure Ruff's auto-fix and import organization run for Python files.
-        // This ensures these actions are prioritized for Python specifically.
+        // Let Ruff be the sole source of Python fixes and import organization.
         "editor.codeActionsOnSave": {
             "source.fixAll.ruff": "explicit",
-            "source.organizeImports": "explicit"
+            "source.organizeImports.ruff": "explicit"
         },
     },
     // Note: Type checking mode is configured in `pyproject.toml` under [tool.pyright].
@@ -53,7 +41,7 @@
     "python.analysis.inlayHints.functionReturnTypes": true,
     "python.analysis.inlayHints.variableTypes": true,
     // Use the Python interpreter from the virtual environment:
-    "python.defaultInterpreterPath": ".venv/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
     // Ensure Pylance is your language server (Pyright extension should be disabled):
     "python.languageServer": "Pylance",
 
@@ -94,8 +82,8 @@
             {
                 // Matches any .md file in the workspace folder
                 "match": "\\.md$",
-                // Runs mdformat using the python executable in your virtual environment
-                "cmd": "\"${workspaceFolder}/.venv/bin/mdformat\" \"${file}\""
+                // Resolve the lockfile-managed formatter on every supported platform.
+                "cmd": "uv run --extra dev mdformat \"${file}\""
             }
         ]
     },
@@ -105,6 +93,9 @@
 
     // Ruff Extension Settings (charliermarsh.ruff)
     // With the native Ruff extension, configuration comes from `pyproject.toml` ([tool.ruff] / [tool.ruff.lint]).
+    //
+    // Prefer Ruff from the environment selected by the Python extension.
+    "ruff.importStrategy": "fromEnvironment",
     "ruff.fixAll": true,
     "ruff.lint.enable": true,
 }

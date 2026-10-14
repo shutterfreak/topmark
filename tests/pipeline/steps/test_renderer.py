@@ -10,6 +10,9 @@
 
 """Direct contracts for the renderer pipeline step."""
 
+# Allow testing private helper functions directly without inline comment overhead.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,9 +28,7 @@ from topmark.pipeline.status import GenerationStatus
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import RenderStatus
 from topmark.pipeline.steps.renderer import RendererStep
-from topmark.pipeline.steps.renderer import (
-    _diagnostic_rule_label,  # pyright: ignore[reportPrivateUsage]
-)
+from topmark.pipeline.steps.renderer import _diagnostic_rule_label
 from topmark.pipeline.views import BuilderView
 from topmark.pipeline.views import HeaderView
 from topmark.pipeline.views import ListFileImageView
