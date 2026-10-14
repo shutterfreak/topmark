@@ -40,9 +40,9 @@ check-lychee:
 help:
 	@echo "Usage: make <target>"
 	@echo ""
-	@echo "Core:"
-	@echo "  verify          Run formatting checks, lint, and one typecheck env"
-	@echo "  pre-pr          Run the recommended local pre-PR gate; supports PYTEST_PAR=-n auto"
+	@echo "Quality checks:"
+	@echo "  verify          Run non-test quality checks: formatting, lint, docs, and links"
+	@echo "  pre-pr          Run the recommended local pre-PR gate; supports PYTEST_PAR=\"-n auto\""
 	@echo "  lint            Run ruff + pydoclint + mbake"
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
 	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
@@ -52,33 +52,35 @@ help:
 	@echo "  docs-hygiene    Check Markdown/Zensical documentation hygiene"
 	@echo "  code-hygiene    Check Python comments/docstrings/string prose hygiene"
 	@echo "  hygiene         Run all prose/documentation hygiene checks"
-	@echo "Tests:"
-	@echo "  test            Run the test suite (nox: qa); supports PYTEST_PAR=-n auto"
+	@echo ""
+	@echo "Testing:"
+	@echo "  test            Run the test suite (nox: qa); supports PYTEST_PAR=\"-n auto\""
 	@echo "  smoke           Run the fast marker-selected smoke suite (nox: smoke)"
-	@echo "  pytest          Run tests with current interpreter (no nox), skipping Hypothesis slow tests; supports PYTEST_PAR=-n auto"
-	@echo "  pytest-full     Run all tests with current interpreter (no nox); supports PYTEST_PAR=-n auto"
-	@echo "  coverage        Run coverage testing; supports PYTEST_PAR=-n auto"
+	@echo "  pytest          Run current-interpreter tests, excluding slow Hypothesis tests; supports PYTEST_PAR=\"-n auto\""
+	@echo "  pytest-full     Run all current-interpreter tests; supports PYTEST_PAR=\"-n auto\""
+	@echo "  coverage        Run coverage testing; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-changed  Diagnose uncovered changed source lines; run coverage first"
-	@echo "  coverage-erase  Erase coverage testing output (.coverage coverage.xml coverage.json htmlcov .coverage.*)"
+	@echo "  coverage-erase  Remove local coverage output"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo "  perf-baseline   Run pipeline memory/allocation baselines (manual, opt-in)"
 	@echo ""
-	@echo "  release-check   Run the deterministic pre-release gate; supports PYTEST_PAR=-n auto"
-	@echo "  release-full    Run the full release gate incl. links + packaging + Python matrix"
-	@echo ""
+	@echo "Release and packaging:"
+	@echo "  release-check   Run the deterministic pre-release gate; supports PYTEST_PAR=\"-n auto\""
+	@echo "  release-full    Run the full Nox release gate, including the supported-Python matrix"
 	@echo "  package-check   Run package sanity checks (nox: package_check)"
 	@echo ""
-	@echo "Docs:"
+	@echo "Documentation:"
 	@echo "  docs-build      Build docs strictly (nox: docs)"
 	@echo "  docs-serve      Serve docs locally (nox: docs_serve)"
-	@echo "  docs-clean      Remove disposable Zensical build output (.zensical/)"
+	@echo "  docs-clean      Remove disposable Zensical build output"
 	@echo ""
-	@echo "Misc:"
+	@echo "Link checks:"
 	@echo "  links           Check links in docs/ and tracked Markdown (nox: links)"
 	@echo "  links-src       Check links found in Python docstrings under src/ (nox: links_src)"
 	@echo "  links-all       Check links in docs/, tracked Markdown, and Python docstrings (nox: links_all)"
 	@echo "  links-site      Check built-site links and project-owned hosted documentation routes"
 	@echo ""
+	@echo "Public API contracts:"
 	@echo "  api-snapshot-dev         Check structured API contracts with current interpreter (fast local)"
 	@echo "  api-snapshot             Check structured API contracts across all supported Pythons"
 	@echo "  api-snapshot-update      Regenerate the structured public API snapshot (interactive)"
@@ -95,72 +97,17 @@ help:
 	@echo "  uv-lock         Generate or refresh uv.lock from pyproject.toml"
 	@echo "  uv-lock-upgrade Refresh uv.lock with dependency upgrades"
 	@echo ""
-	@echo "Setup and platform notes: see CONTRIBUTING.md"
-
-.PHONY: test
-test: check-nox
-	@echo "Running tests via nox..."
-	# We pass -- followed by the variable.
-	# If PYTEST_PAR is empty, it does nothing; if it has "-n auto", pytest receives it.
-	$(NOX) $(NOX_FLAGS) -s qa -- $(PYTEST_PAR)
-
-.PHONY: smoke
-smoke: check-nox
-	$(NOX) $(NOX_FLAGS) -s smoke
-
-.PHONY: coverage
-coverage: check-nox
-	$(NOX) $(NOX_FLAGS) -s coverage -- $(PYTEST_PAR)
-
-.PHONY: coverage-changed
-coverage-changed: check-nox
-	$(NOX) $(NOX_FLAGS) -s coverage_changed -- $(COVERAGE_CHANGED_ARGS)
-
-.PHONY: coverage-erase
-coverage-erase:
-	@rm -rf .coverage coverage.xml coverage.json htmlcov .coverage.*
+	@echo "Platform notes: Make recipes require a POSIX shell. On Windows, use Git Bash or WSL."
+	@echo "Setup details: see CONTRIBUTING.md"
 
 .PHONY: verify
-verify: check-nox
-	@echo "Running non-destructive checks via nox..."
-	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s code_hygiene -s links -s docs
-	@echo "All quality checks passed!"
+verify: check-nox check-lychee
+	$(NOX) $(NOX_FLAGS) -s verify
 
 .PHONY: pre-pr
 pre-pr: check-nox
 	@echo "Running recommended local pre-PR validation via nox..."
 	$(NOX) $(NOX_FLAGS) -s pre_pr -- $(PYTEST_PAR)
-
-.PHONY: release-check
-release-check: check-nox
-	@echo "Running release gate (deterministic) via nox..."
-	$(NOX) $(NOX_FLAGS) -s release_check -- $(PYTEST_PAR)
-
-.PHONY: package-check
-package-check: check-nox
-	@echo "Running packaging sanity checks via nox..."
-	$(NOX) $(NOX_FLAGS) -s package_check
-
-# Number of parallel jobs for matrix-style targets (used by release-full).
-# Override at invocation time, e.g. `make release-full JOBS=5`.
-JOBS ?= 5
-
-# We can find the versions by asking Nox (which now knows them from the TOML)
-# This keeps the Makefile clean.
-RELEASE_PYTHONS = $(shell $(NOX) -l | awk '{print $$1}' | grep '^qa_api-' | cut -d'-' -f2 | sort -V)
-
-.PHONY: release-full
-release-full: check-nox check-lychee
-	@echo "Running full release gate for versions: $(RELEASE_PYTHONS) (serial gates + parallel Python matrix)..."
-	# Serial, non-matrix gates first:
-	$(NOX) $(NOX_FLAGS) -s format_check -s lint -s docstring_links -s docs_hygiene -s code_hygiene -s docs -s links_all -s package_check
-	# Parallelize the per-Python QA+snapshot+typecheck gate across versions:
-	$(MAKE) -j $(JOBS) $(addprefix release-qa-api-,$(RELEASE_PYTHONS))
-
-# Per-Python release gate that reuses one env for: pytest + api snapshot + pyright
-release-qa-api-%: check-nox
-	@echo "QA+API snapshot (one env) for Python $*"
-	$(NOX) $(NOX_FLAGS) -s qa_api -p $* -- $(PYTEST_PAR)
 
 .PHONY: lint
 lint: check-nox
@@ -198,7 +145,19 @@ code-hygiene: check-nox
 .PHONY: hygiene
 hygiene: docs-hygiene code-hygiene
 
-# Run pytest directly (no nox) with the current interpreter
+# ---- Testing --------------------------------------------------------------
+# Pass PYTEST_PAR after `--` so nox forwards it directly to pytest. When the
+# variable is empty, no additional argument is passed.
+.PHONY: test
+test: check-nox
+	@echo "Running tests via nox..."
+	$(NOX) $(NOX_FLAGS) -s qa -- $(PYTEST_PAR)
+
+.PHONY: smoke
+smoke: check-nox
+	$(NOX) $(NOX_FLAGS) -s smoke
+
+# Run pytest directly (without nox) using the current interpreter.
 .PHONY: pytest
 pytest: check-uv
 	@echo "Running pytest locally -- skipping Hypothesis slow tests"
@@ -209,6 +168,20 @@ pytest-full: check-uv
 	@echo "Running all pytest locally -- including Hypothesis slow tests"
 	$(UV) run --extra dev --extra typing --extra test pytest $(PYTEST_PAR) -q
 
+.PHONY: coverage
+coverage: check-nox
+	$(NOX) $(NOX_FLAGS) -s coverage -- $(PYTEST_PAR)
+
+.PHONY: coverage-changed
+coverage-changed: check-nox
+	$(NOX) $(NOX_FLAGS) -s coverage_changed -- $(COVERAGE_CHANGED_ARGS)
+
+# These files and directories are generated only by the coverage session.
+# `rm -rf` is available in the supported POSIX shells, Git Bash, and WSL.
+.PHONY: coverage-erase
+coverage-erase:
+	@rm -rf .coverage coverage.xml coverage.json htmlcov .coverage.*
+
 .PHONY: property-test
 property-test: check-nox
 	$(NOX) $(NOX_FLAGS) -s property_test
@@ -217,6 +190,22 @@ property-test: check-nox
 perf-baseline: check-nox
 	$(NOX) $(NOX_FLAGS) -s perf_baseline
 
+# ---- Release and packaging ------------------------------------------------
+.PHONY: release-check
+release-check: check-nox
+	@echo "Running release gate (deterministic) via nox..."
+	$(NOX) $(NOX_FLAGS) -s release_check -- $(PYTEST_PAR)
+
+.PHONY: release-full
+release-full: check-nox check-lychee
+	$(NOX) $(NOX_FLAGS) -s release_full -- $(PYTEST_PAR)
+
+.PHONY: package-check
+package-check: check-nox
+	@echo "Running packaging sanity checks via nox..."
+	$(NOX) $(NOX_FLAGS) -s package_check
+
+# ---- Documentation --------------------------------------------------------
 .PHONY: docs-build
 docs-build: check-nox
 	$(NOX) $(NOX_FLAGS) -s docs
@@ -227,7 +216,7 @@ docs-serve: check-nox
 
 .PHONY: docs-clean
 docs-clean:
-	rm -rf .zensical
+	@rm -rf .zensical
 
 .PHONY: links
 links: check-nox check-lychee
@@ -245,17 +234,17 @@ links-all: check-nox check-lychee
 links-site: check-nox check-lychee
 	$(NOX) $(NOX_FLAGS) -s links_site
 
-.PHONY: api-snapshot
-api-snapshot: check-nox
-	$(NOX) $(NOX_FLAGS) -s api_snapshot
-
-# Local fast check (current interpreter only)
+# Fast local check using only the current interpreter.
 .PHONY: api-snapshot-dev
 api-snapshot-dev: check-uv
 	@$(UV) run --extra dev --extra typing --extra test pytest -qq tests/api/test_public_api_snapshot.py tests/api/test_api_snapshot_generator.py && \
 	echo "✅ Public API snapshot unchanged."
 
-# Update snapshot (interactive)
+.PHONY: api-snapshot
+api-snapshot: check-nox
+	$(NOX) $(NOX_FLAGS) -s api_snapshot
+
+# Update the snapshot only after an explicit, portable POSIX-shell confirmation.
 .PHONY: .api-snapshot-update
 .api-snapshot-update: check-uv
 	@$(UV) run --extra dev --extra typing --extra test $(PY) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
@@ -269,8 +258,13 @@ api-snapshot-dev: check-uv
 
 .PHONY: api-snapshot-update
 api-snapshot-update:
-	@read -p "⚠️  This will overwrite the public API snapshot. Continue? [y/N] " confirm && [ "$$confirm" = "y" ] && \
-	$(MAKE) .api-snapshot-update
+	@printf '%s' "⚠️  This will overwrite the public API snapshot. Continue? [y/N] "; \
+	IFS= read -r confirm; \
+	if [ "$$confirm" = "y" ]; then \
+		$(MAKE) .api-snapshot-update; \
+	else \
+		echo "Snapshot update cancelled."; \
+	fi
 
 # Fail if snapshot differs from index
 .PHONY: api-snapshot-ensure-clean
@@ -283,11 +277,8 @@ api-snapshot-ensure-clean: check-nox
 		exit 1; \
 	fi
 
-#
-# ---- Optional local convenience venv for editor / pyright ----
-#
-# Local editor venv bootstrap.
-# We keep a project-local .venv for IDE integration, and let uv manage it directly.
+# ---- Optional local editor environment ------------------------------------
+# Keep a project-local .venv for IDE integration; uv manages it directly.
 .PHONY: venv
 venv: check-uv
 	@test -d $(VENV) || ( \
@@ -303,28 +294,29 @@ venv-sync-dev: check-uv
 	$(UV) sync --extra dev --extra typing --extra test
 	@echo "Synced dev/test/typing extras into $(VENV)."
 
-# Sync docs-only extras into the shared venv.
-# NOTE: running this will remove dev/test/typing tools which are not part of the docs environment.
-# Prefer venv-sync-all for a combined environment.
-.PHONY: venv-sync-docs
-venv-sync-docs: check-uv
-	$(UV) sync --extra docs
-	@echo "Synced docs extras into $(VENV)."
-
-# Sync the union of dev/test/typing/docs extras into the shared venv.
-# This is the recommended target for local Zensical development and VS Code import resolution.
+# Sync the union of dev/test/typing/docs extras. This is the recommended local
+# environment for Zensical work and VS Code import resolution.
 .PHONY: venv-sync-all
 venv-sync-all: check-uv
 	$(UV) sync --extra dev --extra typing --extra test --extra docs
 	@echo "Synced dev/test/typing/docs extras into $(VENV)."
 
+# Sync docs-only extras into the shared venv. This removes dev/test/typing
+# tools, so prefer venv-sync-all when one environment must serve every task.
+.PHONY: venv-sync-docs
+venv-sync-docs: check-uv
+	$(UV) sync --extra docs
+	@echo "Synced docs extras into $(VENV)."
+
 .PHONY: venv-clean
 venv-clean:
-	@rm -rf $(VENV)
+	@case "$(VENV)" in ""|.|./|..|../|/) \
+		echo "❌ Refusing to remove unsafe VENV path: $(VENV)"; exit 2;; \
+	esac
+	@rm -rf "$(VENV)"
 	@echo "Removed $(VENV)."
 
-#
-# ---- UV project lock workflow (canonical dependency management) ----
+# ---- Dependency lock workflow ---------------------------------------------
 .PHONY: uv-lock
 uv-lock: check-uv
 	$(UV) lock

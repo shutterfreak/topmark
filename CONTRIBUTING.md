@@ -33,8 +33,11 @@ ______________________________________________________________________
 - **Lychee** (only for the local `make links*` targets; install it for your operating system and
   keep it on your `PATH`)
 
-Nox is a project-managed development dependency. Make targets run it through `uv`, using the locked
-`dev` extra and its matching `nox-uv` plugin; do not install it separately.
+Nox is a project-managed development dependency and the canonical owner of validation workflows.
+Make targets run Nox through `uv`, using the locked `dev` extra and its matching `nox-uv` plugin; do
+not install Nox separately. The Makefile is a convenience layer for common commands, local
+environment management, and cleanup; use the corresponding `nox -s <session>` command when you need
+the underlying validation contract directly.
 
 The tracked `.python-version` lists the exact supported interpreter patch releases. Pyenv selects
 the first entry, making Python 3.15 the default local-development and canonical QA interpreter. The
@@ -70,7 +73,7 @@ make venv-sync-dev
 make pre-pr     # formatting, lint, docs, canonical QA, API snapshot
 
 # Additional validation commands
-make verify     # lint, formatting, docs, links
+make verify     # non-test quality checks: formatting, lint, docs, links
 make test       # full nox validation matrix
 
 # Run tests locally (current interpreter only)
@@ -82,7 +85,8 @@ make pytest     # supports PYTEST_PAR="-n auto"
 > `.venv` is the standard local development environment for IDE integration and interactive work. It
 > is managed with `uv` and primarily exists for editor support and local tooling integration.
 > Automated validation and CI-parity checks still run through isolated Nox environments. The
-> Makefile invokes Nox through the project's locked `dev` extra.
+> Makefile delegates its composite validation targets to Nox through the project's locked `dev`
+> extra and does not define a separate validation workflow.
 
 For the full installation and development-environment setup guide, see:
 
@@ -310,7 +314,7 @@ Run strict **Pyright** type checks via project-managed Nox:
 uv run --extra dev nox -s qa -p 3.15
 ```
 
-Or run all verification checks (format, lint, links, docs):
+Or run the non-test quality checks (format, lint, links, docs):
 
 ```bash
 make verify

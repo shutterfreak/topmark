@@ -14,7 +14,7 @@ topmark:header:end
 
 TopMark groups validation by intent rather than through a single monolithic test command. GitHub
 workflows orchestrate validation, nox sessions provide stable reusable commands, pytest markers
-describe test purpose, and Makefile targets provide local convenience wrappers.
+describe test purpose, and Makefile targets provide thin local convenience wrappers.
 
 {% include-markdown "\_snippets/terminology.md" %}
 
@@ -28,7 +28,7 @@ validation path.
 | GitHub workflows | Repository, release, dependency, and published-artifact validation orchestration.                                 |
 | nox sessions     | Reusable validation contracts for linting, typing, tests, docs, links, release checks, and performance baselines. |
 | pytest markers   | Semantic grouping of tests by behavior, scope, or runtime expectations.                                           |
-| Makefile targets | Local shortcuts for common contributor workflows.                                                                 |
+| Makefile targets | Thin aliases for Nox-backed validation workflows, plus local environment and cleanup shortcuts.                   |
 
 The preferred mental model is:
 
@@ -260,35 +260,40 @@ ______________________________________________________________________
 
 ## nox and Makefile Mapping
 
-nox sessions are the stable validation interface used by CI and local development. Makefile targets
-should remain convenience wrappers rather than a separate source of validation truth.
+nox sessions are the stable validation interface used by CI and local development. Makefile
+validation targets should remain thin convenience wrappers rather than a separate source of
+validation truth or composite orchestration.
 
 Common mappings are:
 
-| Need                                              | Preferred command                  |
-| ------------------------------------------------- | ---------------------------------- |
-| Run the recommended local pre-PR gate             | `make pre-pr`                      |
-| Run the main quality gate on the canonical Python | `nox -s qa -p 3.15`                |
-| Run the fast marker-selected smoke suite          | `nox -s smoke`                     |
-| Generate canonical coverage data                  | `nox -s coverage -p 3.15`          |
-| Diagnose changed-lines coverage                   | `nox -s coverage_changed -p 3.15`  |
-| Run local pytest in parallel                      | `nox -s qa -p 3.15 -- -n auto`     |
-| Print CI Python metadata                          | `nox -s print_python_matrix`       |
-| Run a marker-specific test subset                 | `nox -s qa -p 3.15 -- -m <marker>` |
-| Build documentation                               | `nox -s docs`                      |
-| Build production Zensical documentation           | `nox -s docs`                      |
-| Serve production Zensical documentation           | `nox -s docs_serve`                |
-| Validate documentation links                      | `nox -s links`                     |
-| Run release checks                                | `nox -s release_check`             |
-| Run pipeline memory/allocation baselines          | `nox -s perf_baseline`             |
+| Need                                               | Preferred command                  |
+| -------------------------------------------------- | ---------------------------------- |
+| Run the recommended local pre-PR gate              | `make pre-pr`                      |
+| Run non-test local quality checks, including links | `nox -s verify`                    |
+| Run the main quality gate on the canonical Python  | `nox -s qa -p 3.15`                |
+| Run the fast marker-selected smoke suite           | `nox -s smoke`                     |
+| Generate canonical coverage data                   | `nox -s coverage -p 3.15`          |
+| Diagnose changed-lines coverage                    | `nox -s coverage_changed -p 3.15`  |
+| Run local pytest in parallel                       | `nox -s qa -p 3.15 -- -n auto`     |
+| Print CI Python metadata                           | `nox -s print_python_matrix`       |
+| Run a marker-specific test subset                  | `nox -s qa -p 3.15 -- -m <marker>` |
+| Build documentation                                | `nox -s docs`                      |
+| Build production Zensical documentation            | `nox -s docs`                      |
+| Serve production Zensical documentation            | `nox -s docs_serve`                |
+| Validate documentation links                       | `nox -s links`                     |
+| Run release checks                                 | `nox -s release_check`             |
+| Run the full release gate                          | `nox -s release_full`              |
+| Run pipeline memory/allocation baselines           | `nox -s perf_baseline`             |
 
 The concrete canonical version shown above is expected to move when the supported Python range
 moves. CI consumes the JSON output from `print_python_matrix` so the test matrix and canonical
 single-version jobs can follow `pyproject.toml` without duplicating version literals in the main CI
-workflow.
+workflow. Automation that needs this metadata must consume `print_python_matrix` rather than parse
+the human-facing output of `nox -l`.
 
-If a Makefile target wraps one of these commands, the nox session remains the canonical validation
-contract.
+If a Makefile target wraps one of these commands, the Nox session remains the canonical validation
+contract. The `verify` and `release_full` composites are defined only in `noxfile.py`; their Make
+targets are aliases.
 
 ______________________________________________________________________
 

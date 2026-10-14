@@ -30,6 +30,7 @@ Sessions:
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
   - `coverage_changed`: Diagnose coverage gaps in changed executable source lines.
   - `self_check`: Verify that the current TopMark checkout accepts every tracked file.
+  - `verify`: Non-test local quality checks, including link validation.
   - `pre_pr`: Recommended local pre-PR validation gate.
   - `api_snapshot`: Public API snapshot test (per Python).
   - `property_test`: Long-running property tests (opt-in).
@@ -49,13 +50,13 @@ Common invocations:
   - `nox -s format_check`
   - `nox -s docs`
   - `nox -s qa` (runs for all configured Python versions)
+  - `nox -s verify` (non-test quality checks, including links)
   - `nox -s pre_pr` (recommended before opening or updating a PR)
 """
 
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import sys
 from typing import Any
@@ -140,7 +141,11 @@ def get_git_files(session: nox.Session, *specs: str) -> list[str]:
 
 @nox.session(python=False)
 def print_python_matrix(session: nox.Session) -> None:
-    """Print supported and canonical Python versions as JSON."""
+    """Print the project-owned Python matrix as machine-readable JSON.
+
+    Automation should consume this session rather than parsing the human-facing
+    output of ``nox -l``.
+    """
     payload = {
         "supported": PYTHONS,
         "canonical": CANONICAL_PYTHON,
@@ -313,6 +318,32 @@ def qa_api(session: nox.Session) -> None:
         "--pythonversion",
         py_ver,
     )
+
+
+@nox.session(python=False)
+def verify(session: nox.Session) -> None:
+    """Run the non-test local quality gate, including network link validation.
+
+    This is the canonical implementation behind the ``make verify``
+    convenience target. It deliberately excludes pytest and Pyright; use
+    ``pre_pr`` for the recommended pre-pull-request gate or ``qa`` for the
+    supported-Python test and type-check matrix.
+    """
+    for session_name in (
+        "format_check",
+        "lint",
+        "docstring_links",
+        "docs_hygiene",
+        "code_hygiene",
+        "links",
+        "docs",
+    ):
+        session.run(
+            "nox",
+            "-s",
+            session_name,
+            external=True,
+        )
 
 
 @nox.session(python=False)
@@ -1006,18 +1037,13 @@ def release_full(session: nox.Session) -> None:
         external=True,
     )
 
-    # Parallelize the per-Python QA+snapshot+typecheck gate across versions.
-    jobs_s: str = os.environ.get("JOBS", "5")
-    try:
-        jobs = int(jobs_s)
-    except ValueError as e:
-        raise RuntimeError(f"Invalid JOBS value {jobs_s!r}; expected an integer") from e
-
-    pythons: list[str] = PYTHONS
+    # Nox owns the interpreter matrix so release validation does not depend on
+    # Makefile-generated targets or shell-specific version discovery.
     session.run(
-        "make",
-        "-j",
-        str(jobs),
-        *(f"release-qa-api-{py}" for py in pythons),
+        "nox",
+        "-s",
+        "qa_api",
+        "--",
+        *session.posargs,
         external=True,
     )
