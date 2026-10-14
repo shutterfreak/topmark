@@ -119,6 +119,10 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Raised the supported `uv` tooling ceiling through the 0.13 release family, aligned GitHub Actions
+  bootstrap jobs with `uv` 0.13.x, and made VS Code validation tasks portable across developer
+  shells. VS Code now exposes smoke and coverage tasks and uses the recommended pre-PR validation
+  gate as its default test task.
 - Pinned release-critical Linux validation, artifact, publication, and published-artifact jobs to
   Ubuntu 24.04; added an explicit canonical-Python Ubuntu 26.04 compatibility job; and removed
   prerelease Python resolution now that the supported matrix targets final Python releases. The

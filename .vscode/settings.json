@@ -40,8 +40,6 @@
     "python.analysis.diagnosticMode": "workspace",
     "python.analysis.inlayHints.functionReturnTypes": true,
     "python.analysis.inlayHints.variableTypes": true,
-    // Use the Python interpreter from the virtual environment:
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
     // Ensure Pylance is your language server (Pyright extension should be disabled):
     "python.languageServer": "Pylance",
 
