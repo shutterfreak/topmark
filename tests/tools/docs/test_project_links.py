@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_project_docs_links.py
-#   file_relpath : tests/dev_validation/test_project_docs_links.py
+#   file         : test_project_links.py
+#   file_relpath : tests/tools/docs/test_project_links.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tools.docs.check_project_links import check_project_docs_links
 from tools.docs.check_project_links import iter_project_doc_urls
 
@@ -25,7 +23,6 @@ if TYPE_CHECKING:
     from tools.docs.check_project_links import ProjectLinkDiagnostic
 
 
-@pytest.mark.dev_validation
 def test_project_docs_link_accepts_local_route_and_fragment(
     tmp_path: Path,
 ) -> None:
@@ -45,7 +42,6 @@ def test_project_docs_link_accepts_local_route_and_fragment(
     assert check_project_docs_links([source], site_dir=tmp_path / "site") == []
 
 
-@pytest.mark.dev_validation
 def test_project_docs_link_reports_missing_local_route(
     tmp_path: Path,
 ) -> None:
@@ -66,7 +62,6 @@ def test_project_docs_link_reports_missing_local_route(
     assert "route is absent" in diagnostics[0].message
 
 
-@pytest.mark.dev_validation
 def test_project_docs_link_reports_missing_local_fragment(
     tmp_path: Path,
 ) -> None:
@@ -89,7 +84,6 @@ def test_project_docs_link_reports_missing_local_fragment(
     assert "fragment is absent" in diagnostics[0].message
 
 
-@pytest.mark.dev_validation
 def test_project_docs_link_ignores_fenced_and_inline_code() -> None:
     """Example URLs inside Markdown code do not become validation inputs."""
     text = """\
@@ -107,7 +101,6 @@ https://topmark.readthedocs.io/en/latest/fenced/
     ]
 
 
-@pytest.mark.dev_validation
 def test_project_docs_link_accepts_latest_root_with_query(tmp_path: Path) -> None:
     """The hosted documentation root maps to the local site index."""
     source: Path = tmp_path / "README.md"

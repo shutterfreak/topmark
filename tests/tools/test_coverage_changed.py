@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_coverage_changed.py
-#   file_relpath : tests/dev_validation/test_coverage_changed.py
+#   file_relpath : tests/tools/test_coverage_changed.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
@@ -66,7 +66,6 @@ def source_tree(tmp_path: Path) -> Path:
     return tmp_path
 
 
-@pytest.mark.dev_validation
 def test_missing_report_is_not_assessed(tmp_path: Path) -> None:
     """An absent coverage report is a clear non-successful assessment state."""
     assessment: CoverageAssessment = assess_coverage(
@@ -81,7 +80,6 @@ def test_missing_report_is_not_assessed(tmp_path: Path) -> None:
     assert "make coverage" in format_assessment(assessment)
 
 
-@pytest.mark.dev_validation
 def test_assessment_reports_uncovered_lines_and_branches(
     coverage_report: Path,
     source_tree: Path,
@@ -105,7 +103,6 @@ def test_assessment_reports_uncovered_lines_and_branches(
     assert "branch to line 5 not taken" in output
 
 
-@pytest.mark.dev_validation
 def test_assessment_ignores_excluded_non_executable_and_unchanged_lines(
     coverage_report: Path,
     source_tree: Path,
@@ -121,7 +118,6 @@ def test_assessment_ignores_excluded_non_executable_and_unchanged_lines(
     assert assessment.diagnostics == ()
 
 
-@pytest.mark.dev_validation
 def test_parse_unified_diff_handles_added_modified_renamed_and_deleted_files() -> None:
     """Diff parsing uses current paths, skips deletions, and handles zero-length hunks."""
     patch = """\
@@ -157,7 +153,6 @@ new file mode 100644
     )
 
 
-@pytest.mark.dev_validation
 def test_main_reports_missing_report_without_git_or_traceback(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

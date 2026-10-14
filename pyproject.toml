@@ -270,7 +270,7 @@ reportUnusedVariable               = true
 [tool.pytest.ini_options]
 markers = [
   "case_insensitive_fs: tests for case-insensitive file systems",
-  "dev_validation: developer validation tests for repository and internal invariants",
+  "dev_validation: developer-validation checks for repository invariants",
   "exit_code: tests that validate the CLI exit-code contract",
   "hypothesis_slow: long-running property tests (skipped in CI)",
   "integration: environment-dependent integration checks (e.g., shell completion)",

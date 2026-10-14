@@ -2,7 +2,7 @@
 #
 #   project      : TopMark
 #   file         : test_zensical_output_parity.py
-#   file_relpath : tests/dev_validation/test_zensical_output_parity.py
+#   file_relpath : tests/tools/docs/test_zensical_output_parity.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

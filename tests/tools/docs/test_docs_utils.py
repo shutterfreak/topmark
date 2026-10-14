@@ -2,13 +2,13 @@
 #
 #   project      : TopMark
 #   file         : test_docs_utils.py
-#   file_relpath : tests/dev_validation/test_docs_utils.py
+#   file_relpath : tests/tools/docs/test_docs_utils.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #
 # topmark:header:end
 
-"""Developer-validation tests for shared documentation utilities."""
+"""Tests for shared documentation utilities."""
 
 from __future__ import annotations
 
@@ -22,7 +22,6 @@ from tools.docs.docs_utils import load_nonlinked_symbols
 from tools.docs.docs_utils import unescape_reference_link_text
 
 
-@pytest.mark.dev_validation
 @pytest.mark.parametrize(
     ("raw_value", "expected"),
     (
@@ -42,7 +41,6 @@ def test_env_flag_uses_documented_boolean_grammar(
     assert env_flag("TOPMARK_TEST_DOCS_FLAG") is expected
 
 
-@pytest.mark.dev_validation
 def test_load_nonlinked_symbols_normalizes_comma_separated_values() -> None:
     """The symbol whitelist trims entries, removes blanks, and de-duplicates values."""
     env = {"TOPMARK_DOCS_NONLINKED_SYMBOLS": " topmark.api , ,topmark.registry,topmark.api "}
@@ -50,7 +48,6 @@ def test_load_nonlinked_symbols_normalizes_comma_separated_values() -> None:
     assert load_nonlinked_symbols(env) == frozenset({"topmark.api", "topmark.registry"})
 
 
-@pytest.mark.dev_validation
 def test_reference_normalization_preserves_fenced_examples() -> None:
     """Reference repairs apply to prose without rewriting fenced Markdown examples."""
     markdown = (
@@ -73,7 +70,6 @@ def test_reference_normalization_preserves_fenced_examples() -> None:
     )
 
 
-@pytest.mark.dev_validation
 def test_unlinked_symbol_discovery_respects_links_fences_and_artifacts() -> None:
     """Symbol discovery reports prose references but ignores supported non-candidates."""
     markdown = (
