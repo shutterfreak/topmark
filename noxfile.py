@@ -260,6 +260,19 @@ def qa(session: nox.Session) -> None:
     )
 
 
+@nox.session(python=CANONICAL_PYTHON)
+def smoke(session: nox.Session) -> None:
+    """Run the minimal marker-selected smoke suite on canonical Python."""
+    session.install(DEPS_QA)
+    session.run(
+        "pytest",
+        "-q",
+        "tests",
+        "-m",
+        "smoke",
+    )
+
+
 @nox.session(python=PYTHONS)
 def qa_api(session: nox.Session) -> None:
     """Run tests + API snapshot + pyright (per Python version) in one env.

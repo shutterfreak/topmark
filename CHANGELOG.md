@@ -53,6 +53,8 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added a marker-driven, hand-picked smoke suite with canonical-Python CI feedback, a `nox -s smoke`
+  session, and a `make smoke` convenience target; the full QA matrix remains authoritative.
 - Added the non-enforcing `make coverage-changed` contributor diagnostic, which compares changed
   executable source lines and branches with canonical `coverage.json` after `make coverage`.
 - Added file-type activation policies: `default`, explicit-consent `opt-in`, and non-overridable

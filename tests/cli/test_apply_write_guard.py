@@ -144,6 +144,7 @@ def test_apply_does_not_write_skipped_known_no_headers(tmp_path: Path) -> None:
 
 
 # --- Write guard: insertion and idempotency ---
+@pytest.mark.smoke
 def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
     """Default command: write only when INSERTED/REPLACED; then no-op.
 
@@ -191,6 +192,7 @@ def test_apply_writes_only_on_insert_and_is_idempotent(tmp_path: Path) -> None:
 
 
 # --- Write guard: strip removal semantics ---
+@pytest.mark.smoke
 def test_strip_apply_writes_only_on_removed_and_preserves_body(tmp_path: Path) -> None:
     """`strip --apply` should only write when a header was actually removed.
 

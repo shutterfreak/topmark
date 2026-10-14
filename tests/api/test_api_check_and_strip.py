@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from topmark.processors.base import HeaderProcessor
 
 
+@pytest.mark.smoke
 def test_check_dry_run_reports_one_change_and_one_unchanged(
     repo_py_with_and_without_header: Path,
 ) -> None:

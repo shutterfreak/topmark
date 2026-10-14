@@ -377,6 +377,25 @@ jobs:
         run: |
           nox -s qa -p ${{ matrix.python-version }}
 
+  smoke:
+    name: Smoke
+    needs: [changes, python-metadata]
+    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' || needs.changes.outputs.ci_changed == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-python-nox
+        with:
+          python-version: ${{ needs.python-metadata.outputs.canonical }}
+
+      - name: Run marker-selected smoke suite
+        run: |
+          nox -s smoke -p ${{ needs.python-metadata.outputs.canonical }}
+
   filesystem-tests:
     name: Filesystem tests (${{ matrix.os }})
     needs: [changes, python-metadata]

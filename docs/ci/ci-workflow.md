@@ -107,6 +107,7 @@ ______________________________________________________________________
 | `pre-commit`        | Run configured pre-commit hooks                                         | `pre-commit`                               |
 | `docs`              | Prepare and strictly build the production documentation site            | `nox`, `zensical`                          |
 | `tests`             | Run the supported Python test matrix                                    | `nox`, `pytest`                            |
+| `smoke`             | Run fast, marker-selected cross-cutting checks on canonical Python      | `nox`, `pytest`                            |
 | `filesystem-tests`  | Run canonical Python tests across macOS and Windows filesystems         | `nox`, `pytest`                            |
 | `ubuntu-26-04`      | Run canonical Python tests on Ubuntu 26.04                              | `nox`, `pytest`                            |
 | `coverage`          | Generate and publish canonical coverage reports                         | `nox`, `coverage.py`, `pytest`, Codecov    |
@@ -120,6 +121,12 @@ validation contracts and execution semantics. The `python-metadata` job resolves
 versions and the canonical single-version Python from project metadata through
 `nox -s print_python_matrix`. The test matrix consumes that supported-version list with `fail-fast`
 disabled so failures on one Python version do not hide failures on others.
+
+The `smoke` job runs in parallel with the full supported-Python matrix on the resolved canonical
+Python version. It invokes `nox -s smoke`, which selects only the small, hand-picked
+`pytest.mark.smoke` suite across the CLI, public API, and registry. This job provides earlier
+failure feedback for representative contracts; it does not replace or gate the authoritative full QA
+matrix.
 
 Release-critical Linux jobs explicitly use `ubuntu-24.04`, preventing a rolling `ubuntu-latest`
 image migration from changing the primary validation or release environment without review. The
@@ -275,6 +282,7 @@ nox -s format_check
 nox -s lint
 nox -s docstring_links
 nox -s docs
+nox -s smoke
 nox -s qa -p 3.15
 nox -s coverage -p 3.15
 ```
@@ -368,6 +376,8 @@ When editing this workflow:
 - keep Linux canonical QA covered by the supported Python matrix and keep additional
   platform-dependent filesystem behavior covered by the macOS/Windows `filesystem-tests` job rather
   than expanding the full Python-version matrix across all operating systems;
+- keep the smoke job small and marker-selected for early feedback; do not treat it as a substitute
+  for the full QA matrix;
 - keep pytest-xdist as an explicit local opt-in unless CI runner behavior and coverage diagnostics
   are deliberately re-evaluated;
 - keep coverage reporting lightweight and do not couple the pull-request coverage threshold to

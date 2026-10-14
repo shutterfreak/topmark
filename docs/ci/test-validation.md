@@ -86,13 +86,14 @@ Package- or subsystem-specific test selection should normally use test paths (fo
 `pytest tests/cli`) instead of markers. Nox marker expressions should reference only declared
 markers so exclusions remain visible in the central pytest configuration.
 
-| Marker                | Purpose                                                                                                                                                             | CI expectation                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                                                                                           | Run where the host filesystem can exercise them.     |
-| `dev_validation`      | Developer validation tests for repository-internal invariants such as test-layout consistency and pytest marker hygiene.                                            | Included in normal test runs.                        |
-| `exit_code`           | Tests that validate the CLI exit-code contract.                                                                                                                     | Included in normal test runs.                        |
-| `hypothesis_slow`     | Long-running property tests.                                                                                                                                        | Skipped in CI unless explicitly selected.            |
-| `integration`         | Environment-dependent integration checks that exercise interactions with external tooling, the operating system, or shell features (for example, shell completion). | Run selectively where the environment supports them. |
+| Marker                | Purpose                                                                                                                                                             | CI expectation                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `case_insensitive_fs` | Tests for behavior that depends on case-insensitive filesystem semantics.                                                                                           | Run where the host filesystem can exercise them.                                  |
+| `dev_validation`      | Developer validation tests for repository-internal invariants such as test-layout consistency and pytest marker hygiene.                                            | Included in normal test runs.                                                     |
+| `exit_code`           | Tests that validate the CLI exit-code contract.                                                                                                                     | Included in normal test runs.                                                     |
+| `hypothesis_slow`     | Long-running property tests.                                                                                                                                        | Skipped in CI unless explicitly selected.                                         |
+| `integration`         | Environment-dependent integration checks that exercise interactions with external tooling, the operating system, or shell features (for example, shell completion). | Run selectively where the environment supports them.                              |
+| `smoke`               | Small, hand-picked cross-cutting checks that provide early feedback for the CLI, public API, and registry.                                                          | Runs on canonical Python as an early-feedback job; full QA remains authoritative. |
 
 ______________________________________________________________________
 
@@ -156,6 +157,17 @@ Run the full default test suite through nox on the canonical Python version:
 ```bash
 nox -s qa -p 3.15
 ```
+
+Run the fast smoke suite when you need an early signal from representative contracts:
+
+```bash
+nox -s smoke
+# or
+make smoke
+```
+
+The smoke suite is selected exclusively by `pytest.mark.smoke`; it is deliberately not a replacement
+for the full QA suite or pre-PR gate.
 
 Generate the canonical local coverage report:
 
@@ -257,6 +269,7 @@ Common mappings are:
 | ------------------------------------------------- | ---------------------------------- |
 | Run the recommended local pre-PR gate             | `make pre-pr`                      |
 | Run the main quality gate on the canonical Python | `nox -s qa -p 3.15`                |
+| Run the fast marker-selected smoke suite          | `nox -s smoke`                     |
 | Generate canonical coverage data                  | `nox -s coverage -p 3.15`          |
 | Diagnose changed-lines coverage                   | `nox -s coverage_changed -p 3.15`  |
 | Run local pytest in parallel                      | `nox -s qa -p 3.15 -- -n auto`     |
