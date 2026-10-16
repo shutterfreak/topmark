@@ -292,7 +292,7 @@ norecursedirs = [
 ]
 python_files = ["test_*.py", "*_test.py"]
 filterwarnings = ["default::DeprecationWarning"]
-addopts = ["--import-mode=importlib"]
+addopts = ["--import-mode=importlib", "-rsx"]
 # Keep repository-local developer tooling importable without relying on pytest's
 # legacy prepend/append import modes.
 pythonpath = ["."]
