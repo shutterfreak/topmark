@@ -34,7 +34,7 @@ on:
         type: choice
         options:
           - all
-          - ubuntu-24.04
+          - ubuntu-26.04
           - macos-latest
           - windows-latest
       python-version:
@@ -75,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.platform == 'all' && '["ubuntu-24.04", "macos-latest", "windows-latest"]' || format('["{0}"]', inputs.platform)) }}
+        os: ${{ fromJSON(inputs.platform == 'all' && '["ubuntu-26.04", "macos-latest", "windows-latest"]' || format('["{0}"]', inputs.platform)) }}
         python-version: ${{ fromJSON(inputs.python-version == 'all' && '["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]' || format('["{0}"]', inputs.python-version)) }}
 
     steps:

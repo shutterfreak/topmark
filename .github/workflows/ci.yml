@@ -50,7 +50,7 @@ on:
 jobs:
   changes:
     name: Detect changed file groups
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       pull-requests: read
@@ -149,7 +149,7 @@ jobs:
   python-metadata:
     name: Resolve Python metadata
     needs: changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       supported: ${{ steps.python-matrix.outputs.supported }}
       canonical: ${{ steps.python-matrix.outputs.canonical }}
@@ -191,7 +191,7 @@ jobs:
     name: Lint
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -212,7 +212,7 @@ jobs:
     name: Pre-commit
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.precommit_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     timeout-minutes: 15
@@ -257,7 +257,7 @@ jobs:
     name: Docs
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -275,9 +275,9 @@ jobs:
   # Build release artifacts in unprivileged CI so privileged release workflow can publish without checking out/building repo code.
   release-artifacts:
     name: Build release artifacts
-    needs: [changes, python-metadata, lint, pre-commit, docs, tests, filesystem-tests, ubuntu-26-04, coverage, links, links-site]
+    needs: [changes, python-metadata, lint, pre-commit, docs, tests, filesystem-tests, coverage, links, links-site]
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -339,7 +339,7 @@ jobs:
     name: Tests (${{ matrix.python-version }})
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -381,7 +381,7 @@ jobs:
     name: Smoke
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' || needs.changes.outputs.ci_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -425,32 +425,11 @@ jobs:
         run: |
           nox -s qa -p ${{ needs.python-metadata.outputs.canonical }}
 
-  ubuntu-26-04:
-    name: Ubuntu 26.04 compatibility
-    needs: [changes, python-metadata]
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' || needs.changes.outputs.ci_changed == 'true' }}
-    runs-on: ubuntu-26.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - uses: ./.github/actions/setup-python-nox
-        with:
-          python-version: ${{ needs.python-metadata.outputs.canonical }}
-
-      - name: Run canonical Python QA
-        env:
-          TOPMARK_REQUIRE_SYMLINKS: "1"
-        run: |
-          nox -s qa -p ${{ needs.python-metadata.outputs.canonical }}
-
   coverage:
     name: Coverage
     needs: [changes, python-metadata, tests]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.python_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     timeout-minutes: 20
@@ -539,7 +518,7 @@ jobs:
     name: API Snapshot
     needs: [changes, python-metadata]
     if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.python_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -559,7 +538,7 @@ jobs:
     # Use official lychee Action; no cargo needed
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.markdown_links_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -578,7 +557,7 @@ jobs:
     name: Site link check
     needs: [changes, python-metadata]
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_changed == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read

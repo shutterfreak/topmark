@@ -30,7 +30,7 @@ concurrency:
 jobs:
   audit-action-pins:
     name: Audit action pin consistency
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
 
     steps:

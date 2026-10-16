@@ -137,10 +137,8 @@ ______________________________________________________________________
   bootstrap jobs with `uv` 0.13.x, and made VS Code validation tasks portable across developer
   shells. VS Code now exposes smoke and coverage tasks and uses the recommended pre-PR validation
   gate as its default test task.
-- Pinned release-critical Linux validation, artifact, publication, and published-artifact jobs to
-  Ubuntu 24.04; added an explicit canonical-Python Ubuntu 26.04 compatibility job; and removed
-  prerelease Python resolution now that the supported matrix targets final Python releases. The
-  Ubuntu 26.04 job also runs when its CI workflow configuration changes.
+- Moved the GitHub-hosted Linux runner baseline to Ubuntu 26.04. The supported Python matrix now
+  provides the primary Linux compatibility coverage.
 - Machine-readable JSON and NDJSON metadata now includes normalized process-stable Python runtime
   provenance (`python_version` and `machine`) while preserving the additive, backward-compatible
   envelope contract.

@@ -54,6 +54,9 @@ The workflow has only `contents: read` permission and uses the pull request even
 repository secrets, install dependencies, execute project code, publish artifacts, or write pull
 request comments.
 
+It runs on the explicit `ubuntu-26.04` image, consistent with the repository's Linux runner baseline
+and independent of unreviewed `ubuntu-latest` migrations.
+
 External actions are pinned to immutable commit SHAs. Human-readable version comments remain next to
 the pins, and Dependabot plus the GitHub Action pin audit provide the normal update and consistency
 mechanisms.

@@ -20,7 +20,7 @@ permissions:
 jobs:
   validate-title:
     name: Validate Conventional Commit title
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: Validate pull request title
