@@ -282,13 +282,12 @@ norecursedirs = [
   ".hypothesis",
   ".venv",
   ".vscode",
+  ".zensical",
   "archives",
   "build",
   "dist",
-  "docs",
   "sample_files",
   "site",
-  "tools",
   "venv",
 ]
 python_files = ["test_*.py", "*_test.py"]
