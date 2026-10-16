@@ -67,7 +67,8 @@ TopMark validation favors:
 - focused pytest markers over broad naming conventions;
 - dry-run and source-tree validation before mutation or publication;
 - intentionally redundant checks where they validate different compatibility contracts;
-- coverage reporting as a diagnostic confidence signal rather than a percentage-driven release gate;
+- local coverage diagnostics alongside a non-informational Codecov project-comparison policy,
+  without treating coverage as a percentage-driven release gate;
 - Python-version metadata derived from project metadata rather than duplicated manually in CI where
   practical.
 
@@ -369,8 +370,15 @@ ______________________________________________________________________
 ## Coverage reporting
 
 Coverage reporting is intentionally separate from release validation and published-artifact
-validation. Coverage is used as a lightweight diagnostic signal for repository health and test
-effectiveness, not as a publication-time compatibility contract.
+validation. It has distinct diagnostic and pull-request-policy roles: local reports and the
+changed-lines diagnostic help contributors assess repository health and test effectiveness, while
+the CI coverage job must generate the canonical report successfully. Codecov's non-informational
+project status separately fails when pull-request project coverage declines by more than the
+documented tolerance.
+
+This does not make coverage a release-publication gate or a GitHub-required branch-protection
+status: coverage runs only for Python-relevant pull requests. Patch coverage remains informational.
+See the [Codecov coverage policy](./codecov.md) for the project-status threshold and review model.
 
 ______________________________________________________________________
 

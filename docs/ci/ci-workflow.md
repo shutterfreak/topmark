@@ -160,8 +160,10 @@ uploader or external-service error does not masquerade as a local coverage-test 
 separately evaluates `codecov.yml` and reports the project and patch status contexts.
 
 The project status compares the pull request head with its base and permits a decline of at most
-0.25 percentage points. Patch coverage remains informational. See
-[Codecov coverage policy](./codecov.md) for the status, comment, and repository-settings contract.
+0.25 percentage points; unlike patch coverage, it is non-informational. A failure to generate the
+canonical report fails the CI coverage job, while the Codecov project status separately reports a
+policy failure. See [Codecov coverage policy](./codecov.md) for the status, comment, and
+repository-settings contract.
 
 The coverage job depends on the full supported-version test matrix succeeding before coverage
 reports are generated. This keeps the compatibility matrix as the primary validation gate while
@@ -225,7 +227,8 @@ coverage badge shown in `README.md`; the badge links to TopMark's public Codecov
 rather than replaces the reports retained with the GitHub Actions run.
 
 Coverage artifacts are diagnostic CI outputs only. They are not release artifacts and are not
-consumed by the release workflow.
+consumed by the release workflow. That artifact classification does not make canonical coverage
+generation or the non-informational Codecov project status informational.
 
 On a version-tag push, the `release-artifacts` job:
 
