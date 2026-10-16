@@ -15,13 +15,21 @@ registered with the expected workload and pipeline modes without
 executing the benchmarks themselves.
 """
 
+# Allow testing private helper functions directly without inline comment overhead.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
+    from argparse import Namespace
     from pathlib import Path
 
+    from tools.perf.pipeline_memory_baseline import Mode
+    from tools.perf.pipeline_memory_baseline import RunDestination
     from tools.perf.pipeline_memory_baseline import RunMeasurement
     from tools.perf.pipeline_memory_baseline import Scenario
 
@@ -122,3 +130,79 @@ def test_measurement_from_mapping_accepts_repository_fields() -> None:
     assert measurement.result_count == 250
     assert measurement.result_diff_bytes == 4096
     assert measurement.exit_code is None
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, "n/a"),
+        (12, "12 B"),
+        (1024, "1.0 KiB"),
+        (1126, "1.1 KiB"),
+        (1_048_576, "1.0 MiB"),
+        (1_677_722, "1.6 MiB"),
+    ],
+)
+def test_format_bytes_uses_compact_units(
+    value: int | None,
+    expected: str,
+) -> None:
+    """Summary formatting makes absent and scaled byte counts readable."""
+    from tools.perf import pipeline_memory_baseline as baseline
+
+    assert baseline._format_bytes(value) == expected
+
+
+def test_mode_resolution_preserves_pruning_and_output_contracts() -> None:
+    """Mode names map to explicit pipeline behavior without running a benchmark."""
+    from tools.perf import pipeline_memory_baseline as baseline
+    from topmark.config.types import OutputTarget
+
+    check: Mode = baseline._mode_from_name("check")
+    pruned_stdout: Mode = baseline._mode_from_name("check_stdout_pruned")
+
+    assert not check.prune_views
+    assert check.output_target is OutputTarget.FILE
+    assert pruned_stdout.prune_views
+    assert pruned_stdout.output_target is OutputTarget.STDOUT
+    with pytest.raises(ValueError, match="Unknown mode"):
+        baseline._mode_from_name("unknown")
+
+
+def test_resolve_destination_rejects_conflicting_or_existing_outputs(
+    tmp_path: Path,
+) -> None:
+    """Preserved report destinations require an explicit overwrite choice."""
+    from tools.perf import pipeline_memory_baseline as baseline
+
+    output: Path = tmp_path / "report.json"
+    args: Namespace = baseline._parse_args(
+        [
+            "--output",
+            str(output),
+        ]
+    )
+    destination: RunDestination = baseline._resolve_destination(args, suite=None)
+    assert destination.output_file == output
+    assert destination.output_dir is None
+
+    run_dir: Path = tmp_path / "runs" / "stable"
+    run_dir.mkdir(parents=True)
+    args = baseline._parse_args(
+        [
+            "--output-dir",
+            str(tmp_path / "runs"),
+            "--run-id",
+            "stable",
+        ]
+    )
+    with pytest.raises(FileExistsError, match="--overwrite"):
+        baseline._resolve_destination(args, suite="smoke")
+
+
+def test_measurement_from_mapping_rejects_invalid_nested_payload() -> None:
+    """JSON rehydration rejects malformed step objects instead of guessing."""
+    from tools.perf import pipeline_memory_baseline as baseline
+
+    with pytest.raises(TypeError, match="steps list"):
+        baseline.measurement_from_mapping({"steps": "not-a-list"})
