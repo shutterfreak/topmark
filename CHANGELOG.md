@@ -388,6 +388,9 @@ ______________________________________________________________________
 
 ### Fixed - Unreleased
 
+- Restored normal and coverage-suite discovery of repository-tooling tests under `tests/tools/`,
+  including its `docs` subpackage, while excluding the disposable `.zensical/` documentation build
+  workspace from pytest recursion.
 - Preserved leading and trailing Unicode whitespace in structural multiline header-field records,
   keeping parsed values and canonical comparison output convergent.
 - Fixed header scanning so marker-shaped text in source content, strings, docstrings, and test
