@@ -165,7 +165,7 @@ class ActionUse:
             Updated action use preserving the original source location and line prefix.
         """
         ref, comment = split_ref_display(ref_display)
-        suffix = "" if comment is None else f" # {comment}"
+        suffix: str = "" if comment is None else f" # {comment}"
         return ActionUse(
             action=self.action,
             ref=ref,
@@ -229,10 +229,10 @@ def split_ref_display(ref_display: str) -> tuple[str, str | None]:
         Pair of ref and optional comment text.
     """
     ref, separator, comment = ref_display.partition("#")
-    stripped_ref = ref.strip()
+    stripped_ref: str = ref.strip()
     if not separator:
         return stripped_ref, None
-    stripped_comment = comment.strip()
+    stripped_comment: str = comment.strip()
     return stripped_ref, stripped_comment or None
 
 
@@ -268,15 +268,17 @@ def choose_preferred_ref_display(action_uses: Sequence[ActionUse]) -> str | None
     """
     candidates: dict[str, tuple[int, ...]] = {}
     for action_use in action_uses:
-        version = parse_version_comment(action_use.comment)
+        version: tuple[int, ...] | None = parse_version_comment(action_use.comment)
         if version is not None and SHA_PATTERN.match(action_use.ref):
             candidates[action_use.ref_display] = version
 
     if not candidates:
         return None
 
-    highest_version = max(candidates.values())
-    preferred = [ref for ref, version in candidates.items() if version == highest_version]
+    highest_version: tuple[int, ...] = max(candidates.values())
+    preferred: list[str] = [
+        ref for ref, version in candidates.items() if version == highest_version
+    ]
     if len(preferred) != 1:
         return None
     return preferred[0]
@@ -436,12 +438,12 @@ def fix_repository(root: Path, result: AuditResult) -> tuple[ActionUse, ...]:
         ValueError: If at least one divergent action cannot be repaired automatically.
     """
     if result.unfixable_actions:
-        action_names = ", ".join(sorted(result.unfixable_actions))
+        action_names: str = ", ".join(sorted(result.unfixable_actions))
         raise ValueError(f"Cannot select preferred refs for: {action_names}")
 
     replacements_by_path: dict[Path, dict[int, ActionUse]] = defaultdict(dict)
     for action_uses in result.divergent_actions.values():
-        preferred_ref_display = choose_preferred_ref_display(action_uses)
+        preferred_ref_display: str | None = choose_preferred_ref_display(action_uses)
         if preferred_ref_display is None:
             continue
         for action_use in action_uses:
@@ -455,16 +457,18 @@ def fix_repository(root: Path, result: AuditResult) -> tuple[ActionUse, ...]:
     for relative_path, replacements in sorted(
         replacements_by_path.items(), key=lambda item: item[0].as_posix()
     ):
-        path = root / relative_path
-        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        path: Path = root / relative_path
+        with path.open(encoding="utf-8", newline="") as source:
+            lines: list[str] = source.read().splitlines(keepends=True)
         for line_number, replacement in sorted(replacements.items()):
-            original = lines[line_number - 1]
-            newline = "\n" if original.endswith("\n") else ""
+            original: str = lines[line_number - 1]
+            newline: str = "\n" if original.endswith("\n") else ""
             if original.endswith("\r\n"):
                 newline = "\r\n"
             lines[line_number - 1] = f"{replacement.replacement_line}{newline}"
             rewritten.append(replacement)
-        path.write_text("".join(lines), encoding="utf-8")
+        with path.open("w", encoding="utf-8", newline="") as destination:
+            destination.write("".join(lines))
 
     return tuple(rewritten)
 
@@ -483,12 +487,12 @@ def format_ref_count(ref: str, count: int, file_count: int | None = None) -> str
     Returns:
         Human-readable count line for reports.
     """
-    reference_suffix = "reference" if count == 1 else "references"
+    reference_suffix: str = "reference" if count == 1 else "references"
 
     if file_count is None:
         return f"    - {ref}: {count} {reference_suffix}"
 
-    file_suffix = "file" if file_count == 1 else "files"
+    file_suffix: str = "file" if file_count == 1 else "files"
     return f"    - {ref}: {count} {reference_suffix} across {file_count} {file_suffix}"
 
 
@@ -517,8 +521,8 @@ def format_summary_report(uses: Sequence[ActionUse]) -> str:
         grouped_files[action_use.action][action_use.ref_display].add(action_use.path)
 
     for action in sorted(grouped):
-        total = sum(grouped[action].values())
-        suffix = "reference" if total == 1 else "references"
+        total: int = sum(grouped[action].values())
+        suffix: str = "reference" if total == 1 else "references"
         lines.append(f"{action} ({total} {suffix})")
         for ref, count in sorted(grouped[action].items()):
             lines.append(
@@ -560,8 +564,8 @@ def format_file_report(uses: Sequence[ActionUse]) -> str:
     for path in sorted(grouped, key=lambda item: item.as_posix()):
         lines.append(path.as_posix())
         for action in sorted(grouped[path]):
-            total = sum(grouped[path][action].values())
-            suffix = "reference" if total == 1 else "references"
+            total: int = sum(grouped[path][action].values())
+            suffix: str = "reference" if total == 1 else "references"
             lines.append(f"  {action} ({total} {suffix})")
             for ref, count in sorted(grouped[path][action].items()):
                 lines.append(format_ref_count(ref, count))
@@ -683,7 +687,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Automatic repair skipped: no unique preferred ref could be selected.")
             return 1
         try:
-            rewritten = fix_repository(root, result)
+            rewritten: tuple[ActionUse, ...] = fix_repository(root, result)
         except ValueError as error:
             print(format_audit_report(result))
             print()

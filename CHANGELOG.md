@@ -53,6 +53,9 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Expanded repository-tooling coverage from 41.5% to a 71.8% reporting baseline. Tooling contracts
+  now cover API snapshot generation, action-pin auditing, documentation hygiene and generation, and
+  deterministic performance-baseline helpers; no tooling coverage gate was added.
 - Added separate repository-tooling coverage reports and Codecov upload alongside canonical product
   coverage. Product statuses retain their existing `src/topmark/` denominator and 0.25 percentage-
   point tolerance; tooling coverage is initially informational.
