@@ -108,7 +108,7 @@ ______________________________________________________________________
 TopMark intentionally separates:
 
 1. repository source-tree validation;
-1. diagnostic coverage generation and external presentation;
+1. canonical coverage execution, local diagnostics, and external project-policy evaluation;
 1. dependency maintenance and pre-merge license and vulnerability review;
 1. GitHub Action maintenance;
 1. release artifact construction in CI;
