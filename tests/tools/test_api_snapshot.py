@@ -1,8 +1,8 @@
 # topmark:header:start
 #
 #   project      : TopMark
-#   file         : test_api_snapshot_generator.py
-#   file_relpath : tests/api/test_api_snapshot_generator.py
+#   file         : test_api_snapshot.py
+#   file_relpath : tests/tools/test_api_snapshot.py
 #   license      : MIT
 #   copyright    : (c) 2025 Olivier Biot
 #

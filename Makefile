@@ -242,7 +242,7 @@ links-site: check-nox check-lychee
 # Fast local check using only the current interpreter.
 .PHONY: api-snapshot-dev
 api-snapshot-dev: check-uv
-	@$(UV) run --extra dev --extra typing --extra test pytest -qq tests/api/test_public_api_snapshot.py tests/api/test_api_snapshot_generator.py && \
+	@$(UV) run --extra dev --extra typing --extra test pytest -qq tests/api/test_public_api_snapshot.py tests/tools/test_api_snapshot.py && \
 	echo "✅ Public API snapshot unchanged."
 
 .PHONY: api-snapshot

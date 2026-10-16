@@ -112,7 +112,7 @@ CHECK_ZENSICAL_PARITY_SCRIPT = "tools/docs/check_zensical_parity.py"
 CHECK_CODE_HYGIENE_SCRIPT = "tools/docs/check_code_hygiene.py"
 
 TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
-TEST_API_SNAPSHOT_GENERATOR_SCRIPT = "tests/api/test_api_snapshot_generator.py"
+TEST_API_SNAPSHOT_GENERATOR_SCRIPT = "tests/tools/test_api_snapshot.py"
 
 
 # Session installs are resolved from project metadata and extras.
