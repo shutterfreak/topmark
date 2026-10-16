@@ -53,6 +53,8 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added metadata-driven cross-command CLI contract coverage for command registration, option
+  applicability, shared Click option metadata, public help, and machine-readable envelopes.
 - Expanded repository-tooling coverage from 41.5% to a 71.8% reporting baseline. Tooling contracts
   now cover API snapshot generation, action-pin auditing, documentation hygiene and generation, and
   deterministic performance-baseline helpers; no tooling coverage gate was added.
