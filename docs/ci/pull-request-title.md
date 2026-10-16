@@ -47,6 +47,9 @@ The workflow uses `pull_request_target` with read-only pull-request permission. 
 out the pull-request branch or run repository code; it reads only the pull-request title. This lets
 the validation run safely for pull requests from forks while keeping the policy defined on `main`.
 
+It runs on the explicit `ubuntu-26.04` image, consistent with the repository's Linux runner baseline
+and independent of unreviewed `ubuntu-latest` migrations.
+
 ______________________________________________________________________
 
 ## Local commit-message validation

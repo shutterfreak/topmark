@@ -116,7 +116,7 @@ ______________________________________________________________________
 The workflow currently consists of a single lightweight audit job running on:
 
 ```yaml
-runs-on: ubuntu-latest
+runs-on: ubuntu-26.04
 ```
 
 The job:

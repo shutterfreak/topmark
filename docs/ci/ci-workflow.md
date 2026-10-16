@@ -109,7 +109,6 @@ ______________________________________________________________________
 | `tests`             | Run the supported Python test matrix                                    | `nox`, `pytest`                            |
 | `smoke`             | Run fast, marker-selected cross-cutting checks on canonical Python      | `nox`, `pytest`                            |
 | `filesystem-tests`  | Run canonical Python tests across macOS and Windows filesystems         | `nox`, `pytest`                            |
-| `ubuntu-26-04`      | Run canonical Python tests on Ubuntu 26.04                              | `nox`, `pytest`                            |
 | `coverage`          | Generate and publish canonical coverage reports                         | `nox`, `coverage.py`, `pytest`, Codecov    |
 | `api-snapshot`      | Check structured public API contracts for source-changing pull requests | `nox`, `tools/api_snapshot.py`             |
 | `links`             | Validate links in source Markdown files                                 | `lycheeverse/lychee-action`, `lychee.toml` |
@@ -128,12 +127,9 @@ Python version. It invokes `nox -s smoke`, which selects only the small, hand-pi
 failure feedback for representative contracts; it does not replace or gate the authoritative full QA
 matrix.
 
-Release-critical Linux jobs explicitly use `ubuntu-24.04`, preventing a rolling `ubuntu-latest`
-image migration from changing the primary validation or release environment without review. The
-separate `ubuntu-26-04` job runs the canonical Python QA session on Ubuntu 26.04, providing an
-explicit forward-compatibility signal while the supported Python matrix remains pinned to Ubuntu
-24.04. It runs for Python-relevant changes and whenever its defining CI workflow changes, so edits
-to the compatibility gate are validated by that gate on pull requests.
+Linux jobs explicitly use `ubuntu-26.04`, preventing a rolling `ubuntu-latest` image migration from
+changing the validation or release environment without review. The supported Python matrix therefore
+provides the primary Linux compatibility coverage on Ubuntu 26.04.
 
 Filesystem-sensitive behavior is validated separately by the `filesystem-tests` job. The supported
 Python-version matrix already runs canonical Linux QA on Ubuntu, so `filesystem-tests` focuses on
@@ -151,7 +147,7 @@ silently skipping those tests.
 Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolved canonical Python
 version. It runs `nox -s coverage` for `src/topmark/` and `nox -s coverage_tools` for `tools/`.
 Coverage intentionally runs outside the full test matrix to avoid duplicating expensive QA work that
-is already covered by the compatibility matrix.
+is already covered by the supported Python matrix.
 
 After generating the reports, the job uploads `coverage.xml` as `product` and `coverage-tools.xml`
 as `tools`. Automatic report discovery is disabled so JSON reports, coverage databases, and HTML
@@ -167,7 +163,7 @@ policy failure. See [Codecov coverage policy](./codecov.md) for the status, comm
 repository-settings contract.
 
 The coverage job depends on the full supported-version test matrix succeeding before coverage
-reports are generated. This keeps the compatibility matrix as the primary validation gate while
+reports are generated. This keeps the supported Python matrix as the primary validation gate while
 avoiding additional coverage-processing noise after known test failures. Platform-dependent
 macOS/Windows filesystem validation remains a separate gate through `filesystem-tests`.
 
@@ -177,8 +173,8 @@ separate hard-coded version literals in the workflow.
 
 macOS and Windows compatibility jobs intentionally retain `macos-latest` and `windows-latest`. Those
 jobs are compatibility signals for the current GitHub-hosted platform images; pinning them would
-delay detection of platform-image changes. The published-artifact validation workflow follows the
-same policy: Linux uses `ubuntu-24.04`, while macOS and Windows use their current rolling labels.
+delay detection of platform-image changes. The published-artifact validation workflow uses the same
+Ubuntu 26.04 Linux baseline, while macOS and Windows use their current rolling labels.
 
 The `pre-commit` job is the deliberate exception. The repository self-tests the released `v1.0.1`
 TopMark hook declared in `.pre-commit-config.yaml`; that release supports Python 3.10-3.14 but not

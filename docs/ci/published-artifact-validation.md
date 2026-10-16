@@ -109,7 +109,7 @@ Supported platform selections are:
 | Value            | Meaning                          |
 | ---------------- | -------------------------------- |
 | `all`            | Run the complete platform matrix |
-| `ubuntu-24.04`   | Validate Linux only              |
+| `ubuntu-26.04`   | Validate Linux only              |
 | `macos-latest`   | Validate macOS only              |
 | `windows-latest` | Validate Windows only            |
 
@@ -148,11 +148,11 @@ By default, the workflow validates installation across:
 
 | Platform | Runner           |
 | -------- | ---------------- |
-| Linux    | `ubuntu-24.04`   |
+| Linux    | `ubuntu-26.04`   |
 | macOS    | `macos-latest`   |
 | Windows  | `windows-latest` |
 
-Linux uses the explicit `ubuntu-24.04` image so release-critical validation does not inherit an
+Linux uses the explicit `ubuntu-26.04` image so release-critical validation does not inherit an
 unreviewed `ubuntu-latest` migration. macOS and Windows intentionally retain their rolling labels:
 this workflow uses them to detect compatibility with the current GitHub-hosted platform images.
 
