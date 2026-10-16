@@ -116,6 +116,7 @@ make docs-build
 make links-site
 make api-snapshot-dev
 make coverage
+make coverage-tools
 ```
 
 Additional rules:
@@ -126,9 +127,10 @@ Additional rules:
 - Run `make links-site` when changing documentation links or link-validation behavior.
 - Run `make api-snapshot-dev` when touching the stable public API.
 - Run `make api-snapshot-update` only for an intentional, reviewed public API change.
-- For behavior-changing code, run `make coverage` when feasible, then inspect changed executable
-  lines and branches with `make coverage-changed`; report the diagnostic result or why it was not
-  run. Coverage is a diagnostic, not a percentage-driven release gate.
+- For behavior-changing product code, run `make coverage` when feasible, then inspect changed
+  executable lines and branches with `make coverage-changed`; report the diagnostic result or why it
+  was not run. For behavior-changing repository tooling, run `make coverage-tools` when feasible.
+  Coverage is a diagnostic, not a percentage-driven release gate.
 - After dependency edits, update `uv.lock` with `make uv-lock` or `make uv-lock-upgrade`, as
   appropriate.
 - Report checks that were not run and the reason they were skipped.

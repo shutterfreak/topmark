@@ -72,7 +72,7 @@ Contributor-facing documentation is split by topic:
 - [Development documentation](dev/index.md) covers architecture, public API policy, documentation
   conventions, release process, and roadmap material.
 - [CI documentation](ci/index.md) covers how this repository validates itself and publishes
-  artifacts, including canonical coverage reports and non-blocking Codecov publication.
+  artifacts, including product-coverage policy and reporting-only tooling coverage.
 - [Usage documentation](usage/index.md) covers the user-facing CLI, configuration, policies,
   integrations, and workflows.
 - [Configuration documentation](configuration/index.md) covers configuration discovery, generated

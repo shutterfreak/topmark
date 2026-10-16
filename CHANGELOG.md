@@ -53,6 +53,9 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added separate repository-tooling coverage reports and Codecov upload alongside canonical product
+  coverage. Product statuses retain their existing `src/topmark/` denominator and 0.25 percentage-
+  point tolerance; tooling coverage is initially informational.
 - Added a marker-driven, hand-picked smoke suite with canonical-Python CI feedback, a `nox -s smoke`
   session, and a `make smoke` convenience target; the full QA matrix remains authoritative.
 - Added the non-enforcing `make coverage-changed` contributor diagnostic, which compares changed

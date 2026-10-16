@@ -17,14 +17,37 @@ coverage:
         if_not_found: failure
         informational: false
         only_pulls: true
+        flags:
+          - product
     patch:
       default:
         target: auto
         informational: true
         only_pulls: true
+        flags:
+          - product
+
+flags:
+  product:
+    paths:
+      - src/topmark/**
+  tools:
+    paths:
+      - tools/**
+
+component_management:
+  individual_components:
+    - component_id: topmark
+      name: TopMark package
+      paths:
+        - src/topmark/**
+    - component_id: tools
+      name: Repository tooling
+      paths:
+        - tools/**
 
 comment:
-  layout: "header, diff, files, footer"
+  layout: "header, diff, flags, components, files, footer"
   behavior: default
   require_changes: "any_change"
   require_base: true

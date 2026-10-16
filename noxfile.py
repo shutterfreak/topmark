@@ -28,6 +28,8 @@ Sessions:
   - `code_hygiene`: Enforce lightweight Python prose hygiene (custom tool).
   - `qa`: Per-Python session that runs pytest and pyright.
   - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
+  - `coverage`: Canonical product coverage for `src/topmark/`.
+  - `coverage_tools`: Repository-tooling coverage for `tools/`.
   - `coverage_changed`: Diagnose coverage gaps in changed executable source lines.
   - `self_check`: Verify that the current TopMark checkout accepts every tracked file.
   - `verify`: Non-test local quality checks, including link validation.
@@ -456,7 +458,7 @@ def test_entrypoints(session: nox.Session) -> None:
 
 @nox.session(python=CANONICAL_PYTHON)
 def coverage(session: nox.Session) -> None:
-    """Run tests with coverage and generate reports."""
+    """Run canonical product coverage and generate reports."""
     session.install("-e", DEPS_QA)
 
     session.run(
@@ -472,6 +474,28 @@ def coverage(session: nox.Session) -> None:
         "--cov-report=xml",
         "--cov-report=json",
         *session.posargs,
+    )
+
+
+@nox.session(python=CANONICAL_PYTHON)
+def coverage_tools(session: nox.Session) -> None:
+    """Run repository-tooling tests with separate tooling coverage reports."""
+    session.install("-e", DEPS_QA)
+
+    session.run(
+        "pytest",
+        "-q",
+        "tests/tools",
+        "-m",
+        "not hypothesis_slow",
+        "--cov=tools",
+        "--cov-branch",
+        "--cov-report=term-missing",
+        "--cov-report=html:htmlcov-tools",
+        "--cov-report=xml:coverage-tools.xml",
+        "--cov-report=json:coverage-tools.json",
+        *session.posargs,
+        env={"COVERAGE_FILE": ".coverage.tools"},
     )
 
 

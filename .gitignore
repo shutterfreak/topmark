@@ -73,9 +73,12 @@ dist/
 # Coverage
 .coverage
 .coverage.*
-coverage.xml
 coverage.json
+coverage.xml
+coverage-tools.json
+coverage-tools.xml
 htmlcov/
+htmlcov-tools/
 
 # Performance audit
 artifacts/perf

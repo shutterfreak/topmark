@@ -467,10 +467,26 @@ jobs:
         run: |
           nox -s coverage -p ${{ needs.python-metadata.outputs.canonical }}
 
-      - name: Upload coverage to Codecov
+      - name: Run tooling coverage session
+        run: |
+          nox -s coverage_tools -p ${{ needs.python-metadata.outputs.canonical }}
+
+      - name: Upload product coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
+          flags: product
+          name: product
+          disable_search: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+      - name: Upload tooling coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: ./coverage-tools.xml
+          flags: tools
+          name: tools
           disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
@@ -483,15 +499,18 @@ jobs:
           import os
           from pathlib import Path
 
-          data = json.loads(Path("coverage.json").read_text(encoding="utf-8"))
-          totals = data["totals"]
-
           summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
           with summary.open("a", encoding="utf-8") as f:
               f.write("## Coverage\n\n")
-              f.write(f"- Coverage: {totals['percent_covered_display']}%\n")
-              f.write(f"- Covered lines: {totals['covered_lines']}\n")
-              f.write(f"- Total statements: {totals['num_statements']}\n")
+              for label, report_name in (
+                  ("Product", "coverage.json"),
+                  ("Tooling", "coverage-tools.json"),
+              ):
+                  totals = json.loads(Path(report_name).read_text(encoding="utf-8"))["totals"]
+                  f.write(f"### {label}\n\n")
+                  f.write(f"- Coverage: {totals['percent_covered_display']}%\n")
+                  f.write(f"- Covered lines: {totals['covered_lines']}\n")
+                  f.write(f"- Total statements: {totals['num_statements']}\n")
               f.write("\n> [!NOTE]\n> Detailed HTML/XML/JSON reports are available as workflow artifacts.\n")
           PY
           python coverage_summary.py
@@ -500,7 +519,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-html
-          path: htmlcov/
+          path: |
+            htmlcov/
+            htmlcov-tools/
           if-no-files-found: error
 
       - name: Upload coverage machine reports
@@ -510,6 +531,8 @@ jobs:
           path: |
             coverage.xml
             coverage.json
+            coverage-tools.xml
+            coverage-tools.json
           if-no-files-found: error
 
   api-snapshot:
