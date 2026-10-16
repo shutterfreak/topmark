@@ -608,7 +608,7 @@ def build_scenarios(root: Path, *, include_large: bool) -> list[Scenario]:
                 path.write_bytes(b"print('a')\nprint('b')\r\nprint('c')\n")
                 description = "Mixed newline file; should stop before expensive update paths."
             case "bom_file":
-                path.write_bytes("\ufeffprint('bom baseline')\n".encode("utf-8"))
+                path.write_bytes("\ufeffprint('bom baseline')\n".encode())
                 description = (
                     "BOM-bearing file; exercises BOM normalization and retention behavior."
                 )
@@ -1235,7 +1235,7 @@ def _json_default(value: object) -> object:
     """Serialize dataclass values for JSON output."""
     if isinstance(value, Path):
         return value.as_posix()
-    if isinstance(value, (Scenario, Mode, StepSample, RunMeasurement, RunDestination)):
+    if isinstance(value, (Scenario | Mode | StepSample | RunMeasurement | RunDestination)):
         return asdict(value)
     if isinstance(value, OutputTarget):
         return value.value

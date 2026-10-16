@@ -295,7 +295,9 @@ ______________________________________________________________________
 
 - The snapshot test is implemented in `tests/api/test_public_api_snapshot.py`.
 - Focused generator and real-surface contracts are implemented in
-  `tests/api/test_api_snapshot_generator.py`.
+  `tests/tools/test_api_snapshot.py`. They belong to repository tooling because they exercise
+  `tools/api_snapshot.py`; the baseline-equality contract remains in
+  `tests/api/test_public_api_snapshot.py`.
 - The generator logic lives in `tools/api_snapshot.py`.
 - Source-backed declaration discovery and annotation normalization ensure consistent diffing across
   supported Python interpreters and operating systems.

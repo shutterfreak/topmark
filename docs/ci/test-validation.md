@@ -197,12 +197,16 @@ them. Measure repository tooling separately with:
 make coverage-tools
 ```
 
-That command measures `tools/` through `tests/tools/` and writes distinct reports. The dedicated CI
-coverage job retains both report sets as GitHub Actions artifacts and uploads them separately to
-Codecov. Product coverage retains the documented tolerance and informational patch status; tooling
-coverage is initially reporting-only. Contributors do not need Codecov credentials for local
-coverage. See the [CI workflow](./ci-workflow.md#artifact-handling) for the reporting and artifact
-model.
+That command measures `tools/` through `tests/tools/` and writes distinct reports. Tool
+implementation tests belong under `tests/tools/`, including the structured API snapshot generator;
+the API snapshot's baseline-equality contract remains under `tests/api/`. The dedicated CI coverage
+job retains both report sets as GitHub Actions artifacts and uploads them separately to Codecov.
+Product coverage retains the documented tolerance and informational patch status; tooling coverage
+is initially reporting-only. The tooling report covers deterministic repository-maintenance tools;
+generator and performance-baseline tests exercise their deterministic generation, parsing, and
+reporting paths, but do not execute full documentation builds or performance workloads merely to
+raise coverage. Contributors do not need Codecov credentials for local coverage. See the
+[CI workflow](./ci-workflow.md#artifact-handling) for the reporting and artifact model.
 
 Afterwards, run the changed-lines diagnostic:
 
