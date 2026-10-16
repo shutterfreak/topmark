@@ -131,10 +131,13 @@ lines and branches with:
 ```bash
 make coverage
 make coverage-changed
+make coverage-tools
 ```
 
-This produces the HTML report in `htmlcov/` together with `coverage.xml` and `coverage.json`.
-Generated coverage files are local diagnostics and are not committed.
+`make coverage` produces the product HTML report in `htmlcov/` together with `coverage.xml` and
+`coverage.json`. `make coverage-tools` independently measures `tools/` through `tests/tools/` and
+produces `htmlcov-tools/`, `coverage-tools.xml`, and `coverage-tools.json`. Generated coverage files
+are local diagnostics and are not committed.
 
 Run this pair after each meaningful source or test edit so `coverage.json` describes the source
 currently being compared. A clean working tree is fine when branch changes are already committed:
@@ -152,12 +155,12 @@ the Git diff.
 If `coverage.json` is absent, the command reports that coverage was not assessed and tells you to
 run `make coverage`; it does not claim the changed code is covered.
 
-GitHub CI runs the same canonical coverage session after the supported Python test matrix succeeds.
-It retains the HTML, XML, and JSON reports as workflow artifacts, publishes a short GitHub Step
-Summary, and submits `coverage.xml` to Codecov. Codecov compares project coverage with the pull
-request base, permits a decline of at most 0.25 percentage points, reports patch coverage
-informationally, and supplies the main-branch coverage badge in `README.md`. Coverage remains
-independent of release publication.
+GitHub CI runs the product and tooling coverage sessions after the supported Python test matrix
+succeeds. It retains their HTML, XML, and JSON reports as workflow artifacts, publishes a short
+GitHub Step Summary, and uploads separate `product` and `tools` reports to Codecov. Product coverage
+continues to compare `src/topmark/` with the pull-request base, permits a decline of at most 0.25
+percentage points, and reports patch coverage informationally. Tooling coverage is reported without
+a separate status or gate. Coverage remains independent of release publication.
 
 The upstream workflow authenticates with the repository-scoped `CODECOV_TOKEN` secret. Contributors
 do not need that token for local coverage, and must not add coverage-service credentials to source,

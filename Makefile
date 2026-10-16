@@ -58,7 +58,8 @@ help:
 	@echo "  smoke           Run the fast marker-selected smoke suite (nox: smoke)"
 	@echo "  pytest          Run current-interpreter tests, excluding slow Hypothesis tests; supports PYTEST_PAR=\"-n auto\""
 	@echo "  pytest-full     Run all current-interpreter tests; supports PYTEST_PAR=\"-n auto\""
-	@echo "  coverage        Run coverage testing; supports PYTEST_PAR=\"-n auto\""
+	@echo "  coverage        Run product coverage testing; supports PYTEST_PAR=\"-n auto\""
+	@echo "  coverage-tools  Run repository-tooling coverage; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-changed  Diagnose uncovered changed source lines; run coverage first"
 	@echo "  coverage-erase  Remove local coverage output"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
@@ -172,6 +173,10 @@ pytest-full: check-uv
 coverage: check-nox
 	$(NOX) $(NOX_FLAGS) -s coverage -- $(PYTEST_PAR)
 
+.PHONY: coverage-tools
+coverage-tools: check-nox
+	$(NOX) $(NOX_FLAGS) -s coverage_tools -- $(PYTEST_PAR)
+
 .PHONY: coverage-changed
 coverage-changed: check-nox
 	$(NOX) $(NOX_FLAGS) -s coverage_changed -- $(COVERAGE_CHANGED_ARGS)
@@ -180,7 +185,7 @@ coverage-changed: check-nox
 # `rm -rf` is available in the supported POSIX shells, Git Bash, and WSL.
 .PHONY: coverage-erase
 coverage-erase:
-	@rm -rf .coverage coverage.xml coverage.json htmlcov .coverage.*
+	@rm -rf .coverage coverage.xml coverage.json coverage-tools.xml coverage-tools.json htmlcov htmlcov-tools .coverage.*
 
 .PHONY: property-test
 property-test: check-nox

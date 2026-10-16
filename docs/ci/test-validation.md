@@ -190,10 +190,17 @@ Generate the canonical local coverage report:
 make coverage
 ```
 
-This generates local HTML, XML, and JSON reports without publishing them. The dedicated CI coverage
-job retains those reports as GitHub Actions artifacts and submits the XML report to Codecov. Codecov
-compares project coverage with the pull request base using the repository's documented tolerance and
-reports patch coverage informationally. Contributors do not need Codecov credentials for local
+This measures only `src/topmark/` and generates local HTML, XML, and JSON reports without publishing
+them. Measure repository tooling separately with:
+
+```bash
+make coverage-tools
+```
+
+That command measures `tools/` through `tests/tools/` and writes distinct reports. The dedicated CI
+coverage job retains both report sets as GitHub Actions artifacts and uploads them separately to
+Codecov. Product coverage retains the documented tolerance and informational patch status; tooling
+coverage is initially reporting-only. Contributors do not need Codecov credentials for local
 coverage. See the [CI workflow](./ci-workflow.md#artifact-handling) for the reporting and artifact
 model.
 
@@ -258,11 +265,13 @@ Common opt-in examples are:
 make pre-pr PYTEST_PAR="-n auto"
 make test PYTEST_PAR="-n auto"
 make coverage PYTEST_PAR="-n auto"
+make coverage-tools PYTEST_PAR="-n auto"
 make release-check PYTEST_PAR="-n auto"
 nox -s pre_pr -- -n auto
 nox -s qa -p 3.15 -- -n auto
 nox -s qa_api -p 3.15 -- -n auto
 nox -s coverage -p 3.15 -- -n auto
+nox -s coverage_tools -p 3.15 -- -n auto
 nox -s release_check -- -n auto
 ```
 
@@ -288,6 +297,7 @@ Common mappings are:
 | Run the main quality gate on the canonical Python  | `nox -s qa -p 3.15`                |
 | Run the fast marker-selected smoke suite           | `nox -s smoke`                     |
 | Generate canonical coverage data                   | `nox -s coverage -p 3.15`          |
+| Generate repository-tooling coverage data          | `nox -s coverage_tools -p 3.15`    |
 | Diagnose changed-lines coverage                    | `nox -s coverage_changed -p 3.15`  |
 | Run local pytest in parallel                       | `nox -s qa -p 3.15 -- -n auto`     |
 | Print CI Python metadata                           | `nox -s print_python_matrix`       |

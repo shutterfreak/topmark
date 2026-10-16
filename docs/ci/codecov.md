@@ -24,9 +24,10 @@ adds a coverage summary to pull requests when the measured coverage changes.
 
 The Codecov policy complements the canonical coverage job:
 
-- GitHub Actions generates `coverage.xml`, `coverage.json`, and the HTML report.
+- GitHub Actions generates separate product and tooling XML, JSON, and HTML reports.
 - GitHub retains the reports as independently available workflow artifacts.
-- Codecov receives only `coverage.xml` and evaluates the repository policy in `codecov.yml`.
+- Codecov receives the reports as separate `product` and `tools` uploads and evaluates the
+  repository policy in `codecov.yml`.
 - Maintainers review the resulting `codecov/project/default` status before merge.
 
 Codecov is the comparison and presentation layer. The local coverage session and GitHub-hosted
@@ -49,6 +50,8 @@ coverage:
         if_not_found: failure
         informational: false
         only_pulls: true
+        flags:
+          - product
 ```
 
 `target: auto` derives the target from the base commit. The `0.25%` threshold permits a decline of
@@ -66,6 +69,24 @@ on `main` do not receive an unnecessary project status.
 The CI workflow nevertheless keeps the uploader's `fail_ci_if_error` disabled so an external upload
 or service error remains distinguishable from a measured coverage-policy failure.
 
+The `product` flag confines this status to the canonical `src/topmark/` report, preserving its
+existing denominator and tolerance when tooling coverage is uploaded separately.
+
+______________________________________________________________________
+
+## Components and coverage uploads
+
+Codecov components group covered source files; they do not select test directories. TopMark defines
+the `topmark` component for `src/topmark/**` and the `tools` component for `tools/**`. In
+particular, there is no `tests/topmark/**` path: product tests remain source-aligned across the test
+suite.
+
+The CI job uploads one report per flag: `product` for canonical package coverage and `tools` for the
+separate `tests/tools/` execution. Flags therefore identify representative coverage uploads, while
+components identify source ownership. Tooling coverage appears in reports and components but has no
+separate Codecov status or gate until its coverage baseline and blind spots are deliberately
+reviewed.
+
 ______________________________________________________________________
 
 ## Patch coverage status
@@ -80,6 +101,8 @@ coverage:
         target: auto
         informational: true
         only_pulls: true
+        flags:
+          - product
 ```
 
 Patch coverage is informational. It highlights untested changed lines without creating a second

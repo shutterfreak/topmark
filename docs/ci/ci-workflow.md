@@ -24,8 +24,8 @@ pushes to `main`, and version-tag pushes before release publication consumes CI-
 The CI workflow validates that the repository source tree is healthy before changes are merged or
 released. It checks formatting, linting, typing, documentation integrity, link integrity, test
 behavior, stable public API compatibility, and canonical code coverage. The canonical coverage
-report is retained as a GitHub Actions artifact and published to Codecov for comparison, pull
-request reporting, and project-coverage policy evaluation.
+reports are retained as GitHub Actions artifacts and published to Codecov for comparison and
+pull-request reporting. The product report also supplies project-coverage policy evaluation.
 
 The workflow also builds release artifacts on version-tag pushes. This is intentional: release
 artifacts are built in the unprivileged CI workflow and later consumed by the privileged release
@@ -149,15 +149,16 @@ semantics. Symlink-dependent regressions are required in this job: the workflow 
 silently skipping those tests.
 
 Coverage reporting runs in a dedicated canonical job on Ubuntu using the resolved canonical Python
-version and the existing `nox -s coverage` session. Coverage intentionally runs outside the full
-test matrix to avoid duplicating expensive QA work that is already covered by the compatibility
-matrix.
+version. It runs `nox -s coverage` for `src/topmark/` and `nox -s coverage_tools` for `tools/`.
+Coverage intentionally runs outside the full test matrix to avoid duplicating expensive QA work that
+is already covered by the compatibility matrix.
 
-After generating the reports, the job uploads only `coverage.xml` to Codecov. Automatic report
-discovery is disabled so `coverage.json`, the coverage database, and the HTML report are not
-accidentally submitted as additional inputs. The upload action uses `fail_ci_if_error: false`, so an
-uploader or external-service error does not masquerade as a local coverage-test failure. Codecov
-separately evaluates `codecov.yml` and reports the project and patch status contexts.
+After generating the reports, the job uploads `coverage.xml` as `product` and `coverage-tools.xml`
+as `tools`. Automatic report discovery is disabled so JSON reports, coverage databases, and HTML
+reports are not accidentally submitted as additional inputs. The upload action uses
+`fail_ci_if_error: false`, so an uploader or external-service error does not masquerade as a local
+coverage-test failure. Codecov separately evaluates `codecov.yml` and reports the product project
+and patch status contexts; tooling coverage is initially reporting-only.
 
 The project status compares the pull request head with its base and permits a decline of at most
 0.25 percentage points; unlike patch coverage, it is non-informational. A failure to generate the
@@ -216,12 +217,12 @@ The CI workflow produces release artifacts only for tag pushes matching `v*`.
 
 The workflow also publishes coverage artifacts from the dedicated `coverage` job:
 
-- an HTML coverage report;
-- XML and JSON machine-readable coverage reports;
+- product and tooling HTML coverage reports;
+- product and tooling XML and JSON machine-readable coverage reports;
 - a short GitHub Step Summary with a coverage overview and artifact notice.
 
-The same job submits the XML report to Codecov. Codecov presents coverage history, evaluates the
-pull-request project threshold, posts coverage-change comments, and supplies the main-branch
+The same job submits the XML reports to Codecov. Codecov presents coverage history, evaluates the
+product pull-request project threshold, posts coverage-change comments, and supplies the main-branch
 coverage badge shown in `README.md`; the badge links to TopMark's public Codecov
 [dashboard](https://app.codecov.io/gh/shutterfreak/topmark). This external integration complements
 rather than replaces the reports retained with the GitHub Actions run.
@@ -288,6 +289,7 @@ nox -s docs
 nox -s smoke
 nox -s qa -p 3.15
 nox -s coverage -p 3.15
+nox -s coverage_tools -p 3.15
 ```
 
 After generating local coverage data, contributors can run `make coverage-changed` to inspect
@@ -314,6 +316,7 @@ make test PYTEST_PAR="-n auto"
 nox -s pre_pr -- -n auto
 nox -s qa -p 3.15 -- -n auto
 nox -s coverage -p 3.15 -- -n auto
+nox -s coverage_tools -p 3.15 -- -n auto
 nox -s release_check -- -n auto
 ```
 
@@ -367,7 +370,8 @@ When editing this workflow:
 - keep the coverage job canonical and lightweight rather than instrumenting the full compatibility
   matrix;
 - keep the Codecov action pinned to a full commit SHA, pass only the repository-scoped
-  `CODECOV_TOKEN`, and keep explicit report discovery limited to `coverage.xml`;
+  `CODECOV_TOKEN`, and keep explicit report discovery limited to the product and tooling XML
+  reports;
 - keep uploader or external-service errors distinct from local coverage execution failures and
   retain GitHub-hosted coverage reports as independently available diagnostics;
 - keep `codecov/project/default` aligned with the documented 0.25 percentage-point tolerance and
