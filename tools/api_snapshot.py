@@ -294,7 +294,7 @@ def _normalize_ast(
             for item in node.elts
         ]
         return f"[{', '.join(values)}]"
-    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub | ast.UAdd)):
         sign = "-" if isinstance(node.op, ast.USub) else "+"
         return sign + _normalize_ast(
             node.operand,
@@ -448,7 +448,7 @@ def _literal_default(value: object) -> SymbolRecord:
             "type": type(value).__name__,
             "member": value.name,
         }
-    if value is None or isinstance(value, (bool, int, str)):
+    if value is None or isinstance(value, (bool | int | str)):
         return {"kind": "literal", "value": typing.cast("JSONScalar", value)}
     if isinstance(value, float):
         if not math.isfinite(value):

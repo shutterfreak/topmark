@@ -26,11 +26,18 @@ SHA_ONE: str = "1" * 40
 SHA_TWO: str = "2" * 40
 
 
-def _write_workflow(root: Path, name: str, content: str) -> Path:
+def _write_workflow(
+    root: Path,
+    name: str,
+    content: str,
+) -> Path:
     """Write a workflow fixture and return its path."""
     path: Path = root / ".github" / "workflows" / name
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+
+    # Write raw UTF-8 bytes, preventing Windows text-mode newline expansion.
+    path.write_bytes(content.encode("utf-8"))
+
     return path
 
 
@@ -66,9 +73,12 @@ def test_fix_rewrites_lower_version_pin_and_preserves_line_endings(
     rewritten: tuple[pins.ActionUse, ...] = pins.fix_repository(tmp_path, result)
 
     assert [use.ref for use in rewritten] == [SHA_TWO]
-    assert path.read_text(encoding="utf-8") == (
-        f"  uses: actions/checkout@{SHA_TWO} # v4.2.0\n"
-        f"  uses: actions/checkout@{SHA_TWO} # v4.2.0\n"
+    assert (
+        path.read_bytes()
+        == (
+            f"  uses: actions/checkout@{SHA_TWO} # v4.2.0\r\n"
+            f"  uses: actions/checkout@{SHA_TWO} # v4.2.0\r\n"
+        ).encode()
     )
     assert not pins.audit_repository(tmp_path).has_failures
 
