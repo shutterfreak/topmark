@@ -119,6 +119,8 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Pytest now reports the reasons for skipped and expected-failure tests by default, improving local
+  and CI test-feedback diagnostics without changing test selection or outcomes.
 - Reorganized repository-tooling tests under `tests/tools/` while retaining `tests/dev_validation/`
   for repository-invariant checks.
 - Reorganized the Makefile help menu and target layout around the contributor workflow, clarified

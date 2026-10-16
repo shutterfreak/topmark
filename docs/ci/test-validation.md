@@ -95,6 +95,10 @@ markers so exclusions remain visible in the central pytest configuration.
 | `integration`         | Environment-dependent integration checks that exercise interactions with external tooling, the operating system, or shell features (for example, shell completion). | Run selectively where the environment supports them.                              |
 | `smoke`               | Small, hand-picked cross-cutting checks that provide early feedback for the CLI, public API, and registry.                                                          | Runs on canonical Python as an early-feedback job; full QA remains authoritative. |
 
+Pytest's project defaults include `-rsx`, so completed test runs report the reasons for skipped and
+expected-failure tests. This improves review and troubleshooting feedback only; it does not select
+tests or change their pass/fail semantics.
+
 ______________________________________________________________________
 
 ## Developer Validation Tests
