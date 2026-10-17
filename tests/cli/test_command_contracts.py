@@ -21,9 +21,12 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 from typing import Final
+from typing import Protocol
+from typing import cast
 
 import click
 import pytest
+import rich_click
 
 from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
@@ -47,6 +50,12 @@ if TYPE_CHECKING:
 
 
 CommandPath = tuple[str, ...]
+
+
+class _RichOptionPanel(Protocol):
+    """Minimal Rich Click option-panel metadata used by this contract test."""
+
+    options: list[str]
 
 
 DISPLAY_OPTIONS: Final[frozenset[str]] = frozenset(
@@ -198,6 +207,21 @@ HIDDEN_ALIASES: Final[Mapping[str, str]] = MappingProxyType(
 COMMAND_SPECIFIC_HELP_OPTIONS: Final[frozenset[str]] = frozenset({CliOpt.FILES_FROM})
 """Shared parser options whose help describes command-specific behavior."""
 
+OPTION_GROUPED_COMMAND_PATHS: Final[tuple[CommandPath, ...]] = (
+    (CliCmd.CHECK,),
+    (CliCmd.STRIP,),
+    (CliCmd.PROBE,),
+    (CliCmd.CONFIG, CliCmd.CONFIG_CHECK),
+    (CliCmd.CONFIG, CliCmd.CONFIG_DEFAULTS),
+    (CliCmd.CONFIG, CliCmd.CONFIG_DUMP),
+    (CliCmd.CONFIG, CliCmd.CONFIG_INIT),
+    (CliCmd.REGISTRY, CliCmd.REGISTRY_FILETYPES),
+    (CliCmd.REGISTRY, CliCmd.REGISTRY_PROCESSORS),
+    (CliCmd.REGISTRY, CliCmd.REGISTRY_BINDINGS),
+    (CliCmd.VERSION,),
+)
+"""Commands whose complete option surfaces use explicit Rich Click panels."""
+
 
 def _walk_commands(
     command: click.Command,
@@ -237,6 +261,14 @@ def _visible_options(command: click.Command) -> list[click.Option]:
     ]
 
 
+def _panel_option_names(command: click.Command) -> list[str]:
+    """Return option spellings assigned to explicit Rich Click panels."""
+    assert isinstance(command, rich_click.RichCommand)
+    return [
+        option for panel in command.panels for option in cast("_RichOptionPanel", panel).options
+    ]
+
+
 def _option(command: click.Command, canonical: str) -> click.Option:
     """Return the unique visible option using a canonical long spelling."""
     matches: list[click.Option] = [
@@ -267,6 +299,19 @@ def test_command_exposes_exactly_its_declared_visible_options(path: CommandPath)
         if option_name.startswith("--")
     }
     assert actual == set(PUBLIC_COMMAND_OPTIONS[path])
+
+
+@pytest.mark.parametrize("path", OPTION_GROUPED_COMMAND_PATHS, ids="-".join)
+def test_option_panels_cover_every_visible_option(
+    path: CommandPath,
+) -> None:
+    """Every visible option belongs to one explicit help panel where panels are used."""
+    command: click.Command = _command_for_path(path)
+    panel_option_names: list[str] = _panel_option_names(command)
+    expected_option_names: set[str] = set(PUBLIC_COMMAND_OPTIONS[path]) | {CliOpt.HELP}
+
+    assert len(panel_option_names) == len(set(panel_option_names))
+    assert set(panel_option_names) == expected_option_names
 
 
 @pytest.mark.smoke

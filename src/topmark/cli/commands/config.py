@@ -27,6 +27,7 @@ from topmark.cli.commands.config_check import config_check_command
 from topmark.cli.commands.config_defaults import config_defaults_command
 from topmark.cli.commands.config_dump import config_dump_command
 from topmark.cli.commands.config_init import config_init_command
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
@@ -57,6 +58,7 @@ from topmark.cli.options import GROUP_CONTEXT_SETTINGS
                 command_line=f"topmark {CliCmd.CONFIG} {CliCmd.CONFIG_INIT} > topmark.toml",
             ),
         ),
+        reference_url=command_reference_url("commands/config"),
     ),
 )
 def config_command() -> None:

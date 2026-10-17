@@ -21,9 +21,14 @@ import click
 import rich_click
 
 from topmark.cli.cmd_common import init_common_state
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
+from topmark.cli.help import rich_click_option_panel
+from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
+from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
+from topmark.cli.help_panels import VERSION_FORMAT_PANEL_OPTIONS
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -77,7 +82,19 @@ if TYPE_CHECKING:
             "Default output uses the installed package version.",
             "Machine-readable formats emit structured version metadata.",
         ),
+        reference_url=command_reference_url("commands/version"),
     ),
+)
+@rich_click_option_panel(
+    "Version format",
+    options=[*VERSION_FORMAT_PANEL_OPTIONS],
+)
+@rich_click_option_panel(
+    "Output and display",
+    options=[
+        *DISPLAY_PANEL_OPTIONS,
+        *OUTPUT_AND_HELP_PANEL_OPTIONS,
+    ],
 )
 @common_color_options
 @common_text_output_verbosity_options
