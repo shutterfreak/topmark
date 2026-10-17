@@ -24,7 +24,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 
+import click
 import pytest
+from rich.text import Text
 
 from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
@@ -34,6 +36,7 @@ from topmark.cli.documentation import command_reference_url
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
+from topmark.cli.main import cli
 
 if TYPE_CHECKING:
     from click.testing import Result
@@ -93,6 +96,19 @@ COMMAND_REFERENCE_PATHS: Final[dict[tuple[str, ...], str]] = {
 }
 
 
+def _command_epilog(command_path: tuple[str, ...]) -> Text:
+    """Return the Rich epilog configured for a public command path."""
+    command: click.Command = cli
+    for command_name in command_path:
+        assert isinstance(command, click.Group)
+        child: click.Command | None = command.commands.get(command_name)
+        assert child is not None, command_path
+        command = child
+
+    assert isinstance(command.epilog, Text)
+    return command.epilog
+
+
 # --- Top-level help ---
 
 
@@ -120,8 +136,9 @@ def test_root_help_links_to_version_aware_reference() -> None:
     result: Result = run_cli((CliOpt.HELP,))
 
     assert_SUCCESS(result)
+    assert_rich_output_contains(result.output, expected="Full reference:")
     expected_url: str = command_reference_url(COMMAND_REFERENCE_PATHS[()])
-    assert_rich_output_contains(result.output, expected=expected_url)
+    assert expected_url in _command_epilog(()).plain
 
 
 @pytest.mark.parametrize("reference_path", sorted(COMMAND_REFERENCE_PATHS.values()))
@@ -168,7 +185,7 @@ def test_public_command_help_links_to_version_aware_reference(
     assert_SUCCESS(result)
     assert_rich_output_contains(result.output, expected="Full reference:")
     expected_url = command_reference_url(COMMAND_REFERENCE_PATHS[command_path])
-    assert_rich_output_contains(result.output, expected=expected_url)
+    assert expected_url in _command_epilog(command_path).plain
 
 
 @pytest.mark.smoke
