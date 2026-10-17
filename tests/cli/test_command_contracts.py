@@ -246,6 +246,7 @@ def _option(command: click.Command, canonical: str) -> click.Option:
     return matches[0]
 
 
+@pytest.mark.smoke
 def test_click_registration_matches_public_command_inventory() -> None:
     """The public CLI inventory and the live nested Click tree agree exactly."""
     actual_paths: set[CommandPath] = {
@@ -254,6 +255,7 @@ def test_click_registration_matches_public_command_inventory() -> None:
     assert actual_paths == set(PUBLIC_COMMAND_OPTIONS)
 
 
+@pytest.mark.smoke
 @pytest.mark.parametrize("path", PUBLIC_COMMAND_OPTIONS, ids="-".join)
 def test_command_exposes_exactly_its_declared_visible_options(path: CommandPath) -> None:
     """Each public command exposes precisely its declared public option set."""
@@ -267,6 +269,7 @@ def test_command_exposes_exactly_its_declared_visible_options(path: CommandPath)
     assert actual == set(PUBLIC_COMMAND_OPTIONS[path])
 
 
+@pytest.mark.smoke
 def test_shared_option_metadata_is_consistent_across_applicable_commands() -> None:
     """Common decorators retain option shape, aliases, defaults, and help metadata."""
     by_option: dict[str, list[click.Option]] = {}
