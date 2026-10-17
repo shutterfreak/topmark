@@ -153,14 +153,20 @@ After generating the reports, the job uploads `coverage.xml` as `product` and `c
 as `tools`. Automatic report discovery is disabled so JSON reports, coverage databases, and HTML
 reports are not accidentally submitted as additional inputs. The upload action uses
 `fail_ci_if_error: false`, so an uploader or external-service error does not masquerade as a local
-coverage-test failure. Codecov separately evaluates `codecov.yml` and reports the product project
-and patch status contexts; tooling coverage is initially reporting-only.
+coverage-test failure. Codecov separately evaluates `codecov.yml` and reports the product project,
+informational tooling project, and product patch status contexts.
 
 The project status compares the pull request head with its base and permits a decline of at most
 0.25 percentage points; unlike patch coverage, it is non-informational. A failure to generate the
 canonical report fails the CI coverage job, while the Codecov project status separately reports a
 policy failure. See [Codecov coverage policy](./codecov.md) for the status, comment, and
 repository-settings contract.
+
+The separate `tools` upload produces the informational `codecov/project/tooling` status. It compares
+the report with the reviewed 71.8% tooling baseline and allows a 2 percentage-point tolerance. This
+keeps intentionally excluded full-build, benchmark, and subprocess-heavy tooling paths from driving
+test-scope expansion, while making a material regression visible for review. It does not block
+merges, alter product coverage, or add a tooling patch status.
 
 The coverage job depends on the full supported-version test matrix succeeding before coverage
 reports are generated. This keeps the supported Python matrix as the primary validation gate while
@@ -218,10 +224,10 @@ The workflow also publishes coverage artifacts from the dedicated `coverage` job
 - a short GitHub Step Summary with a coverage overview and artifact notice.
 
 The same job submits the XML reports to Codecov. Codecov presents coverage history, evaluates the
-product pull-request project threshold, posts coverage-change comments, and supplies the main-branch
-coverage badge shown in `README.md`; the badge links to TopMark's public Codecov
-[dashboard](https://app.codecov.io/gh/shutterfreak/topmark). This external integration complements
-rather than replaces the reports retained with the GitHub Actions run.
+product pull-request project threshold and informational tooling status, posts coverage-change
+comments, and supplies the main-branch coverage badge shown in `README.md`; the badge links to
+TopMark's public Codecov [dashboard](https://app.codecov.io/gh/shutterfreak/topmark). This external
+integration complements rather than replaces the reports retained with the GitHub Actions run.
 
 Coverage artifacts are diagnostic CI outputs only. They are not release artifacts and are not
 consumed by the release workflow. That artifact classification does not make canonical coverage
@@ -371,7 +377,9 @@ When editing this workflow:
 - keep uploader or external-service errors distinct from local coverage execution failures and
   retain GitHub-hosted coverage reports as independently available diagnostics;
 - keep `codecov/project/default` aligned with the documented 0.25 percentage-point tolerance and
-  explicitly revisit CI path filtering before making the status required in GitHub;
+  `codecov/project/tooling` informational against its reviewed 71.8% baseline with a 2 percentage-
+  point tolerance; explicitly revisit CI path filtering before making either status required in
+  GitHub;
 - keep `codecov/patch/default` informational unless patch coverage is deliberately adopted as a
   separate merge policy;
 - keep the README coverage badge pointed at the `main` branch and TopMark's public Codecov

@@ -19,6 +19,14 @@ coverage:
         only_pulls: true
         flags:
           - product
+      tooling:
+        target: 71.8%
+        threshold: 2%
+        if_not_found: failure
+        informational: true
+        only_pulls: true
+        flags:
+          - tools
     patch:
       default:
         target: auto
