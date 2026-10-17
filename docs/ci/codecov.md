@@ -28,7 +28,8 @@ The Codecov policy complements the canonical coverage job:
 - GitHub retains the reports as independently available workflow artifacts.
 - Codecov receives the reports as separate `product` and `tools` uploads and evaluates the
   repository policy in `codecov.yml`.
-- Maintainers review the resulting `codecov/project/default` status before merge.
+- Maintainers review the resulting `codecov/project/default` and informational
+  `codecov/project/tooling` statuses before merge.
 
 Codecov is the comparison and presentation layer. The local coverage session and GitHub-hosted
 artifacts remain the authoritative diagnostics when investigating an individual run.
@@ -74,6 +75,43 @@ existing denominator and tolerance when tooling coverage is uploaded separately.
 
 ______________________________________________________________________
 
+## Tooling coverage status
+
+The `codecov/project/tooling` status reports repository-tooling coverage from the separate `tools`
+upload:
+
+```yaml
+coverage:
+  status:
+    project:
+      tooling:
+        target: 71.8%
+        threshold: 2%
+        if_not_found: failure
+        informational: true
+        only_pulls: true
+        flags:
+          - tools
+```
+
+The fixed `71.8%` target records the reviewed tooling baseline established for the initial policy.
+Its `2%` tolerance allows a result as low as `69.8%`. This accommodates normal movement in the
+intentionally excluded integration-heavy paths: tooling tests exercise deterministic generation,
+parsing, and reporting, but do not run full documentation builds, costly benchmark workloads, or
+subprocess-heavy performance paths merely to increase coverage. A decline greater than two
+percentage points remains visible for maintainer review as a material regression.
+
+The status is informational, so it does not block merges or create a GitHub branch-protection gate.
+`if_not_found: failure` still makes a missing tooling upload visible rather than silently treating
+it as successful. Do not add a tooling patch status: changed-line coverage would not add useful
+signal for this intentionally bounded test scope.
+
+Components group covered source files, while flags select coverage uploads. The `tools` flag limits
+this status to `tools/**`; it does not identify `tests/tools/` as a component, and no
+`tests/topmark/**` component or path is implied.
+
+______________________________________________________________________
+
 ## Components and coverage uploads
 
 Codecov components group covered source files; they do not select test directories. TopMark defines
@@ -83,9 +121,8 @@ suite.
 
 The CI job uploads one report per flag: `product` for canonical package coverage and `tools` for the
 separate `tests/tools/` execution. Flags therefore identify representative coverage uploads, while
-components identify source ownership. Tooling coverage appears in reports and components but has no
-separate Codecov status or gate until its coverage baseline and blind spots are deliberately
-reviewed.
+components identify source ownership. The `tools` flag feeds the informational tooling project
+status; it does not broaden product coverage or change the product status's denominator.
 
 ______________________________________________________________________
 
@@ -151,7 +188,9 @@ generation, and pull requests from forks cannot read the secret.
 The upload step uses `fail_ci_if_error: false`. This keeps these outcomes distinct:
 
 - the GitHub `Coverage` job fails when local coverage generation fails;
-- `codecov/project/default` fails when measured coverage exceeds the permitted decline;
+- `codecov/project/default` fails when measured product coverage exceeds the permitted decline;
+- `codecov/project/tooling` reports tooling coverage outside its reviewed baseline and tolerance
+  informationally;
 - upload or Codecov service errors are reported by the integration rather than being represented as
   a local test failure.
 
@@ -163,14 +202,16 @@ After changing `codecov.yml`:
 
 1. validate its syntax with Codecov's configuration validator;
 1. run the repository's YAML, Markdown, header, and documentation checks;
-1. confirm the pull request produces `codecov/project/default` and `codecov/patch/default`;
+1. confirm the pull request produces `codecov/project/default`, `codecov/project/tooling`, and
+   `codecov/patch/default`;
 1. inspect the Codecov comment when coverage changes;
 1. if branch protection later requires the project status, keep its exact name synchronized.
 
-Revisit the 0.25 percentage-point tolerance deliberately. Tightening or relaxing it changes the
-review policy and should be supported by recent coverage stability rather than a single pull
-request. Do not turn patch coverage into a required status without separately evaluating generated
-code, platform-specific branches, and other legitimate patch-coverage edge cases.
+Revisit the product 0.25 percentage-point and tooling 2 percentage-point tolerances deliberately.
+Changing either alters the review policy and should be supported by recent coverage stability rather
+than a single pull request. Do not turn patch coverage into a required status without separately
+evaluating generated code, platform-specific branches, and other legitimate patch-coverage edge
+cases.
 
 Codecov configuration controls reporting and status evaluation; it does not replace semantic test
 review. High aggregate coverage can coexist with weak assertions or missing behavioral cases.
@@ -193,9 +234,10 @@ make it a required GitHub status later:
 1. observe the exact `codecov/project/default` status name on representative pull requests;
 1. add only that project status to the protected `main` branch or repository ruleset.
 
-Do not require `codecov/patch/default`, because that status is intentionally informational. Required
-status settings live in GitHub and are not stored in this repository. If the Codecov status name or
-CI trigger policy changes, update branch protection and this documentation together.
+Do not require `codecov/patch/default` or `codecov/project/tooling`, because both statuses are
+intentionally informational. Required status settings live in GitHub and are not stored in this
+repository. If a Codecov status name or CI trigger policy changes, update branch protection and this
+documentation together.
 
 ______________________________________________________________________
 

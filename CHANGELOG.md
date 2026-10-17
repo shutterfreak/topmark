@@ -53,6 +53,9 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added the informational `codecov/project/tooling` status for repository-tooling coverage. It uses
+  the reviewed 71.8% baseline with a 2 percentage-point tolerance, remains non-blocking, and leaves
+  the existing product project and patch statuses unchanged.
 - Added metadata-driven cross-command CLI contract coverage for command registration, option
   applicability, shared Click option metadata, public help, and machine-readable envelopes.
 - Expanded repository-tooling coverage from 41.5% to a 71.8% reporting baseline. Tooling contracts
