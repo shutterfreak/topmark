@@ -120,7 +120,7 @@ nav = [
     { "Dependency baseline maintenance" = "dev/dependency-maintenance.md" },
     { "Release process" = "dev/release-process.md" },
     { "Road to 1.0" = "dev/road-to-1.0.md" },
-    { Roadmap = "dev/roadmap.md" },
+    { "2.x roadmap" = "dev/roadmap.md" },
   ] },
 ]
 

@@ -14,10 +14,10 @@ topmark:header:end
 
 This section contains maintainer-facing documentation for TopMark's architecture,
 filesystem-identity evaluation model, configuration-resolution model, compatibility contracts,
-release process, generated documentation pipeline, and post-1.0 governance model.
+release process, generated documentation pipeline, and 2.x governance model.
 
 Use these pages when changing internals, reviewing compatibility boundaries, preparing releases, or
-understanding how the stable 1.x runtime model is organized.
+understanding how the stable 2.x runtime model is organized.
 
 The 1.x runtime model distinguishes several independent identity domains and discovery concepts:
 
@@ -58,7 +58,7 @@ ______________________________________________________________________
 
 ## Compatibility and output contracts
 
-These documents define the stable 1.x compatibility boundaries for APIs, machine-readable output,
+These documents define the stable 2.x compatibility boundaries for APIs, machine-readable output,
 filesystem path serialization, file-type identity, and configuration provenance.
 
 - [API stability and snapshot policy](api-stability.md)
@@ -74,4 +74,4 @@ ______________________________________________________________________
   state, CI validation, pre-commit pins, and changelog policy
 - [Release process](release-process.md)
 - [Road to TopMark 1.0](road-to-1.0.md)
-- [TopMark stable 1.x roadmap](roadmap.md)
+- [TopMark 2.x roadmap](roadmap.md)
