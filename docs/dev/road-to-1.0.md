@@ -14,20 +14,21 @@ topmark:header:end
 
 ## Purpose
 
-This page records the curated stabilization and contract-freeze history that led to TopMark 1.0. It
-extracts the historical achievement narrative from the active 1.0 roadmap so the roadmap can remain
-focused on stable 1.x governance, explicit deferrals, and post-1.0 evolution.
+This page records the curated architectural rationale and contract-freeze history that led to
+TopMark 1.0. It preserves why the stabilization work changed the system shape; it is not a release
+chronology or a replacement for the changelog.
 
 The 0.12 development line and the 1.0 alpha/beta series transformed TopMark from a set of evolving
 header-processing components into a contract-oriented CLI and Python library with explicit runtime
 boundaries, deterministic processing, documented output contracts, strict typing, and reproducible
 CI/release automation.
 
-This page is historical and explanatory. It records the stabilization and contract-freeze work that
-produced the stable 1.0 release line.
+This page is historical and explanatory. For release dates, released upgrade outcomes, and detailed
+compatibility notes, use `CHANGELOG.md`; for implementation history, use the GitHub issues and pull
+requests that carried the work.
 
-For current stable 1.x governance, post-1.0 deferrals, and future evolution tracking, see
-[TopMark 1.0 Roadmap](./roadmap.md).
+For current 2.x strategy, broad deferrals, and future evolution tracking, see the
+[TopMark 2.x roadmap](roadmap.md).
 
 ______________________________________________________________________
 

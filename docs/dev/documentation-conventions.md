@@ -13,7 +13,7 @@ topmark:header:end
 # Documentation conventions
 
 This document defines TopMark's stable documentation structure, terminology, reuse rules, page
-templates, and validation expectations for the 1.x line.
+templates, and validation expectations for the 2.x line.
 
 These conventions apply to:
 
@@ -903,7 +903,7 @@ ______________________________________________________________________
 
 ## Stability Expectations
 
-Documentation conventions should evolve incrementally during the stable 1.x line.
+Documentation conventions should evolve incrementally during the stable 2.x line.
 
 However:
 
@@ -919,9 +919,9 @@ substantial discoverability or maintainability benefits. Prefer small, reviewabl
 the documentation tree understandable in both rendered and source form.
 
 Roadmap maintenance follows the same stability expectation. Treat `docs/dev/roadmap.md` as a
-maintainer-facing strategic planning reference. It should clarify stable-line posture, compatibility
-boundaries, and broad deferrals, but it should not duplicate the GitHub issue backlog, release
-notes, or completed stabilization history.
+maintainer-facing 2.x strategic-planning reference. It should clarify maintenance posture,
+compatibility boundaries, broad directions, and deferrals, but it should not duplicate the GitHub
+issue backlog, released outcomes in `CHANGELOG.md`, or architectural retrospective material.
 
 ______________________________________________________________________
 
