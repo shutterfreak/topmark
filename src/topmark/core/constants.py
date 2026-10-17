@@ -240,3 +240,8 @@ STANDARD_NEWLINE_SET: Final[frozenset[str]] = frozenset(STANDARD_NEWLINES)
 
 STANDARD_NEWLINE_RE: Final = r"\r\n|\n|\r"
 """Regular expression pattern matching supported LF, CRLF, and CR line endings."""
+
+# --- Generated documentation ---
+
+DOCS_BASE_URL = "https://topmark.readthedocs.io/en"
+"""Base URL for the generated documentation."""

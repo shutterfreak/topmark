@@ -59,10 +59,20 @@ from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import maybe_exit_on_error
 from topmark.cli.cmd_common import resolve_human_console
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_probe_stream_json_machine
 from topmark.cli.emitters.machine import emit_probe_stream_machine
 from topmark.cli.help import HelpExample
+from topmark.cli.help import documented_paths_argument
 from topmark.cli.help import render_examples_epilog
+from topmark.cli.help import rich_click_option_panel
+from topmark.cli.help_panels import CONFIGURATION_RESOLUTION_PANEL_OPTIONS
+from topmark.cli.help_panels import CONFIGURATION_STRICTNESS_PANEL_OPTIONS
+from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
+from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
+from topmark.cli.help_panels import PATH_INPUT_AND_FILTERING_PANEL_OPTIONS
+from topmark.cli.help_panels import PROBE_RESOLUTION_POLICY_PANEL_OPTIONS
+from topmark.cli.help_panels import TEXT_OUTPUT_PANEL_OPTIONS
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.options import PATH_COMMAND_CONTEXT_SETTINGS
@@ -141,9 +151,36 @@ logger: TopmarkLogger = get_logger(__name__)
                 command_line=f"topmark {CliCmd.PROBE} README.md -vv",
             ),
         ),
+        reference_url=command_reference_url("commands/probe"),
     ),
 )
-@click.argument("paths", nargs=-1, type=click.UNPROCESSED)
+@rich_click_option_panel(
+    "Input and filtering",
+    options=[*PATH_INPUT_AND_FILTERING_PANEL_OPTIONS],
+)
+@rich_click_option_panel(
+    "Resolution policy",
+    options=[*PROBE_RESOLUTION_POLICY_PANEL_OPTIONS],
+)
+@rich_click_option_panel(
+    "Output",
+    options=[*OUTPUT_AND_HELP_PANEL_OPTIONS],
+)
+@rich_click_option_panel(
+    "Configuration and display",
+    options=[
+        *DISPLAY_PANEL_OPTIONS,
+        *TEXT_OUTPUT_PANEL_OPTIONS,
+        *CONFIGURATION_STRICTNESS_PANEL_OPTIONS,
+        *CONFIGURATION_RESOLUTION_PANEL_OPTIONS,
+    ],
+)
+@documented_paths_argument(
+    (
+        "Files, directories, or glob patterns whose resolution to explain. "
+        "May be omitted with --files-from."
+    ),
+)
 @common_color_options
 @common_text_output_verbosity_options
 @common_text_output_quiet_options

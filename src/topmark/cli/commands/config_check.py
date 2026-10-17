@@ -34,9 +34,16 @@ import rich_click
 
 from topmark.api.runtime import is_config_valid
 from topmark.cli.cmd_common import init_common_state
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_config_check_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
+from topmark.cli.help import rich_click_option_panel
+from topmark.cli.help_panels import CONFIGURATION_RESOLUTION_PANEL_OPTIONS
+from topmark.cli.help_panels import CONFIGURATION_STRICTNESS_PANEL_OPTIONS
+from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
+from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
+from topmark.cli.help_panels import TEXT_OUTPUT_PANEL_OPTIONS
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -108,7 +115,23 @@ logger: TopmarkLogger = get_logger(__name__)
             f"(errors, or warnings with {CliOpt.STRICT}).",
             "NDJSON emits a sequence of structured records.",
         ),
+        reference_url=command_reference_url("commands/config/check"),
     ),
+)
+@rich_click_option_panel(
+    "Configuration validation",
+    options=[
+        *CONFIGURATION_RESOLUTION_PANEL_OPTIONS,
+        *CONFIGURATION_STRICTNESS_PANEL_OPTIONS,
+    ],
+)
+@rich_click_option_panel(
+    "Output and display",
+    options=[
+        *DISPLAY_PANEL_OPTIONS,
+        *TEXT_OUTPUT_PANEL_OPTIONS,
+        *OUTPUT_AND_HELP_PANEL_OPTIONS,
+    ],
 )
 @common_color_options
 @common_text_output_verbosity_options

@@ -34,9 +34,16 @@ import rich_click
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import resolve_human_console
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_config_machine
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
+from topmark.cli.help import rich_click_option_panel
+from topmark.cli.help_panels import CONFIG_DUMP_CONFIGURATION_SOURCES_PANEL_OPTIONS
+from topmark.cli.help_panels import CONFIG_DUMP_FILTERING_AND_HEADER_METADATA_PANEL_OPTIONS
+from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
+from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
+from topmark.cli.help_panels import TEXT_OUTPUT_PANEL_OPTIONS
 from topmark.cli.io import plan_cli_inputs
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
@@ -124,7 +131,24 @@ logger: TopmarkLogger = get_logger(__name__)
             "Human output may include TOML block markers when verbosity is enabled.",
             "Machine-readable formats emit a Config snapshot and optional provenance records.",
         ),
+        reference_url=command_reference_url("commands/config/dump"),
     ),
+)
+@rich_click_option_panel(
+    "Configuration sources",
+    options=[*CONFIG_DUMP_CONFIGURATION_SOURCES_PANEL_OPTIONS],
+)
+@rich_click_option_panel(
+    "Filtering and header metadata",
+    options=[*CONFIG_DUMP_FILTERING_AND_HEADER_METADATA_PANEL_OPTIONS],
+)
+@rich_click_option_panel(
+    "Output and display",
+    options=[
+        *DISPLAY_PANEL_OPTIONS,
+        *TEXT_OUTPUT_PANEL_OPTIONS,
+        *OUTPUT_AND_HELP_PANEL_OPTIONS,
+    ],
 )
 @common_color_options
 @common_text_output_verbosity_options

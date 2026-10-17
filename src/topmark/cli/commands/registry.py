@@ -26,6 +26,7 @@ import rich_click
 from topmark.cli.commands.registry_bindings import registry_bindings_command
 from topmark.cli.commands.registry_filetypes import registry_filetypes_command
 from topmark.cli.commands.registry_processors import registry_processors_command
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
@@ -59,6 +60,7 @@ logger: TopmarkLogger = get_logger(__name__)
                 command_line=f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_BINDINGS}",
             ),
         ),
+        reference_url=command_reference_url("commands/registry"),
     ),
 )
 def registry_command() -> None:

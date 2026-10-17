@@ -20,6 +20,7 @@ copy or formatting.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 
@@ -29,6 +30,7 @@ from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import normalize_rich_cli_output
 from tests.cli.conftest import run_cli
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.keys import CliShortOpt
@@ -73,6 +75,23 @@ PUBLIC_COMMAND_PATHS_WITH_HELP: Final[tuple[tuple[str, ...], ...]] = (
     (CliCmd.VERSION,),
 )
 
+COMMAND_REFERENCE_PATHS: Final[dict[tuple[str, ...], str]] = {
+    (): "cli",
+    (CliCmd.PROBE,): "commands/probe",
+    (CliCmd.CHECK,): "commands/check",
+    (CliCmd.STRIP,): "commands/strip",
+    (CliCmd.CONFIG,): "commands/config",
+    (CliCmd.CONFIG, CliCmd.CONFIG_CHECK): "commands/config/check",
+    (CliCmd.CONFIG, CliCmd.CONFIG_INIT): "commands/config/init",
+    (CliCmd.CONFIG, CliCmd.CONFIG_DEFAULTS): "commands/config/defaults",
+    (CliCmd.CONFIG, CliCmd.CONFIG_DUMP): "commands/config/dump",
+    (CliCmd.REGISTRY,): "commands/registry",
+    (CliCmd.REGISTRY, CliCmd.REGISTRY_FILETYPES): "commands/registry/filetypes",
+    (CliCmd.REGISTRY, CliCmd.REGISTRY_PROCESSORS): "commands/registry/processors",
+    (CliCmd.REGISTRY, CliCmd.REGISTRY_BINDINGS): "commands/registry/bindings",
+    (CliCmd.VERSION,): "commands/version",
+}
+
 
 # --- Top-level help ---
 
@@ -94,6 +113,25 @@ def test_root_help_invocations_exit_success(args: tuple[str, ...]) -> None:
         result.output,
         expected="Usage:",
     )
+
+
+def test_root_help_links_to_version_aware_reference() -> None:
+    """Root help links to the version-aware CLI overview reference."""
+    result: Result = run_cli((CliOpt.HELP,))
+
+    assert_SUCCESS(result)
+    expected_url: str = command_reference_url(COMMAND_REFERENCE_PATHS[()])
+    assert_rich_output_contains(result.output, expected=expected_url)
+
+
+@pytest.mark.parametrize("reference_path", sorted(COMMAND_REFERENCE_PATHS.values()))
+def test_command_reference_paths_match_documentation_sources(
+    reference_path: str,
+) -> None:
+    """Every command-help reference path maps to a checked-in usage source page."""
+    documentation_path: Path = Path(__file__).parents[2] / "docs" / "usage" / f"{reference_path}.md"
+
+    assert documentation_path.is_file(), documentation_path
 
 
 # --- Public command help pages ---
@@ -118,6 +156,106 @@ def test_public_command_help_invocations_exit_success(
             result.output,
             expected="Usage:",
         )
+
+
+@pytest.mark.parametrize("command_path", PUBLIC_COMMAND_PATHS_WITH_HELP)
+def test_public_command_help_links_to_version_aware_reference(
+    command_path: tuple[str, ...],
+) -> None:
+    """Every public command help page links to its version-aware reference."""
+    result: Result = run_cli(command_path + (CliOpt.HELP,))
+
+    assert_SUCCESS(result)
+    assert_rich_output_contains(result.output, expected="Full reference:")
+    expected_url = command_reference_url(COMMAND_REFERENCE_PATHS[command_path])
+    assert_rich_output_contains(result.output, expected=expected_url)
+
+
+@pytest.mark.smoke
+def test_check_help_is_invariant_under_output_format() -> None:
+    """`--output-format` does not change framework-generated command help."""
+    default_help: Result = run_cli((CliCmd.CHECK, CliOpt.HELP))
+    markdown_help: Result = run_cli((CliCmd.CHECK, CliOpt.OUTPUT_FORMAT, "markdown", CliOpt.HELP))
+
+    assert_SUCCESS(default_help)
+    assert_SUCCESS(markdown_help)
+    assert markdown_help.output == default_help.output
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_path_help"),
+    [
+        pytest.param(
+            CliCmd.CHECK,
+            "Files, directories, or glob patterns to inspect.",
+            id="check",
+        ),
+        pytest.param(
+            CliCmd.STRIP,
+            "Files, directories, or glob patterns whose TopMark headers to remove.",
+            id="strip",
+        ),
+        pytest.param(
+            CliCmd.PROBE,
+            "Files, directories, or glob patterns whose resolution to explain.",
+            id="probe",
+        ),
+    ],
+)
+def test_processing_command_help_documents_paths_and_shared_controls(
+    command: str,
+    expected_path_help: str,
+) -> None:
+    """Processing-command help documents paths and shared input/output controls."""
+    result: Result = run_cli((command, CliOpt.HELP))
+
+    assert_SUCCESS(result)
+    for expected in (
+        expected_path_help,
+        CliOpt.FILES_FROM,
+        CliOpt.OUTPUT_FORMAT,
+    ):
+        assert_rich_output_contains(
+            result.output,
+            expected=expected,
+        )
+
+
+def test_check_help_documents_mutation_controls() -> None:
+    """`check --help` documents its mutation policy and explicit apply control."""
+    result: Result = run_cli((CliCmd.CHECK, CliOpt.HELP))
+
+    assert_SUCCESS(result)
+    assert_rich_output_contains(
+        result.output,
+        expected=CliOpt.POLICY_HEADER_MUTATION_MODE,
+    )
+    assert_rich_output_contains(
+        result.output,
+        expected=CliOpt.APPLY_CHANGES,
+    )
+
+
+def test_strip_help_documents_mutation_control() -> None:
+    """`strip --help` documents its explicit apply control."""
+    result: Result = run_cli((CliCmd.STRIP, CliOpt.HELP))
+
+    assert_SUCCESS(result)
+    assert_rich_output_contains(
+        result.output,
+        expected=CliOpt.APPLY_CHANGES,
+    )
+
+
+def test_probe_help_documents_resolution_control() -> None:
+    """`probe --help` documents its content-probing resolution control."""
+    result: Result = run_cli((CliCmd.PROBE, CliOpt.HELP))
+
+    assert_SUCCESS(result)
+    assert_rich_output_contains(
+        result.output,
+        expected=CliOpt.POLICY_ALLOW_CONTENT_PROBE,
+    )
 
 
 @pytest.mark.parametrize(

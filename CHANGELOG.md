@@ -130,6 +130,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Reorganized CLI help into task-oriented option panels, added concise command examples and
+  version-aware links to the matching online command reference, and added contracts that keep help
+  options and reference paths aligned with the checked-in documentation.
 - Pytest now reports the reasons for skipped and expected-failure tests by default, improving local
   and CI test-feedback diagnostics without changing test selection or outcomes.
 - Reorganized repository-tooling tests under `tests/tools/` while retaining `tests/dev_validation/`

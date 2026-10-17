@@ -33,6 +33,7 @@ from topmark.cli.commands.registry import registry_command
 from topmark.cli.commands.strip import strip_command
 from topmark.cli.commands.version import version_command
 from topmark.cli.console.color import ColorMode
+from topmark.cli.documentation import command_reference_url
 from topmark.cli.help import HelpExample
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.keys import CliCmd
@@ -79,6 +80,7 @@ from topmark.utils.version import check_python_version
                 command_line=f"topmark {CliCmd.VERSION}",
             ),
         ),
+        reference_url=command_reference_url("cli"),
     ),
 )
 @click.pass_context

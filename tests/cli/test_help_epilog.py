@@ -73,6 +73,42 @@ def test_render_examples_epilog_renders_notes_without_examples() -> None:
     assert epilog.plain == ("Notes:\n  • Use this output for command help only.\n")
 
 
+def test_render_examples_epilog_renders_reference() -> None:
+    """Render a command-reference URL after examples and notes."""
+    epilog: Text = render_examples_epilog(
+        examples=(
+            HelpExample(
+                summary="Run a dry-run check",
+                command_line="topmark check src",
+            ),
+        ),
+        notes=("Dry-run is the default.",),
+        reference_url="https://topmark.readthedocs.io/en/stable/usage/commands/check/",
+    )
+
+    assert epilog.plain == (
+        "Examples:\n"
+        "  # Run a dry-run check\n"
+        "  topmark check src\n"
+        "\n"
+        "Notes:\n"
+        "  • Dry-run is the default.\n"
+        "\n"
+        "Full reference:\n"
+        "  https://topmark.readthedocs.io/en/stable/usage/commands/check/\n"
+    )
+
+
+def test_render_examples_epilog_renders_reference_without_other_content() -> None:
+    """Render a reference without adding a leading section separator."""
+    epilog: Text = render_examples_epilog(
+        examples=(),
+        reference_url="https://topmark.readthedocs.io/en/latest/cli/",
+    )
+
+    assert epilog.plain == ("Full reference:\n  https://topmark.readthedocs.io/en/latest/cli/\n")
+
+
 def test_render_examples_epilog_renders_empty_text_for_no_content() -> None:
     """Render an empty Rich Text object when no examples or notes are provided."""
     epilog: Text = render_examples_epilog(examples=())
