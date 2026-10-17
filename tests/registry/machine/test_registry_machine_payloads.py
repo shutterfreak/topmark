@@ -49,7 +49,7 @@ def test_registry_machine_payloads_filter_by_declared_activation(
             activation=FileTypeActivation.OPT_IN.value,
         )
         bindings: BindingsPayload = build_bindings_payload(
-            show_details=False,
+            show_details=True,
             activation=FileTypeActivation.OPT_IN.value,
         )
 
@@ -64,6 +64,14 @@ def test_registry_machine_payloads_filter_by_declared_activation(
     ]
     assert bindings == {
         "bindings": [],
-        "unbound_filetypes": ["test:opt-in"],
+        "unbound_filetypes": [
+            {
+                "local_key": "opt-in",
+                "namespace": "test",
+                "qualified_key": "test:opt-in",
+                "description": "Opt-in type",
+                "activation": "opt-in",
+            }
+        ],
         "unused_processors": [],
     }

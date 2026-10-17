@@ -119,7 +119,8 @@ ______________________________________________________________________
 
 ### Brief output (default)
 
-- File type -> processor binding using canonical qualified identifiers
+- File type -> processor binding using canonical qualified identifiers, with the file type's
+  declared activation
 
 ### Detailed output (`--long`)
 
@@ -129,11 +130,14 @@ Rendered consistently across `text`, `json`, `ndjson`, and `markdown`:
 - Canonical processor qualified key
 - File type local key / namespace
 - Processor local key / namespace
+- Declared file-type activation
 - Descriptions (file type and processor descriptions)
 
 Additional sections:
 
-- Unbound file types - recognized file types without an effective processor binding
+- Unbound processable file types - `default` or `opt-in` types without an effective processor
+  binding
+- Intentionally non-processable file types - `never` types, which must not have a processor binding
 - Unused processors - processors not referenced by any effective binding
 
 Use `--activation never` to inspect intentionally non-processable, unbound types. For the `default`
@@ -167,10 +171,14 @@ bindings, unbound file types, and unused processors:
 - `meta` contains shared machine metadata, including `tool`, `version`, `platform`,
   `python_version`, `machine`, and `detail_level`.
 - `bindings` contains the effective file type ↔ processor relationships.
-- Brief binding entries include `file_type_key` and `processor_key`.
+- Brief binding entries include `file_type_key`, `processor_key`, and the file type's declared
+  `activation`.
 - Long binding entries add descriptive identity fields such as `file_type_local_key`,
-  `file_type_namespace`, `processor_local_key`, `processor_namespace`, and descriptions.
-- `unbound_filetypes` lists file types without an effective processor relationship.
+  `file_type_namespace`, `processor_local_key`, `processor_namespace`, and descriptions; they also
+  retain `activation`.
+- `unbound_filetypes` lists file types without an effective processor relationship. Long references
+  include their declared `activation` so consumers can distinguish `never` from unbound processable
+  types without consulting configuration.
 - `unused_processors` lists processors that are registered but not referenced by any effective
   binding.
 
@@ -213,7 +221,7 @@ topmark registry bindings --activation never
 topmark registry bindings --long --output-format markdown
 
 # JSON for scripting
-topmark registry bindings --long --output-format json | jq '.bindings[] | {filetype: .file_type_key, processor: .processor_key}'
+topmark registry bindings --long --output-format json | jq '.bindings[] | {filetype: .file_type_key, processor: .processor_key, activation}'
 
 # Inspect unbound file types
 topmark registry bindings --output-format json | jq '.unbound_filetypes[]'

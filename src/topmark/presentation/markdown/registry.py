@@ -33,6 +33,7 @@ from topmark.core.constants import TOPMARK_VERSION
 from topmark.presentation.formatters.filetypes import filetype_policy_to_display_pairs
 from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.presentation.markdown.version import render_version_footer_markdown
+from topmark.presentation.shared.registry import format_filetype_activation
 
 if TYPE_CHECKING:
     from topmark.presentation.shared.registry import BindingsHumanReport
@@ -81,10 +82,7 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
             "- **Bound**: Whether the file type currently has an effective processor binding."
         )
         lines.append("- **Extensions/Filenames/Patterns**: How files are matched on disk.")
-        lines.append(
-            "- **Skip Processing**: "
-            "If **yes**, the file type is recognized but never modified by TopMark."
-        )
+        lines.append("- **Activation**: Declared processing authorization for this file type.")
         lines.append("- **Content Matcher**: Whether a content-based matcher is configured.")
         lines.append("- **Insert Checker**: Whether a pre-insert checker is configured.")
         lines.append("- **Header Policy**: Formatting/spacing policy applied to this file type.\n")
@@ -97,7 +95,7 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
             "Extensions",
             "Filenames",
             "Patterns",
-            "Skip Processing",
+            "Activation",
             "Content Matcher",
             "Insert Checker",
             "Header Policy",
@@ -116,7 +114,7 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
                     ", ".join(it.extensions),
                     ", ".join(it.filenames),
                     ", ".join(it.patterns),
-                    it.activation,
+                    format_filetype_activation(it.activation),
                     "**yes**" if it.has_content_matcher else "no",
                     "**yes**" if it.has_insert_checker else "no",
                     policy_str,
@@ -129,8 +127,11 @@ def render_filetypes_markdown(report: FileTypesHumanReport) -> str:
             "_This list shows the qualified file type identifiers and a short description. "
             "Use `--long` for details._\n"
         )
-        headers: list[str] = ["Qualified Key", "Description"]
-        rows = [[f"`{it.qualified_key}`", it.description] for it in items]
+        headers: list[str] = ["Qualified Key", "Activation", "Description"]
+        rows = [
+            [f"`{it.qualified_key}`", format_filetype_activation(it.activation), it.description]
+            for it in items
+        ]
         lines.append(render_markdown_table(headers, rows))
 
     lines.append(render_version_footer_markdown())
@@ -238,6 +239,7 @@ def render_bindings_markdown(report: BindingsHumanReport) -> str:
         headers = [
             "File Type",
             "Processor",
+            "Activation",
             "File Type Local Key",
             "File Type Namespace",
             "Processor Local Key",
@@ -251,6 +253,7 @@ def render_bindings_markdown(report: BindingsHumanReport) -> str:
                 [
                     f"`{binding.file_type_key}`",
                     f"`{binding.processor_key}`",
+                    format_filetype_activation(binding.activation),
                     f"`{binding.file_type_local_key}`",
                     f"`{binding.file_type_namespace}`",
                     f"`{binding.processor_local_key}`",
@@ -261,17 +264,33 @@ def render_bindings_markdown(report: BindingsHumanReport) -> str:
             )
         lines.append(render_markdown_table(headers, rows))
     else:
-        headers = ["File Type", "Processor"]
+        headers = ["File Type", "Processor", "Activation"]
         rows = [
-            [f"`{binding.file_type_key}`", f"`{binding.processor_key}`"]
+            [
+                f"`{binding.file_type_key}`",
+                f"`{binding.processor_key}`",
+                format_filetype_activation(binding.activation),
+            ]
             for binding in report.bindings
         ]
         lines.append(render_markdown_table(headers, rows))
 
     if report.unbound_filetypes:
-        lines.append("\n## Unbound File Types\n")
-        headers = ["Qualified Key", "Description"]
-        rows = [[f"`{item.name}`", item.description] for item in report.unbound_filetypes]
+        lines.append("\n## Unbound Processable File Types\n")
+        headers = ["Qualified Key", "Activation", "Description"]
+        rows = [
+            [f"`{item.name}`", format_filetype_activation(item.activation), item.description]
+            for item in report.unbound_filetypes
+        ]
+        lines.append(render_markdown_table(headers, rows))
+
+    if report.non_processable_filetypes:
+        lines.append("\n## Intentionally Non-Processable File Types\n")
+        headers = ["Qualified Key", "Activation", "Description"]
+        rows = [
+            [f"`{item.name}`", format_filetype_activation(item.activation), item.description]
+            for item in report.non_processable_filetypes
+        ]
         lines.append(render_markdown_table(headers, rows))
 
     if report.unused_processors:

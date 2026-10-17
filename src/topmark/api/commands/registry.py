@@ -146,6 +146,7 @@ def list_bindings() -> list[BindingInfo]:
             processor_key=processor.qualified_key,
             processor_local_key=processor.local_key,
             processor_namespace=processor.namespace,
+            activation=binding.filetype.activation.value,
             file_type_description=binding.filetype.description,
             processor_description=processor.description,
         )

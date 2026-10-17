@@ -274,7 +274,7 @@ ______________________________________________________________________
 - Newline preservation: the inserted header uses the same newline style as the file (LF/CRLF/CR).
 - BOM preservation: if a UTF-8 BOM is present, it is preserved.
 - Idempotency: re-running TopMark on a file with a compliant header produces no runtime changes.
-- Unheaderable file types: some recognized file type identities intentionally have no effective
+- Never-processable file types: some recognized file type identities intentionally have no effective
   processor binding and are skipped rather than headered, such as JSON files without comments,
   license text files, and single-token marker files.
 

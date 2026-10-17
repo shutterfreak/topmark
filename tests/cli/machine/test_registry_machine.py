@@ -109,7 +109,13 @@ PROCESSOR_DETAIL_KEYS: frozenset[str] = frozenset(
         "block_suffix",
     }
 )
-BINDING_BRIEF_KEYS: frozenset[str] = frozenset({"file_type_key", "processor_key"})
+BINDING_BRIEF_KEYS: frozenset[str] = frozenset(
+    {
+        "file_type_key",
+        "processor_key",
+        "activation",
+    }
+)
 BINDING_DETAIL_KEYS: frozenset[str] = frozenset(
     {
         "file_type_key",
@@ -118,11 +124,21 @@ BINDING_DETAIL_KEYS: frozenset[str] = frozenset(
         "processor_key",
         "processor_local_key",
         "processor_namespace",
+        "activation",
         "file_type_description",
         "processor_description",
     }
 )
-REF_DETAIL_KEYS: frozenset[str] = frozenset(
+FILETYPE_REF_DETAIL_KEYS: frozenset[str] = frozenset(
+    {
+        "local_key",
+        "namespace",
+        "qualified_key",
+        "description",
+        "activation",
+    }
+)
+PROCESSOR_REF_DETAIL_KEYS: frozenset[str] = frozenset(
     {
         "local_key",
         "namespace",
@@ -431,8 +447,8 @@ def test_registry_bindings_machine_json(
         assert is_mapping(unused_obj[0])
         unbound_entry: dict[str, object] = as_object_dict(unbound_obj[0])
         unused_entry: dict[str, object] = as_object_dict(unused_obj[0])
-        assert set(unbound_entry.keys()) == set(REF_DETAIL_KEYS)
-        assert set(unused_entry.keys()) == set(REF_DETAIL_KEYS)
+        assert set(unbound_entry.keys()) == set(FILETYPE_REF_DETAIL_KEYS)
+        assert set(unused_entry.keys()) == set(PROCESSOR_REF_DETAIL_KEYS)
         assert unbound_entry.get("qualified_key") == "pytest:unbound_ft"
         assert unused_entry.get("qualified_key") == "pytest:unused_processor"
     else:
@@ -634,8 +650,8 @@ def test_registry_bindings_machine_ndjson(
         assert len(unused_entries) == 1
         assert set(binding_entry.keys()) == set(BINDING_DETAIL_KEYS)
         assert binding_entry.get("processor_key") == "pytest:bound_processor"
-        assert set(unbound_entries[0].keys()) == set(REF_DETAIL_KEYS)
-        assert set(unused_entries[0].keys()) == set(REF_DETAIL_KEYS)
+        assert set(unbound_entries[0].keys()) == set(FILETYPE_REF_DETAIL_KEYS)
+        assert set(unused_entries[0].keys()) == set(PROCESSOR_REF_DETAIL_KEYS)
         assert unbound_entries[0].get("qualified_key") == "pytest:unbound_ft"
         assert unused_entries[0].get("qualified_key") == "pytest:unused_processor"
     else:
@@ -703,6 +719,7 @@ def test_registry_bindings_machine_ndjson_emits_bindings_then_refs_in_sorted_ord
     assert binding_payload == {
         "file_type_key": "pytest:bound_ft",
         "processor_key": "pytest:bound_processor",
+        "activation": "default",
     }
     assert _string_ref_record_payload(records[1]) == "pytest:unbound_ft"
     assert _string_ref_record_payload(records[2]) == "pytest:unused_processor"

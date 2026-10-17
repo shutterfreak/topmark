@@ -131,6 +131,7 @@ def _binding_item() -> BindingHumanItem:
         processor_key="test.hash",
         processor_local_key="hash",
         processor_namespace="test",
+        activation="default",
         file_type_description="Python source",
         processor_description="Hash comments",
     )
@@ -161,8 +162,8 @@ def test_render_filetype_policy_markdown_emphasizes_policy_keys() -> None:
     )
 
 
-def test_render_filetypes_text_compact_lists_qualified_key_and_description() -> None:
-    """Compact TEXT file-type rendering should list identity and description."""
+def test_render_filetypes_text_compact_lists_declared_activation() -> None:
+    """Compact TEXT file-type rendering should list static declared activation."""
     report = FileTypesHumanReport(
         show_details=False,
         verbosity_level=0,
@@ -172,7 +173,7 @@ def test_render_filetypes_text_compact_lists_qualified_key_and_description() -> 
 
     output: str = render_filetypes_text(report)
 
-    assert output == "1. test.python Python source"
+    assert output == "1. test.python [default (eligible when bound)] Python source"
 
 
 def test_render_filetypes_text_details_include_matching_and_policy_metadata() -> None:
@@ -194,6 +195,7 @@ def test_render_filetypes_text_details_include_matching_and_policy_metadata() ->
     assert "      extensions      : .py" in output
     assert "      filenames       : SConstruct, .vscode/settings.json" in output
     assert "      patterns        : .*\\.pyi" in output
+    assert "      activation      : default (eligible when bound)" in output
     assert "      content matcher : yes" in output
     assert "      insert checker  : yes" in output
     assert "      header policy   : supports_shebang=true" in output
@@ -234,7 +236,20 @@ def test_render_bindings_text_includes_unbound_and_unused_sections() -> None:
         show_details=False,
         verbosity_level=1,
         bindings=(_binding_item(),),
-        unbound_filetypes=(UnboundFileTypeHumanItem(name="test.markdown", description="Markdown"),),
+        unbound_filetypes=(
+            UnboundFileTypeHumanItem(
+                name="test.markdown",
+                description="Markdown",
+                activation="default",
+            ),
+        ),
+        non_processable_filetypes=(
+            UnboundFileTypeHumanItem(
+                name="test.json",
+                description="JSON",
+                activation="never",
+            ),
+        ),
         unused_processors=(_processor_item(bound=False),),
         styled=False,
     )
@@ -242,9 +257,11 @@ def test_render_bindings_text_includes_unbound_and_unused_sections() -> None:
     output: str = render_bindings_text(report)
 
     assert "Effective file-type-to-processor bindings:" in output
-    assert "1. test.python -> test.hash" in output
-    assert "Unbound file types:" in output
-    assert "1. test.markdown - Markdown" in output
+    assert "1. test.python -> test.hash [default (eligible when bound)]" in output
+    assert "Unbound processable file types:" in output
+    assert "1. test.markdown [default (eligible when bound)] - Markdown" in output
+    assert "Intentionally non-processable file types:" in output
+    assert "1. test.json [never (not processable)] - JSON" in output
     assert "Unused processors:" in output
     assert "1. test.hash - Hash comments" in output
 
@@ -256,6 +273,7 @@ def test_render_bindings_text_details_include_identity_components() -> None:
         verbosity_level=0,
         bindings=(_binding_item(),),
         unbound_filetypes=(),
+        non_processable_filetypes=(),
         unused_processors=(),
         styled=False,
     )
@@ -263,6 +281,7 @@ def test_render_bindings_text_details_include_identity_components() -> None:
     output: str = render_bindings_text(report)
 
     assert "1. test.python -> test.hash" in output
+    assert "      activation          : default (eligible when bound)" in output
     assert "      file type local key : python" in output
     assert "      file type namespace : test" in output
     assert "      processor local key : hash" in output
@@ -291,9 +310,14 @@ def test_render_filetypes_markdown_compact_and_details() -> None:
 
     compact_output: str = render_filetypes_markdown(compact_report)
     assert compact_output.startswith("# Supported File Types\n")
-    assert find_table_row(compact_output, "Qualified Key") == ["Qualified Key", "Description"]
+    assert find_table_row(compact_output, "Qualified Key") == [
+        "Qualified Key",
+        "Activation",
+        "Description",
+    ]
     assert find_table_row(compact_output, "`test.python`") == [
         "`test.python`",
+        "default (eligible when bound)",
         "Python source",
     ]
 
@@ -312,6 +336,7 @@ def test_render_filetypes_markdown_compact_and_details() -> None:
         "**yes**",
     ]
     assert "SConstruct, .vscode/settings.json" in find_table_row(detail_output, "`test.python`")
+    assert "Activation" in find_table_row(detail_output, "Qualified Key")
     assert "**supports_shebang**=true" in detail_output
 
 
@@ -361,7 +386,20 @@ def test_render_bindings_markdown_includes_unbound_and_unused_tables() -> None:
         show_details=False,
         verbosity_level=0,
         bindings=(_binding_item(),),
-        unbound_filetypes=(UnboundFileTypeHumanItem(name="test.markdown", description="Markdown"),),
+        unbound_filetypes=(
+            UnboundFileTypeHumanItem(
+                name="test.markdown",
+                description="Markdown",
+                activation="opt-in",
+            ),
+        ),
+        non_processable_filetypes=(
+            UnboundFileTypeHumanItem(
+                name="test.json",
+                description="JSON",
+                activation="never",
+            ),
+        ),
         unused_processors=(_processor_item(bound=False),),
         styled=False,
     )
@@ -369,12 +407,25 @@ def test_render_bindings_markdown_includes_unbound_and_unused_tables() -> None:
     output: str = render_bindings_markdown(report)
 
     assert output.startswith("# Effective File-Type-to-Processor Bindings\n")
-    assert find_table_row(output, "File Type") == ["File Type", "Processor"]
-    assert find_table_row(output, "`test.python`") == ["`test.python`", "`test.hash`"]
-    assert "## Unbound File Types" in output
-    assert find_table_row(output, "`test.markdown`") == ["`test.markdown`", "Markdown"]
+    assert find_table_row(output, "File Type") == ["File Type", "Processor", "Activation"]
+    assert find_table_row(output, "`test.python`") == [
+        "`test.python`",
+        "`test.hash`",
+        "default (eligible when bound)",
+    ]
+    assert "## Unbound Processable File Types" in output
+    assert find_table_row(output, "`test.markdown`") == [
+        "`test.markdown`",
+        "opt-in (requires runtime consent)",
+        "Markdown",
+    ]
+    assert "## Intentionally Non-Processable File Types" in output
+    assert find_table_row(output, "`test.json`") == [
+        "`test.json`",
+        "never (not processable)",
+        "JSON",
+    ]
     assert "## Unused Processors" in output
-    assert find_table_row(output, "`test.hash`") == ["`test.python`", "`test.hash`"]
     assert find_table_row(output, "Hash comments") == ["`test.hash`", "Hash comments"]
 
 
@@ -385,15 +436,17 @@ def test_render_bindings_markdown_details_include_identity_components() -> None:
         verbosity_level=0,
         bindings=(_binding_item(),),
         unbound_filetypes=(),
+        non_processable_filetypes=(),
         unused_processors=(),
         styled=False,
     )
 
     output: str = render_bindings_markdown(report)
 
-    assert find_table_row(output, "File Type")[:6] == [
+    assert find_table_row(output, "File Type")[:7] == [
         "File Type",
         "Processor",
+        "Activation",
         "File Type Local Key",
         "File Type Namespace",
         "Processor Local Key",
@@ -402,6 +455,7 @@ def test_render_bindings_markdown_details_include_identity_components() -> None:
     assert find_table_row(output, "`test.python`") == [
         "`test.python`",
         "`test.hash`",
+        "default (eligible when bound)",
         "`python`",
         "`test`",
         "`hash`",
@@ -518,9 +572,64 @@ def test_build_bindings_human_report_lists_bindings_unbound_and_unused(
         ("test:alpha", "test:registry-presentation"),
     ]
     assert report.unbound_filetypes == (
-        UnboundFileTypeHumanItem(name="test:beta", description="Beta type"),
+        UnboundFileTypeHumanItem(
+            name="test:beta",
+            description="Beta type",
+            activation="default",
+        ),
     )
     assert [item.qualified_key for item in report.unused_processors] == ["test:registry-unused"]
+
+
+def test_activation_presentation_is_enum_driven_for_all_declared_values(
+    effective_registries: EffectiveRegistries,
+) -> None:
+    """Human registry reports render every declared activation without built-in metadata."""
+    default: FileType = make_file_type(
+        local_key="ordinary",
+        namespace="custom",
+        description="Custom default",
+    )
+    opt_in: FileType = make_file_type(
+        local_key="consented",
+        namespace="custom",
+        description="Custom opt-in",
+        activation=FileTypeActivation.OPT_IN,
+    )
+    never: FileType = make_file_type(
+        local_key="blocked",
+        namespace="custom",
+        description="Custom never",
+        activation=FileTypeActivation.NEVER,
+    )
+
+    with effective_registries(
+        {"ordinary": default, "consented": opt_in, "blocked": never},
+        {"ordinary": _RegistryPresentationProcessor()},
+    ):
+        filetypes: FileTypesHumanReport = build_filetypes_human_report(
+            show_details=False,
+            verbosity_level=0,
+            styled=False,
+        )
+        bindings: BindingsHumanReport = build_bindings_human_report(
+            show_details=False,
+            verbosity_level=0,
+            styled=False,
+        )
+
+    filetypes_text: str = render_filetypes_text(filetypes)
+    filetypes_markdown: str = render_filetypes_markdown(filetypes)
+    bindings_text: str = render_bindings_text(bindings)
+    bindings_markdown: str = render_bindings_markdown(bindings)
+
+    for output in (filetypes_text, filetypes_markdown, bindings_text, bindings_markdown):
+        assert "default (eligible when bound)" in output
+        assert "opt-in (requires runtime consent)" in output
+        assert "never (not processable)" in output
+
+    assert "Unbound processable file types:" in bindings_text
+    assert "Intentionally non-processable file types:" in bindings_text
 
 
 def test_build_bindings_human_report_filters_by_declared_activation(
@@ -557,5 +666,9 @@ def test_build_bindings_human_report_filters_by_declared_activation(
 
     assert report.bindings == ()
     assert report.unbound_filetypes == (
-        UnboundFileTypeHumanItem(name="test:opt-in", description="Opt-in type"),
+        UnboundFileTypeHumanItem(
+            name="test:opt-in",
+            description="Opt-in type",
+            activation="opt-in",
+        ),
     )

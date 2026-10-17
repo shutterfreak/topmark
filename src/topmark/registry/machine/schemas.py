@@ -141,6 +141,7 @@ class FileTypeRefEntry(TypedDict):
     namespace: str
     qualified_key: str
     description: str
+    activation: str
 
 
 FileTypeRef: TypeAlias = str | FileTypeRefEntry
@@ -188,6 +189,7 @@ class BindingBriefEntry(TypedDict):
 
     file_type_key: str
     processor_key: str
+    activation: str
 
 
 class BindingDetailEntry(TypedDict):
@@ -199,6 +201,7 @@ class BindingDetailEntry(TypedDict):
     processor_key: str
     processor_local_key: str
     processor_namespace: str
+    activation: str
     file_type_description: str
     processor_description: str
 
