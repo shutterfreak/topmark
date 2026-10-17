@@ -150,9 +150,8 @@ ______________________________________________________________________
 - Machine-readable JSON and NDJSON metadata now includes normalized process-stable Python runtime
   provenance (`python_version` and `machine`) while preserving the additive, backward-compatible
   envelope contract.
-- The CI pre-commit job now uses Python 3.14 while its self-hosted configuration remains pinned to
-  the released TopMark v1.0.1 hooks, which do not support Python 3.15. The source-tree test matrix
-  continues to validate current TopMark code on Python 3.15.
+- The CI pre-commit job now runs its self-hosted TopMark v2.0.0rc1 hooks on the metadata-derived
+  canonical Python version, restoring direct hook validation on Python 3.15.
 - Expanded Python support through 3.15 across package metadata, runtime validation, Nox-derived CI,
   published artifact validation, and release tooling while retaining Python 3.10-3.14 support.
 - Documented the Python support lifecycle: maintained CPython release series are supported, and the

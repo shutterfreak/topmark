@@ -182,11 +182,10 @@ jobs are compatibility signals for the current GitHub-hosted platform images; pi
 delay detection of platform-image changes. The published-artifact validation workflow uses the same
 Ubuntu 26.04 Linux baseline, while macOS and Windows use their current rolling labels.
 
-The `pre-commit` job is the deliberate exception. The repository self-tests the released `v1.0.1`
-TopMark hook declared in `.pre-commit-config.yaml`; that release supports Python 3.10-3.14 but not
-Python 3.15. It therefore runs under Python 3.14 until the configuration is updated to an immutable
-TopMark 2.0 release tag. The supported-version Nox matrix continues to validate the current source
-tree on Python 3.15.
+The `pre-commit` job runs the self-hosted TopMark hook declared in `.pre-commit-config.yaml` on the
+same metadata-derived canonical Python version as the other canonical CI jobs. This exercises the
+released hook configuration and the current source tree consistently on the project's canonical
+interpreter.
 
 > [!NOTE]
 >
