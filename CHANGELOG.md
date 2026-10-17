@@ -18,6 +18,22 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [2.0.1] - 2026-10-17
+
+This maintenance release corrects published project metadata and repository quality indicators after
+the 2.0.0 release.
+
+### Fixed - 2.0.1
+
+- Corrected the PyPI development-status classifier to report TopMark as production/stable.
+- Updated the README coverage badge to report the `topmark` Codecov component.
+
+### Internal - 2.0.1
+
+- Refreshed pre-commit hooks to TopMark 2.0.0 and Ruff 0.17.1.
+
+______________________________________________________________________
+
 ## [2.0.0] - 2026-10-17
 
 TopMark 2.0 is a major release that makes command-line behavior, machine-readable output,

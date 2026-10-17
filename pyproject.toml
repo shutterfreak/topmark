@@ -39,7 +39,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 maintainers = [{ name = "Olivier Biot", email = "olivier.biot@gmail.com" }]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
