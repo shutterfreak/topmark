@@ -1353,7 +1353,8 @@ Binding entry (brief):
 ```jsonc
 {
   "file_type_key": "topmark:python",
-  "processor_key": "topmark:python"
+  "processor_key": "topmark:python",
+  "activation": "default"
 }
 ```
 
@@ -1370,6 +1371,7 @@ Binding entry (detailed, `--long`):
   "processor_key": "topmark:python",
   "processor_local_key": "python",
   "processor_namespace": "topmark",
+  "activation": "default",
   "file_type_description": "Python source file",
   "processor_description": "Python-style line comment processor"
 }
@@ -1377,7 +1379,9 @@ Binding entry (detailed, `--long`):
 
 Auxiliary lists:
 
-- `unbound_filetypes` contains file types that currently have no effective processor binding.
+- `unbound_filetypes` contains file types that currently have no effective processor binding. Long
+  file-type references include their static declared `activation`; it is not dynamic opt-in
+  authorization.
   - brief mode: qualified file type keys as strings
   - long mode: expanded \[`FileTypeRefEntry`\][topmark.registry.machine.schemas.FileTypeRefEntry]
     objects

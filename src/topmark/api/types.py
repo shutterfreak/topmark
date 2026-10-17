@@ -444,6 +444,7 @@ class BindingInfo(TypedDict, total=True):
         processor_key: Canonical processor key.
         processor_local_key: Processor local key.
         processor_namespace: Namespace that owns the processor.
+        activation: Declared processing authorization for the file type.
         file_type_description: Human description of the file type.
         processor_description: Human description of the processor.
     """
@@ -456,6 +457,7 @@ class BindingInfo(TypedDict, total=True):
     processor_local_key: str
     processor_namespace: str
 
+    activation: str
     file_type_description: str
     processor_description: str
 

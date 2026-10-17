@@ -283,6 +283,9 @@ Use `FileTypeActivation.DEFAULT` for ordinary processable types and `FileTypeAct
 types requiring project consent. Plugin-provided declarations use the same policy; a `NEVER` type
 cannot become processable through configuration or a processor binding.
 
+Registry reports show this static declaration and never consume project opt-in configuration. Use
+`topmark probe` to inspect dynamic authorization and the selected processor for a particular path.
+
 ______________________________________________________________________
 
 ## Release checklist

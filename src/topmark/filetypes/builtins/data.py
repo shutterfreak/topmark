@@ -61,7 +61,7 @@ FILETYPES: list[FileType] = [
         extensions=[".json"],
         filenames=[],
         patterns=[],
-        description="JSON (no comments; unheaderable)",
+        description="JSON (no comments; never processable)",
         activation=FileTypeActivation.NEVER,
     ),
     BUILTIN_FILETYPE_FACTORY(

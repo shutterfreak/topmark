@@ -25,6 +25,7 @@ from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
 from topmark.presentation.formatters.filetypes import filetype_policy_to_display_pairs
+from topmark.presentation.shared.registry import format_filetype_activation
 
 if TYPE_CHECKING:
     from topmark.presentation.shared.registry import BindingsHumanReport
@@ -97,7 +98,7 @@ def render_filetypes_text(
                 lines.append(f"      filenames       : {', '.join(it.filenames)}")
             if it.patterns:
                 lines.append(f"      patterns        : {', '.join(it.patterns)}")
-            lines.append(f"      activation      : {it.activation}")
+            lines.append(f"      activation      : {format_filetype_activation(it.activation)}")
             lines.append(f"      content matcher : {'yes' if it.has_content_matcher else 'no'}")
             lines.append(f"      insert checker  : {'yes' if it.has_insert_checker else 'no'}")
             policy_str: str = render_filetype_policy_text(
@@ -106,7 +107,10 @@ def render_filetypes_text(
             )
             lines.append(f"      header policy   : {policy_str}")
         else:
-            lines.append(f"{idx:>{num_width}}. {it.qualified_key:<{k_len}} {descr}")
+            lines.append(
+                f"{idx:>{num_width}}. {it.qualified_key:<{k_len}} "
+                f"[{format_filetype_activation(it.activation)}] {descr}"
+            )
 
     return "\n".join(lines)
 
@@ -181,6 +185,9 @@ def render_bindings_text(
     for idx, binding in enumerate(report.bindings, start=1):
         if report.show_details:
             parts.append(f"{idx:>{num_width}}. {binding.file_type_key} -> {binding.processor_key}")
+            parts.append(
+                f"      activation          : {format_filetype_activation(binding.activation)}"
+            )
             parts.append(f"      file type local key : {binding.file_type_local_key}")
             parts.append(f"      file type namespace : {binding.file_type_namespace}")
             parts.append(f"      processor local key : {binding.processor_local_key}")
@@ -188,13 +195,28 @@ def render_bindings_text(
             parts.append(f"      file type desc      : {dim_styler(binding.file_type_description)}")
             parts.append(f"      processor desc      : {dim_styler(binding.processor_description)}")
         else:
-            parts.append(f"{idx:>{num_width}}. {binding.file_type_key} -> {binding.processor_key}")
+            parts.append(
+                f"{idx:>{num_width}}. {binding.file_type_key} -> {binding.processor_key} "
+                f"[{format_filetype_activation(binding.activation)}]"
+            )
 
     if report.unbound_filetypes:
         parts.append("")
-        parts.append(heading_styler("Unbound file types:"))
+        parts.append(heading_styler("Unbound processable file types:"))
         for idx, item in enumerate(report.unbound_filetypes, start=1):
-            parts.append(f"{idx:>{num_width}}. {item.name} - {dim_styler(item.description)}")
+            parts.append(
+                f"{idx:>{num_width}}. {item.name} "
+                f"[{format_filetype_activation(item.activation)}] - {dim_styler(item.description)}"
+            )
+
+    if report.non_processable_filetypes:
+        parts.append("")
+        parts.append(heading_styler("Intentionally non-processable file types:"))
+        for idx, item in enumerate(report.non_processable_filetypes, start=1):
+            parts.append(
+                f"{idx:>{num_width}}. {item.name} "
+                f"[{format_filetype_activation(item.activation)}] - {dim_styler(item.description)}"
+            )
 
     if report.unused_processors:
         parts.append("")

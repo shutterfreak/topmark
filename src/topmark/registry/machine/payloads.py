@@ -92,6 +92,24 @@ def _serialize_processor_ref(item: ProcessorInfo) -> ProcessorRefEntry:
     )
 
 
+def _serialize_filetype_ref(item: FileTypeInfo) -> FileTypeRefEntry:
+    """Serialize a file type reference entry for machine payloads.
+
+    Args:
+        item: File type metadata returned by the public API.
+
+    Returns:
+        A `FileTypeRefEntry` dict containing static identity and activation metadata.
+    """
+    return FileTypeRefEntry(
+        local_key=item["local_key"],
+        namespace=item["namespace"],
+        qualified_key=item["qualified_key"],
+        description=item["description"],
+        activation=item["activation"],
+    )
+
+
 def build_filetypes_payload(
     *,
     show_details: bool,
@@ -228,6 +246,7 @@ def build_bindings_payload(
                     processor_key=item["processor_key"],
                     processor_local_key=item["processor_local_key"],
                     processor_namespace=item["processor_namespace"],
+                    activation=item["activation"],
                     file_type_description=item["file_type_description"],
                     processor_description=item["processor_description"],
                 )
@@ -237,6 +256,7 @@ def build_bindings_payload(
                 BindingBriefEntry(
                     file_type_key=item["file_type_key"],
                     processor_key=item["processor_key"],
+                    activation=item["activation"],
                 )
             )
 
@@ -246,14 +266,7 @@ def build_bindings_payload(
         if item["qualified_key"] in bound_filetype_keys:
             continue
         if show_details:
-            unbound_filetypes.append(
-                FileTypeRefEntry(
-                    local_key=item["local_key"],
-                    namespace=item["namespace"],
-                    qualified_key=item["qualified_key"],
-                    description=item["description"],
-                )
-            )
+            unbound_filetypes.append(_serialize_filetype_ref(item))
         else:
             unbound_filetypes.append(item["qualified_key"])
 

@@ -110,6 +110,7 @@ ______________________________________________________________________
 ### Brief output (default)
 
 - Local key - the namespace-local identifier (for example, `python`, `markdown`, `env`)
+- Declared activation (`default`, `opt-in`, or `never`)
 - Description - a short description
 
 ### Detailed output (`--long`)
@@ -313,8 +314,8 @@ to determine which effective file type should apply.
 
 A common example is `.json`:
 
-- strict JSON (`topmark:json`) is recognized but treated as unheaderable because JSON does not
-  support comments
+- strict JSON (`topmark:json`) is recognized but `never` processable because JSON does not support
+  comments
 - JSON-with-comments variants may still be supported through specialized file types such as
   `topmark:json-as-jsonc`
 - dedicated `.jsonc` files may map directly to `topmark:jsonc`

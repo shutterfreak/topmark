@@ -48,6 +48,26 @@ if TYPE_CHECKING:
     from topmark.api.types import ProcessorInfo
 
 
+_ACTIVATION_DISPLAY_LABELS: dict[str, str] = {
+    "default": "default (eligible when bound)",
+    "opt-in": "opt-in (requires runtime consent)",
+    "never": "never (not processable)",
+}
+"""Static human-facing labels for declared file-type activation policies."""
+
+
+def format_filetype_activation(activation: str) -> str:
+    """Return the human-facing label for a declared file-type activation.
+
+    Args:
+        activation: Declared activation enum value from registry metadata.
+
+    Returns:
+        A static label derived solely from the declared activation value.
+    """
+    return _ACTIVATION_DISPLAY_LABELS[activation]
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class FileTypePolicyHumanItem:
     r"""Stable metadata describing header insertion/stripping policy for a file type.
@@ -144,6 +164,7 @@ class BindingHumanItem:
         processor_key: Canonical processor key.
         processor_local_key: Processor local key.
         processor_namespace: Namespace that owns the processor.
+        activation: Declared processing authorization for the bound file type.
         file_type_description: Human-readable file type description.
         processor_description: Human-readable processor description.
     """
@@ -156,6 +177,7 @@ class BindingHumanItem:
     processor_local_key: str
     processor_namespace: str
 
+    activation: str
     file_type_description: str
     processor_description: str
 
@@ -198,10 +220,12 @@ class UnboundFileTypeHumanItem:
     Attributes:
         name: Qualified file type identifier shown in human-facing output.
         description: Human-readable file type description.
+        activation: Declared processing authorization for this type.
     """
 
     name: str
     description: str
+    activation: str
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -222,6 +246,7 @@ class BindingsHumanReport:
     verbosity_level: int
     bindings: tuple[BindingHumanItem, ...]
     unbound_filetypes: tuple[UnboundFileTypeHumanItem, ...]
+    non_processable_filetypes: tuple[UnboundFileTypeHumanItem, ...]
     unused_processors: tuple[ProcessorHumanItem, ...]
     styled: bool
 
@@ -363,6 +388,10 @@ def build_bindings_human_report(
         raw_filetypes = [item for item in raw_filetypes if item["qualified_key"] in active_keys]
         raw_bindings = [item for item in raw_bindings if item["file_type_key"] in active_keys]
 
+    activation_by_filetype_key: dict[str, str] = {
+        item["qualified_key"]: item["activation"] for item in raw_filetypes
+    }
+
     bindings: list[BindingHumanItem] = [
         BindingHumanItem(
             file_type_key=item["file_type_key"],
@@ -371,6 +400,7 @@ def build_bindings_human_report(
             processor_key=item["processor_key"],
             processor_local_key=item["processor_local_key"],
             processor_namespace=item["processor_namespace"],
+            activation=activation_by_filetype_key[item["file_type_key"]],
             file_type_description=item["file_type_description"],
             processor_description=item["processor_description"],
         )
@@ -382,9 +412,19 @@ def build_bindings_human_report(
         UnboundFileTypeHumanItem(
             name=item["qualified_key"],
             description=item["description"],
+            activation=item["activation"],
         )
         for item in sorted(raw_filetypes, key=lambda it: str(it["qualified_key"]))
-        if item["qualified_key"] not in bound_filetype_keys
+        if item["qualified_key"] not in bound_filetype_keys and item["activation"] != "never"
+    ]
+    non_processable_filetypes: list[UnboundFileTypeHumanItem] = [
+        UnboundFileTypeHumanItem(
+            name=item["qualified_key"],
+            description=item["description"],
+            activation=item["activation"],
+        )
+        for item in sorted(raw_filetypes, key=lambda it: str(it["qualified_key"]))
+        if item["qualified_key"] not in bound_filetype_keys and item["activation"] == "never"
     ]
 
     unused_processors: list[ProcessorHumanItem] = [
@@ -409,6 +449,7 @@ def build_bindings_human_report(
         verbosity_level=verbosity_level,
         bindings=tuple(bindings),
         unbound_filetypes=tuple(unbound_filetypes),
+        non_processable_filetypes=tuple(non_processable_filetypes),
         unused_processors=tuple(unused_processors),
         styled=styled,
     )
