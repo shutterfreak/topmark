@@ -17,6 +17,7 @@ Sessions:
   - `lint_fixall`: Ruff lint autofix.
   - `format_check`: Verify formatting (ruff, mdformat, taplo, mbake).
   - `format`: Apply formatting (ruff, mdformat, taplo, mbake).
+  - `format_docstrings`: Optionally format Python docstrings, then apply Ruff formatting.
   - `docs`: Prepare and strictly build Zensical documentation and validate hosted routes.
   - `docs_serve`: Prepare and serve Zensical documentation locally.
   - `links`: Lychee link checks for docs/ + tracked Markdown.
@@ -50,6 +51,7 @@ Notes:
 Common invocations:
   - `nox -s lint`
   - `nox -s format_check`
+  - `nox -s format_docstrings`
   - `nox -s docs`
   - `nox -s qa` (runs for all configured Python versions)
   - `nox -s verify` (non-test quality checks, including links)
@@ -628,6 +630,26 @@ def format(session: nox.Session) -> None:
             ".bake.toml",
             *makefiles,
         )
+
+
+@nox.session(python=CANONICAL_PYTHON)
+def format_docstrings(session: nox.Session) -> None:
+    """Optionally format Python docstrings, then apply Ruff's formatting."""
+    session.install(DEPS_DEV)
+
+    session.run(
+        "pydocstringformatter",
+        "--write",
+        "src",
+        "tests",
+        "tools",
+    )
+    # This formatter must always run before Ruff so Ruff owns the final formatting result.
+    session.run(
+        "ruff",
+        "format",
+        ".",
+    )
 
 
 @nox.session

@@ -18,6 +18,15 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [Unreleased]
+
+### Changed - Unreleased
+
+- Integrated the opt-in docstring formatter with Nox and made Ruff the final formatting pass while
+  preserving intentional whitespace in embedded code snippets.
+
+______________________________________________________________________
+
 ## [2.0.1] - 2026-10-17
 
 This maintenance release corrects published project metadata and repository quality indicators after
