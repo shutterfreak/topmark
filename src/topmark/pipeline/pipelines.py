@@ -125,8 +125,10 @@ CHECK_RENDER_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = SCAN_PIPELIN
     builder.BuilderStep(),  # Build the dict with expected header fields
     renderer.RendererStep(),  # Render the updated header
 )
-"""Render-only pipeline: resolves, sniffs, reads, scans, builds, and renders
-(no compare/update/patch)."""
+"""Render-only pipeline: resolves, sniffs, reads, scans, builds, and renders.
+
+(no compare/update/patch).
+"""
 
 CHECK_SUMMMARY_PIPELINE: Final[tuple[Step[ProcessingContext], ...]] = CHECK_RENDER_PIPELINE + (
     comparer.ComparerStep(),  # Compare existing header with rendered new header

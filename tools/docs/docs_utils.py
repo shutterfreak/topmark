@@ -349,7 +349,6 @@ def find_unlinked_backticked_symbols_with_locations(
 
     Returns:
         Mapping from symbol string to a set of 1-based line numbers.
-
     """
     findings: dict[str, set[int]] = {}
 

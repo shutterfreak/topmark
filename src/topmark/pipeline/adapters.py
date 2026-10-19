@@ -56,7 +56,6 @@ class PreInsertViewAdapter:
 
     Args:
         ctx: The processing context to wrap.
-
     """
 
     lines: Iterable[str]

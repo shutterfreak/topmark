@@ -410,7 +410,6 @@ def _build_config_layers_provenance_toml(
 
     Raises:
         ValueError: if the config provenance layer is resolved to an invalid TOML source.
-
     """
     layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(
         resolved_toml.sources

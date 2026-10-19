@@ -65,7 +65,6 @@ class ExitCode(IntEnum):
     Notes:
         - Exit code ``2`` is intentionally not represented here because it is
           owned by Click parser usage errors, not by TopMark semantic outcomes.
-
     """
 
     SUCCESS = 0
