@@ -47,7 +47,7 @@ help:
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
 	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
 	@echo "  format          Format code/markdown/toml/Makefile (auto-fix)"
-	@echo "  format-docstrings  Auto-format docstrings using pydocstringformatter"
+	@echo "  format-docstrings  Optionally format docstrings, then apply Ruff formatting"
 	@echo "  docstring-links Enforce Python docstring link style"
 	@echo "  docs-hygiene    Check Markdown/Zensical documentation hygiene"
 	@echo "  code-hygiene    Check Python comments/docstrings/string prose hygiene"
@@ -127,9 +127,8 @@ format: check-nox
 	$(NOX) $(NOX_FLAGS) -s format
 
 .PHONY: format-docstrings
-format-docstrings: check-uv
-	@echo "Auto-formatting docstrings (settings from pyproject.toml)..."
-	$(UV) run --extra dev pydocstringformatter --write src/topmark/ tools/
+format-docstrings: check-nox
+	$(NOX) $(NOX_FLAGS) -s format_docstrings
 
 .PHONY: docstring-links
 docstring-links: check-nox

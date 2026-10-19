@@ -225,8 +225,9 @@ require-yields-section      = true
 [tool.pydocstringformatter]
 style           = "pep257"
 max-line-length = 100
-exclude         = ["tests/**"]
-# Specific fixers to ensure internal consistency
+# Preserve intentional blank-line grouping in embedded code snippets.
+strip-whitespaces = false
+# Specific fixers to ensure internal consistency.
 beginning-quotes        = true
 closing-quotes          = true
 capitalize-first-letter = true

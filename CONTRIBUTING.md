@@ -209,8 +209,12 @@ make lint            # ruff + pydoclint
 make lint-fixall     # auto-fix lint issues
 make format-check    # check formatting
 make format          # auto-format all
+make format-docstrings # optionally normalize docstrings, then apply Ruff formatting
 make docstring-links # enforce docstring link style
 ```
+
+`make format-docstrings` is an opt-in maintenance command. It runs `pydocstringformatter` before
+Ruff and is not part of the required formatting or CI gates.
 
 ### Linting policy
 
