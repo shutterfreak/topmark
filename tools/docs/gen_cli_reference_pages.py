@@ -507,7 +507,6 @@ def main(
 
     Raises:
         ValueError: If no filesystem writer is supplied.
-
     """
     if docs_writer is None:
         raise ValueError("A filesystem documentation writer is required for Zensical staging")

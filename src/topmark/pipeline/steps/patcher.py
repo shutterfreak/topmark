@@ -263,7 +263,6 @@ class PatcherStep(BaseStep):
         Mutations:
             ProcessingContext: The same context with ``ctx.views.diff`` set when a change is
                 detected, and with comparison status normalized when applicable.
-
         """
         logger.debug(
             "File '%s' : header status %s, header comparison status: %s",

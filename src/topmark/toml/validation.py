@@ -95,7 +95,6 @@ def add_toml_issues(
     Args:
         log: Mutable diagnostic log receiving the TOML validation issues.
         issues: Structured TOML validation issues to record.
-
     """
     add_by_level: dict[str, Callable[..., None]] = {
         DiagnosticLevel.INFO: log.add_info,

@@ -58,11 +58,16 @@ class FileTypeRegistry:
 
     _overrides: dict[str, FileType] = {}
     """Local overlays; applied on top of the base (built-ins + plugins).
-    These *do not* mutate the base registry returned by instances."""
+
+    These *do not* mutate the base registry returned by instances.
+    """
 
     _removals: set[str] = set()
-    """Local-key removals only. Qualified-key unregister helpers must normalize
-    through the resolved FileType and store `ft.local_key` here."""
+    """Local-key removals only.
+
+    Qualified-key unregister helpers must normalize
+    through the resolved FileType and store `ft.local_key` here.
+    """
 
     _cache: Mapping[str, FileType] | None = None
     """Local-key cache."""
