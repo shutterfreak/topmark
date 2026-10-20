@@ -19,9 +19,11 @@ conversion and validation; command-level input planning lives in
 from __future__ import annotations
 
 import glob
+import re
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Final
 from typing import Generic
 from typing import NoReturn
 from typing import Protocol
@@ -29,6 +31,9 @@ from typing import TypeVar
 from typing import cast
 
 import click
+
+from topmark.registry.query import RegistryIdentityQuery
+from topmark.registry.query import RegistryRegex
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -52,6 +57,13 @@ else:
 E = TypeVar("E", bound=Enum)
 
 
+REGISTRY_QUERY_METAVAR: Final[str] = "QUERY"
+"""Metavariable used for positional registry identity queries."""
+
+REGISTRY_REGEX_METAVAR: Final[str] = "PATTERN"
+"""Metavariable used for registry regular-expression filters."""
+
+
 # --- Custom Click parameter types and validators for TopMark CLI ---
 
 
@@ -66,6 +78,77 @@ class CliWriteMode(str, Enum):
     ATOMIC = "atomic"
     INPLACE = "inplace"
     STDOUT = "stdout"
+
+
+class RegistryQueryParam(ParamTypeBase):
+    """Parse one positional registry identity query."""
+
+    name: str = REGISTRY_QUERY_METAVAR
+
+    def _fail_noreturn(
+        self,
+        message: str,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> NoReturn:
+        """Raise a typed Click parameter error."""
+        raise click.BadParameter(message, param=param, ctx=ctx)
+
+    def convert(
+        self,
+        value: str | RegistryIdentityQuery | None,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> RegistryIdentityQuery | None:
+        """Convert one CLI positional query to a typed identity query.
+
+        Args:
+            value: Raw query text supplied by Click.
+            param: Click parameter being converted.
+            ctx: Active Click context.
+
+        Returns:
+            A typed registry identity query.
+        """
+        if value is None or isinstance(value, RegistryIdentityQuery):
+            return value
+        try:
+            return RegistryIdentityQuery.parse(value)
+        except ValueError as error:
+            self._fail_noreturn(
+                f"Invalid registry query: {error}",
+                param,
+                ctx,
+            )
+
+
+class RegistryRegexParam(ParamTypeBase):
+    """Parse one regular expression used to select a qualified registry key."""
+
+    name: str = REGISTRY_REGEX_METAVAR
+
+    def _fail_noreturn(
+        self,
+        message: str,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> NoReturn:
+        """Raise a typed Click parameter error."""
+        raise click.BadParameter(message, param=param, ctx=ctx)
+
+    def convert(
+        self,
+        value: str | RegistryRegex | None,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> RegistryRegex | None:
+        """Convert one CLI regular expression to a typed selector."""
+        if value is None or isinstance(value, RegistryRegex):
+            return value
+        try:
+            return RegistryRegex.parse(value)
+        except re.error as error:
+            self._fail_noreturn(f"Invalid regular expression: {error}", param, ctx)
 
 
 class EnumChoiceParam(ParamTypeBase, Generic[E]):

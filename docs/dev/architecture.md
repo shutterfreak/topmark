@@ -568,9 +568,11 @@ Important invariants:
   \[`probe()`\][topmark.api.commands.pipeline.probe].
 - File-agnostic commands ([`version`](../usage/commands/version.md), registry commands,
   [`config defaults`](../usage/commands/config/defaults.md), and
-  [`config init`](../usage/commands/config/init.md)) reject positional paths and file-processing
-  STDIN modes. They also do not participate in project config discovery unless explicitly
-  documented.
+  [`config init`](../usage/commands/config/init.md)) reject positional filesystem paths and
+  file-processing STDIN modes. [`registry filetypes`](../usage/commands/registry/filetypes.md) and
+  [`registry processors`](../usage/commands/registry/processors.md) instead interpret their optional
+  positional values as identity queries. They do not participate in project config discovery unless
+  explicitly documented.
 
 TopMark intentionally uses the POSIX-style `-` PATH sentinel for content read from STDIN, together
 with `--stdin-filename` so file type, processor, and path-sensitive policy resolution remain the

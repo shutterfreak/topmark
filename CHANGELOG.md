@@ -20,6 +20,14 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+### Added - Unreleased
+
+- Added repeatable compact identity queries to `registry filetypes` and `registry processors`, with
+  structured namespace/local-key and qualified-identity glob matching, full-match `--match-regex`
+  predicates, and `--builtin` scope restriction. Positional values that were previously rejected are
+  now query filters; valid queries with no matches succeed with empty output. Malformed query and
+  regex syntax use Click's parser-error exit code (`2`), consistent with other typed CLI values.
+
 ### Changed - Unreleased
 
 - Integrated the opt-in docstring formatter with Nox and made Ruff the final formatting pass while

@@ -111,3 +111,6 @@ class ArgKey(str, Enum):
 
     # Registry
     ACTIVATION = "activation"
+    REGISTRY_QUERIES = "registry_queries"
+    REGISTRY_REGEXES = "registry_regexes"
+    REGISTRY_BUILTIN = "registry_builtin"

@@ -44,6 +44,7 @@ from topmark.registry.registry import Registry
 if TYPE_CHECKING:
     from topmark.filetypes.policy import FileTypeHeaderPolicy
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.query import RegistrySelection
     from topmark.registry.types import ProcessorMeta
 
 
@@ -59,16 +60,19 @@ def _build_filetype_policy_info(policy: FileTypeHeaderPolicy) -> FileTypePolicyI
     )
 
 
-def list_filetypes() -> list[FileTypeInfo]:
-    """Return metadata about registered file types.
+def list_selected_filetypes(
+    selection: RegistrySelection | None = None,
+) -> list[FileTypeInfo]:
+    """Return metadata about identity-selected file types.
+
+    This internal helper keeps registry selection in the registry layer while
+    preserving the stable, unparameterized public `list_filetypes` API.
+
+    Args:
+        selection: Optional identity selection for effective file types.
 
     Returns:
-        A list of `FileTypeInfo` dicts (stable, serializable metadata).
-
-    Notes:
-        For object-level access, prefer `FileTypeRegistry` from
-        [`topmark.registry`][]. This function returns metadata rather than the
-        registry objects themselves.
+        Serializable file type metadata in canonical qualified-key order.
     """
     return [
         FileTypeInfo(
@@ -85,8 +89,58 @@ def list_filetypes() -> list[FileTypeInfo]:
             has_insert_checker=bool(ft.pre_insert_checker),
             policy=_build_filetype_policy_info(ft.header_policy),
         )
-        for ft in Registry.filetypes().values()
+        for ft in Registry.select_filetypes(selection)
     ]
+
+
+def list_filetypes() -> list[FileTypeInfo]:
+    """Return metadata about registered file types.
+
+    Returns:
+        A list of `FileTypeInfo` dicts (stable, serializable metadata).
+
+    Notes:
+        For object-level access, prefer `FileTypeRegistry` from
+        [`topmark.registry`][]. This function returns metadata rather than the
+        registry objects themselves.
+    """
+    return list_selected_filetypes()
+
+
+def list_selected_processors(
+    selection: RegistrySelection | None = None,
+) -> list[ProcessorInfo]:
+    """Return metadata about identity-selected header processors.
+
+    Args:
+        selection: Optional identity selection for effective processors.
+
+    Returns:
+        Serializable processor metadata in canonical qualified-key order.
+    """
+    bound_processor_keys: set[str] = {
+        binding.processor.qualified_key
+        for binding in Registry.bindings()
+        if binding.processor is not None
+    }
+    items: list[ProcessorInfo] = []
+    for proc_def in Registry.select_processors(selection):
+        proc_obj: HeaderProcessor = proc_def.processor_class()
+        qualified_key: str = proc_def.qualified_key
+        info: ProcessorInfo = ProcessorInfo(
+            local_key=proc_def.local_key,
+            namespace=proc_def.namespace,
+            qualified_key=qualified_key,
+            description=getattr(proc_obj, "description", ""),
+            bound=qualified_key in bound_processor_keys,
+            line_indent=getattr(proc_obj, "line_indent", "") or "",
+            line_prefix=getattr(proc_obj, "line_prefix", "") or "",
+            line_suffix=getattr(proc_obj, "line_suffix", "") or "",
+            block_prefix=getattr(proc_obj, "block_prefix", "") or "",
+            block_suffix=getattr(proc_obj, "block_suffix", "") or "",
+        )
+        items.append(info)
+    return items
 
 
 def list_processors() -> list[ProcessorInfo]:
@@ -100,28 +154,7 @@ def list_processors() -> list[ProcessorInfo]:
         [`topmark.registry`][]. This function returns metadata rather than the
         registry objects themselves.
     """
-    bound_processor_keys: set[str] = {
-        binding.processor.qualified_key
-        for binding in Registry.bindings()
-        if binding.processor is not None
-    }
-    items: list[ProcessorInfo] = []
-    for qualified_key, proc_def in Registry.processors().items():
-        proc_obj: HeaderProcessor = proc_def.processor_class()
-        info: ProcessorInfo = ProcessorInfo(
-            local_key=getattr(proc_def, "local_key", ""),
-            namespace=getattr(proc_def, "namespace", ""),
-            qualified_key=qualified_key,
-            description=getattr(proc_obj, "description", ""),
-            bound=qualified_key in bound_processor_keys,
-            line_indent=getattr(proc_obj, "line_indent", "") or "",
-            line_prefix=getattr(proc_obj, "line_prefix", "") or "",
-            line_suffix=getattr(proc_obj, "line_suffix", "") or "",
-            block_prefix=getattr(proc_obj, "block_prefix", "") or "",
-            block_suffix=getattr(proc_obj, "block_suffix", "") or "",
-        )
-        items.append(info)
-    return items
+    return list_selected_processors()
 
 
 def list_bindings() -> list[BindingInfo]:

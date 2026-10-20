@@ -25,11 +25,11 @@ ______________________________________________________________________
 ## Input applicability
 
 `registry processors` is informational and file-agnostic. It inspects TopMark's effective composed
-registry state, not project files or configuration discovery.
+registry state, not project files or configuration discovery. Its optional positional values are
+registry identity queries, not filesystem paths.
 
 It does not accept file-processing inputs:
 
-- positional PATH arguments are rejected as invalid CLI usage
 - `-` is not a content-STDIN sentinel for this command
 - `--stdin-filename` does not apply
 - file-list STDIN modes (for example, `--files-from -`) do not apply
@@ -102,6 +102,43 @@ The `--long` flag controls the detail level for all output formats.
 
 This flag controls the data/detail depth across all formats. TEXT-oriented verbosity (`-v`) affects
 presentation (e.g., headings) and does not change the data fields emitted.
+
+### Identity queries
+
+Use repeatable positional identity queries to restrict the effective processor registry view:
+
+```bash
+topmark registry processors topmark:markdown
+topmark registry processors :markdown
+topmark registry processors topmark:
+topmark registry processors --builtin markdown
+```
+
+The structured form is `[namespace-glob]:[local-key-glob]`; an empty component means `*`. A bare
+identifier is shorthand for an exact local-key query, while a bare glob matches the complete
+qualified identity. Positional queries are alternatives, so use one structured query such as
+`topmark:markdown` when both fields must match. `--builtin` restricts results to the `topmark`
+namespace.
+
+Compatibility: positional values were previously rejected by this command. They are now identity
+query alternatives; a valid query with no matching entries succeeds and renders an empty result.
+
+Use repeatable `--match-regex PATTERN` values for whole-qualified-identity regular-expression
+matching. Positional queries and regular expressions are ORed; `--builtin` restricts the result
+afterward.
+
+```console
+# Built-in processors whose local key ends in "xml".
+topmark registry processors --builtin ':*xml'
+
+# Search `block` anywhere in the canonical qualified identity.
+topmark registry processors '*block*'
+
+# Match the built-in Markdown or XML processor.
+topmark registry processors --match-regex 'topmark:(markdown|xml)'
+```
+
+{% include-markdown "\_snippets/registry-globs-and-match-regex-filtering.md" %}
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
@@ -195,10 +232,11 @@ successful execution.
 
 Common `registry processors` exit codes:
 
-| Scenario                      | Exit code          |
-| ----------------------------- | ------------------ |
-| Command executed successfully | `SUCCESS (0)`      |
-| Invalid CLI usage             | `USAGE_ERROR (64)` |
+| Scenario                      | Exit code                |
+| ----------------------------- | ------------------------ |
+| Command executed successfully | `SUCCESS (0)`            |
+| Valid query with no matches   | `SUCCESS (0)`            |
+| Malformed query or regex      | Click parser error (`2`) |
 
 Notes:
 
@@ -206,7 +244,7 @@ Notes:
   values) may exit with code `2` before command logic runs.
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
-- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
+- Malformed identity queries are Click parser errors, not file-processing diagnostics.
 - `--quiet` is not supported for registry commands; use output-format options instead for non-TEXT
   output.
 

@@ -39,6 +39,7 @@ from topmark.core.errors import ReservedNamespaceError
 from topmark.registry.identity import owner_label
 from topmark.registry.identity import require_and_validate_registry_identity
 from topmark.registry.identity import validate_reserved_topmark_namespace
+from topmark.registry.query import RegistrySelection
 from topmark.registry.types import ProcessorDefinition
 from topmark.registry.types import ProcessorMeta
 
@@ -292,6 +293,39 @@ class HeaderProcessorRegistry:
             cls._overrides[qualified_key] = proc_def
             cls._clear_cache()
             return proc_def
+
+    @classmethod
+    def select(
+        cls,
+        selection: RegistrySelection | None = None,
+    ) -> tuple[ProcessorDefinition, ...]:
+        """Return processors matching an identity selection.
+
+        Args:
+            selection: Optional identity selection. Omitting it returns every effective
+                processor definition.
+
+        Returns:
+            Matching processor definitions in canonical qualified-key order.
+        """
+        with cls._lock:
+            items: tuple[ProcessorDefinition, ...] = tuple(cls._compose().values())
+
+        selected: RegistrySelection = selection or RegistrySelection()
+        return tuple(
+            sorted(
+                (
+                    proc_def
+                    for proc_def in items
+                    if selected.matches(
+                        qualified_key=proc_def.qualified_key,
+                        local_key=proc_def.local_key,
+                        namespace=proc_def.namespace,
+                    )
+                ),
+                key=lambda proc_def: proc_def.qualified_key,
+            )
+        )
 
     @classmethod
     def unregister(cls, processor_key: str) -> bool:

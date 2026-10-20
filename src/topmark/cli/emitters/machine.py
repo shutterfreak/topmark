@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
+    from topmark.registry.query import RegistrySelection
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
 
@@ -325,6 +326,7 @@ def emit_filetypes_machine(
     fmt: OutputFormat,
     show_details: bool,
     activation: str | None = None,
+    selection: RegistrySelection | None = None,
 ) -> None:
     """Emit `topmark registry filetypes` machine-readable output.
 
@@ -335,12 +337,14 @@ def emit_filetypes_machine(
         show_details: If True, include expanded identity, matching, binding,
             and policy fields.
         activation: Optional declared activation filter.
+        selection: Optional identity selection applied before serialization.
     """
     serialized: str | Iterator[str] = serialize_filetypes(
         meta=meta,
         fmt=fmt,
         show_details=show_details,
         activation=activation,
+        selection=selection,
     )
 
     # Do not emit trailing newline for JSON
@@ -354,6 +358,7 @@ def emit_processors_machine(
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
+    selection: RegistrySelection | None = None,
 ) -> None:
     """Emit `topmark registry processors` machine-readable output.
 
@@ -363,11 +368,13 @@ def emit_processors_machine(
         fmt: Target machine-readable format (`json` or `ndjson`).
         show_details: If True, include expanded identity, binding, and
             delimiter fields.
+        selection: Optional identity selection applied before serialization.
     """
     serialized: str | Iterator[str] = serialize_processors(
         meta=meta,
         fmt=fmt,
         show_details=show_details,
+        selection=selection,
     )
 
     # Do not emit trailing newline for JSON

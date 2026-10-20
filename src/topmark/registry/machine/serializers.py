@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from topmark.registry.machine.schemas import BindingsPayload
     from topmark.registry.machine.schemas import FileTypesPayload
     from topmark.registry.machine.schemas import ProcessorsPayload
+    from topmark.registry.query import RegistrySelection
 
 
 def serialize_filetypes(
@@ -58,6 +59,7 @@ def serialize_filetypes(
     meta: MetaPayload,
     show_details: bool,
     activation: str | None = None,
+    selection: RegistrySelection | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
 
@@ -66,6 +68,7 @@ def serialize_filetypes(
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
         activation: Optional declared activation filter.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         - JSON: pretty-printed JSON string (no trailing newline)
@@ -82,6 +85,7 @@ def serialize_filetypes(
             meta=meta,
             show_details=show_details,
             activation=activation,
+            selection=selection,
         )
 
     if fmt == OutputFormat.NDJSON:
@@ -89,6 +93,7 @@ def serialize_filetypes(
             meta=meta,
             show_details=show_details,
             activation=activation,
+            selection=selection,
         )
 
     # Defensive guard: reached only if a new machine-readable OutputFormat is
@@ -101,6 +106,7 @@ def serialize_filetypes_json(
     meta: MetaPayload,
     show_details: bool,
     activation: str | None = None,
+    selection: RegistrySelection | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
 
@@ -108,6 +114,7 @@ def serialize_filetypes_json(
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
         activation: Optional declared activation filter.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         - JSON: pretty-printed JSON string (no trailing newline)
@@ -116,6 +123,7 @@ def serialize_filetypes_json(
     payload: FileTypesPayload = build_filetypes_payload(
         show_details=show_details,
         activation=activation,
+        selection=selection,
     )
     envelope: dict[str, object] = build_filetypes_json_envelope(
         meta=meta,
@@ -129,6 +137,7 @@ def serialize_filetypes_ndjson(
     meta: MetaPayload,
     show_details: bool,
     activation: str | None = None,
+    selection: RegistrySelection | None = None,
 ) -> Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
 
@@ -136,6 +145,7 @@ def serialize_filetypes_ndjson(
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
         activation: Optional declared activation filter.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         Iterator of JSON strings (one per record; no trailing newline per item)
@@ -143,6 +153,7 @@ def serialize_filetypes_ndjson(
     payload: FileTypesPayload = build_filetypes_payload(
         show_details=show_details,
         activation=activation,
+        selection=selection,
     )
     records: Iterator[dict[str, object]] = iter_filetypes_ndjson_records(
         meta=meta,
@@ -156,6 +167,7 @@ def serialize_processors(
     fmt: OutputFormat,
     meta: MetaPayload,
     show_details: bool,
+    selection: RegistrySelection | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry processors`.
 
@@ -163,6 +175,7 @@ def serialize_processors(
         fmt: Target output format (JSON or NDJSON).
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         - JSON: pretty-printed JSON string (no trailing newline)
@@ -178,12 +191,14 @@ def serialize_processors(
         return serialize_processors_json(
             meta=meta,
             show_details=show_details,
+            selection=selection,
         )
 
     if fmt == OutputFormat.NDJSON:
         return serialize_processors_ndjson(
             meta=meta,
             show_details=show_details,
+            selection=selection,
         )
 
     # Defensive guard: reached only if a new machine-readable OutputFormat is
@@ -195,18 +210,21 @@ def serialize_processors_json(
     *,
     meta: MetaPayload,
     show_details: bool,
+    selection: RegistrySelection | None = None,
 ) -> str:
     """Serialize machine-readable output for `topmark registry processors`.
 
     Args:
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         Pretty-printed JSON string (no trailing newline)
     """
     payload: ProcessorsPayload = build_processors_payload(
         show_details=show_details,
+        selection=selection,
     )
     envelope: dict[str, object] = build_processors_json_envelope(
         meta=meta,
@@ -219,18 +237,21 @@ def serialize_processors_ndjson(
     *,
     meta: MetaPayload,
     show_details: bool,
+    selection: RegistrySelection | None = None,
 ) -> Iterator[str]:
     """Serialize machine-readable output for `topmark registry processors`.
 
     Args:
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         Iterator of JSON strings (one per record; no trailing newline per item)
     """
     payload: ProcessorsPayload = build_processors_payload(
         show_details=show_details,
+        selection=selection,
     )
     records: Iterator[dict[str, object]] = iter_processors_ndjson_records(
         meta=meta,

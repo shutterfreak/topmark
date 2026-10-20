@@ -236,10 +236,11 @@ ______________________________________________________________________
 
 ### [`registry filetypes`](../usage/commands/registry/filetypes.md) / [`registry processors`](../usage/commands/registry/processors.md) / [`registry bindings`](../usage/commands/registry/bindings.md)
 
-| Scenario          | Exit code |
-| ----------------- | --------: |
-| Successful output |         0 |
-| CLI usage error   |        64 |
+| Scenario                                                                                 | Exit code |
+| ---------------------------------------------------------------------------------------- | --------: |
+| Successful output, including a valid query with no matching entries                      |         0 |
+| Click parser error, including malformed identity query or regex for filetypes/processors |         2 |
+| TopMark-owned semantic invocation error after parsing                                    |        64 |
 
 Notes:
 

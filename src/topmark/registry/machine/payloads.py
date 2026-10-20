@@ -35,6 +35,8 @@ from typing import TYPE_CHECKING
 from topmark.api.commands.registry import list_bindings
 from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
+from topmark.api.commands.registry import list_selected_filetypes
+from topmark.api.commands.registry import list_selected_processors
 from topmark.registry.machine.schemas import BindingBriefEntry
 from topmark.registry.machine.schemas import BindingDetailEntry
 from topmark.registry.machine.schemas import BindingEntriesPayload
@@ -54,6 +56,7 @@ if TYPE_CHECKING:
     from topmark.api.types import FileTypeInfo
     from topmark.api.types import FileTypePolicyInfo
     from topmark.api.types import ProcessorInfo
+    from topmark.registry.query import RegistrySelection
 
 
 def _serialize_filetype_policy(policy: FileTypePolicyInfo) -> FileTypePolicyEntry:
@@ -114,6 +117,7 @@ def build_filetypes_payload(
     *,
     show_details: bool,
     activation: str | None = None,
+    selection: RegistrySelection | None = None,
 ) -> FileTypesPayload:
     """Build the registry payload for `topmark registry filetypes`.
 
@@ -121,11 +125,12 @@ def build_filetypes_payload(
         show_details: If True, include matching rules, binding state, and
             structured policy metadata.
         activation: Optional declared activation filter.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         List of file type entries, sorted by canonical file type key.
     """
-    raw_items: list[FileTypeInfo] = list_filetypes()
+    raw_items: list[FileTypeInfo] = list_selected_filetypes(selection)
 
     payload: FileTypesPayload = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
@@ -162,16 +167,21 @@ def build_filetypes_payload(
     return payload
 
 
-def build_processors_payload(*, show_details: bool) -> ProcessorsPayload:
+def build_processors_payload(
+    *,
+    show_details: bool,
+    selection: RegistrySelection | None = None,
+) -> ProcessorsPayload:
     """Build the registry payload for `topmark registry processors`.
 
     Args:
         show_details: If True, include expanded identity and delimiter fields.
+        selection: Optional identity selection applied before serialization.
 
     Returns:
         List of processor entries, sorted by canonical processor key.
     """
-    raw_items: list[ProcessorInfo] = list_processors()
+    raw_items: list[ProcessorInfo] = list_selected_processors(selection)
 
     processors: ProcessorsPayload = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):

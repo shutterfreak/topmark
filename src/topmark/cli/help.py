@@ -30,6 +30,9 @@ import click
 import rich_click
 from rich.text import Text
 
+from topmark.cli.cli_types import REGISTRY_QUERY_METAVAR
+from topmark.cli.cli_types import RegistryQueryParam
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Sequence
@@ -97,6 +100,23 @@ def documented_paths_argument(
         nargs=-1,
         type=click.UNPROCESSED,
         help=help_text,
+    )
+    return cast("Callable[[Callable[_P, _R]], Callable[_P, _R]]", decorator)
+
+
+def registry_queries_argument() -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    """Return a typed rich-click argument decorator for registry queries.
+
+    Returns:
+        A decorator that preserves the decorated callable's signature.
+    """
+    factory = cast("Callable[..., object]", _rich_click_decorator("argument"))
+    decorator = factory(
+        "registry_queries",
+        metavar=f"[{REGISTRY_QUERY_METAVAR}]...",
+        nargs=-1,
+        type=RegistryQueryParam(),
+        help="Select identities by local key, namespace, or glob; repeat to add alternatives.",
     )
     return cast("Callable[[Callable[_P, _R]], Callable[_P, _R]]", decorator)
 

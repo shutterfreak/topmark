@@ -25,11 +25,11 @@ ______________________________________________________________________
 ## Input applicability
 
 `registry filetypes` is informational and file-agnostic. It inspects TopMark's effective composed
-registry state, not project files or configuration discovery.
+registry state, not project files or configuration discovery. Its optional positional values are
+registry identity queries, not filesystem paths.
 
 It does not accept file-processing inputs:
 
-- positional PATH arguments are rejected as invalid CLI usage
 - `-` is not a content-STDIN sentinel for this command
 - `--stdin-filename` does not apply
 - file-list STDIN modes (for example, `--files-from -`) do not apply
@@ -100,6 +100,42 @@ presentation (e.g., headings) and does not change the data fields emitted.
 `--activation {default,opt-in,never}` filters entries by their declared activation in every output
 format. It is registry introspection only: it neither supplies opt-in consent nor reflects a
 project's effective configuration.
+
+### Identity queries
+
+Use repeatable positional identity queries to restrict the effective registry view:
+
+```bash
+topmark registry filetypes topmark:python
+topmark registry filetypes :python
+topmark registry filetypes topmark:
+topmark registry filetypes --builtin :python
+```
+
+The structured form is `[namespace-glob]:[local-key-glob]`; an empty component means `*`. Thus,
+`topmark:` is equivalent to `topmark:*`, `:json` selects local key `json` in every namespace, and
+`:*json` selects local keys ending in `json`. A bare identifier such as `python` is shorthand for
+`:python`. A bare glob such as `*json*` instead matches the complete qualified identity.
+
+Positional queries are alternatives: `:json :yaml` selects either local key. To require both a
+namespace and local key, use one structured query such as `topmark:json`; separate positional
+queries are not intersected. `--builtin` restricts the final result set to the `topmark` namespace.
+
+Compatibility: positional values were previously rejected by this command. They are now identity
+query alternatives; a valid query with no matching entries succeeds and renders an empty result.
+
+```bash
+# Built-in file types whose local key ends in "json".
+topmark registry filetypes --builtin ':*json'
+
+# Search `js` anywhere in the canonical qualified identity.
+topmark registry filetypes '*js*'
+
+# Match whole qualified identities with an explicit regular expression.
+topmark registry filetypes --match-regex 'topmark:(json|toml)'
+```
+
+{% include-markdown "\_snippets/registry-globs-and-match-regex-filtering.md" %}
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
@@ -192,6 +228,12 @@ topmark registry filetypes --long
 # Inspect types that require explicit processing consent
 topmark registry filetypes --activation opt-in
 
+# Inspect one built-in file type
+topmark registry filetypes --builtin python
+
+# Match a family of identities
+topmark registry filetypes --builtin ':*json*'
+
 # Detailed Markdown table (ideal for project docs)
 topmark registry filetypes --long --output-format markdown
 
@@ -211,10 +253,11 @@ successful execution.
 
 Common `registry filetypes` exit codes:
 
-| Scenario                      | Exit code          |
-| ----------------------------- | ------------------ |
-| Command executed successfully | `SUCCESS (0)`      |
-| Invalid CLI usage             | `USAGE_ERROR (64)` |
+| Scenario                      | Exit code                |
+| ----------------------------- | ------------------------ |
+| Command executed successfully | `SUCCESS (0)`            |
+| Valid query with no matches   | `SUCCESS (0)`            |
+| Malformed query or regex      | Click parser error (`2`) |
 
 Notes:
 
@@ -222,7 +265,7 @@ Notes:
   values) may exit with code `2` before command logic runs.
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
-- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
+- Malformed identity queries are Click parser errors, not file-processing diagnostics.
 - `--quiet` is not supported for registry commands; use output-format options instead for non-TEXT
   output.
 

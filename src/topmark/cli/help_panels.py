@@ -83,7 +83,13 @@ REGISTRY_DETAIL_PANEL_OPTIONS: Final[tuple[str, ...]] = (CliOpt.SHOW_DETAILS,)
 """Shared registry-detail control."""
 
 REGISTRY_FILTERING_PANEL_OPTIONS: Final[tuple[str, ...]] = (CliOpt.ACTIVATION,)
-"""Shared registry-activation filter."""
+"""Shared registry activation filter."""
+
+REGISTRY_IDENTITY_FILTERING_PANEL_OPTIONS: Final[tuple[str, ...]] = (
+    CliOpt.MATCH_REGEX,
+    CliOpt.REGISTRY_BUILTIN,
+)
+"""Shared registry identity-selection options."""
 
 REMEDIATION_HEADER_POLICY_PANEL_OPTIONS: Final[tuple[str, ...]] = (
     CliOpt.POLICY_MIXED_LINE_ENDINGS,

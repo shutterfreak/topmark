@@ -131,6 +131,8 @@ class CliOpt:
 
     # Registry
     ACTIVATION: Final = "--activation"
+    MATCH_REGEX: Final = "--match-regex"
+    REGISTRY_BUILTIN: Final = "--builtin"
 
 
 class CliShortOpt:
