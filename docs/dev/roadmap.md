@@ -73,10 +73,11 @@ to file-backed processing today.
 
 ### Extensibility and diagnostics
 
-Consider richer registry discovery, query, filtering, and diagnostics only where they improve
-integration and troubleshooting without weakening qualified file-type identity or leaking unstable
-implementation details. Evaluate configuration schema versioning and broader staged-diagnostic
-exposure by their migration and public-contract costs.
+Consider richer registry discovery and diagnostics, plus query or filtering capabilities beyond the
+compact identity-query contract, only where they improve integration and troubleshooting without
+weakening qualified file-type identity or leaking unstable implementation details. Evaluate
+configuration schema versioning and broader staged-diagnostic exposure by their migration and
+public-contract costs.
 
 ### Presentation and documentation evolution
 

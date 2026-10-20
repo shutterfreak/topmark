@@ -41,7 +41,9 @@ checks such as hard-link policy.
 
 Across all `registry` subcommands:
 
-- positional PATH arguments are rejected as invalid CLI usage
+- [`registry filetypes`](registry/filetypes.md) and [`registry processors`](registry/processors.md)
+  use positional values as registry identity queries; [`registry bindings`](registry/bindings.md)
+  rejects positional PATH arguments as invalid CLI usage
 - `-` is not a content-STDIN sentinel
 - `--stdin-filename` does not apply
 - file-list STDIN modes (for example, `--files-from -`) do not apply
@@ -90,6 +92,23 @@ selected processing paths.
 by a file type's declared activation. The filter is available in TEXT, Markdown, JSON, and NDJSON
 output; it does not change runtime authorization.
 
+[`registry filetypes`](registry/filetypes.md) and [`registry processors`](registry/processors.md)
+also accept repeatable positional identity queries. The structured form is
+`[namespace-glob]:[local-key-glob]`; either empty component means `*`. A bare identifier is an exact
+local-key query, while a bare glob matches the complete qualified key. `--match-regex PATTERN` adds
+a whole-qualified-identity regular-expression alternative. `--builtin` restricts results to the
+reserved `topmark` namespace. These identity queries do not apply to
+[`registry bindings`](registry/bindings.md).
+
+Positional queries and `--match-regex` values are ORed. `--builtin` and `--activation` restrict the
+result independently. Empty matches are successful and render an empty result in every output
+format.
+
+Compatibility: `registry filetypes` and `registry processors` previously rejected positional values.
+They now interpret each positional value as an identity-query alternative. Automation that relied on
+rejection of unexpected positional values should validate its invocation arguments before calling
+TopMark.
+
 ______________________________________________________________________
 
 ## Shared behavior
@@ -99,12 +118,19 @@ ______________________________________________________________________
 All `registry` subcommands are informational introspection commands:
 
 - They exit with `SUCCESS (0)` on successful execution.
-- CLI usage errors (invalid or unsupported options) exit with `USAGE_ERROR (64)`.
+- Click parser errors, including invalid option values, exit with code `2`.
+- TopMark-owned semantic invocation errors after parsing exit with `USAGE_ERROR (64)`.
 
 Registry subcommands do not process project files and therefore do not use file-processing exit
 codes such as `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 
-Invalid positional paths or file-processing input options are reported as CLI usage errors.
+For [`registry filetypes`](registry/filetypes.md) and
+[`registry processors`](registry/processors.md), positional values are identity queries rather than
+filesystem paths. File-processing input options are reported as CLI usage errors.
+
+A syntactically valid identity query, including one that matches no entries, exits with
+`SUCCESS (0)`. A malformed query or `--match-regex` value is rejected by Click during parsing and
+exits with code `2`.
 
 Notes:
 

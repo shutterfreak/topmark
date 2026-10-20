@@ -61,6 +61,7 @@ if TYPE_CHECKING:
 
     from topmark.filetypes.model import FileType
     from topmark.processors.base import HeaderProcessor
+    from topmark.registry.query import RegistrySelection
     from topmark.registry.types import ProcessorDefinition
 
 
@@ -126,6 +127,32 @@ class Registry:
             mutated.
         """
         return HeaderProcessorRegistry.as_mapping()
+
+    @staticmethod
+    def select_filetypes(selection: RegistrySelection | None = None) -> tuple[FileType, ...]:
+        """Return file types matching an optional identity selection.
+
+        Args:
+            selection: Optional identity selection applied to the effective registry.
+
+        Returns:
+            Matching file types in canonical qualified-key order.
+        """
+        return FileTypeRegistry.select(selection)
+
+    @staticmethod
+    def select_processors(
+        selection: RegistrySelection | None = None,
+    ) -> tuple[ProcessorDefinition, ...]:
+        """Return processors matching an optional identity selection.
+
+        Args:
+            selection: Optional identity selection applied to the effective registry.
+
+        Returns:
+            Matching processor definitions in canonical qualified-key order.
+        """
+        return HeaderProcessorRegistry.select(selection)
 
     @staticmethod
     def get_filetype(file_type_key: str) -> FileType | None:

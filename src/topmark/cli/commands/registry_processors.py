@@ -24,11 +24,13 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_processors_machine
 from topmark.cli.help import HelpExample
+from topmark.cli.help import registry_queries_argument
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.help import rich_click_option_panel
 from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
 from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
 from topmark.cli.help_panels import REGISTRY_DETAIL_PANEL_OPTIONS
+from topmark.cli.help_panels import REGISTRY_IDENTITY_FILTERING_PANEL_OPTIONS
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -36,10 +38,10 @@ from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import registry_details_options
+from topmark.cli.options import registry_identity_query_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
-from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.errors import unsupported_machine_readable_format
 from topmark.core.machine.payloads import build_meta_payload
@@ -48,6 +50,9 @@ from topmark.presentation.markdown.registry import render_processors_markdown
 from topmark.presentation.shared.registry import ProcessorsHumanReport
 from topmark.presentation.shared.registry import build_processors_human_report
 from topmark.presentation.text.registry import render_processors_text
+from topmark.registry.query import RegistryIdentityQuery
+from topmark.registry.query import RegistryRegex
+from topmark.registry.query import RegistrySelection
 
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
@@ -78,6 +83,13 @@ if TYPE_CHECKING:
                     f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
                 ),
             ),
+            HelpExample(
+                summary="Inspect the built-in Markdown processor",
+                command_line=(
+                    f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_PROCESSORS} "
+                    f"{CliOpt.REGISTRY_BUILTIN} markdown"
+                ),
+            ),
         ),
         notes=(
             "Processors define how TopMark detects and renders headers for file types.",
@@ -85,6 +97,12 @@ if TYPE_CHECKING:
         ),
         reference_url=command_reference_url("commands/registry/processors"),
     ),
+)
+@rich_click_option_panel(
+    "Registry filtering",
+    options=[
+        *REGISTRY_IDENTITY_FILTERING_PANEL_OPTIONS,
+    ],
 )
 @rich_click_option_panel(
     "Output and display",
@@ -98,6 +116,8 @@ if TYPE_CHECKING:
 @common_text_output_verbosity_options
 @registry_details_options
 @common_output_format_options
+@registry_identity_query_options
+@registry_queries_argument()
 def registry_processors_command(
     *,
     # common_ui_options (verbosity, color):
@@ -106,6 +126,10 @@ def registry_processors_command(
     no_color: bool,
     # registry_details_options:
     show_details: bool = False,
+    # positional registry queries and registry_identity_query_options
+    registry_queries: tuple[RegistryIdentityQuery, ...] = (),
+    registry_regexes: tuple[RegistryRegex, ...] = (),
+    registry_builtin: bool = False,
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
@@ -120,6 +144,9 @@ def registry_processors_command(
         no_color: bool: If set, disable color mode.
         show_details: Whether to show extended information about each processor,
             including associated file types and their descriptions.
+        registry_queries: Positional identity inclusion predicates.
+        registry_regexes: Whole-identity regular-expression inclusion predicates.
+        registry_builtin: Restrict entries to the built-in `topmark` namespace.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -158,19 +185,19 @@ def registry_processors_command(
     apply_color_policy_for_output_format(ctx, fmt=fmt)
     enable_color: bool = state.color_enabled
 
-    # `registry processors` is file-agnostic: ignore positional PATHS
-    apply_ignore_positional_paths_policy(
-        ctx,
-        warn_stdin_dash=True,
+    selection: RegistrySelection = RegistrySelection(
+        identity_queries=registry_queries,
+        regexes=registry_regexes,
+        builtin_only=registry_builtin,
     )
 
-    # Machine-readable formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_processors_machine(
             console=console,
             meta=meta,
             fmt=fmt,
             show_details=show_details,
+            selection=selection,
         )
         return
 
@@ -179,6 +206,7 @@ def registry_processors_command(
         show_details=show_details,
         verbosity_level=verbosity_level,
         styled=enable_color,
+        selection=selection,
     )
 
     if fmt == OutputFormat.MARKDOWN:

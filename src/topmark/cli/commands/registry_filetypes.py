@@ -24,12 +24,14 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_filetypes_machine
 from topmark.cli.help import HelpExample
+from topmark.cli.help import registry_queries_argument
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.help import rich_click_option_panel
 from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
 from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
 from topmark.cli.help_panels import REGISTRY_DETAIL_PANEL_OPTIONS
 from topmark.cli.help_panels import REGISTRY_FILTERING_PANEL_OPTIONS
+from topmark.cli.help_panels import REGISTRY_IDENTITY_FILTERING_PANEL_OPTIONS
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.cli.options import GROUP_CONTEXT_SETTINGS
@@ -38,10 +40,10 @@ from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_text_output_verbosity_options
 from topmark.cli.options import registry_details_options
 from topmark.cli.options import registry_file_type_activation_options
+from topmark.cli.options import registry_identity_query_options
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.validators import apply_color_policy_for_output_format
-from topmark.cli.validators import apply_ignore_positional_paths_policy
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.errors import unsupported_machine_readable_format
 from topmark.core.machine.payloads import build_meta_payload
@@ -50,6 +52,9 @@ from topmark.presentation.markdown.registry import render_filetypes_markdown
 from topmark.presentation.shared.registry import FileTypesHumanReport
 from topmark.presentation.shared.registry import build_filetypes_human_report
 from topmark.presentation.text.registry import render_filetypes_text
+from topmark.registry.query import RegistryIdentityQuery
+from topmark.registry.query import RegistryRegex
+from topmark.registry.query import RegistrySelection
 
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
@@ -80,6 +85,13 @@ if TYPE_CHECKING:
                     f"{CliOpt.OUTPUT_FORMAT}={OutputFormat.JSON.value}"
                 ),
             ),
+            HelpExample(
+                summary="Inspect built-in JSON-related file types",
+                command_line=(
+                    f"topmark {CliCmd.REGISTRY} {CliCmd.REGISTRY_FILETYPES} "
+                    f"{CliOpt.REGISTRY_BUILTIN} ':*json*'"
+                ),
+            ),
         ),
         notes=(
             "Use file type identifiers in configuration filters.",
@@ -90,7 +102,10 @@ if TYPE_CHECKING:
 )
 @rich_click_option_panel(
     "Registry filtering",
-    options=[*REGISTRY_FILTERING_PANEL_OPTIONS],
+    options=[
+        *REGISTRY_FILTERING_PANEL_OPTIONS,
+        *REGISTRY_IDENTITY_FILTERING_PANEL_OPTIONS,
+    ],
 )
 @rich_click_option_panel(
     "Output and display",
@@ -105,6 +120,8 @@ if TYPE_CHECKING:
 @registry_details_options
 @common_output_format_options
 @registry_file_type_activation_options
+@registry_identity_query_options
+@registry_queries_argument()
 def registry_filetypes_command(
     *,
     # common_ui_options (verbosity, color):
@@ -115,6 +132,10 @@ def registry_filetypes_command(
     show_details: bool = False,
     # registry_file_type_activation_options
     activation: str | None = None,
+    # positional registry queries and registry_identity_query_options
+    registry_queries: tuple[RegistryIdentityQuery, ...] = (),
+    registry_regexes: tuple[RegistryRegex, ...] = (),
+    registry_builtin: bool = False,
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
@@ -130,6 +151,9 @@ def registry_filetypes_command(
         show_details: Whether to show extended information about each file type,
             including associated extensions, filenames, patterns, activation, and header policy.
         activation: Optional declared activation filter.
+        registry_queries: Positional identity inclusion predicates.
+        registry_regexes: Whole-identity regular-expression inclusion predicates.
+        registry_builtin: Restrict entries to the built-in `topmark` namespace.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -168,13 +192,12 @@ def registry_filetypes_command(
     apply_color_policy_for_output_format(ctx, fmt=fmt)
     enable_color: bool = state.color_enabled
 
-    # `registry filetypes` is file-agnostic: ignore positional PATHS
-    apply_ignore_positional_paths_policy(
-        ctx,
-        warn_stdin_dash=True,
+    selection: RegistrySelection = RegistrySelection(
+        identity_queries=registry_queries,
+        regexes=registry_regexes,
+        builtin_only=registry_builtin,
     )
 
-    # Machine-readable formats
     if fmt in (OutputFormat.JSON, OutputFormat.NDJSON):
         emit_filetypes_machine(
             console=console,
@@ -182,6 +205,7 @@ def registry_filetypes_command(
             fmt=fmt,
             show_details=show_details,
             activation=activation,
+            selection=selection,
         )
         return
 
@@ -191,6 +215,7 @@ def registry_filetypes_command(
         verbosity_level=verbosity_level,
         styled=enable_color,
         activation=activation,
+        selection=selection,
     )
 
     if fmt == OutputFormat.MARKDOWN:

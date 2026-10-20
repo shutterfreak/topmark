@@ -40,12 +40,15 @@ from typing import TYPE_CHECKING
 from topmark.api.commands.registry import list_bindings
 from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
+from topmark.api.commands.registry import list_selected_filetypes
+from topmark.api.commands.registry import list_selected_processors
 
 if TYPE_CHECKING:
     from topmark.api.types import BindingInfo
     from topmark.api.types import FileTypeInfo
     from topmark.api.types import FileTypePolicyInfo
     from topmark.api.types import ProcessorInfo
+    from topmark.registry.query import RegistrySelection
 
 
 _ACTIVATION_DISPLAY_LABELS: dict[str, str] = {
@@ -276,6 +279,7 @@ def build_filetypes_human_report(
     verbosity_level: int,
     styled: bool,
     activation: str | None = None,
+    selection: RegistrySelection | None = None,
 ) -> FileTypesHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN.
 
@@ -284,11 +288,12 @@ def build_filetypes_human_report(
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
         activation: Optional declared activation filter.
+        selection: Optional identity selection applied before rendering.
 
     Returns:
         A `FileTypesHumanReport` with one item per file type.
     """
-    raw_items: list[FileTypeInfo] = list_filetypes()
+    raw_items: list[FileTypeInfo] = list_selected_filetypes(selection)
 
     items: list[FileTypeHumanItem] = [
         FileTypeHumanItem(
@@ -322,6 +327,7 @@ def build_processors_human_report(
     show_details: bool,
     verbosity_level: int,
     styled: bool,
+    selection: RegistrySelection | None = None,
 ) -> ProcessorsHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN for `processors`.
 
@@ -329,11 +335,12 @@ def build_processors_human_report(
         show_details: Whether consumers intend to display extended details.
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
+        selection: Optional identity selection applied before rendering.
 
     Returns:
         A `ProcessorsHumanReport` with one item per registered processor.
     """
-    raw_items: list[ProcessorInfo] = list_processors()
+    raw_items: list[ProcessorInfo] = list_selected_processors(selection)
 
     processors: list[ProcessorHumanItem] = [
         ProcessorHumanItem(

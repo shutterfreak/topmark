@@ -38,6 +38,7 @@ from topmark.registry.identity import make_qualified_key
 from topmark.registry.identity import owner_label
 from topmark.registry.identity import require_and_validate_registry_identity
 from topmark.registry.identity import validate_reserved_topmark_namespace
+from topmark.registry.query import RegistrySelection
 from topmark.registry.types import FileTypeMeta
 
 if TYPE_CHECKING:
@@ -480,6 +481,39 @@ class FileTypeRegistry:
                 existed = True
             cls._clear_cache()
             return existed
+
+    @classmethod
+    def select(
+        cls,
+        selection: RegistrySelection | None = None,
+    ) -> tuple[FileType, ...]:
+        """Return file types matching an identity selection.
+
+        Args:
+            selection: Optional identity selection. Omitting it returns every effective
+                file type.
+
+        Returns:
+            Matching file types in canonical qualified-key order.
+        """
+        with cls._lock:
+            items: tuple[FileType, ...] = tuple(cls._compose().values())
+
+        selected: RegistrySelection = selection or RegistrySelection()
+        return tuple(
+            sorted(
+                (
+                    ft
+                    for ft in items
+                    if selected.matches(
+                        qualified_key=ft.qualified_key,
+                        local_key=ft.local_key,
+                        namespace=ft.namespace,
+                    )
+                ),
+                key=lambda ft: ft.qualified_key,
+            )
+        )
 
     @classmethod
     def unregister(cls, file_type_key: str) -> bool:

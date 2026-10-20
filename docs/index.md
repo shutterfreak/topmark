@@ -88,8 +88,9 @@ Core commands: [`check`](usage/commands/check.md), [`strip`](usage/commands/stri
 Informational commands ([`version`](usage/commands/version.md),
 [`config defaults`](usage/commands/config/defaults.md),
 [`config init`](usage/commands/config/init.md), and [`registry`](usage/commands/registry.md)
-commands) are file-agnostic: they do not accept positional paths or STDIN input modes and reject
-them as CLI usage errors before runtime processing begins.
+commands) are file-agnostic: they do not accept positional filesystem paths or STDIN input modes.
+`registry filetypes` and `registry processors` instead use positional identity queries; other
+informational commands reject positional input as CLI usage errors before runtime processing begins.
 
 ### Exit codes (overview)
 

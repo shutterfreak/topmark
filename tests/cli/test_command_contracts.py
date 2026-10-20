@@ -105,6 +105,9 @@ CONFIG_TEMPLATE_OPTIONS: Final[frozenset[str]] = frozenset(
 )
 REGISTRY_OPTIONS: Final[frozenset[str]] = frozenset({CliOpt.SHOW_DETAILS})
 REGISTRY_ACTIVATION_OPTION: Final[frozenset[str]] = frozenset({CliOpt.ACTIVATION})
+REGISTRY_IDENTITY_FILTERING_OPTIONS: Final[frozenset[str]] = frozenset(
+    {CliOpt.MATCH_REGEX, CliOpt.REGISTRY_BUILTIN},
+)
 
 
 PUBLIC_COMMAND_OPTIONS: Final[Mapping[CommandPath, frozenset[str]]] = MappingProxyType(
@@ -175,10 +178,14 @@ PUBLIC_COMMAND_OPTIONS: Final[Mapping[CommandPath, frozenset[str]]] = MappingPro
         ),
         (CliCmd.REGISTRY,): frozenset(),
         (CliCmd.REGISTRY, CliCmd.REGISTRY_FILETYPES): (
-            DISPLAY_OPTIONS | REGISTRY_OPTIONS | REGISTRY_ACTIVATION_OPTION | OUTPUT_OPTION
+            DISPLAY_OPTIONS
+            | REGISTRY_OPTIONS
+            | REGISTRY_ACTIVATION_OPTION
+            | REGISTRY_IDENTITY_FILTERING_OPTIONS
+            | OUTPUT_OPTION
         ),
         (CliCmd.REGISTRY, CliCmd.REGISTRY_PROCESSORS): (
-            DISPLAY_OPTIONS | REGISTRY_OPTIONS | OUTPUT_OPTION
+            DISPLAY_OPTIONS | REGISTRY_OPTIONS | REGISTRY_IDENTITY_FILTERING_OPTIONS | OUTPUT_OPTION
         ),
         (CliCmd.REGISTRY, CliCmd.REGISTRY_BINDINGS): (
             DISPLAY_OPTIONS | REGISTRY_OPTIONS | REGISTRY_ACTIVATION_OPTION | OUTPUT_OPTION

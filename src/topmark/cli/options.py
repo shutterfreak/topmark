@@ -42,8 +42,10 @@ from click.core import ParameterSource
 from typing_extensions import NotRequired
 from typing_extensions import Unpack
 
+from topmark.cli.cli_types import REGISTRY_REGEX_METAVAR
 from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.cli_types import EnumChoiceParam
+from topmark.cli.cli_types import RegistryRegexParam
 from topmark.cli.console.color import ColorMode
 from topmark.cli.errors import TopmarkCliUsageError
 from topmark.cli.keys import CliOpt
@@ -1038,6 +1040,37 @@ def registry_file_type_activation_options(f: Callable[_P, _R]) -> Callable[_P, _
             FileTypeActivation,
             prefix="Filter registry entries by declared file type activation.",
         ),
+    )(f)
+
+    return f
+
+
+def registry_identity_query_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply identity-selection options for registry identity commands.
+
+    Their semantics are implemented by `RegistrySelection`, keeping Click
+    responsible only for parsing and user-facing validation.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = option_with_underscore_traps(
+        CliOpt.MATCH_REGEX,
+        ArgKey.REGISTRY_REGEXES,
+        type=RegistryRegexParam(),
+        multiple=True,
+        metavar=REGISTRY_REGEX_METAVAR,
+        help="Select a full qualified identity with a regex; repeat to add alternatives.",
+    )(f)
+
+    f = option_with_underscore_traps(
+        CliOpt.REGISTRY_BUILTIN,
+        ArgKey.REGISTRY_BUILTIN,
+        is_flag=True,
+        help="Restrict results to the built-in topmark namespace.",
     )(f)
 
     return f

@@ -783,3 +783,7 @@ documented in the schema reference and include the separate
 `registry filetypes` and `registry bindings` may filter their static machine-readable views with
 `--activation {default,opt-in,never}`. This selector applies to declared registry metadata, not to
 configuration-derived opt-in authorization.
+
+`registry filetypes` and `registry processors` apply identity queries, `--builtin`, and
+`--match-regex` before serializing JSON or NDJSON. These selectors change which entries are emitted;
+they do not alter the documented payload schema, record kinds, or identity-field meanings.
