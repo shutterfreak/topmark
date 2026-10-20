@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
+    from topmark.registry.query import RegistryActivationFilterInput
     from topmark.registry.query import RegistrySelection
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
 
@@ -325,7 +326,7 @@ def emit_filetypes_machine(
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
     selection: RegistrySelection | None = None,
 ) -> None:
     """Emit `topmark registry filetypes` machine-readable output.
@@ -388,7 +389,7 @@ def emit_bindings_machine(
     meta: MetaPayload,
     fmt: OutputFormat,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
 ) -> None:
     """Emit `topmark registry bindings` machine-readable output.
 

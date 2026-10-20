@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING
 from typing import ParamSpec
 from typing import TypedDict
 from typing import TypeVar
+from typing import cast
 
 import click
 from click.core import ParameterSource
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from topmark.core.logging import TopmarkLogger
+    from topmark.registry.query import RegistryActivationFilter
 
 
 logger: TopmarkLogger = get_logger(__name__)
@@ -307,6 +309,51 @@ def _split_csv_multi_option(
             if token:
                 out.append(token)
     return tuple(out)
+
+
+def _normalize_registry_file_type_activations(
+    ctx: click.Context,
+    param: click.Parameter,
+    value: tuple[str, ...],
+) -> RegistryActivationFilter | None:
+    """Normalize repeatable comma-separated registry activation values.
+
+    Empty comma-separated segments are rejected because silently ignoring one
+    would make a registry query differ from the user's explicit request.
+
+    Args:
+        ctx: Active Click context.
+        param: Option currently being parsed.
+        value: Raw option occurrences collected by Click.
+
+    Returns:
+        A deduplicated activation filter, or None when the option is absent.
+
+    Raises:
+        click.BadParameter: If a segment is empty or not a known activation.
+    """
+    parsed: set[str] = set()
+    enum_param: EnumChoiceParam[FileTypeActivation] = EnumChoiceParam(
+        FileTypeActivation,
+        case_sensitive=True,
+        kebab_case=True,
+    )
+    for raw in value:
+        for part in raw.split(","):
+            token: str = part.strip()
+            if not token:
+                raise click.BadParameter(
+                    "Activation values must not contain empty comma-separated segments.",
+                    param=param,
+                    ctx=ctx,
+                )
+            # `token` is a str; `EnumChoiceParam.convert()` returns None only for None input.
+            activation: FileTypeActivation = cast(
+                "FileTypeActivation",
+                enum_param.convert(token, param, ctx),
+            )
+            parsed.add(activation.value)
+    return frozenset(parsed) if parsed else None
 
 
 def normalize_verbosity(verbose_count: int) -> int:
@@ -1030,15 +1077,14 @@ def registry_file_type_activation_options(f: Callable[_P, _R]) -> Callable[_P, _
         CliOpt.ACTIVATION,
         ArgKey.ACTIVATION,
         CliShortOpt.ACTIVATION,
-        type=EnumChoiceParam(
-            FileTypeActivation,
-            case_sensitive=True,
-            kebab_case=True,
-        ),
-        default=None,
-        help=enum_value_help_text(
-            FileTypeActivation,
-            prefix="Filter registry entries by declared file type activation.",
+        type=str,
+        multiple=True,
+        metavar="ACTIVATION[,ACTIVATION...]",
+        callback=_normalize_registry_file_type_activations,
+        help=(
+            "Filter registry entries by declared file type activation. "
+            "May be repeated and/or given as a comma-separated list. "
+            "Accepted values: 'default', 'opt-in', 'never'."
         ),
     )(f)
 

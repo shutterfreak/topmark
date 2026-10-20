@@ -97,9 +97,12 @@ presentation (e.g., headings) and does not change the data fields emitted.
 
 ### Activation filter
 
-`--activation {default,opt-in,never}` filters entries by their declared activation in every output
-format. It is registry introspection only: it neither supplies opt-in consent nor reflects a
-project's effective configuration.
+Repeat `--activation` (or `-a`) to filter entries by multiple declared activations in every output
+format. Each value is `default`, `opt-in`, or `never`; values can also be comma-separated, such as
+`--activation never,opt-in`. Values are deduplicated and combined with OR semantics, while the
+activation filter remains restrictive when used with identity queries or `--builtin`. Empty comma
+segments and unknown values are usage errors. This is registry introspection only: it neither
+supplies opt-in consent nor reflects a project's effective configuration.
 
 ### Identity queries
 
@@ -227,6 +230,9 @@ topmark registry filetypes --long
 
 # Inspect types that require explicit processing consent
 topmark registry filetypes --activation opt-in
+
+# Include every non-default declared activation
+topmark registry filetypes -a never,opt-in
 
 # Inspect one built-in file type
 topmark registry filetypes --builtin python

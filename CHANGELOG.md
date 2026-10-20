@@ -27,6 +27,9 @@ ______________________________________________________________________
   predicates, and `--builtin` scope restriction. Positional values that were previously rejected are
   now query filters; valid queries with no matches succeed with empty output. Malformed query and
   regex syntax use Click's parser-error exit code (`2`), consistent with other typed CLI values.
+- Added repeatable and comma-separated `--activation` / `-a` filtering to `registry filetypes` and
+  `registry bindings`. Activation values are deduplicated, use OR semantics, and remain restrictive
+  alongside other applicable registry filters.
 
 ### Changed - Unreleased
 
@@ -35,6 +38,8 @@ ______________________________________________________________________
 
 ### Fixed - Unreleased
 
+- Fixed `registry filetypes` and `registry bindings` so repeated or comma-separated `--activation` /
+  `-a` values no longer discard earlier requested activations.
 - Prevented the opt-in docstring formatter from capitalizing docstrings that begin with symbol
   names.
 

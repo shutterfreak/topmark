@@ -780,10 +780,15 @@ Refer to each command's documentation for its emitted keys and shapes. Registry 
 documented in the schema reference and include the separate
 [`registry bindings`](../usage/commands/registry/bindings.md) machine-readable format.
 
-`registry filetypes` and `registry bindings` may filter their static machine-readable views with
-`--activation {default,opt-in,never}`. This selector applies to declared registry metadata, not to
-configuration-derived opt-in authorization.
-
-`registry filetypes` and `registry processors` apply identity queries, `--builtin`, and
-`--match-regex` before serializing JSON or NDJSON. These selectors change which entries are emitted;
-they do not alter the documented payload schema, record kinds, or identity-field meanings.
+> [!INFO] **Querying and filtering the registry**
+>
+> `registry filetypes` and `registry bindings` may filter their static machine-readable views with
+> repeatable `--activation` (or `-a`) values. Each value is `default`, `opt-in`, or `never`, and an
+> occurrence may be comma-separated. Values are deduplicated and ORed; the resulting selector
+> applies to declared registry metadata, not to configuration-derived opt-in authorization. For
+> bindings, `unused_processors` remains calculated from the complete effective registry.
+>
+> `registry filetypes` and `registry processors` apply identity queries, `--builtin`, and
+> `--match-regex` before serializing JSON or NDJSON. These selectors change which entries are
+> emitted; they do not alter the documented payload schema, record kinds, or identity-field
+> meanings.

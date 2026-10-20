@@ -50,6 +50,8 @@ from topmark.registry.machine.schemas import ProcessorBriefEntry
 from topmark.registry.machine.schemas import ProcessorDetailEntry
 from topmark.registry.machine.schemas import ProcessorRefEntry
 from topmark.registry.machine.schemas import ProcessorsPayload
+from topmark.registry.query import RegistryActivationFilterInput
+from topmark.registry.query import matches_declared_activation
 
 if TYPE_CHECKING:
     from topmark.api.types import BindingInfo
@@ -116,7 +118,7 @@ def _serialize_filetype_ref(item: FileTypeInfo) -> FileTypeRefEntry:
 def build_filetypes_payload(
     *,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
     selection: RegistrySelection | None = None,
 ) -> FileTypesPayload:
     """Build the registry payload for `topmark registry filetypes`.
@@ -134,7 +136,7 @@ def build_filetypes_payload(
 
     payload: FileTypesPayload = []
     for item in sorted(raw_items, key=lambda it: str(it["qualified_key"])):
-        if activation is not None and item["activation"] != activation:
+        if not matches_declared_activation(item["activation"], activation):
             continue
         if show_details:
             payload.append(
@@ -216,7 +218,7 @@ def build_processors_payload(
 def build_bindings_payload(
     *,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
 ) -> BindingsPayload:
     """Build the registry payload for `topmark registry bindings`.
 
@@ -240,7 +242,9 @@ def build_bindings_payload(
     raw_processors: list[ProcessorInfo] = list_processors()
     if activation is not None:
         keys: set[str] = {
-            item["qualified_key"] for item in raw_filetypes if item["activation"] == activation
+            item["qualified_key"]
+            for item in raw_filetypes
+            if matches_declared_activation(item["activation"], activation)
         }
         raw_filetypes = [item for item in raw_filetypes if item["qualified_key"] in keys]
         raw_bindings = [item for item in raw_bindings if item["file_type_key"] in keys]

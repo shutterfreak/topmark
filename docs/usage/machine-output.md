@@ -1214,9 +1214,10 @@ ______________________________________________________________________
 
 Registry machine-readable output uses `--long` to select brief vs detailed projections. Registry
 commands do not support `--quiet`, and TEXT verbosity does not affect machine-readable output.
-`registry filetypes` and `registry bindings` also accept `--activation {default,opt-in,never}`. That
-filter selects static registry entries; it does not use project configuration or dynamic opt-in
-authorization.
+`registry filetypes` and `registry bindings` also accept repeatable `--activation` (or `-a`) values.
+Each value is `default`, `opt-in`, or `never`, and can be comma-separated. The deduplicated values
+use OR semantics to filter static registry entries; they do not use project configuration or dynamic
+opt-in authorization.
 
 ### [`topmark registry filetypes`](../usage/commands/registry/filetypes.md)
 

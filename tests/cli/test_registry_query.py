@@ -26,6 +26,7 @@ from topmark.cli.cli_types import RegistryQueryParam
 from topmark.cli.cli_types import RegistryRegexParam
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.keys import CliShortOpt
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
 from topmark.registry.query import RegistryIdentityQuery
@@ -193,15 +194,15 @@ def test_registry_match_regex_is_an_alternative_identity_predicate() -> None:
 @pytest.mark.parametrize(
     ("activation", "expected_keys"),
     [
-        ("never", ["topmark:json"]),
-        ("opt-in", []),
+        ("never,opt-in", ["topmark:json"]),
+        ("default,opt-in", []),
     ],
 )
 def test_registry_filetype_activation_and_identity_selection_are_intersected(
     activation: str,
     expected_keys: list[str],
 ) -> None:
-    """Activation filtering restricts, rather than broadens, identity selection."""
+    """Activation unions restrict, rather than broaden, identity selection."""
     result: Result = run_cli(
         [
             CliCmd.REGISTRY,
@@ -216,6 +217,131 @@ def test_registry_filetype_activation_and_identity_selection_are_intersected(
 
     assert_SUCCESS(result)
     assert _qualified_keys(result, "filetypes") == expected_keys
+
+
+@pytest.mark.parametrize(
+    ("activation_args", "expected_activations"),
+    [
+        pytest.param(
+            (CliOpt.ACTIVATION, "never", CliOpt.ACTIVATION, "opt-in"),
+            {"never", "opt-in"},
+            id="repeated",
+        ),
+        pytest.param(
+            (CliOpt.ACTIVATION, "never,opt-in"),
+            {"never", "opt-in"},
+            id="comma-separated",
+        ),
+        pytest.param(
+            (CliShortOpt.ACTIVATION, "never,opt-in,never"),
+            {"never", "opt-in"},
+            id="short-comma-separated-duplicates",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "subcommand",
+    [
+        CliCmd.REGISTRY_FILETYPES,
+        CliCmd.REGISTRY_BINDINGS,
+    ],
+)
+def test_registry_activation_values_compose_with_or_semantics(
+    activation_args: tuple[str, ...],
+    expected_activations: set[str],
+    subcommand: str,
+) -> None:
+    """Repeated and comma-separated activation values form one deduplicated union."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            subcommand,
+            *activation_args,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    payload: dict[str, object] = parse_json_object(result.output)
+    if subcommand == CliCmd.REGISTRY_FILETYPES:
+        entries: object = payload["filetypes"]
+    else:
+        entries = payload["bindings"]
+    assert is_any_list(entries)
+    assert entries
+    assert {str(as_object_dict(entry)["activation"]) for entry in entries} <= expected_activations
+
+
+@pytest.mark.parametrize(
+    "output_format",
+    [
+        "text",
+        "json",
+        "ndjson",
+    ],
+)
+@pytest.mark.parametrize(
+    "subcommand",
+    [
+        CliCmd.REGISTRY_FILETYPES,
+        CliCmd.REGISTRY_BINDINGS,
+    ],
+)
+def test_registry_activation_filter_applies_to_text_and_machine_formats(
+    output_format: str,
+    subcommand: str,
+) -> None:
+    """Activation unions retain matching entries in every supported output format."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            subcommand,
+            CliOpt.ACTIVATION,
+            "never,opt-in",
+            CliOpt.OUTPUT_FORMAT,
+            output_format,
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert "topmark:json-as-jsonc" in result.output
+    assert "topmark:markdown" not in result.output
+
+
+@pytest.mark.parametrize(
+    "subcommand",
+    [
+        CliCmd.REGISTRY_FILETYPES,
+        CliCmd.REGISTRY_BINDINGS,
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        "never,",
+        ",never",
+        "never,,opt-in",
+        "unknown",
+    ],
+)
+def test_registry_activation_rejects_empty_segments_and_unknown_values(
+    subcommand: str,
+    value: str,
+) -> None:
+    """Malformed activation lists fail with Click's usage-error exit code."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            subcommand,
+            CliOpt.ACTIVATION,
+            value,
+        ],
+    )
+
+    assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE
+    if "unknown" in value:
+        assert "Invalid value 'unknown'" in result.output
 
 
 @pytest.mark.parametrize(

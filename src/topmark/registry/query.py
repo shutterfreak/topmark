@@ -22,8 +22,38 @@ import re
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from re import Pattern
+from typing import TypeAlias
 
 from topmark.core.constants import TOPMARK_NAMESPACE
+
+RegistryActivationFilter: TypeAlias = frozenset[str]
+"""Normalized declared file-type activations for registry filtering."""
+
+RegistryActivationFilterInput: TypeAlias = RegistryActivationFilter | str | None
+"""Compatibility input accepted by internal registry presentation helpers."""
+
+
+def matches_declared_activation(
+    declared_activation: str,
+    activation_filter: RegistryActivationFilterInput,
+) -> bool:
+    """Return whether a declared activation passes an optional registry filter.
+
+    A string remains accepted for existing internal callers that select exactly
+    one activation. CLI parsing always supplies the normalized set form.
+
+    Args:
+        declared_activation: Activation declared by a registry file type.
+        activation_filter: Optional normalized set of allowed activations.
+
+    Returns:
+        True when no filter is supplied or the declared activation is allowed.
+    """
+    if activation_filter is None:
+        return True
+    if isinstance(activation_filter, str):
+        return declared_activation == activation_filter
+    return declared_activation in activation_filter
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
