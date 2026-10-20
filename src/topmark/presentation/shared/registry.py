@@ -42,6 +42,8 @@ from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
 from topmark.api.commands.registry import list_selected_filetypes
 from topmark.api.commands.registry import list_selected_processors
+from topmark.registry.query import RegistryActivationFilterInput
+from topmark.registry.query import matches_declared_activation
 
 if TYPE_CHECKING:
     from topmark.api.types import BindingInfo
@@ -278,7 +280,7 @@ def build_filetypes_human_report(
     show_details: bool,
     verbosity_level: int,
     styled: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
     selection: RegistrySelection | None = None,
 ) -> FileTypesHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN.
@@ -311,7 +313,7 @@ def build_filetypes_human_report(
             policy=_build_filetype_policy_human_item(item["policy"]),
         )
         for item in sorted(raw_items, key=lambda it: str(it["qualified_key"]))
-        if activation is None or item["activation"] == activation
+        if matches_declared_activation(item["activation"], activation)
     ]
 
     return FileTypesHumanReport(
@@ -371,7 +373,7 @@ def build_bindings_human_report(
     show_details: bool,
     verbosity_level: int,
     styled: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
 ) -> BindingsHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN for `bindings`.
 
@@ -390,7 +392,9 @@ def build_bindings_human_report(
     raw_processors: list[ProcessorInfo] = list_processors()
     if activation is not None:
         active_keys: set[str] = {
-            item["qualified_key"] for item in raw_filetypes if item["activation"] == activation
+            item["qualified_key"]
+            for item in raw_filetypes
+            if matches_declared_activation(item["activation"], activation)
         }
         raw_filetypes = [item for item in raw_filetypes if item["qualified_key"] in active_keys]
         raw_bindings = [item for item in raw_bindings if item["file_type_key"] in active_keys]

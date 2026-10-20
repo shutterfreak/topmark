@@ -46,32 +46,50 @@ def test_registry_machine_payloads_filter_by_declared_activation(
     with effective_registries({"default": default, "opt-in": opt_in}, {}):
         filetypes: list[FileTypeBriefEntry] | list[FileTypeDetailEntry] = build_filetypes_payload(
             show_details=False,
-            activation=FileTypeActivation.OPT_IN.value,
+            activation=frozenset(
+                {FileTypeActivation.DEFAULT.value, FileTypeActivation.OPT_IN.value},
+            ),
         )
         bindings: BindingsPayload = build_bindings_payload(
             show_details=True,
-            activation=FileTypeActivation.OPT_IN.value,
+            activation=frozenset(
+                {FileTypeActivation.DEFAULT.value, FileTypeActivation.OPT_IN.value},
+            ),
         )
 
     assert filetypes == [
+        {
+            "local_key": "default",
+            "namespace": "test",
+            "qualified_key": "test:default",
+            "description": "Default type",
+            "activation": "default",
+        },
         {
             "local_key": "opt-in",
             "namespace": "test",
             "qualified_key": "test:opt-in",
             "description": "Opt-in type",
             "activation": "opt-in",
-        }
+        },
     ]
     assert bindings == {
         "bindings": [],
         "unbound_filetypes": [
+            {
+                "local_key": "default",
+                "namespace": "test",
+                "qualified_key": "test:default",
+                "description": "Default type",
+                "activation": "default",
+            },
             {
                 "local_key": "opt-in",
                 "namespace": "test",
                 "qualified_key": "test:opt-in",
                 "description": "Opt-in type",
                 "activation": "opt-in",
-            }
+            },
         ],
         "unused_processors": [],
     }

@@ -88,9 +88,12 @@ to project configuration: configuration discovery, file-type consent, and runtim
 affect it. This registry introspection is independent of runtime filesystem-identity evaluation for
 selected processing paths.
 
-`registry filetypes` and `registry bindings` accept `--activation {default,opt-in,never}` to filter
-by a file type's declared activation. The filter is available in TEXT, Markdown, JSON, and NDJSON
-output; it does not change runtime authorization.
+`registry filetypes` and `registry bindings` accept repeatable `--activation` (or `-a`) values to
+filter by a file type's declared activation. Each occurrence accepts `default`, `opt-in`, or
+`never`, and may be comma-separated (for example, `--activation never,opt-in`). Values are
+deduplicated and combined with OR semantics; the resulting activation filter restricts the output
+independently of other applicable filters. The filter is available in TEXT, Markdown, JSON, and
+NDJSON output; it does not change runtime authorization.
 
 [`registry filetypes`](registry/filetypes.md) and [`registry processors`](registry/processors.md)
 also accept repeatable positional identity queries. The structured form is

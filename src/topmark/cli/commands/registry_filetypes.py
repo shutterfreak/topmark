@@ -52,7 +52,6 @@ from topmark.presentation.markdown.registry import render_filetypes_markdown
 from topmark.presentation.shared.registry import FileTypesHumanReport
 from topmark.presentation.shared.registry import build_filetypes_human_report
 from topmark.presentation.text.registry import render_filetypes_text
-from topmark.registry.query import RegistryIdentityQuery
 from topmark.registry.query import RegistryRegex
 from topmark.registry.query import RegistrySelection
 
@@ -60,6 +59,8 @@ if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.core.machine.schemas import DetailedMetaPayload
+    from topmark.registry.query import RegistryActivationFilter
+    from topmark.registry.query import RegistryIdentityQuery
 
 
 @rich_click.command(
@@ -131,7 +132,7 @@ def registry_filetypes_command(
     # registry_details_options:
     show_details: bool = False,
     # registry_file_type_activation_options
-    activation: str | None = None,
+    activation: RegistryActivationFilter | None = None,
     # positional registry queries and registry_identity_query_options
     registry_queries: tuple[RegistryIdentityQuery, ...] = (),
     registry_regexes: tuple[RegistryRegex, ...] = (),
@@ -150,7 +151,7 @@ def registry_filetypes_command(
         no_color: If set, disable color mode.
         show_details: Whether to show extended information about each file type,
             including associated extensions, filenames, patterns, activation, and header policy.
-        activation: Optional declared activation filter.
+        activation: Optional declared activation filters.
         registry_queries: Positional identity inclusion predicates.
         registry_regexes: Whole-identity regular-expression inclusion predicates.
         registry_builtin: Restrict entries to the built-in `topmark` namespace.

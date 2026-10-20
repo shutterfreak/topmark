@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from topmark.registry.machine.schemas import BindingsPayload
     from topmark.registry.machine.schemas import FileTypesPayload
     from topmark.registry.machine.schemas import ProcessorsPayload
+    from topmark.registry.query import RegistryActivationFilterInput
     from topmark.registry.query import RegistrySelection
 
 
@@ -58,7 +59,7 @@ def serialize_filetypes(
     fmt: OutputFormat,
     meta: MetaPayload,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
     selection: RegistrySelection | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
@@ -105,7 +106,7 @@ def serialize_filetypes_json(
     *,
     meta: MetaPayload,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
     selection: RegistrySelection | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
@@ -136,7 +137,7 @@ def serialize_filetypes_ndjson(
     *,
     meta: MetaPayload,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
     selection: RegistrySelection | None = None,
 ) -> Iterator[str]:
     """Serialize machine-readable output for `topmark registry filetypes`.
@@ -265,7 +266,7 @@ def serialize_bindings(
     fmt: OutputFormat,
     meta: MetaPayload,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry bindings`.
 
@@ -308,7 +309,7 @@ def serialize_bindings_json(
     *,
     meta: MetaPayload,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
 ) -> str:
     """Serialize machine-readable output for `topmark registry bindings`.
 
@@ -335,7 +336,7 @@ def serialize_bindings_ndjson(
     *,
     meta: MetaPayload,
     show_details: bool,
-    activation: str | None = None,
+    activation: RegistryActivationFilterInput = None,
 ) -> Iterator[str]:
     """Serialize machine-readable output for `topmark registry bindings`.
 

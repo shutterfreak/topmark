@@ -606,8 +606,9 @@ topmark registry bindings
 These commands expose the effective composed runtime registry view.
 
 `registry filetypes` and `registry bindings` can filter that static view by declared activation with
-`--activation {default,opt-in,never}`. Registry output does not consume project configuration or
-dynamic opt-in consent.
+repeatable `--activation` (or `-a`) values. Each value is `default`, `opt-in`, or `never`, and an
+occurrence may be comma-separated. Values are deduplicated and ORed. Registry output does not
+consume project configuration or dynamic opt-in consent.
 
 Use:
 

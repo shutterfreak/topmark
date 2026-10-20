@@ -109,9 +109,13 @@ The `--long` flag controls the detail level for all output formats.
 
 ### Activation filter
 
-`--activation {default,opt-in,never}` filters bindings and unbound file types by the file type's
-declared activation in every output format. It is introspection only: it does not supply opt-in
-consent or change processor dispatch.
+Repeat `--activation` (or `-a`) to filter bindings and unbound file types by their file type's
+declared activation in every output format. Each value is `default`, `opt-in`, or `never`; values
+can also be comma-separated, such as `--activation never,opt-in`. Values are deduplicated and
+combined with OR semantics. This filter is restrictive and does not affect `unused_processors`,
+which is always calculated from the complete effective registry. Empty comma segments and unknown
+values are usage errors. It is introspection only: it does not supply opt-in consent or change
+processor dispatch.
 
 ______________________________________________________________________
 
@@ -216,6 +220,9 @@ topmark registry bindings --long
 
 # Inspect intentionally non-processable types separately
 topmark registry bindings --activation never
+
+# Inspect default and opt-in bindings together
+topmark registry bindings -a default,opt-in
 
 # Detailed Markdown table (ideal for project docs)
 topmark registry bindings --long --output-format markdown

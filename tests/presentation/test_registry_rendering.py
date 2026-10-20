@@ -655,6 +655,7 @@ def test_build_bindings_human_report_filters_by_declared_activation(
         },
         {
             "default": _RegistryPresentationProcessor(),
+            "unused": _UnusedRegistryPresentationProcessor(),
         },
     ):
         report: BindingsHumanReport = build_bindings_human_report(
@@ -672,3 +673,4 @@ def test_build_bindings_human_report_filters_by_declared_activation(
             activation="opt-in",
         ),
     )
+    assert [item.qualified_key for item in report.unused_processors] == ["test:registry-unused"]

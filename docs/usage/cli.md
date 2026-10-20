@@ -249,19 +249,19 @@ ______________________________________________________________________
 
 Common shared options include the following, where supported by the selected command:
 
-| Option                                        | Description                                                                                 |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `--config FILE`                               | Load and merge an additional configuration file                                             |
-| `--apply`                                     | Apply file mutations instead of dry-run, where supported (mutually exclusive with `--diff`) |
-| `--diff`                                      | Preview changes as human unified diffs or machine diff payloads, where supported            |
-| `-v`, `--verbose`                             | Increase TEXT output detail, where supported                                                |
-| `-q`, `--quiet`                               | Suppress TEXT output, where supported                                                       |
-| `--output-format {text,markdown,json,ndjson}` | Select output format, where machine-readable output is supported                            |
-| `--color` / `--no-color`                      | Enable or disable colorized terminal output, where supported                                |
-| `--opt-in-file-type TYPE`                     | Authorize processing of an opt-in file type; repeatable and comma-separated values allowed  |
-| `--include-file-types`                        | Restrict processing to selected file types, where supported                                 |
-| `--exclude-file-types`                        | Exclude selected file types, where supported                                                |
-| `--activation {default,opt-in,never}`         | Filter declared activation in `registry filetypes` and `registry bindings`                  |
+| Option                                        | Description                                                                                                                                     |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--config FILE`                               | Load and merge an additional configuration file                                                                                                 |
+| `--apply`                                     | Apply file mutations instead of dry-run, where supported (mutually exclusive with `--diff`)                                                     |
+| `--diff`                                      | Preview changes as human unified diffs or machine diff payloads, where supported                                                                |
+| `-v`, `--verbose`                             | Increase TEXT output detail, where supported                                                                                                    |
+| `-q`, `--quiet`                               | Suppress TEXT output, where supported                                                                                                           |
+| `--output-format {text,markdown,json,ndjson}` | Select output format, where machine-readable output is supported                                                                                |
+| `--color` / `--no-color`                      | Enable or disable colorized terminal output, where supported                                                                                    |
+| `--opt-in-file-type TYPE`                     | Authorize processing of an opt-in file type; repeatable and comma-separated values allowed                                                      |
+| `--include-file-types`                        | Restrict processing to selected file types, where supported                                                                                     |
+| `--exclude-file-types`                        | Exclude selected file types, where supported                                                                                                    |
+| `--activation`, `-a`                          | Filter declared activation (`default`, `opt-in`, `never`) in `registry filetypes` and `registry bindings`; repeat or use comma-separated values |
 
 For commands that support `--diff`, presentation depends on the selected output format:
 

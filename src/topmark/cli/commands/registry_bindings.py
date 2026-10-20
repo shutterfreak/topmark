@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.core.machine.schemas import DetailedMetaPayload
+    from topmark.registry.query import RegistryActivationFilter
 
 
 @rich_click.command(
@@ -115,7 +116,7 @@ def registry_bindings_command(
     # registry_details_options:
     show_details: bool = False,
     # registry_file_type_activation_options
-    activation: str | None = None,
+    activation: RegistryActivationFilter | None = None,
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
@@ -129,7 +130,7 @@ def registry_bindings_command(
         color_mode: Set the color mode (default: auto).
         no_color: If set, disable color mode.
         show_details: Whether to show extended information about each binding.
-        activation: Optional declared activation filter.
+        activation: Optional declared activation filters.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
