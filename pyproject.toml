@@ -227,11 +227,12 @@ style           = "pep257"
 max-line-length = 100
 # Preserve intentional blank-line grouping in embedded code snippets.
 strip-whitespaces = false
+# Prevent capitalizing symbol names at start of docstring.
+capitalize-first-letter = false
 # Specific fixers to ensure internal consistency.
-beginning-quotes        = true
-closing-quotes          = true
-capitalize-first-letter = true
-final-period            = true
+beginning-quotes = true
+closing-quotes   = true
+final-period     = true
 
 # Pyright configuration
 [tool.pyright]

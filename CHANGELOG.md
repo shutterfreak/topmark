@@ -33,6 +33,11 @@ ______________________________________________________________________
 - Integrated the opt-in docstring formatter with Nox and made Ruff the final formatting pass while
   preserving intentional whitespace in embedded code snippets.
 
+### Fixed - Unreleased
+
+- Prevented the opt-in docstring formatter from capitalizing docstrings that begin with symbol
+  names.
+
 ______________________________________________________________________
 
 ## [2.0.1] - 2026-10-17
