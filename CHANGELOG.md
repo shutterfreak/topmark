@@ -56,6 +56,8 @@ ______________________________________________________________________
   1.1.411 does not accept the repository's current strict type-check contract.
 - Raised the Ruff development-tool lower bound to 0.16.0 because older Ruff releases require a
   `BLE001` suppression that newer releases correctly reject as unused.
+- Raised the PathSpec and pytest lower bounds to 1.1.1 and 9.1.1 because their prior releases do not
+  satisfy the repository's strict Pyright contract.
 
 ______________________________________________________________________
 

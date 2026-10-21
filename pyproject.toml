@@ -76,7 +76,7 @@ dependencies = [
   # Utilities for Python Packaging interoperability specifications:
   "packaging>=25.0,<27.0.0",
   # Git-style pattern matching for file inclusion/exclusion:
-  "pathspec>=1.1.0,<1.2.0",
+  "pathspec>=1.1.1,<1.2.0",
   # Rich rendering on the terminal (ANSI, Markdown, tables...):
   "rich>=15.0.0,<16.0.0",
   # Format click help output nicely with rich:
@@ -143,7 +143,7 @@ dependencies = [
     # Property-based testing library:
     "hypothesis>=6.155.7,<7.0.0",
     # Unit testing framework:
-    "pytest>=9.0.1,<10.0.0",
+    "pytest>=9.1.1,<10.0.0",
     # Coverage.py support in pytest:
     "pytest-cov>=7.1.0,<8.0.0",
     # Parallel test execution:
