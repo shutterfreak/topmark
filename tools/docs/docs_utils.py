@@ -11,8 +11,7 @@
 """Shared reference-hygiene helpers for TopMark docs.
 
 This module centralizes small, deterministic helpers used by:
-- `tools/docs/hooks.py` (MkDocs simple-hooks)
-- `tools/docs/gen_cli_reference_pages.py` (mkdocs-gen-files script)
+- `tools/docs/gen_cli_reference_pages.py` (generates CLI reference pages)
 
 It intentionally contains small utilities only:
 - Markdown link/reference hygiene helpers (including mdformat bracket unescape)
@@ -23,13 +22,11 @@ It intentionally contains small utilities only:
 Configuration is read from environment variables at import time (e.g.
 `TOPMARK_DOCS_NONLINKED_SYMBOLS`), but no I/O beyond that is performed.
 
-This module is safe for Python 3.10-3.14.
-
 Callers are responsible for logging and for deciding severity based on
 `TOPMARK_DOCS_DEBUG` / `TOPMARK_DOCS_STRICT_REFS`.
 
-Because it's executed as a script (not imported as a package), helpers must be imported via
-absolute module paths (e.g. tools.docs....).
+This is repository tooling rather than part of the public `topmark` package. Import it through
+the absolute `tools.docs.docs_utils` module path.
 """
 
 from __future__ import annotations
