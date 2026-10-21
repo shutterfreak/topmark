@@ -285,10 +285,13 @@ def normalize_rich_cli_output(output: str) -> str:
     Rich panels and tables may wrap messages across lines, surround content with
     border glyphs, and emit ANSI control sequences depending on the terminal
     environment. Long option names may also soft-wrap after hyphens inside Rich
-    table cells. These tests validate command behavior, not exact terminal
-    layout, so this helper removes ANSI sequences and panel borders, collapses
-    whitespace, and joins soft-wrapped hyphenated option tokens while preserving
-    the rendered text content.
+    table cells. Use this helper only for semantic text-presence assertions.
+    It deliberately does not validate terminal layout, column alignment,
+    styling, punctuation, or exact wrapping; tests for those contracts must
+    render with an explicitly configured console instead. This helper removes
+    ANSI sequences and panel borders, collapses whitespace, and joins
+    soft-wrapped hyphenated option tokens while preserving the rendered text
+    content.
     """
     plain_output: str = ANSI_ESCAPE_RE.sub("", output)
     content_lines: list[str] = []
@@ -315,7 +318,7 @@ def assert_rich_output_contains(
     """Assert text appears in Rich-rendered CLI output.
 
     The comparison ignores Rich panel borders and line wrapping so tests remain
-    focused on emitted diagnostic content.
+    focused on emitted diagnostic content rather than visual layout.
     """
     normalized_output: str = normalize_rich_cli_output(output)
     normalized_expected: str = _normalize_whitespace(expected)
@@ -330,7 +333,7 @@ def assert_rich_output_does_not_contain(
     """Assert text does not appear in Rich-rendered CLI output.
 
     The comparison ignores Rich panel borders and line wrapping so tests remain
-    focused on emitted diagnostic content.
+    focused on emitted diagnostic content rather than visual layout.
     """
     normalized_output: str = normalize_rich_cli_output(output)
     normalized_expected: str = _normalize_whitespace(expected)

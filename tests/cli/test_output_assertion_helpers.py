@@ -12,7 +12,8 @@
 
 The helpers intentionally normalize incidental Rich and Markdown rendering so
 CLI regression tests can assert semantic output contracts without depending on
-terminal width, ANSI styling, or panel borders.
+terminal width, ANSI styling, or panel borders. They do not validate visual
+layout, column alignment, styling, punctuation, or exact wrapping.
 """
 
 from __future__ import annotations

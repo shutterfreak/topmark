@@ -321,10 +321,35 @@ def test_file_type_hidden_singular_aliases_are_not_shown_in_help(
     cmd: str,
     help_opt: str,
 ) -> None:
-    """Hidden singular file type filter aliases are not shown in help."""
+    """Hidden singular file type aliases stay hidden in metadata and rendered help."""
     result: Result = run_cli((cmd, help_opt))
 
     assert_SUCCESS(result)
+    command: click.Command | None = cli.get_command(
+        click.Context(cli, info_name="topmark"),
+        cmd_name=cmd,
+    )
+    assert command is not None
+    context = click.Context(command)
+    for canonical_option_name, hidden_alias_name in (
+        (CliOpt.INCLUDE_FILE_TYPES, CliOpt.INCLUDE_FILE_TYPE),
+        (CliOpt.EXCLUDE_FILE_TYPES, CliOpt.EXCLUDE_FILE_TYPE),
+    ):
+        options: list[click.Option] = [
+            option for option in command.params if isinstance(option, click.Option)
+        ]
+        canonical_options: list[click.Option] = [
+            option for option in options if canonical_option_name in option.opts
+        ]
+        hidden_alias_options: list[click.Option] = [
+            option for option in options if hidden_alias_name in option.opts
+        ]
+        assert len(canonical_options) == 1
+        assert canonical_options[0].get_help_record(context) is not None
+        assert len(hidden_alias_options) == 1
+        assert hidden_alias_options[0].hidden
+        assert hidden_alias_options[0].get_help_record(context) is None
+
     assert_rich_output_contains(result.output, expected=CliOpt.INCLUDE_FILE_TYPES)
     assert_rich_output_contains(result.output, expected=CliOpt.EXCLUDE_FILE_TYPES)
 
