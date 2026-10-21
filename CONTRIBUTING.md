@@ -499,13 +499,56 @@ validates pull request titles using the same allowed types, including after titl
 check decides whether the selected type accurately describes the change; that remains reviewer
 judgment.
 
+### After a pull request is merged
+
+TopMark uses squash merges. A squash-merged local topic branch is not an ancestor of `main`, so
+`git branch -d` correctly declines to delete it even when its pull request has been merged.
+
+Update the checkout and prune stale remote-tracking branches:
+
+```bash
+git switch main
+git pull --ff-only
+git fetch --prune origin
+```
+
+For pull requests merged with a merge commit, inspect and safely delete branches that Git recognizes
+as merged:
+
+```bash
+git branch --merged origin/main
+git branch -d BRANCH_NAME
+```
+
+#### Optional GitHub CLI cleanup
+
+Contributors who use [GitHub CLI](https://cli.github.com/) may install the optional
+[`gh poi`](https://github.com/seachicken/gh-poi) extension:
+
+```bash
+gh extension install seachicken/gh-poi
+```
+
+After updating `main`, preview the cleanup before deleting local branches:
+
+```bash
+gh poi --dry-run
+gh poi
+```
+
+`gh poi` can identify branches whose GitHub pull requests were squash-merged, including branches
+that Git alone cannot classify as merged. It is a third-party extension, requires authenticated
+GitHub CLI access, and is not required for contributing. Review its output before relying on it; use
+`gh poi lock BRANCH_NAME` to retain a branch.
+
 ### Pull request checklist
 
 - [ ] PR title follows Conventional Commits
-- [ ] Related issue referenced when applicable
-- [ ] `make pre-pr` passes
+- [ ] Related issues and PRs referenced when applicable
 - [ ] Docs updated if needed
 - [ ] Public API snapshot updated if applicable
+- [ ] `make pre-pr` passes
+- [ ] `pre-commit run --all-files` passes
 - [ ] Release tag / changelog plan is correct for release-related PRs
 
 ______________________________________________________________________
