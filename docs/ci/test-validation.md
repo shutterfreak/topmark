@@ -173,6 +173,18 @@ Run the full default test suite through nox on the canonical Python version:
 nox -s qa -p 3.15
 ```
 
+Validate the declared lower bounds for direct dependencies:
+
+```bash
+make dependency-lower-bounds
+```
+
+This command temporarily resolves direct dependencies with uv's `lowest-direct` strategy, runs the
+normal pytest and Pyright QA contract across the supported Python matrix, then restores the exact
+original `uv.lock`. It validates TopMark's direct dependency-floor claims while keeping transitive
+dependencies current; it does not claim to validate every possible historical transitive-dependency
+combination.
+
 Run the fast smoke suite when you need an early signal from representative contracts:
 
 ```bash
@@ -301,6 +313,7 @@ Common mappings are:
 | Run the recommended local pre-PR gate              | `make pre-pr`                      |
 | Run non-test local quality checks, including links | `nox -s verify`                    |
 | Run the main quality gate on the canonical Python  | `nox -s qa -p 3.15`                |
+| Validate direct dependency lower bounds            | `make dependency-lower-bounds`     |
 | Run the fast marker-selected smoke suite           | `nox -s smoke`                     |
 | Generate canonical coverage data                   | `nox -s coverage -p 3.15`          |
 | Generate repository-tooling coverage data          | `nox -s coverage_tools -p 3.15`    |

@@ -22,6 +22,8 @@ topmark:header:end
   - [Dependabot workflow](../../ci/dependabot.md) - dependency and security-update automation
   - [Dependency review workflow](../../ci/dependency-review.md) - pull request license and known
     vulnerability policy for runtime dependency changes
+  - [Dependency lower bounds workflow](../../ci/dependency-lower-bounds.md) - validate declared
+    direct dependency floors across the supported Python matrix
   - [GitHub Action pin audit](../../ci/action-pin-audit.md) - audit GitHub Action pin consistency
     across workflows and local composite actions
 - GitHub actions:

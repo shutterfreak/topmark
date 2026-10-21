@@ -36,6 +36,7 @@ Sessions:
   - `verify`: Non-test local quality checks, including link validation.
   - `pre_pr`: Recommended local pre-PR validation gate.
   - `api_snapshot`: Public API snapshot test (per Python).
+  - `dependency_lower_bounds`: Validate direct dependency lower bounds across supported Pythons.
   - `property_test`: Long-running property tests (opt-in).
   - `perf_baseline`: Local pipeline memory/allocation baseline benchmarks (opt-in).
   - `package_check`: Build sdist/wheel and validate metadata (twine).
@@ -63,6 +64,7 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
+import tempfile
 from typing import Any
 from typing import Final
 
@@ -322,6 +324,116 @@ def qa_api(session: nox.Session) -> None:
         "--pythonversion",
         py_ver,
     )
+
+
+@nox.session(python=False)
+def dependency_lower_bounds(session: nox.Session) -> None:
+    """Validate declared direct-dependency lower bounds without retaining a new lockfile.
+
+    ``uv lock`` normally prefers the committed resolution, which means ordinary CI does not test
+    whether the lowest declared direct dependencies work. This session produces a temporary
+    ``lowest-direct`` resolution, validates it across the supported Python matrix through isolated
+    ``uv run --locked`` environments, and restores the caller's exact lockfile contents even if
+    validation fails.
+
+    The temporary resolution deliberately keeps transitive dependencies current. TopMark promises
+    direct lower bounds in ``pyproject.toml``; it does not promise every historical transitive
+    combination accepted by those dependencies.
+    """
+    lock_path = pathlib.Path("uv.lock")
+    original_lock: bytes = lock_path.read_bytes()
+
+    try:
+        session.run(
+            "uv",
+            "lock",
+            "--upgrade",
+            "--resolution",
+            "lowest-direct",
+            external=True,
+        )
+
+        # `nox-uv` installs the project with `uv pip install`, which resolves independently from
+        # `uv.lock`. Use `uv run --locked` so every test environment consumes the temporary lock.
+        with tempfile.TemporaryDirectory(
+            prefix="topmark-dependency-lower-bounds-"
+        ) as environment_root:
+            for python_version in PYTHONS:
+                environment = str(pathlib.Path(environment_root, python_version))
+                environment_variables = {
+                    "UV_PROJECT_ENVIRONMENT": environment,
+                    "VIRTUAL_ENV": environment,
+                }
+                session.log("Validating dependency floors on Python %s", python_version)
+                session.run(
+                    "uv",
+                    "run",
+                    "--all-extras",
+                    "--locked",
+                    "--resolution",
+                    "lowest-direct",
+                    "--python",
+                    python_version,
+                    "pytest",
+                    "-q",
+                    "tests",
+                    "-m",
+                    "not hypothesis_slow",
+                    *session.posargs,
+                    external=True,
+                    env=environment_variables,
+                )
+                session.run(
+                    "uv",
+                    "run",
+                    "--all-extras",
+                    "--locked",
+                    "--resolution",
+                    "lowest-direct",
+                    "--python",
+                    python_version,
+                    "pyright",
+                    "--pythonversion",
+                    python_version,
+                    external=True,
+                    env=environment_variables,
+                )
+                if python_version == CANONICAL_PYTHON:
+                    # Ruff is independent of the interpreter matrix, so one canonical run verifies
+                    # that its declared floor can lint and format the repository successfully.
+                    session.run(
+                        "uv",
+                        "run",
+                        "--all-extras",
+                        "--locked",
+                        "--resolution",
+                        "lowest-direct",
+                        "--python",
+                        python_version,
+                        "ruff",
+                        "check",
+                        ".",
+                        external=True,
+                        env=environment_variables,
+                    )
+                    session.run(
+                        "uv",
+                        "run",
+                        "--all-extras",
+                        "--locked",
+                        "--resolution",
+                        "lowest-direct",
+                        "--python",
+                        python_version,
+                        "ruff",
+                        "format",
+                        "--check",
+                        ".",
+                        external=True,
+                        env=environment_variables,
+                    )
+    finally:
+        lock_path.write_bytes(original_lock)
 
 
 @nox.session(python=False)

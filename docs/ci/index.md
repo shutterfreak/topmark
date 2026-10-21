@@ -72,6 +72,8 @@ and maintenance expectations than repository-source validation or release public
 - [Dependabot workflow](./dependabot.md) - documents dependency-update and security-audit behavior.
 - [Dependency review workflow](./dependency-review.md) - checks pull request runtime dependency
   changes against the project's vulnerability-severity and SPDX license policies.
+- [Dependency lower bounds workflow](./dependency-lower-bounds.md) - validates declared direct
+  dependency lower bounds weekly and on dependency-bound pull requests.
 - [GitHub Action pin audit](./action-pin-audit.md) - audits GitHub Action pin consistency across
   workflows and local composite actions, with an explicit local repair mode for stale repeated refs.
 - [Python lifecycle audit](./python-lifecycle-audit.md) - tracks CPython final-release and EOL
@@ -98,6 +100,7 @@ Use this family of pages as follows:
 | How do we validate packages after publication?                   | [Published artifact validation](./published-artifact-validation.md) |
 | How are dependency updates handled?                              | [Dependabot](./dependabot.md)                                       |
 | How are dependency licenses and vulnerabilities reviewed?        | [Dependency review](./dependency-review.md)                         |
+| How are direct dependency lower bounds validated?                | [Dependency lower bounds](./dependency-lower-bounds.md)             |
 | How do we audit or locally repair GitHub Action pin consistency? | [GitHub Action pin audit](./action-pin-audit.md)                    |
 | How are CPython release and EOL transitions reviewed?            | [Python lifecycle audit](./python-lifecycle-audit.md)               |
 

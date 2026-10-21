@@ -61,6 +61,7 @@ help:
 	@echo "  coverage        Run product coverage testing; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-tools  Run repository-tooling coverage; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-changed  Diagnose uncovered changed source lines; run coverage first"
+	@echo "  dependency-lower-bounds  Validate direct dependency lower bounds; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-erase  Remove local coverage output"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo "  perf-baseline   Run pipeline memory/allocation baselines (manual, opt-in)"
@@ -179,6 +180,10 @@ coverage-tools: check-nox
 .PHONY: coverage-changed
 coverage-changed: check-nox
 	$(NOX) $(NOX_FLAGS) -s coverage_changed -- $(COVERAGE_CHANGED_ARGS)
+
+.PHONY: dependency-lower-bounds
+dependency-lower-bounds: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds -- $(PYTEST_PAR)
 
 # These files and directories are generated only by the coverage session.
 # `rm -rf` is available in the supported POSIX shells, Git Bash, and WSL.

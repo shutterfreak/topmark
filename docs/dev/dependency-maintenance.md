@@ -83,6 +83,13 @@ turn the lockfile into the published dependency contract.
 When a lower bound depends on a specific API or behavior, maintainers should retain focused test
 coverage for that behavior and verify the boundary version explicitly when practical.
 
+TopMark also validates direct dependency floors through `make dependency-lower-bounds`. The command
+uses uv's `lowest-direct` resolution strategy, runs the normal pytest and Pyright matrix, and
+restores the committed lockfile afterwards. The scheduled Dependency Bounds workflow runs the same
+check weekly and when dependency bounds change in a pull request. It is evidence that the declared
+direct floors resolve and pass TopMark's validation; it does not prove every possible intermediate
+or transitive version combination.
+
 ### Pre-commit tooling
 
 `.pre-commit-config.yaml` pins hook repositories independently from Python project dependencies.
@@ -228,6 +235,12 @@ make test
 Use focused tests or a clean boundary-version environment when changing a lower bound. GitHub CI
 then validates the supported Python matrix, while Dependency Review checks changed runtime
 dependencies for accepted licenses and high- or critical-severity known vulnerabilities.
+
+Run the lower-bound check whenever a direct dependency floor changes:
+
+```bash
+make dependency-lower-bounds
+```
 
 Published artifact validation remains relevant when a dependency change can affect installation or
 runtime resolution from PyPI or TestPyPI.

@@ -122,7 +122,8 @@ make coverage-tools
 Additional rules:
 
 - Parallelize pytest-capable Make targets when useful by passing `PYTEST_PAR="-n auto"`, for example
-  `make pre-pr PYTEST_PAR="-n auto"` or `make pytest PYTEST_PAR="-n auto"`.
+  `make pre-pr PYTEST_PAR="-n auto"`, `make pytest PYTEST_PAR="-n auto"`, or
+  `make dependency-lower-bounds PYTEST_PAR="-n auto"`.
 - Run `make docs-build` for documentation, docstring, or generated-reference changes.
 - Run `make links-site` when changing documentation links or link-validation behavior.
 - Run `make api-snapshot-dev` when touching the stable public API.

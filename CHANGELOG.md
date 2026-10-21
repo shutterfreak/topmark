@@ -48,6 +48,15 @@ ______________________________________________________________________
 - Prevented the opt-in docstring formatter from capitalizing docstrings that begin with symbol
   names.
 
+### Internal - Unreleased
+
+- Added scheduled and pull-request validation of declared direct dependency lower bounds, including
+  local `make dependency-lower-bounds` reproduction and canonical-Ruff floor checks.
+- Raised the Pyright development-tool lower bound to 1.1.414 after lower-bound validation found that
+  1.1.411 does not accept the repository's current strict type-check contract.
+- Raised the Ruff development-tool lower bound to 0.16.0 because older Ruff releases require a
+  `BLE001` suppression that newer releases correctly reject as unused.
+
 ______________________________________________________________________
 
 ## [2.0.1] - 2026-10-17

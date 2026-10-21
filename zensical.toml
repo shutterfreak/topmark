@@ -85,6 +85,7 @@ nav = [
       { "Release workflow" = "ci/release-workflow.md" },
       { Dependabot = "ci/dependabot.md" },
       { "Dependency review" = "ci/dependency-review.md" },
+      { "Dependency lower bounds" = "ci/dependency-lower-bounds.md" },
       { "GitHub Action pin audit" = "ci/action-pin-audit.md" },
       { "Python lifecycle audit" = "ci/python-lifecycle-audit.md" },
     ] },

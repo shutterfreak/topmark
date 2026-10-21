@@ -110,9 +110,9 @@ dependencies = [
     # Pre-commit hook manager:
     "pre-commit>=4.4.0,<5.0.0",
     # Static type checker:
-    "pyright>=1.1.411,<1.2.0",
+    "pyright>=1.1.414,<1.2.0",
     # Python linter and formatter:
-    "ruff>=0.15.20,<0.18.0",
+    "ruff>=0.16.0,<0.18.0",
     # TOML formatter:
     "taplo>=0.9.3,<0.10.0",
     # Upload distributions to PyPI:
@@ -133,7 +133,7 @@ dependencies = [
     # Rich rendering on the terminal (ANSI, Markdown, tables...):
     "rich>=15.0.0,<16.0.0",
     # Python linter and formatter (formatter used for docs tooling):
-    "ruff>=0.15.20,<0.18.0",
+    "ruff>=0.16.0,<0.18.0",
     # Add typing extensions and deprecation annotations:
     "typing-extensions>=4.15.0,<5.0.0",
   ]
@@ -247,7 +247,7 @@ exclude = [
   "dist",
   "venv",
 ]
-pythonVersion = "3.10"
+pythonVersion = "3.10" # Lowest supported Python version
 stubPath = "typings"
 typeCheckingMode = "strict"
 
