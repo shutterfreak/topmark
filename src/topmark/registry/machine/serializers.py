@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from topmark.registry.machine.schemas import BindingsPayload
     from topmark.registry.machine.schemas import FileTypesPayload
     from topmark.registry.machine.schemas import ProcessorsPayload
+    from topmark.registry.query import BindingSelection
     from topmark.registry.query import RegistryActivationFilterInput
     from topmark.registry.query import RegistrySelection
 
@@ -267,6 +268,7 @@ def serialize_bindings(
     meta: MetaPayload,
     show_details: bool,
     activation: RegistryActivationFilterInput = None,
+    selection: BindingSelection | None = None,
 ) -> str | Iterator[str]:
     """Serialize machine-readable output for `topmark registry bindings`.
 
@@ -275,6 +277,7 @@ def serialize_bindings(
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
         activation: Optional declared activation filter.
+        selection: Optional endpoint-identity selection.
 
     Returns:
         - JSON: pretty-printed JSON string (no trailing newline)
@@ -291,6 +294,7 @@ def serialize_bindings(
             meta=meta,
             show_details=show_details,
             activation=activation,
+            selection=selection,
         )
 
     if fmt == OutputFormat.NDJSON:
@@ -298,6 +302,7 @@ def serialize_bindings(
             meta=meta,
             show_details=show_details,
             activation=activation,
+            selection=selection,
         )
 
     # Defensive guard: reached only if a new machine-readable OutputFormat is
@@ -310,6 +315,7 @@ def serialize_bindings_json(
     meta: MetaPayload,
     show_details: bool,
     activation: RegistryActivationFilterInput = None,
+    selection: BindingSelection | None = None,
 ) -> str:
     """Serialize machine-readable output for `topmark registry bindings`.
 
@@ -317,6 +323,7 @@ def serialize_bindings_json(
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
         activation: Optional declared activation filter.
+        selection: Optional endpoint-identity selection.
 
     Returns:
         Pretty-printed JSON string (no trailing newline)
@@ -324,6 +331,7 @@ def serialize_bindings_json(
     payload: BindingsPayload = build_bindings_payload(
         show_details=show_details,
         activation=activation,
+        selection=selection,
     )
     envelope: dict[str, object] = build_bindings_json_envelope(
         meta=meta,
@@ -337,6 +345,7 @@ def serialize_bindings_ndjson(
     meta: MetaPayload,
     show_details: bool,
     activation: RegistryActivationFilterInput = None,
+    selection: BindingSelection | None = None,
 ) -> Iterator[str]:
     """Serialize machine-readable output for `topmark registry bindings`.
 
@@ -344,6 +353,7 @@ def serialize_bindings_ndjson(
         meta: Machine metadata payload.
         show_details: If True, include extended fields.
         activation: Optional declared activation filter.
+        selection: Optional endpoint-identity selection.
 
     Returns:
         Iterator of JSON strings (one per record; no trailing newline per item)
@@ -351,6 +361,7 @@ def serialize_bindings_ndjson(
     payload: BindingsPayload = build_bindings_payload(
         show_details=show_details,
         activation=activation,
+        selection=selection,
     )
     records: Iterator[dict[str, object]] = iter_bindings_ndjson_records(
         meta=meta,

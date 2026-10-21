@@ -1091,11 +1091,8 @@ def registry_file_type_activation_options(f: Callable[_P, _R]) -> Callable[_P, _
     return f
 
 
-def registry_identity_query_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Apply identity-selection options for registry identity commands.
-
-    Their semantics are implemented by `RegistrySelection`, keeping Click
-    responsible only for parsing and user-facing validation.
+def _registry_match_regex_option(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply the repeatable whole-identity regex option to a registry command.
 
     Args:
         f: The Click command function to decorate.
@@ -1112,12 +1109,46 @@ def registry_identity_query_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         help="Select a full qualified identity with a regex; repeat to add alternatives.",
     )(f)
 
+    return f
+
+
+def registry_identity_query_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply identity-selection options for registry identity commands.
+
+    Their semantics are implemented by `RegistrySelection`, keeping Click
+    responsible only for parsing and user-facing validation.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = _registry_match_regex_option(f)
+
     f = option_with_underscore_traps(
         CliOpt.REGISTRY_BUILTIN,
         ArgKey.REGISTRY_BUILTIN,
         is_flag=True,
         help="Restrict results to the built-in topmark namespace.",
     )(f)
+
+    return f
+
+
+def registry_binding_query_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Apply endpoint-identity selection options for registry bindings.
+
+    Bindings deliberately omit the single-identity `--builtin` scope because a
+    relationship can connect endpoints owned by different namespaces.
+
+    Args:
+        f: The Click command function to decorate.
+
+    Returns:
+        The decorated function.
+    """
+    f = _registry_match_regex_option(f)
 
     return f
 

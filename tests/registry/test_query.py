@@ -19,15 +19,22 @@ import pytest
 
 from tests.helpers.registry import make_file_type
 from tests.helpers.registry import patched_effective_registries
+from topmark.api.types import BindingInfo
 from topmark.processors.base import HeaderProcessor
 from topmark.registry.filetypes import FileTypeRegistry
 from topmark.registry.processors import HeaderProcessorRegistry
+from topmark.registry.query import BindingQueryBinding
+from topmark.registry.query import BindingQueryFileType
+from topmark.registry.query import BindingQueryProcessor
+from topmark.registry.query import BindingSelection
 from topmark.registry.query import RegistryIdentityQuery
 from topmark.registry.query import RegistryRegex
 from topmark.registry.query import RegistrySelection
+from topmark.registry.query import select_binding_view
 
 if TYPE_CHECKING:
     from topmark.filetypes.model import FileType
+    from topmark.registry.query import BindingQueryProjection
 
 
 class AcmeProcessor(HeaderProcessor):
@@ -247,3 +254,149 @@ def test_registry_selection_defaults_to_all_entries_and_regexes_fullmatch() -> N
         local_key="jsonc",
         namespace="topmark",
     )
+
+
+def test_binding_selection_matches_either_endpoint_with_or_semantics() -> None:
+    """Binding predicates are alternatives across both endpoint identities."""
+    selection = BindingSelection(
+        identity_queries=(RegistryIdentityQuery.parse(":json"),),
+        regexes=(RegistryRegex.parse("topmark:slash"),),
+    )
+    binding: BindingInfo = BindingInfo(
+        file_type_key="topmark:json-as-jsonc",
+        file_type_local_key="json-as-jsonc",
+        file_type_namespace="topmark",
+        processor_key="topmark:slash",
+        processor_local_key="slash",
+        processor_namespace="topmark",
+        activation="opt-in",
+        file_type_description="JSON-as-JSONC",
+        processor_description="Slash processor",
+    )
+
+    assert selection.matches_binding(binding)
+
+
+def test_binding_query_projection_preserves_unbound_and_unused_semantics() -> None:
+    """Binding projections retain complete-registry unused-processor status."""
+    default_binding: BindingQueryBinding = BindingQueryBinding(
+        file_type_key="test:bound",
+        file_type_local_key="bound",
+        file_type_namespace="test",
+        processor_key="test:used",
+        processor_local_key="used",
+        processor_namespace="test",
+        activation="default",
+        file_type_description="Bound type",
+        processor_description="Used processor",
+    )
+    opt_in_binding: BindingQueryBinding = BindingQueryBinding(
+        file_type_key="test:opt-in-bound",
+        file_type_local_key="opt-in-bound",
+        file_type_namespace="test",
+        processor_key="test:used-by-opt-in",
+        processor_local_key="used-by-opt-in",
+        processor_namespace="test",
+        activation="opt-in",
+        file_type_description="Opt-in bound type",
+        processor_description="Opt-in processor",
+    )
+    filetypes: list[BindingQueryFileType] = [
+        BindingQueryFileType(
+            local_key="bound",
+            namespace="test",
+            qualified_key="test:bound",
+            description="Bound type",
+            activation="default",
+        ),
+        BindingQueryFileType(
+            local_key="opt-in-bound",
+            namespace="test",
+            qualified_key="test:opt-in-bound",
+            description="Opt-in bound type",
+            activation="opt-in",
+        ),
+        BindingQueryFileType(
+            local_key="unbound",
+            namespace="test",
+            qualified_key="test:unbound",
+            description="Unbound type",
+            activation="default",
+        ),
+    ]
+    processors: list[BindingQueryProcessor] = [
+        BindingQueryProcessor(
+            local_key="used",
+            namespace="test",
+            qualified_key="test:used",
+            description="Used processor",
+            bound=True,
+            line_indent="",
+            line_prefix="#",
+            line_suffix="",
+            block_prefix="",
+            block_suffix="",
+        ),
+        BindingQueryProcessor(
+            local_key="used-by-opt-in",
+            namespace="test",
+            qualified_key="test:used-by-opt-in",
+            description="Opt-in processor",
+            bound=True,
+            line_indent="",
+            line_prefix="#",
+            line_suffix="",
+            block_prefix="",
+            block_suffix="",
+        ),
+        BindingQueryProcessor(
+            local_key="unused",
+            namespace="test",
+            qualified_key="test:unused",
+            description="Unused processor",
+            bound=False,
+            line_indent="",
+            line_prefix="#",
+            line_suffix="",
+            block_prefix="",
+            block_suffix="",
+        ),
+    ]
+
+    unbound_projection: BindingQueryProjection = select_binding_view(
+        bindings=[default_binding, opt_in_binding],
+        filetypes=filetypes,
+        processors=processors,
+        selection=BindingSelection(
+            identity_queries=(RegistryIdentityQuery.parse("unbound"),),
+        ),
+    )
+    unused_projection: BindingQueryProjection = select_binding_view(
+        bindings=[default_binding, opt_in_binding],
+        filetypes=filetypes,
+        processors=processors,
+        selection=BindingSelection(
+            identity_queries=(RegistryIdentityQuery.parse("unused"),),
+        ),
+    )
+    activation_projection: BindingQueryProjection = select_binding_view(
+        bindings=[default_binding, opt_in_binding],
+        filetypes=filetypes,
+        processors=processors,
+        activation=frozenset({"default"}),
+    )
+
+    assert unbound_projection.bindings == ()
+    assert [item["qualified_key"] for item in unbound_projection.unbound_filetypes] == [
+        "test:unbound",
+    ]
+    assert unbound_projection.unused_processors == ()
+    assert unused_projection.bindings == ()
+    assert unused_projection.unbound_filetypes == ()
+    assert [item["qualified_key"] for item in unused_projection.unused_processors] == [
+        "test:unused",
+    ]
+    assert [item["file_type_key"] for item in activation_projection.bindings] == ["test:bound"]
+    assert [item["qualified_key"] for item in activation_projection.unused_processors] == [
+        "test:unused",
+    ]

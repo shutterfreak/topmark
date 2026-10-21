@@ -789,6 +789,8 @@ documented in the schema reference and include the separate
 > bindings, `unused_processors` remains calculated from the complete effective registry.
 >
 > `registry filetypes` and `registry processors` apply identity queries, `--builtin`, and
-> `--match-regex` before serializing JSON or NDJSON. These selectors change which entries are
-> emitted; they do not alter the documented payload schema, record kinds, or identity-field
-> meanings.
+> `--match-regex` before serializing JSON or NDJSON. `registry bindings` applies identity queries
+> and `--match-regex` to either endpoint before projecting every binding-view collection; it does
+> not support `--builtin` because a relationship can span namespaces. These selectors change which
+> entries are emitted; they do not alter the documented payload schema, record kinds, or
+> identity-field meanings.

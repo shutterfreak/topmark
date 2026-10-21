@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.cli.conftest import CLICK_USAGE_ERROR_EXIT_CODE
+from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
 from tests.helpers.json import parse_json_object
@@ -417,3 +418,233 @@ def test_registry_match_regex_rejects_invalid_expressions(
 
     assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE
     assert "Invalid regular expression" in result.output
+
+
+def _binding_entries(result: Result) -> list[dict[str, object]]:
+    """Return brief binding entries from a successful bindings JSON result."""
+    payload: dict[str, object] = parse_json_object(result.output)
+    entries: object = payload["bindings"]
+    assert is_any_list(entries)
+    return [as_object_dict(entry) for entry in entries]
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "json-as-jsonc",
+        "topmark:json-as-jsonc",
+        "*json*",
+    ],
+)
+def test_registry_binding_queries_match_filetype_identity_forms(
+    query: str,
+) -> None:
+    """Binding queries retain relationships whose file-type endpoint matches."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            query,
+        ],
+    )
+
+    assert_SUCCESS(result)
+    entries: list[dict[str, object]] = _binding_entries(result)
+    assert entries
+    assert all("json" in str(entry["file_type_key"]) for entry in entries)
+
+
+def test_registry_binding_query_matches_processor_identity() -> None:
+    """A binding query also selects relationships by processor endpoint identity."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            "slash",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    entries: list[dict[str, object]] = _binding_entries(result)
+    assert entries
+    assert {entry["processor_key"] for entry in entries} == {"topmark:slash"}
+
+
+def test_registry_binding_queries_and_regexes_are_endpoint_or_predicates() -> None:
+    """Repeated queries and full-identity regexes form one endpoint-match union."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.MATCH_REGEX,
+            "topmark:slash",
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            "markdown",
+            "json",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    entries: list[dict[str, object]] = _binding_entries(result)
+    assert entries
+    assert all(
+        str(entry["file_type_key"]) in {"topmark:markdown", "topmark:json"}
+        or entry["processor_key"] == "topmark:slash"
+        for entry in entries
+    )
+
+
+def test_registry_binding_activation_restricts_endpoint_queries() -> None:
+    """Activation remains an AND filter on the file-type endpoint."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.ACTIVATION,
+            "default",
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            ":json-as-jsonc",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert _binding_entries(result) == []
+
+
+@pytest.mark.parametrize(
+    "output_format",
+    [
+        "text",
+        "markdown",
+        "json",
+        "ndjson",
+    ],
+)
+def test_registry_binding_query_filters_all_output_formats(
+    output_format: str,
+) -> None:
+    """Endpoint filtering is applied before every binding renderer."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.OUTPUT_FORMAT,
+            output_format,
+            ":json-as-jsonc",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    assert "topmark:json-as-jsonc" in result.output
+    assert "topmark:python" not in result.output
+
+
+def test_registry_binding_query_empty_result_projects_every_section() -> None:
+    """An unmatched binding query succeeds with empty machine-format sections."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.OUTPUT_FORMAT,
+            "json",
+            "missing:nope",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    payload: dict[str, object] = parse_json_object(result.output)
+    assert payload["bindings"] == []
+    assert payload["unbound_filetypes"] == []
+    assert payload["unused_processors"] == []
+
+
+@pytest.mark.parametrize(
+    "output_format",
+    [
+        "text",
+        "markdown",
+        "json",
+        "ndjson",
+    ],
+)
+def test_registry_binding_query_empty_result_succeeds_in_every_output_format(
+    output_format: str,
+) -> None:
+    """An unmatched query produces the appropriate empty view in every format."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.OUTPUT_FORMAT,
+            output_format,
+            "missing:nope",
+        ],
+    )
+
+    assert_SUCCESS(result)
+    if output_format == "json":
+        payload: dict[str, object] = parse_json_object(result.output)
+        assert payload["bindings"] == []
+        assert payload["unbound_filetypes"] == []
+        assert payload["unused_processors"] == []
+    elif output_format == "ndjson":
+        assert parse_ndjson_records(result.output) == []
+    else:
+        assert "topmark:json-as-jsonc" not in result.output
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (("too:many:separators",), "at most one ':'"),
+        ((CliOpt.MATCH_REGEX, "("), "Invalid regular expression"),
+    ],
+)
+def test_registry_binding_query_rejects_malformed_syntax(
+    args: tuple[str, ...],
+    message: str,
+) -> None:
+    """Binding query syntax uses Click's parser-error exit code."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            *args,
+        ]
+    )
+
+    assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE
+    assert message in result.output
+
+
+def test_registry_binding_query_rejects_an_empty_positional_value() -> None:
+    """An empty binding query is rejected during Click parameter parsing."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            "",
+        ],
+    )
+
+    assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE
+    assert "Usage: cli registry bindings" in result.output
+
+
+def test_registry_binding_query_does_not_support_builtin_scope() -> None:
+    """Bindings reject the ambiguous single-identity built-in scope option."""
+    result: Result = run_cli(
+        [
+            CliCmd.REGISTRY,
+            CliCmd.REGISTRY_BINDINGS,
+            CliOpt.REGISTRY_BUILTIN,
+        ],
+    )
+
+    assert_rich_output_no_such_option(result, option_name=CliOpt.REGISTRY_BUILTIN)

@@ -25,10 +25,12 @@ from topmark.cli.cmd_common import init_common_state
 from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_bindings_machine
 from topmark.cli.help import HelpExample
+from topmark.cli.help import registry_queries_argument
 from topmark.cli.help import render_examples_epilog
 from topmark.cli.help import rich_click_option_panel
 from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
 from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
+from topmark.cli.help_panels import REGISTRY_BINDING_IDENTITY_FILTERING_PANEL_OPTIONS
 from topmark.cli.help_panels import REGISTRY_DETAIL_PANEL_OPTIONS
 from topmark.cli.help_panels import REGISTRY_FILTERING_PANEL_OPTIONS
 from topmark.cli.keys import CliCmd
@@ -37,6 +39,7 @@ from topmark.cli.options import GROUP_CONTEXT_SETTINGS
 from topmark.cli.options import common_color_options
 from topmark.cli.options import common_output_format_options
 from topmark.cli.options import common_text_output_verbosity_options
+from topmark.cli.options import registry_binding_query_options
 from topmark.cli.options import registry_details_options
 from topmark.cli.options import registry_file_type_activation_options
 from topmark.cli.state import TopmarkCliState
@@ -51,6 +54,9 @@ from topmark.presentation.markdown.registry import render_bindings_markdown
 from topmark.presentation.shared.registry import BindingsHumanReport
 from topmark.presentation.shared.registry import build_bindings_human_report
 from topmark.presentation.text.registry import render_bindings_text
+from topmark.registry.query import BindingSelection
+from topmark.registry.query import RegistryIdentityQuery
+from topmark.registry.query import RegistryRegex
 
 if TYPE_CHECKING:
     from topmark.cli.console.color import ColorMode
@@ -92,7 +98,10 @@ if TYPE_CHECKING:
 )
 @rich_click_option_panel(
     "Registry filtering",
-    options=[*REGISTRY_FILTERING_PANEL_OPTIONS],
+    options=[
+        *REGISTRY_FILTERING_PANEL_OPTIONS,
+        *REGISTRY_BINDING_IDENTITY_FILTERING_PANEL_OPTIONS,
+    ],
 )
 @rich_click_option_panel(
     "Output and display",
@@ -107,6 +116,8 @@ if TYPE_CHECKING:
 @registry_details_options
 @common_output_format_options
 @registry_file_type_activation_options
+@registry_binding_query_options
+@registry_queries_argument()
 def registry_bindings_command(
     *,
     # common_ui_options (verbosity, color):
@@ -117,6 +128,9 @@ def registry_bindings_command(
     show_details: bool = False,
     # registry_file_type_activation_options
     activation: RegistryActivationFilter | None = None,
+    # positional registry queries and registry_identity_query_options
+    registry_queries: tuple[RegistryIdentityQuery, ...] = (),
+    registry_regexes: tuple[RegistryRegex, ...] = (),
     # common_output_format_options:
     output_format: OutputFormat | None,
 ) -> None:
@@ -131,6 +145,8 @@ def registry_bindings_command(
         no_color: If set, disable color mode.
         show_details: Whether to show extended information about each binding.
         activation: Optional declared activation filters.
+        registry_queries: Positional endpoint-identity inclusion predicates.
+        registry_regexes: Whole-endpoint-identity regular-expression predicates.
         output_format: Output format to use (``text``, ``markdown``, ``json``, or ``ndjson``).
 
     Raises:
@@ -169,6 +185,11 @@ def registry_bindings_command(
     apply_color_policy_for_output_format(ctx, fmt=fmt)
     enable_color: bool = state.color_enabled
 
+    selection: BindingSelection = BindingSelection(
+        identity_queries=registry_queries,
+        regexes=registry_regexes,
+    )
+
     # `registry bindings` is file-agnostic: ignore positional PATHS
     apply_ignore_positional_paths_policy(
         ctx,
@@ -183,6 +204,7 @@ def registry_bindings_command(
             fmt=fmt,
             show_details=show_details,
             activation=activation,
+            selection=selection,
         )
         return
 
@@ -192,6 +214,7 @@ def registry_bindings_command(
         verbosity_level=verbosity_level,
         styled=enable_color,
         activation=activation,
+        selection=selection,
     )
 
     if fmt == OutputFormat.MARKDOWN:

@@ -41,9 +41,8 @@ checks such as hard-link policy.
 
 Across all `registry` subcommands:
 
-- [`registry filetypes`](registry/filetypes.md) and [`registry processors`](registry/processors.md)
-  use positional values as registry identity queries; [`registry bindings`](registry/bindings.md)
-  rejects positional PATH arguments as invalid CLI usage
+- [`registry filetypes`](registry/filetypes.md), [`registry processors`](registry/processors.md),
+  and [`registry bindings`](registry/bindings.md) use positional values as registry identity queries
 - `-` is not a content-STDIN sentinel
 - `--stdin-filename` does not apply
 - file-list STDIN modes (for example, `--files-from -`) do not apply
@@ -88,29 +87,25 @@ to project configuration: configuration discovery, file-type consent, and runtim
 affect it. This registry introspection is independent of runtime filesystem-identity evaluation for
 selected processing paths.
 
-`registry filetypes` and `registry bindings` accept repeatable `--activation` (or `-a`) values to
-filter by a file type's declared activation. Each occurrence accepts `default`, `opt-in`, or
-`never`, and may be comma-separated (for example, `--activation never,opt-in`). Values are
-deduplicated and combined with OR semantics; the resulting activation filter restricts the output
-independently of other applicable filters. The filter is available in TEXT, Markdown, JSON, and
-NDJSON output; it does not change runtime authorization.
+`registry filetypes` and `registry bindings` accept declared-activation filtering:
 
-[`registry filetypes`](registry/filetypes.md) and [`registry processors`](registry/processors.md)
-also accept repeatable positional identity queries. The structured form is
-`[namespace-glob]:[local-key-glob]`; either empty component means `*`. A bare identifier is an exact
-local-key query, while a bare glob matches the complete qualified key. `--match-regex PATTERN` adds
-a whole-qualified-identity regular-expression alternative. `--builtin` restricts results to the
-reserved `topmark` namespace. These identity queries do not apply to
-[`registry bindings`](registry/bindings.md).
+{% include-markdown "\_snippets/registry-declared-activation-filtering.md" %}
 
-Positional queries and `--match-regex` values are ORed. `--builtin` and `--activation` restrict the
-result independently. Empty matches are successful and render an empty result in every output
-format.
+For these commands, the filter is available in TEXT, Markdown, JSON, and NDJSON output.
 
-Compatibility: `registry filetypes` and `registry processors` previously rejected positional values.
-They now interpret each positional value as an identity-query alternative. Automation that relied on
-rejection of unexpected positional values should validate its invocation arguments before calling
-TopMark.
+[`registry filetypes`](registry/filetypes.md), [`registry processors`](registry/processors.md), and
+[`registry bindings`](registry/bindings.md) accept repeatable positional identity queries:
+
+{% include-markdown "\_snippets/registry-identity-query-contract.md" %}
+
+For `registry bindings`, a query matches either the file-type or processor endpoint; it also
+projects matching unbound file types and unused processors. `--builtin` restricts the
+single-identity commands to the reserved `topmark` namespace; it is intentionally unsupported for
+bindings because endpoint namespaces can differ. `--activation` restricts the result independently.
+
+Compatibility: registry identity commands interpret each positional value as an identity-query
+alternative. Automation that relied on `registry bindings` rejecting positional values should
+validate its invocation arguments before calling TopMark.
 
 ______________________________________________________________________
 
@@ -127,9 +122,8 @@ All `registry` subcommands are informational introspection commands:
 Registry subcommands do not process project files and therefore do not use file-processing exit
 codes such as `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
 
-For [`registry filetypes`](registry/filetypes.md) and
-[`registry processors`](registry/processors.md), positional values are identity queries rather than
-filesystem paths. File-processing input options are reported as CLI usage errors.
+For the registry identity commands, positional values are identity queries rather than filesystem
+paths. File-processing input options are reported as CLI usage errors.
 
 A syntactically valid identity query, including one that matches no entries, exits with
 `SUCCESS (0)`. A malformed query or `--match-regex` value is rejected by Click during parsing and

@@ -22,15 +22,59 @@ import re
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from re import Pattern
+from typing import TYPE_CHECKING
 from typing import TypeAlias
+from typing import TypedDict
 
 from topmark.core.constants import TOPMARK_NAMESPACE
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 RegistryActivationFilter: TypeAlias = frozenset[str]
 """Normalized declared file-type activations for registry filtering."""
 
 RegistryActivationFilterInput: TypeAlias = RegistryActivationFilter | str | None
 """Compatibility input accepted by internal registry presentation helpers."""
+
+
+class BindingQueryBinding(TypedDict):
+    """Minimum binding metadata required by the registry query layer."""
+
+    file_type_key: str
+    file_type_local_key: str
+    file_type_namespace: str
+    processor_key: str
+    processor_local_key: str
+    processor_namespace: str
+    activation: str
+    file_type_description: str
+    processor_description: str
+
+
+class BindingQueryFileType(TypedDict):
+    """Minimum file-type metadata required by binding report projections."""
+
+    local_key: str
+    namespace: str
+    qualified_key: str
+    description: str
+    activation: str
+
+
+class BindingQueryProcessor(TypedDict):
+    """Minimum processor metadata required by binding report projections."""
+
+    local_key: str
+    namespace: str
+    qualified_key: str
+    description: str
+    bound: bool
+    line_indent: str
+    line_prefix: str
+    line_suffix: str
+    block_prefix: str
+    block_suffix: str
 
 
 def matches_declared_activation(
@@ -174,3 +218,110 @@ class RegistrySelection:
             )
             for query in self.identity_queries
         ) or any(regex.matches(qualified_key) for regex in self.regexes)
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class BindingSelection:
+    """Inclusion predicates for the two canonical identities in a binding.
+
+    Queries and regular expressions are alternatives. Each predicate matches a
+    binding when either its file-type or processor endpoint matches. This is a
+    separate abstraction from `RegistrySelection`, whose `builtin_only` scope
+    has no unambiguous meaning for a relationship with two owners.
+    """
+
+    identity_queries: tuple[RegistryIdentityQuery, ...] = ()
+    regexes: tuple[RegistryRegex, ...] = ()
+
+    def matches_identity(
+        self,
+        *,
+        qualified_key: str,
+        local_key: str,
+        namespace: str,
+    ) -> bool:
+        """Return whether one endpoint identity passes this selection."""
+        if not self.identity_queries and not self.regexes:
+            return True
+        return any(
+            query.matches(
+                qualified_key=qualified_key,
+                local_key=local_key,
+                namespace=namespace,
+            )
+            for query in self.identity_queries
+        ) or any(regex.matches(qualified_key) for regex in self.regexes)
+
+    def matches_binding(self, binding: BindingQueryBinding) -> bool:
+        """Return whether either endpoint of an effective binding matches."""
+        return self.matches_identity(
+            qualified_key=binding["file_type_key"],
+            local_key=binding["file_type_local_key"],
+            namespace=binding["file_type_namespace"],
+        ) or self.matches_identity(
+            qualified_key=binding["processor_key"],
+            local_key=binding["processor_local_key"],
+            namespace=binding["processor_namespace"],
+        )
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class BindingQueryProjection:
+    """Centralized, filtered effective-registry view for binding reports."""
+
+    bindings: tuple[BindingQueryBinding, ...]
+    unbound_filetypes: tuple[BindingQueryFileType, ...]
+    unused_processors: tuple[BindingQueryProcessor, ...]
+
+
+def select_binding_view(
+    *,
+    bindings: Sequence[BindingQueryBinding],
+    filetypes: Sequence[BindingQueryFileType],
+    processors: Sequence[BindingQueryProcessor],
+    activation: RegistryActivationFilterInput = None,
+    selection: BindingSelection | None = None,
+) -> BindingQueryProjection:
+    """Filter and project every section of the binding registry view.
+
+    Unused processors are determined from the complete effective registry,
+    before identity or activation filters are projected. Activation restricts
+    only file-type-derived sections; identity selection independently projects
+    each endpoint-oriented section.
+    """
+    effective_selection: BindingSelection = selection or BindingSelection()
+    bound_filetype_keys: set[str] = {item["file_type_key"] for item in bindings}
+    bound_processor_keys: set[str] = {item["processor_key"] for item in bindings}
+
+    selected_bindings: tuple[BindingQueryBinding, ...] = tuple(
+        item
+        for item in bindings
+        if matches_declared_activation(item["activation"], activation)
+        and effective_selection.matches_binding(item)
+    )
+    selected_unbound_filetypes: tuple[BindingQueryFileType, ...] = tuple(
+        item
+        for item in filetypes
+        if item["qualified_key"] not in bound_filetype_keys
+        and matches_declared_activation(item["activation"], activation)
+        and effective_selection.matches_identity(
+            qualified_key=item["qualified_key"],
+            local_key=item["local_key"],
+            namespace=item["namespace"],
+        )
+    )
+    selected_unused_processors: tuple[BindingQueryProcessor, ...] = tuple(
+        item
+        for item in processors
+        if item["qualified_key"] not in bound_processor_keys
+        and effective_selection.matches_identity(
+            qualified_key=item["qualified_key"],
+            local_key=item["local_key"],
+            namespace=item["namespace"],
+        )
+    )
+    return BindingQueryProjection(
+        bindings=selected_bindings,
+        unbound_filetypes=selected_unbound_filetypes,
+        unused_processors=selected_unused_processors,
+    )
