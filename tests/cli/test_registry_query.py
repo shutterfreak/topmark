@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.cli.conftest import CLICK_USAGE_ERROR_EXIT_CODE
+from tests.cli.conftest import assert_rich_output_contains
 from tests.cli.conftest import assert_rich_output_no_such_option
 from tests.cli.conftest import assert_SUCCESS
 from tests.cli.conftest import run_cli
@@ -634,7 +635,10 @@ def test_registry_binding_query_rejects_an_empty_positional_value() -> None:
     )
 
     assert result.exit_code == CLICK_USAGE_ERROR_EXIT_CODE
-    assert "Usage: cli registry bindings" in result.output
+    assert_rich_output_contains(
+        result.output,
+        expected="Registry query must not be empty.",
+    )
 
 
 def test_registry_binding_query_does_not_support_builtin_scope() -> None:
