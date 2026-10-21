@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
     from topmark.core.machine.schemas import MetaPayload
     from topmark.pipeline.machine.streaming import MachineProcessingStreamEvent
+    from topmark.registry.query import BindingSelection
     from topmark.registry.query import RegistryActivationFilterInput
     from topmark.registry.query import RegistrySelection
     from topmark.toml.resolution import ResolvedTopmarkTomlSources
@@ -390,6 +391,7 @@ def emit_bindings_machine(
     fmt: OutputFormat,
     show_details: bool,
     activation: RegistryActivationFilterInput = None,
+    selection: BindingSelection | None = None,
 ) -> None:
     """Emit `topmark registry bindings` machine-readable output.
 
@@ -400,12 +402,14 @@ def emit_bindings_machine(
         show_details: If True, include expanded file type and processor
             identity metadata for each binding plus structured auxiliary lists.
         activation: Optional declared activation filter.
+        selection: Optional endpoint-identity selection applied before serialization.
     """
     serialized: str | Iterator[str] = serialize_bindings(
         meta=meta,
         fmt=fmt,
         show_details=show_details,
         activation=activation,
+        selection=selection,
     )
 
     # Do not emit trailing newline for JSON

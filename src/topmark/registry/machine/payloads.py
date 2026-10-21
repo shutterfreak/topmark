@@ -50,14 +50,18 @@ from topmark.registry.machine.schemas import ProcessorBriefEntry
 from topmark.registry.machine.schemas import ProcessorDetailEntry
 from topmark.registry.machine.schemas import ProcessorRefEntry
 from topmark.registry.machine.schemas import ProcessorsPayload
-from topmark.registry.query import RegistryActivationFilterInput
 from topmark.registry.query import matches_declared_activation
+from topmark.registry.query import select_binding_view
 
 if TYPE_CHECKING:
     from topmark.api.types import BindingInfo
     from topmark.api.types import FileTypeInfo
     from topmark.api.types import FileTypePolicyInfo
     from topmark.api.types import ProcessorInfo
+    from topmark.registry.query import BindingQueryFileType
+    from topmark.registry.query import BindingQueryProjection
+    from topmark.registry.query import BindingSelection
+    from topmark.registry.query import RegistryActivationFilterInput
     from topmark.registry.query import RegistrySelection
 
 
@@ -97,7 +101,7 @@ def _serialize_processor_ref(item: ProcessorInfo) -> ProcessorRefEntry:
     )
 
 
-def _serialize_filetype_ref(item: FileTypeInfo) -> FileTypeRefEntry:
+def _serialize_filetype_ref(item: BindingQueryFileType) -> FileTypeRefEntry:
     """Serialize a file type reference entry for machine payloads.
 
     Args:
@@ -219,6 +223,7 @@ def build_bindings_payload(
     *,
     show_details: bool,
     activation: RegistryActivationFilterInput = None,
+    selection: BindingSelection | None = None,
 ) -> BindingsPayload:
     """Build the registry payload for `topmark registry bindings`.
 
@@ -233,6 +238,7 @@ def build_bindings_payload(
         show_details: If True, expand bindings and reference entries with
             identity/description objects.
         activation: Optional declared activation filter.
+        selection: Optional endpoint-identity selection applied before serialization.
 
     Returns:
         A `BindingsPayload` dict whose lists are deterministically sorted.
@@ -240,17 +246,16 @@ def build_bindings_payload(
     raw_bindings: list[BindingInfo] = list_bindings()
     raw_filetypes: list[FileTypeInfo] = list_filetypes()
     raw_processors: list[ProcessorInfo] = list_processors()
-    if activation is not None:
-        keys: set[str] = {
-            item["qualified_key"]
-            for item in raw_filetypes
-            if matches_declared_activation(item["activation"], activation)
-        }
-        raw_filetypes = [item for item in raw_filetypes if item["qualified_key"] in keys]
-        raw_bindings = [item for item in raw_bindings if item["file_type_key"] in keys]
+    projection: BindingQueryProjection = select_binding_view(
+        bindings=raw_bindings,
+        filetypes=raw_filetypes,
+        processors=raw_processors,
+        activation=activation,
+        selection=selection,
+    )
 
     bindings: BindingEntriesPayload = []
-    for item in sorted(raw_bindings, key=lambda it: str(it["file_type_key"])):
+    for item in sorted(projection.bindings, key=lambda it: str(it["file_type_key"])):
         if show_details:
             bindings.append(
                 BindingDetailEntry(
@@ -274,20 +279,15 @@ def build_bindings_payload(
                 )
             )
 
-    bound_filetype_keys: set[str] = {item["file_type_key"] for item in raw_bindings}
     unbound_filetypes: list[str | FileTypeRefEntry] = []
-    for item in sorted(raw_filetypes, key=lambda it: str(it["qualified_key"])):
-        if item["qualified_key"] in bound_filetype_keys:
-            continue
+    for item in sorted(projection.unbound_filetypes, key=lambda it: str(it["qualified_key"])):
         if show_details:
             unbound_filetypes.append(_serialize_filetype_ref(item))
         else:
             unbound_filetypes.append(item["qualified_key"])
 
     unused_processors: list[str | ProcessorRefEntry] = []
-    for item in sorted(raw_processors, key=lambda it: str(it["qualified_key"])):
-        if item["bound"]:
-            continue
+    for item in sorted(projection.unused_processors, key=lambda it: str(it["qualified_key"])):
         if show_details:
             unused_processors.append(_serialize_processor_ref(item))
         else:

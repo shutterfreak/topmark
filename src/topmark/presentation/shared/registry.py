@@ -42,14 +42,17 @@ from topmark.api.commands.registry import list_filetypes
 from topmark.api.commands.registry import list_processors
 from topmark.api.commands.registry import list_selected_filetypes
 from topmark.api.commands.registry import list_selected_processors
-from topmark.registry.query import RegistryActivationFilterInput
 from topmark.registry.query import matches_declared_activation
+from topmark.registry.query import select_binding_view
 
 if TYPE_CHECKING:
     from topmark.api.types import BindingInfo
     from topmark.api.types import FileTypeInfo
     from topmark.api.types import FileTypePolicyInfo
     from topmark.api.types import ProcessorInfo
+    from topmark.registry.query import BindingQueryProjection
+    from topmark.registry.query import BindingSelection
+    from topmark.registry.query import RegistryActivationFilterInput
     from topmark.registry.query import RegistrySelection
 
 
@@ -374,6 +377,7 @@ def build_bindings_human_report(
     verbosity_level: int,
     styled: bool,
     activation: RegistryActivationFilterInput = None,
+    selection: BindingSelection | None = None,
 ) -> BindingsHumanReport:
     """Build a Click-free report used by TEXT and MARKDOWN for `bindings`.
 
@@ -382,6 +386,7 @@ def build_bindings_human_report(
         verbosity_level: Effective TEXT verbosity; Markdown renderers ignore it.
         styled: Whether TEXT renderers should apply styling; Markdown renderers ignore it.
         activation: Optional declared activation filter.
+        selection: Optional endpoint-identity selection applied before rendering.
 
     Returns:
         A `BindingsHumanReport` with effective bindings, unbound file types, and
@@ -390,17 +395,16 @@ def build_bindings_human_report(
     raw_bindings: list[BindingInfo] = list_bindings()
     raw_filetypes: list[FileTypeInfo] = list_filetypes()
     raw_processors: list[ProcessorInfo] = list_processors()
-    if activation is not None:
-        active_keys: set[str] = {
-            item["qualified_key"]
-            for item in raw_filetypes
-            if matches_declared_activation(item["activation"], activation)
-        }
-        raw_filetypes = [item for item in raw_filetypes if item["qualified_key"] in active_keys]
-        raw_bindings = [item for item in raw_bindings if item["file_type_key"] in active_keys]
+    projection: BindingQueryProjection = select_binding_view(
+        bindings=raw_bindings,
+        filetypes=raw_filetypes,
+        processors=raw_processors,
+        activation=activation,
+        selection=selection,
+    )
 
     activation_by_filetype_key: dict[str, str] = {
-        item["qualified_key"]: item["activation"] for item in raw_filetypes
+        item["file_type_key"]: item["activation"] for item in projection.bindings
     }
 
     bindings: list[BindingHumanItem] = [
@@ -415,18 +419,17 @@ def build_bindings_human_report(
             file_type_description=item["file_type_description"],
             processor_description=item["processor_description"],
         )
-        for item in sorted(raw_bindings, key=lambda it: str(it["file_type_key"]))
+        for item in sorted(projection.bindings, key=lambda it: str(it["file_type_key"]))
     ]
 
-    bound_filetype_keys: set[str] = {item.file_type_key for item in bindings}
     unbound_filetypes: list[UnboundFileTypeHumanItem] = [
         UnboundFileTypeHumanItem(
             name=item["qualified_key"],
             description=item["description"],
             activation=item["activation"],
         )
-        for item in sorted(raw_filetypes, key=lambda it: str(it["qualified_key"]))
-        if item["qualified_key"] not in bound_filetype_keys and item["activation"] != "never"
+        for item in sorted(projection.unbound_filetypes, key=lambda it: str(it["qualified_key"]))
+        if item["activation"] != "never"
     ]
     non_processable_filetypes: list[UnboundFileTypeHumanItem] = [
         UnboundFileTypeHumanItem(
@@ -434,8 +437,8 @@ def build_bindings_human_report(
             description=item["description"],
             activation=item["activation"],
         )
-        for item in sorted(raw_filetypes, key=lambda it: str(it["qualified_key"]))
-        if item["qualified_key"] not in bound_filetype_keys and item["activation"] == "never"
+        for item in sorted(projection.unbound_filetypes, key=lambda it: str(it["qualified_key"]))
+        if item["activation"] == "never"
     ]
 
     unused_processors: list[ProcessorHumanItem] = [
@@ -451,8 +454,7 @@ def build_bindings_human_report(
             block_prefix=item["block_prefix"],
             block_suffix=item["block_suffix"],
         )
-        for item in sorted(raw_processors, key=lambda it: str(it["qualified_key"]))
-        if not item["bound"]
+        for item in sorted(projection.unused_processors, key=lambda it: str(it["qualified_key"]))
     ]
 
     return BindingsHumanReport(

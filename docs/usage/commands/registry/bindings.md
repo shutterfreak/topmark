@@ -30,9 +30,9 @@ ______________________________________________________________________
 `registry bindings` is informational and file-agnostic. It inspects TopMark's effective composed
 registry state, not project files or configuration discovery.
 
-It does not accept file-processing inputs:
+It does not accept file-processing inputs. Positional values are endpoint identity queries, not
+paths:
 
-- positional PATH arguments are rejected as invalid CLI usage
 - `-` is not a content-STDIN sentinel for this command
 - `--stdin-filename` does not apply
 - file-list STDIN modes (for example, `--files-from -`) do not apply
@@ -109,13 +109,25 @@ The `--long` flag controls the detail level for all output formats.
 
 ### Activation filter
 
-Repeat `--activation` (or `-a`) to filter bindings and unbound file types by their file type's
-declared activation in every output format. Each value is `default`, `opt-in`, or `never`; values
-can also be comma-separated, such as `--activation never,opt-in`. Values are deduplicated and
-combined with OR semantics. This filter is restrictive and does not affect `unused_processors`,
-which is always calculated from the complete effective registry. Empty comma segments and unknown
-values are usage errors. It is introspection only: it does not supply opt-in consent or change
-processor dispatch.
+{% include-markdown "\_snippets/registry-declared-activation-filtering.md" %}
+
+For bindings, activation restricts bindings and unbound file types by the file type's declared
+activation. It does not affect `unused_processors`, which is always calculated from the complete
+effective registry.
+
+### Endpoint identity queries
+
+{% include-markdown "\_snippets/registry-identity-query-contract.md" %}
+
+Each query matches a binding when either its file-type or processor endpoint matches.
+
+The same selection projects every output section: matching effective bindings, matching unbound file
+types, and matching unused processors. `unused_processors` is always determined from the complete
+effective registry before that projection, so an `--activation` filter never makes a processor
+appear unused. Activation remains a restrictive AND filter on the file-type-derived sections.
+
+`--builtin` is intentionally unavailable: a binding can have endpoints from different namespaces, so
+a single "built-in binding" scope would be ambiguous.
 
 ______________________________________________________________________
 
@@ -224,6 +236,10 @@ topmark registry bindings --activation never
 # Inspect default and opt-in bindings together
 topmark registry bindings -a default,opt-in
 
+# Find bindings by either endpoint, including fragment discovery
+topmark registry bindings '*json*'
+topmark registry bindings --match-regex 'topmark:(markdown|slash)'
+
 # Detailed Markdown table (ideal for project docs)
 topmark registry bindings --long --output-format markdown
 
@@ -260,7 +276,7 @@ Notes:
   values) may exit with code `2` before command logic runs.
 - This command does not process project files and does not use file-processing exit codes such as
   `WOULD_CHANGE (3)`, `FILE_NOT_FOUND (66)`, or `IO_ERROR (74)`.
-- Invalid positional paths are reported as CLI usage errors, not file-processing diagnostics.
+- Positional query syntax errors are parser errors, not file-processing diagnostics.
 - `--quiet` is not supported for registry commands; use output-format options instead for non-TEXT
   output.
 

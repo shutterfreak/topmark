@@ -91,6 +91,9 @@ REGISTRY_IDENTITY_FILTERING_PANEL_OPTIONS: Final[tuple[str, ...]] = (
 )
 """Shared registry identity-selection options."""
 
+REGISTRY_BINDING_IDENTITY_FILTERING_PANEL_OPTIONS: Final[tuple[str, ...]] = (CliOpt.MATCH_REGEX,)
+"""Endpoint-identity selection options for registry binding relationships."""
+
 REMEDIATION_HEADER_POLICY_PANEL_OPTIONS: Final[tuple[str, ...]] = (
     CliOpt.POLICY_MIXED_LINE_ENDINGS,
     CliOpt.POLICY_BOM_BEFORE_SHEBANG,

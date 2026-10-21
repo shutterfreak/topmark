@@ -1219,6 +1219,12 @@ Each value is `default`, `opt-in`, or `never`, and can be comma-separated. The d
 use OR semantics to filter static registry entries; they do not use project configuration or dynamic
 opt-in authorization.
 
+`registry bindings` also accepts compact endpoint identity queries and `--match-regex`. These are OR
+alternatives and select a binding when either canonical endpoint identity matches. They project all
+three binding-view collections; `unused_processors` remains determined from the complete effective
+registry before projection. Bindings intentionally do not offer `--builtin`, because an effective
+relationship can span namespaces.
+
 ### [`topmark registry filetypes`](../usage/commands/registry/filetypes.md)
 
 JSON envelope:
@@ -1395,6 +1401,10 @@ With `--activation`, `bindings` and `unbound_filetypes` are restricted to file t
 declared activation. `--activation never` therefore isolates intentionally non-processable unbound
 types; unbound entries from `default` or `opt-in` views identify otherwise potentially processable
 types without a binding.
+
+Endpoint identity queries and `--match-regex` apply before JSON and NDJSON serialization to
+`bindings`, `unbound_filetypes`, and `unused_processors`. Empty projected collections are emitted
+normally; a syntactically valid unmatched query is still successful.
 
 NDJSON emits:
 

@@ -22,6 +22,11 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added compact endpoint identity queries to `registry bindings`. Positional queries and
+  whole-qualified-identity `--match-regex` predicates select a relationship when either its file
+  type or processor matches, and consistently project binding, unbound-file-type, and
+  unused-processor output across TEXT, Markdown, JSON, and NDJSON. `--builtin` remains intentionally
+  unsupported for two-endpoint relationships.
 - Added repeatable compact identity queries to `registry filetypes` and `registry processors`, with
   structured namespace/local-key and qualified-identity glob matching, full-match `--match-regex`
   predicates, and `--builtin` scope restriction. Positional values that were previously rejected are

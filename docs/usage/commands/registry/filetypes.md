@@ -97,12 +97,10 @@ presentation (e.g., headings) and does not change the data fields emitted.
 
 ### Activation filter
 
-Repeat `--activation` (or `-a`) to filter entries by multiple declared activations in every output
-format. Each value is `default`, `opt-in`, or `never`; values can also be comma-separated, such as
-`--activation never,opt-in`. Values are deduplicated and combined with OR semantics, while the
-activation filter remains restrictive when used with identity queries or `--builtin`. Empty comma
-segments and unknown values are usage errors. This is registry introspection only: it neither
-supplies opt-in consent nor reflects a project's effective configuration.
+{% include-markdown "\_snippets/registry-declared-activation-filtering.md" %}
+
+For file types, activation remains restrictive when used with identity queries or `--builtin`. The
+view does not reflect a project's effective configuration.
 
 ### Identity queries
 
@@ -115,17 +113,14 @@ topmark registry filetypes topmark:
 topmark registry filetypes --builtin :python
 ```
 
-The structured form is `[namespace-glob]:[local-key-glob]`; an empty component means `*`. Thus,
-`topmark:` is equivalent to `topmark:*`, `:json` selects local key `json` in every namespace, and
-`:*json` selects local keys ending in `json`. A bare identifier such as `python` is shorthand for
-`:python`. A bare glob such as `*json*` instead matches the complete qualified identity.
+{% include-markdown "\_snippets/registry-identity-query-contract.md" %}
 
-Positional queries are alternatives: `:json :yaml` selects either local key. To require both a
-namespace and local key, use one structured query such as `topmark:json`; separate positional
-queries are not intersected. `--builtin` restricts the final result set to the `topmark` namespace.
+For example, `topmark:` is equivalent to `topmark:*`, `:json` selects local key `json` in every
+namespace, and `:*json` selects local keys ending in `json`. `--builtin` restricts the final result
+set to the `topmark` namespace.
 
 Compatibility: positional values were previously rejected by this command. They are now identity
-query alternatives; a valid query with no matching entries succeeds and renders an empty result.
+query alternatives.
 
 ```bash
 # Built-in file types whose local key ends in "json".
@@ -137,8 +132,6 @@ topmark registry filetypes '*js*'
 # Match whole qualified identities with an explicit regular expression.
 topmark registry filetypes --match-regex 'topmark:(json|toml)'
 ```
-
-{% include-markdown "\_snippets/registry-globs-and-match-regex-filtering.md" %}
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 

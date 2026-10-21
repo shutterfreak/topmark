@@ -114,18 +114,12 @@ topmark registry processors topmark:
 topmark registry processors --builtin markdown
 ```
 
-The structured form is `[namespace-glob]:[local-key-glob]`; an empty component means `*`. A bare
-identifier is shorthand for an exact local-key query, while a bare glob matches the complete
-qualified identity. Positional queries are alternatives, so use one structured query such as
-`topmark:markdown` when both fields must match. `--builtin` restricts results to the `topmark`
-namespace.
+{% include-markdown "\_snippets/registry-identity-query-contract.md" %}
+
+`--builtin` restricts results to the `topmark` namespace.
 
 Compatibility: positional values were previously rejected by this command. They are now identity
-query alternatives; a valid query with no matching entries succeeds and renders an empty result.
-
-Use repeatable `--match-regex PATTERN` values for whole-qualified-identity regular-expression
-matching. Positional queries and regular expressions are ORed; `--builtin` restricts the result
-afterward.
+query alternatives.
 
 ```console
 # Built-in processors whose local key ends in "xml".
@@ -137,8 +131,6 @@ topmark registry processors '*block*'
 # Match the built-in Markdown or XML processor.
 topmark registry processors --match-regex 'topmark:(markdown|xml)'
 ```
-
-{% include-markdown "\_snippets/registry-globs-and-match-regex-filtering.md" %}
 
 {% include-markdown "\_snippets/output-contract-no-quiet.md" %}
 
