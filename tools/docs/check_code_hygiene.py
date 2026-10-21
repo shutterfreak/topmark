@@ -21,7 +21,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 
+if __package__:
+    from .git_utils import iter_non_gitignored_paths
+else:
+    from git_utils import iter_non_gitignored_paths
+
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from collections.abc import Iterable
     from collections.abc import Iterator
     from collections.abc import Sequence
@@ -66,21 +72,30 @@ SMART_PUNCTUATION_REPLACEMENTS: dict[str, str] = {
     "\u2026": "...",
 }
 
-CHECKED_TOKEN_TYPES: Final[frozenset[int]] = frozenset({tokenize.COMMENT, tokenize.STRING})
+CHECKED_TOKEN_TYPES: Final[frozenset[int]] = frozenset(
+    {
+        tokenize.COMMENT,
+        tokenize.STRING,
+    }
+)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class Diagnostic:
     """Single code-hygiene diagnostic."""
 
     path: Path
     line: int
+    column: int
     character: str
     replacement: str
 
     def format(self) -> str:
         """Return a grep-like diagnostic line."""
-        return f"{self.path}:{self.line}: replace {self.character!r} with {self.replacement!r}"
+        return (
+            f"{self.path}:{self.line}:{self.column}: "
+            f"replace {self.character!r} with {self.replacement!r}"
+        )
 
 
 def path_is_excluded(path: Path) -> bool:
@@ -90,42 +105,87 @@ def path_is_excluded(path: Path) -> bool:
 
 def iter_python_files(roots: Iterable[Path]) -> Iterator[Path]:
     """Yield Python files below the configured roots."""
+    candidates: list[Path] = []
     for root in roots:
         if not root.exists():
             continue
         if root.is_file():
             if root.suffix == ".py" and not path_is_excluded(root):
-                yield root
+                candidates.append(root)
             continue
         for path in root.rglob("*.py"):
             if not path_is_excluded(path):
-                yield path
+                candidates.append(path)
+
+    yield from iter_non_gitignored_paths(candidates)
 
 
-def iter_smart_punctuation(text: str) -> Iterator[tuple[str, str]]:
-    """Yield smart-punctuation characters and their replacements."""
-    for character in text:
-        replacement = SMART_PUNCTUATION_REPLACEMENTS.get(character)
+@dataclass(frozen=True, kw_only=True, slots=True)
+class SmartPunctuationOccurrence:
+    """A smart-punctuation character found at an offset in scanned text.
+
+    Attributes:
+        offset: Zero-based character offset in the scanned text.
+        character: Smart-punctuation character that requires replacement.
+        replacement: ASCII replacement for ``character``.
+    """
+
+    offset: int
+    character: str
+    replacement: str
+
+
+def iter_smart_punctuation(text: str) -> Iterator[SmartPunctuationOccurrence]:
+    """Yield smart-punctuation occurrences in ``text`` with replacement guidance."""
+    for offset, character in enumerate(text):
+        replacement: str | None = SMART_PUNCTUATION_REPLACEMENTS.get(character)
         if replacement is not None:
-            yield character, replacement
+            yield SmartPunctuationOccurrence(
+                offset=offset,
+                character=character,
+                replacement=replacement,
+            )
+
+
+def _token_position(token: tokenize.TokenInfo, offset: int) -> tuple[int, int]:
+    """Return the 1-based source position for an offset in a token.
+
+    Args:
+        token: Token containing the offset.
+        offset: Zero-based offset within ``token.string``.
+
+    Returns:
+        The token-relative source line and column, both 1-based.
+    """
+    preceding_text: str = token.string[:offset]
+    line_offset: int = preceding_text.count("\n")
+    line: int = token.start[0] + line_offset
+    column: int = (
+        token.start[1] + offset + 1 if line_offset == 0 else offset - preceding_text.rfind("\n")
+    )
+    return line, column
 
 
 def check_python_file(path: Path) -> list[Diagnostic]:
     """Check one Python file for smart punctuation in comments and strings."""
-    text = path.read_text(encoding="utf-8")
+    text: str = path.read_text(encoding="utf-8")
     diagnostics: list[Diagnostic] = []
-    tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+    tokens: Generator[tokenize.TokenInfo, None, None] = tokenize.generate_tokens(
+        io.StringIO(text).readline
+    )
 
     for token in tokens:
         if token.type not in CHECKED_TOKEN_TYPES:
             continue
-        for character, replacement in iter_smart_punctuation(token.string):
+        for occurrence in iter_smart_punctuation(token.string):
+            line, column = _token_position(token, occurrence.offset)
             diagnostics.append(
                 Diagnostic(
                     path=path,
-                    line=token.start[0],
-                    character=character,
-                    replacement=replacement,
+                    line=line,
+                    column=column,
+                    character=occurrence.character,
+                    replacement=occurrence.replacement,
                 )
             )
 
@@ -154,9 +214,9 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the code-hygiene checker."""
-    args = parse_args(sys.argv[1:] if argv is None else argv)
+    args: argparse.Namespace = parse_args(sys.argv[1:] if argv is None else argv)
     roots: tuple[Path, ...] = tuple(args.paths) if args.paths else DEFAULT_ROOTS
-    diagnostics = check_code_hygiene(roots)
+    diagnostics: list[Diagnostic] = check_code_hygiene(roots)
 
     for diagnostic in diagnostics:
         print(diagnostic.format())

@@ -50,6 +50,11 @@ from typing import Final
 from rich.console import Console as RichConsole
 from rich.text import Text
 
+if __package__:
+    from .git_utils import iter_non_gitignored_paths
+else:
+    from git_utils import iter_non_gitignored_paths
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -261,12 +266,14 @@ class Diagnostic:
         severity: Either ``"error"`` or ``"warning"``.
         path: File path associated with the diagnostic.
         line: Optional 1-based line number.
+        column: Optional 1-based column number.
         message: Human-readable message.
     """
 
     severity: str
     path: Path
     line: int | None
+    column: int | None = None
     message: str
 
     def render(self) -> str:
@@ -275,10 +282,12 @@ class Diagnostic:
         Returns:
             Human-readable diagnostic string.
         """
-        location = (
-            f"{self.path.as_posix()}:{self.line}" if self.line is not None else self.path.as_posix()
-        )
-        label = (
+        location: str = self.path.as_posix()
+        if self.line is not None:
+            location = f"{location}:{self.line}"
+        if self.column is not None:
+            location = f"{location}:{self.column}"
+        label: str = (
             _style("error", "bold red")
             if self.severity == "error"
             else _style("warning", "bold yellow")
@@ -330,7 +339,7 @@ def iter_markdown_files(paths: Sequence[str] | None) -> list[Path]:
         if f not in seen and not _is_excluded_docs_path(f):
             seen.add(f)
             out.append(f)
-    return out
+    return list(iter_non_gitignored_paths(out))
 
 
 def _relative_to_docs(path: Path) -> Path:
@@ -345,17 +354,21 @@ def _relative_to_docs(path: Path) -> Path:
     return path.resolve().relative_to(DOCS_DIR.resolve())
 
 
-def _line_for_offset(text: str, offset: int) -> int:
-    """Return the 1-based line number for ``offset`` in ``text``.
+def _position_for_offset(
+    text: str,
+    offset: int,
+) -> tuple[int, int]:
+    """Return the 1-based line and column numbers for ``offset`` in ``text``.
 
     Args:
         text: Source text.
         offset: Character offset.
 
     Returns:
-        1-based line number.
+        A tuple containing the 1-based line and column numbers.
     """
-    return text.count("\n", 0, offset) + 1
+    preceding_text: str = text[:offset]
+    return preceding_text.count("\n") + 1, offset - preceding_text.rfind("\n")
 
 
 def _is_under(path: Path, parent: Path) -> bool:
@@ -517,7 +530,81 @@ def iter_python_files(paths: list[str]) -> list[Path]:
     return out
 
 
-def extract_docstrings(py_path: Path) -> list[tuple[int, int, str]]:
+def _docstring_content_column(
+    source: str,
+    node: ast.Constant,
+) -> int:
+    """Return the 1-based source column where a docstring's content starts."""
+    source_segment: str | None = ast.get_source_segment(source, node)
+    if source_segment is None:
+        return node.col_offset + 1
+    opening_delimiter: re.Match[str] | None = re.match(
+        r"(?i)(?:r|u|b|br|rb|f|fr|rf)?(?:'''|\"\"\"|'|\")", source_segment
+    )
+    if opening_delimiter is None:
+        return node.col_offset + 1
+    return node.col_offset + opening_delimiter.end() + 1
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ExtractedDocstring:
+    """Docstring text together with its location in a Python source file.
+
+    Attributes:
+        start_line: 1-based line number containing the opening string delimiter.
+        end_line: 1-based final line spanned by the docstring literal.
+        content_start_column: 1-based column where evaluated text begins on ``start_line``.
+        text: Evaluated docstring text as provided by the AST.
+    """
+
+    start_line: int
+    end_line: int
+    content_start_column: int
+    text: str
+
+    def position_for_offset(
+        self,
+        offset: int,
+    ) -> tuple[int, int]:
+        """Return the absolute source position for an offset in ``text``.
+
+        Args:
+            offset: Zero-based character offset in ``text``.
+
+        Returns:
+            The 1-based source line and column for the offset.
+        """
+        local_line, local_column = _position_for_offset(self.text, offset)
+        line: int = self.start_line + local_line - 1
+        column: int = (
+            self.content_start_column + local_column - 1 if local_line == 1 else local_column
+        )
+        return line, column
+
+
+def _extract_docstring(
+    source: str,
+    statement: ast.stmt,
+) -> ExtractedDocstring | None:
+    """Return an extracted docstring when ``statement`` is a string expression."""
+    if not isinstance(statement, ast.Expr) or not isinstance(statement.value, ast.Constant):
+        return None
+    constant: ast.Constant = statement.value
+    if not isinstance(constant.value, str):
+        return None
+    text: str = constant.value
+    start_line: int = statement.lineno
+    return ExtractedDocstring(
+        start_line=start_line,
+        end_line=start_line + text.count("\n"),
+        content_start_column=_docstring_content_column(source, constant),
+        text=text,
+    )
+
+
+def extract_docstrings(
+    py_path: Path,
+) -> list[ExtractedDocstring]:
     """Collect docstrings from a Python module with precise line ranges.
 
     For each module/class/function/async function, we return the starting and ending source
@@ -528,37 +615,29 @@ def extract_docstrings(py_path: Path) -> list[tuple[int, int, str]]:
         py_path: Path to a Python source file.
 
     Returns:
-        A list of tuples ``(start_lineno, end_lineno, docstring_text)``.
+        Extracted docstrings, including their text and 1-based source locations.
     """
     text: str = py_path.read_text(encoding="utf-8")
     try:
         tree: ast.Module = ast.parse(text)
     except SyntaxError:
         return []
-    results: list[tuple[int, int, str]] = []
+    results: list[ExtractedDocstring] = []
 
     # Module docstring
     if tree.body:
         first_stmt: ast.stmt = tree.body[0]
-        if isinstance(first_stmt, ast.Expr) and isinstance(first_stmt.value, ast.Constant):
-            const: ast.Constant = first_stmt.value
-            if isinstance(const.value, str):
-                ds: str = const.value
-                start_lineno: int = first_stmt.lineno
-                end_lineno: int = start_lineno + ds.count("\n")
-                results.append((start_lineno, end_lineno, ds))
+        docstring: ExtractedDocstring | None = _extract_docstring(text, first_stmt)
+        if docstring is not None:
+            results.append(docstring)
 
     # Class/def/async def docstrings
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) and node.body:
             first_stmt = node.body[0]
-            if isinstance(first_stmt, ast.Expr) and isinstance(first_stmt.value, ast.Constant):
-                const = first_stmt.value
-                if isinstance(const.value, str):
-                    ds = const.value
-                    start_lineno = first_stmt.lineno
-                    end_lineno = start_lineno + ds.count("\n")
-                    results.append((start_lineno, end_lineno, ds))
+            docstring = _extract_docstring(text, first_stmt)
+            if docstring is not None:
+                results.append(docstring)
 
     return results
 
@@ -607,7 +686,7 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
     for heading in HEADING_LINE_RE.finditer(text):
         marker: str = heading.group("marker")
         title: str = heading.group("title")
-        line: int = _line_for_offset(text, heading.start())
+        line, column = _position_for_offset(text, heading.start())
 
         if marker == "#":
             continue
@@ -619,6 +698,7 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
                         severity="error",
                         path=path,
                         line=line,
+                        column=column,
                         message=(
                             "CHANGELOG.md level-2 headings must be release entries shaped "
                             "like '## [Unreleased]' or '## [1.0.0] - YYYY-MM-DD', "
@@ -636,6 +716,7 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
                         severity="error",
                         path=path,
                         line=line,
+                        column=column,
                         message=(
                             "CHANGELOG.md dated release headings must use a proper version "
                             "identifier and date, shaped like '## [1.0.0] - YYYY-MM-DD', "
@@ -655,6 +736,7 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
                         severity="error",
                         path=path,
                         line=line,
+                        column=column,
                         message=(
                             "CHANGELOG.md level-3 headings must be release sections shaped "
                             f"like '### Fixed - 1.0.0', found '{marker} {title}'"
@@ -670,6 +752,7 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
                         severity="error",
                         path=path,
                         line=line,
+                        column=column,
                         message=(
                             "CHANGELOG.md level-3 heading uses an unsupported section name: "
                             f"{section!r}"
@@ -683,6 +766,7 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
                         severity="error",
                         path=path,
                         line=line,
+                        column=column,
                         message="emoji are not allowed in CHANGELOG.md headings",
                     )
                 )
@@ -693,6 +777,7 @@ def _check_changelog_hygiene(path: Path, text: str) -> list[Diagnostic]:
                 severity="error",
                 path=path,
                 line=line,
+                column=column,
                 message=(
                     "CHANGELOG.md must not use level-4 or deeper headings; "
                     "use bold list labels for level-4 and list labels for level-5+ sections instead"
@@ -785,11 +870,13 @@ def check_docs_hygiene(
 
             for heading in HEADING_LINE_RE.finditer(text):
                 if has_decorative_symbol(heading.group("title")):
+                    line, column = _position_for_offset(text, heading.start())
                     diagnostics.append(
                         Diagnostic(
                             severity="error",
                             path=path,
-                            line=_line_for_offset(text, heading.start()),
+                            line=line,
+                            column=column,
                             message="emoji are not allowed in Markdown headings",
                         )
                     )
@@ -799,11 +886,13 @@ def check_docs_hygiene(
             prose_text: str = _mask_code_regions(text)
             for smart_punctuation in SMART_PUNCTUATION_RE.finditer(prose_text):
                 char: str = smart_punctuation.group(0)
+                line, column = _position_for_offset(text, smart_punctuation.start())
                 diagnostics.append(
                     Diagnostic(
                         severity="warning",
                         path=path,
-                        line=_line_for_offset(text, smart_punctuation.start()),
+                        line=line,
+                        column=column,
                         message=(
                             "replace smart punctuation "
                             f"{char!r} with {describe_smart_punctuation(char)}"
@@ -813,7 +902,7 @@ def check_docs_hygiene(
 
             level2_matches: list[re.Match[str]] = list(LEVEL2_HEADING_RE.finditer(text))
             for heading_match in level2_matches[1:]:
-                heading_line: int = _line_for_offset(text, heading_match.start())
+                heading_line, heading_column = _position_for_offset(text, heading_match.start())
                 preceding_lines: list[str] = text[: heading_match.start()].splitlines()
                 previous_non_empty: str = next(
                     (line for line in reversed(preceding_lines) if line.strip()),
@@ -825,6 +914,7 @@ def check_docs_hygiene(
                             severity="error",
                             path=path,
                             line=heading_line,
+                            column=heading_column,
                             message=(
                                 "level-2 Markdown sections must be separated by a horizontal rule"
                             ),
@@ -833,7 +923,7 @@ def check_docs_hygiene(
 
         for match in INCLUDE_MARKDOWN_RE.finditer(text):
             raw_include = match.group("path")
-            include_line: int = _line_for_offset(text, match.start())
+            include_line, include_column = _position_for_offset(text, match.start())
             normalized: str = _normalize_include_path(raw_include)
 
             if raw_include.startswith("_snippets/"):
@@ -842,6 +932,7 @@ def check_docs_hygiene(
                         severity="warning",
                         path=path,
                         line=include_line,
+                        column=include_column,
                         message=(
                             "snippet include should use the mdformat-stable escaped prefix "
                             f"{SNIPPET_INCLUDE_PREFIX!r}"
@@ -860,6 +951,7 @@ def check_docs_hygiene(
                         severity="error",
                         path=path,
                         line=include_line,
+                        column=include_column,
                         message="include-markdown paths must be docs-root-relative "
                         "and must not traverse parents",
                     )
@@ -873,6 +965,7 @@ def check_docs_hygiene(
                         severity="error",
                         path=path,
                         line=include_line,
+                        column=include_column,
                         message="include-markdown target resolves outside docs/",
                     )
                 )
@@ -884,6 +977,7 @@ def check_docs_hygiene(
                         severity="error",
                         path=path,
                         line=include_line,
+                        column=include_column,
                         message=f"include-markdown target does not exist: {normalized}",
                     )
                 )
@@ -897,6 +991,7 @@ def check_docs_hygiene(
                         severity="error",
                         path=path,
                         line=include_line,
+                        column=include_column,
                         message="snippets must not include other snippets",
                     )
                 )
@@ -919,11 +1014,13 @@ def check_docs_hygiene(
 
         text = snippet.read_text(encoding="utf-8")
         for heading in HEADING_RE.finditer(text):
+            line, column = _position_for_offset(text, heading.start())
             diagnostics.append(
                 Diagnostic(
                     severity="warning",
                     path=snippet,
-                    line=_line_for_offset(text, heading.start()),
+                    line=line,
+                    column=column,
                     message="avoid headings inside reusable snippets",
                 )
             )
@@ -931,11 +1028,13 @@ def check_docs_hygiene(
         prose_text = _mask_code_regions(text)
         for smart_punctuation in SMART_PUNCTUATION_RE.finditer(prose_text):
             char = smart_punctuation.group(0)
+            line, column = _position_for_offset(text, smart_punctuation.start())
             diagnostics.append(
                 Diagnostic(
                     severity="warning",
                     path=snippet,
-                    line=_line_for_offset(text, smart_punctuation.start()),
+                    line=line,
+                    column=column,
                     message=(
                         "replace smart punctuation "
                         f"{char!r} with {describe_smart_punctuation(char)}"
@@ -946,11 +1045,13 @@ def check_docs_hygiene(
         if _allows_relative_links(snippet):
             continue
         for rel_link in RELATIVE_LINK_RE.finditer(text):
+            line, column = _position_for_offset(text, rel_link.start())
             diagnostics.append(
                 Diagnostic(
                     severity="warning",
                     path=snippet,
-                    line=_line_for_offset(text, rel_link.start()),
+                    line=line,
+                    column=column,
                     message="avoid relative links inside reusable snippets unless include-markdown "
                     "link rewriting is intentional",
                 )
@@ -1007,50 +1108,48 @@ def main(
     for path in py_files:
         files_checked += 1
 
-        for start_lineno, end_lineno, ds in extract_docstrings(path):
+        for docstring in extract_docstrings(path):
             docstrings_checked += 1
             # Ignore fenced and inline code when matching FQNs/URLs
-            masked: str = _mask_code_regions(ds, ignore_inline=ignore_inline_code)
-
-            # Map a regex match inside the docstring to an absolute source line number
-            def _abs_line(m: re.Match[str], *, docstring: str, start_lineno: int) -> int:
-                local_line: int = (
-                    docstring.count("\n", 0, m.start()) + 1
-                )  # 1-based within docstring
-                return start_lineno + local_line - 1
+            masked: str = _mask_code_regions(
+                docstring.text,
+                ignore_inline=ignore_inline_code,
+            )
 
             # 1) Flag literal URLs unless whitelisted
             for m in URL_RE.finditer(masked):
                 url: str = m.group(0)
                 if not allow_re or not allow_re.search(url):
-                    ln: int = _abs_line(m, docstring=ds, start_lineno=start_lineno)
+                    line, column = docstring.position_for_offset(m.start())
                     errors.append(
-                        f"{_style(path, 'bold')}:{_style(ln, 'bold')}: "
+                        f"{_style(path, 'bold')}:{_style(line, 'bold')}:"
+                        f"{_style(column, 'bold')}: "
                         f"avoid raw URL in docstring -> {url}"
-                        f"  (docstring {start_lineno}-{end_lineno})"
+                        f"  (docstring {docstring.start_line}-{docstring.end_line})"
                     )  # Include docstring range for quick context
 
             # 2) For internal fully-qualified names, require a reference-style link nearby.
             #    Skip occurrences inside existing reference links.
             # Compute spans of existing reference links (from the *original* text)
             ref_spans: list[tuple[int, int]] = [
-                (m.start(), m.end()) for m in REF_LINK_RE.finditer(ds)
+                (m.start(), m.end()) for m in REF_LINK_RE.finditer(docstring.text)
             ]
-            missing: list[tuple[str, int]] = []
+            missing: list[tuple[str, int, int]] = []
             for fqn_m in INTERNAL_FQN_RE.finditer(masked):
                 s: int = fqn_m.start()
                 if any(a <= s < b for (a, b) in ref_spans):
                     continue  # already inside a ref link
-                miss_line: int = _abs_line(fqn_m, docstring=ds, start_lineno=start_lineno)
-                missing.append((fqn_m.group(0), miss_line))
+                miss_line, miss_column = docstring.position_for_offset(fqn_m.start())
+                missing.append((fqn_m.group(0), miss_line, miss_column))
 
             if missing:
                 lines: list[str] = []
-                for name, ln in sorted(set(missing)):
+                for name, line, column in sorted(set(missing)):
                     lines.append(
-                        f"{_style(path, 'bold')}:{_style(ln, 'bold')}: "
+                        f"{_style(path, 'bold')}:{_style(line, 'bold')}:"
+                        f"{_style(column, 'bold')}: "
                         "internal names should be reference-linked: "
-                        f"{name}  (docstring {start_lineno}-{end_lineno})\n"
+                        f"{name}  (docstring {docstring.start_line}-{docstring.end_line})\n"
                         + _style(
                             "\tuse "
                             + _style(f"[`{name}`][]", "bold yellow")

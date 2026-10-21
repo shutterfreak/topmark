@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,9 @@ from tools.docs import check_docs_hygiene as hygiene
 from tools.docs.check_docs_hygiene import iter_markdown_files
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from collections.abc import Iterator
+
     import pytest
 
 
@@ -54,6 +58,31 @@ def test_markdown_discovery_excludes_draft_documentation(
     assert iter_markdown_files(None) == [
         path.relative_to(tmp_path) for path in sorted(included_paths)
     ]
+
+
+def test_markdown_discovery_skips_gitignored_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Markdown discovery excludes files filtered by the shared Git-ignore helper."""
+    included_path: Path = tmp_path / "docs" / "included.md"
+    gitignored_path: Path = tmp_path / "docs" / "generated.md"
+    for path in (included_path, gitignored_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# Test\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    def filter_gitignored_paths(paths: Iterable[Path]) -> Iterator[Path]:
+        """Yield paths except the fixture's Git-ignored Markdown file."""
+        yield from (path for path in paths if path != Path("docs/generated.md"))
+
+    monkeypatch.setattr(
+        hygiene,
+        "iter_non_gitignored_paths",
+        filter_gitignored_paths,
+    )
+
+    assert iter_markdown_files(["docs"]) == [Path("docs/included.md")]
 
 
 def test_docs_hygiene_reports_markdown_errors_and_warnings(
@@ -129,6 +158,38 @@ def test_docstring_checks_find_raw_urls_and_respect_code_masks(
 
     output: str = capsys.readouterr().out
     assert output.count("raw URL") == 1
+    plain_output: str = re.sub(r"\x1b\[[0-9;]*m", "", output)
+    assert f"{source}:1:8:" in plain_output
+
+
+def test_position_for_offset_returns_one_based_line_and_column() -> None:
+    """Offset positions retain both the source line and column."""
+    assert hygiene._position_for_offset("first\n  third", 8) == (2, 3)
+
+
+def test_extract_docstrings_retains_text_and_absolute_positions(
+    tmp_path: Path,
+) -> None:
+    """Extracted docstrings retain their evaluated text and source coordinates."""
+    source: Path = tmp_path / "sample.py"
+    source.write_text(
+        '"""Short."""\n\n'
+        "def function() -> None:\n"
+        '    """\n'
+        "    Body.\n"
+        '    """\n\n'
+        "def no_docstring() -> None:\n"
+        "    pass\n\n"
+        "def numeric_expression() -> None:\n"
+        "    42\n",
+        encoding="utf-8",
+    )
+
+    module_docstring, function_docstring = hygiene.extract_docstrings(source)
+
+    assert module_docstring.text == "Short."
+    assert module_docstring.content_start_column == 4
+    assert function_docstring.position_for_offset(function_docstring.text.index("Body")) == (5, 5)
 
 
 def test_changelog_hygiene_accepts_release_and_section_headings() -> None:
@@ -156,22 +217,30 @@ def test_changelog_hygiene_reports_structural_and_decorative_heading_errors() ->
         "#### Details\n",
     )
 
-    assert [(diagnostic.line, diagnostic.message) for diagnostic in diagnostics] == [
+    actual_diagnostics = [
+        (diagnostic.line, diagnostic.column, diagnostic.message) for diagnostic in diagnostics
+    ]
+
+    assert actual_diagnostics == [
         (
             2,
+            1,
             "CHANGELOG.md dated release headings must use a proper version identifier and date, "
             "shaped like '## [1.0.0] - YYYY-MM-DD', found '## [1.2.3]'",
         ),
         (
             3,
+            1,
             "CHANGELOG.md level-3 heading uses an unsupported section name: 'Unexpected'",
         ),
         (
             4,
+            1,
             "emoji are not allowed in CHANGELOG.md headings",
         ),
         (
             5,
+            1,
             "CHANGELOG.md must not use level-4 or deeper headings; use bold list labels for "
             "level-4 and list labels for level-5+ sections instead",
         ),
