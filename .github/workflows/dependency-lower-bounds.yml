@@ -1,0 +1,49 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : dependency-lower-bounds.yml
+#   file_relpath : .github/workflows/dependency-lower-bounds.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+name: Dependency Lower Bounds
+
+on:
+  schedule:
+    - cron: "37 3 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - "noxfile.py"
+      - "Makefile"
+      - ".github/workflows/dependency-lower-bounds.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate-lower-bounds:
+    name: Validate direct dependency lower bounds
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # setuptools-scm needs repository tags to derive a supported project version.
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-python-nox
+        with:
+          python-version: "3.15"
+
+      - name: Validate lower-bound resolution
+        run: nox -s dependency_lower_bounds
