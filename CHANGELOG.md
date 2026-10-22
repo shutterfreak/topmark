@@ -52,6 +52,8 @@ ______________________________________________________________________
 
 - Clarified contributor-automation ownership: Make provides the command menu and local workflows,
   while Nox owns reusable validation contracts and direct-session discovery.
+- Clarified that the Node-based `markdownlint-cli2` is managed by the pinned pre-commit hook and CI
+  pre-commit job, rather than by Python extras, Make, Nox, Zensical, or Read the Docs.
 - Added scheduled and pull-request validation of declared direct dependency lower bounds, with
   aggregate and focused pytest, Pyright, and Ruff commands for local reproduction.
 - Raised the Pyright development-tool lower bound to 1.1.414 after lower-bound validation found that

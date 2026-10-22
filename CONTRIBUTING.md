@@ -41,8 +41,8 @@ the underlying validation contract directly.
 
 Use `make help` as the contributor command menu. Use `nox -l` to discover the complete direct Nox
 session catalog, including CI-oriented sessions without Make wrappers. A small set of intentionally
-local actions—such as `make pytest`, local environment management, lockfile maintenance, cleanup,
-and the interactive API-snapshot update—remain Make or `uv` workflows rather than Nox sessions.
+local actions-such as `make pytest`, local environment management, lockfile maintenance, cleanup,
+and the interactive API-snapshot update-remain Make or `uv` workflows rather than Nox sessions.
 
 The tracked `.python-version` lists the exact supported interpreter patch releases. Pyenv selects
 the first entry, making Python 3.15 the default local-development and canonical QA interpreter. The
@@ -205,6 +205,7 @@ TopMark enforces strict linting and consistent formatting:
 - **Ruff** - linting & formatting
 - **pydoclint** - docstring checks
 - **mdformat** - Markdown formatting
+- **markdownlint-cli2** - Markdown style linting, managed by pre-commit
 - **Taplo** - TOML formatting
 
 Commands:
@@ -450,7 +451,7 @@ Common repository-local hooks include:
 - `conventional-pre-commit` - validates Conventional Commit structure at the `commit-msg` stage
 - `topmark-check` - validates headers without mutating files
 - `topmark-apply` - updates headers when run manually
-- Ruff, Taplo, mdformat, Pyright, pydoclint, and repository hygiene checks
+- Ruff, Taplo, mdformat, markdownlint-cli2, Pyright, pydoclint, and repository hygiene checks
 
 Run the TopMark fixer manually:
 
