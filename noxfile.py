@@ -8,58 +8,13 @@
 #
 # topmark:header:end
 
-"""TopMark project automation via Nox (using uv-backed virtualenvs).
+"""TopMark's uv-backed Nox validation contracts.
 
-This file defines the developer and CI automation sessions used in this repository.
-
-Sessions:
-  - `lint`: Ruff + pydoclint + Makefile validation (mbake) on tracked files.
-  - `lint_fixall`: Ruff lint autofix.
-  - `format_check`: Verify formatting (ruff, mdformat, taplo, mbake).
-  - `format`: Apply formatting (ruff, mdformat, taplo, mbake).
-  - `format_docstrings`: Optionally format Python docstrings, then apply Ruff formatting.
-  - `docs`: Prepare and strictly build Zensical documentation and validate hosted routes.
-  - `docs_serve`: Prepare and serve Zensical documentation locally.
-  - `links`: Lychee link checks for docs/ + tracked Markdown.
-  - `links_src`: Lychee link checks for Python sources (docstring URLs).
-  - `links_all`: Combined link checks.
-  - `links_site`: Built-site Lychee checks plus project-owned hosted-route validation.
-  - `docstring_links`: Enforce docstring link style (custom tool).
-  - `docs_hygiene`: Enforce lightweight Markdown snippet/include hygiene (custom tool).
-  - `code_hygiene`: Enforce lightweight Python prose hygiene (custom tool).
-  - `qa`: Per-Python session that runs pytest and pyright.
-  - `qa_api`: Per-Python session that runs pytest + API snapshot + pyright in one env.
-  - `coverage`: Canonical product coverage for `src/topmark/`.
-  - `coverage_tools`: Repository-tooling coverage for `tools/`.
-  - `coverage_changed`: Diagnose coverage gaps in changed executable source lines.
-  - `self_check`: Verify that the current TopMark checkout accepts every tracked file.
-  - `verify`: Non-test local quality checks, including link validation.
-  - `pre_pr`: Recommended local pre-PR validation gate.
-  - `api_snapshot`: Public API snapshot test (per Python).
-  - `dependency_lower_bounds`: Run all direct dependency lower-bound validations.
-  - `dependency_lower_bounds_tests`: Run lower-bound pytest validation across supported Pythons.
-  - `dependency_lower_bounds_types`: Run lower-bound Pyright validation across supported Pythons.
-  - `dependency_lower_bounds_ruff`: Run lower-bound Ruff validation on canonical Python.
-  - `property_test`: Long-running property tests (opt-in).
-  - `perf_baseline`: Local pipeline memory/allocation baseline benchmarks (opt-in).
-  - `package_check`: Build sdist/wheel and validate metadata (twine).
-  - `release_check`: Deterministic pre-release gate (single Python, offline-friendly).
-  - `release_full`: Full release gate (serial QA + links + packaging + matrix).
-
-Notes:
-  - The default venv backend is `uv` (via `nox-uv`) for faster environment sync.
-  - Session dependencies are installed from `pyproject.toml` extras instead of exported requirements
-    files.
-  - File lists are resolved from git via `git ls-files` to avoid scanning ignored files.
-
-Common invocations:
-  - `nox -s lint`
-  - `nox -s format_check`
-  - `nox -s format_docstrings`
-  - `nox -s docs`
-  - `nox -s qa` (runs for all configured Python versions)
-  - `nox -s verify` (non-test quality checks, including links)
-  - `nox -s pre_pr` (recommended before opening or updating a PR)
+Nox owns reusable validation sessions for CI and direct invocation. Run
+``nox -l`` for the complete session catalog; session docstrings are the
+authoritative direct-session descriptions. Contributors should normally start
+with ``make help``, which presents the stable convenience commands and local
+environment workflows.
 """
 
 from __future__ import annotations

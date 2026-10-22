@@ -39,6 +39,11 @@ not install Nox separately. The Makefile is a convenience layer for common comma
 environment management, and cleanup; use the corresponding `nox -s <session>` command when you need
 the underlying validation contract directly.
 
+Use `make help` as the contributor command menu. Use `nox -l` to discover the complete direct Nox
+session catalog, including CI-oriented sessions without Make wrappers. A small set of intentionally
+local actions—such as `make pytest`, local environment management, lockfile maintenance, cleanup,
+and the interactive API-snapshot update—remain Make or `uv` workflows rather than Nox sessions.
+
 The tracked `.python-version` lists the exact supported interpreter patch releases. Pyenv selects
 the first entry, making Python 3.15 the default local-development and canonical QA interpreter. The
 full supported range is Python 3.10-3.15. Python 3.10 remains in the validation matrix during its
