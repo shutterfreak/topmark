@@ -50,8 +50,8 @@ ______________________________________________________________________
 
 ### Internal - Unreleased
 
-- Added scheduled and pull-request validation of declared direct dependency lower bounds, including
-  local `make dependency-lower-bounds` reproduction and canonical-Ruff floor checks.
+- Added scheduled and pull-request validation of declared direct dependency lower bounds, with
+  aggregate and focused pytest, Pyright, and Ruff commands for local reproduction.
 - Raised the Pyright development-tool lower bound to 1.1.414 after lower-bound validation found that
   1.1.411 does not accept the repository's current strict type-check contract.
 - Raised the Ruff development-tool lower bound to 0.16.0 because older Ruff releases require a

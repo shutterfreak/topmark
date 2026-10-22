@@ -36,7 +36,10 @@ Sessions:
   - `verify`: Non-test local quality checks, including link validation.
   - `pre_pr`: Recommended local pre-PR validation gate.
   - `api_snapshot`: Public API snapshot test (per Python).
-  - `dependency_lower_bounds`: Validate direct dependency lower bounds across supported Pythons.
+  - `dependency_lower_bounds`: Run all direct dependency lower-bound validations.
+  - `dependency_lower_bounds_tests`: Run lower-bound pytest validation across supported Pythons.
+  - `dependency_lower_bounds_types`: Run lower-bound Pyright validation across supported Pythons.
+  - `dependency_lower_bounds_ruff`: Run lower-bound Ruff validation on canonical Python.
   - `property_test`: Long-running property tests (opt-in).
   - `perf_baseline`: Local pipeline memory/allocation baseline benchmarks (opt-in).
   - `package_check`: Build sdist/wheel and validate metadata (twine).
@@ -82,6 +85,14 @@ CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1
 DEPS_DEV: Final[str] = ".[dev,typing,test]"
 DEPS_DOCS: Final[str] = ".[docs]"
 DEPS_QA: Final[str] = ".[dev,typing,test,docs]"
+
+DEPENDENCY_LOWER_BOUND_VALIDATIONS: Final[frozenset[str]] = frozenset(
+    {
+        "tests",
+        "types",
+        "ruff",
+    }
+)
 
 
 # Global options
@@ -326,9 +337,89 @@ def qa_api(session: nox.Session) -> None:
     )
 
 
-@nox.session(python=False)
-def dependency_lower_bounds(session: nox.Session) -> None:
-    """Validate declared direct-dependency lower bounds without retaining a new lockfile.
+# ---- Dependency lower-bound validation -----------------------------------
+
+
+def _run_dependency_lower_bound_tests(
+    session: nox.Session,
+    python_version: str,
+    environment_variables: dict[str, str],
+) -> None:
+    """Run the lower-bound pytest suite for one Python version."""
+    session.run(
+        "uv",
+        "run",
+        "--all-extras",
+        "--locked",
+        "--resolution",
+        "lowest-direct",
+        "--python",
+        python_version,
+        "pytest",
+        "-q",
+        "tests",
+        "-m",
+        "not hypothesis_slow",
+        *session.posargs,
+        external=True,
+        env=environment_variables,
+    )
+
+
+def _run_dependency_lower_bound_types(
+    session: nox.Session,
+    python_version: str,
+    environment_variables: dict[str, str],
+) -> None:
+    """Run lower-bound Pyright validation for one Python version."""
+    session.run(
+        "uv",
+        "run",
+        "--all-extras",
+        "--locked",
+        "--resolution",
+        "lowest-direct",
+        "--python",
+        python_version,
+        "pyright",
+        "--pythonversion",
+        python_version,
+        external=True,
+        env=environment_variables,
+    )
+
+
+def _run_dependency_lower_bound_ruff(
+    session: nox.Session,
+    python_version: str,
+    environment_variables: dict[str, str],
+) -> None:
+    """Run lower-bound Ruff linting and formatting checks."""
+    for command in (
+        ("check", "."),
+        ("format", "--check", "."),
+    ):
+        session.run(
+            "uv",
+            "run",
+            "--all-extras",
+            "--locked",
+            "--resolution",
+            "lowest-direct",
+            "--python",
+            python_version,
+            "ruff",
+            *command,
+            external=True,
+            env=environment_variables,
+        )
+
+
+def _run_dependency_lower_bounds(
+    session: nox.Session,
+    validations: frozenset[str],
+) -> None:
+    """Run selected declared direct-dependency lower-bound validations.
 
     ``uv lock`` normally prefers the committed resolution, which means ordinary CI does not test
     whether the lowest declared direct dependencies work. This session produces a temporary
@@ -340,6 +431,11 @@ def dependency_lower_bounds(session: nox.Session) -> None:
     direct lower bounds in ``pyproject.toml``; it does not promise every historical transitive
     combination accepted by those dependencies.
     """
+    unknown_validations: frozenset[str] = validations - DEPENDENCY_LOWER_BOUND_VALIDATIONS
+    if unknown_validations:
+        message: str = ", ".join(sorted(unknown_validations))
+        raise ValueError(f"Unknown dependency lower-bound validations: {message}")
+
     lock_path = pathlib.Path("uv.lock")
     original_lock: bytes = lock_path.read_bytes()
 
@@ -358,82 +454,74 @@ def dependency_lower_bounds(session: nox.Session) -> None:
         with tempfile.TemporaryDirectory(
             prefix="topmark-dependency-lower-bounds-"
         ) as environment_root:
-            for python_version in PYTHONS:
+            uses_python_matrix = bool(validations & {"tests", "types"})
+            python_versions: list[str] = PYTHONS if uses_python_matrix else [CANONICAL_PYTHON]
+            for python_version in python_versions:
                 environment = str(pathlib.Path(environment_root, python_version))
-                environment_variables = {
+                environment_variables: dict[str, str] = {
                     "UV_PROJECT_ENVIRONMENT": environment,
                     "VIRTUAL_ENV": environment,
                 }
-                session.log("Validating dependency floors on Python %s", python_version)
-                session.run(
-                    "uv",
-                    "run",
-                    "--all-extras",
-                    "--locked",
-                    "--resolution",
-                    "lowest-direct",
-                    "--python",
+                session.log(
+                    "Validating dependency floors on Python %s",
                     python_version,
-                    "pytest",
-                    "-q",
-                    "tests",
-                    "-m",
-                    "not hypothesis_slow",
-                    *session.posargs,
-                    external=True,
-                    env=environment_variables,
                 )
-                session.run(
-                    "uv",
-                    "run",
-                    "--all-extras",
-                    "--locked",
-                    "--resolution",
-                    "lowest-direct",
-                    "--python",
-                    python_version,
-                    "pyright",
-                    "--pythonversion",
-                    python_version,
-                    external=True,
-                    env=environment_variables,
-                )
-                if python_version == CANONICAL_PYTHON:
-                    # Ruff is independent of the interpreter matrix, so one canonical run verifies
-                    # that its declared floor can lint and format the repository successfully.
-                    session.run(
-                        "uv",
-                        "run",
-                        "--all-extras",
-                        "--locked",
-                        "--resolution",
-                        "lowest-direct",
-                        "--python",
+                if "tests" in validations:
+                    _run_dependency_lower_bound_tests(
+                        session,
                         python_version,
-                        "ruff",
-                        "check",
-                        ".",
-                        external=True,
-                        env=environment_variables,
+                        environment_variables,
                     )
-                    session.run(
-                        "uv",
-                        "run",
-                        "--all-extras",
-                        "--locked",
-                        "--resolution",
-                        "lowest-direct",
-                        "--python",
+                if "types" in validations:
+                    _run_dependency_lower_bound_types(
+                        session,
                         python_version,
-                        "ruff",
-                        "format",
-                        "--check",
-                        ".",
-                        external=True,
-                        env=environment_variables,
+                        environment_variables,
+                    )
+                if "ruff" in validations and python_version == CANONICAL_PYTHON:
+                    _run_dependency_lower_bound_ruff(
+                        session,
+                        python_version,
+                        environment_variables,
                     )
     finally:
         lock_path.write_bytes(original_lock)
+
+
+@nox.session(python=False)
+def dependency_lower_bounds(session: nox.Session) -> None:
+    """Run every declared direct-dependency lower-bound validation."""
+    _run_dependency_lower_bounds(
+        session,
+        DEPENDENCY_LOWER_BOUND_VALIDATIONS,
+    )
+
+
+@nox.session(python=False)
+def dependency_lower_bounds_tests(session: nox.Session) -> None:
+    """Run lower-bound pytest validation across supported Python versions."""
+    _run_dependency_lower_bounds(
+        session,
+        frozenset({"tests"}),
+    )
+
+
+@nox.session(python=False)
+def dependency_lower_bounds_types(session: nox.Session) -> None:
+    """Run lower-bound Pyright validation across supported Python versions."""
+    _run_dependency_lower_bounds(
+        session,
+        frozenset({"types"}),
+    )
+
+
+@nox.session(python=False)
+def dependency_lower_bounds_ruff(session: nox.Session) -> None:
+    """Run lower-bound Ruff validation on the canonical Python version."""
+    _run_dependency_lower_bounds(
+        session,
+        frozenset({"ruff"}),
+    )
 
 
 @nox.session(python=False)
