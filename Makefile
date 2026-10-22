@@ -61,10 +61,15 @@ help:
 	@echo "  coverage        Run product coverage testing; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-tools  Run repository-tooling coverage; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-changed  Diagnose uncovered changed source lines; run coverage first"
-	@echo "  dependency-lower-bounds  Validate direct dependency lower bounds; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-erase  Remove local coverage output"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo "  perf-baseline   Run pipeline memory/allocation baselines (manual, opt-in)"
+	@echo ""
+	@echo "Dependency validation:"
+	@echo "  dependency-lower-bounds  Run all direct dependency lower-bound validations"
+	@echo "  dependency-lower-bounds-tests  Run lower-bound pytest validation; supports PYTEST_PAR=\"-n auto\""
+	@echo "  dependency-lower-bounds-types  Run lower-bound Pyright validation"
+	@echo "  dependency-lower-bounds-ruff  Run lower-bound Ruff validation"
 	@echo ""
 	@echo "Release and packaging:"
 	@echo "  release-check   Run the deterministic pre-release gate; supports PYTEST_PAR=\"-n auto\""
@@ -181,10 +186,6 @@ coverage-tools: check-nox
 coverage-changed: check-nox
 	$(NOX) $(NOX_FLAGS) -s coverage_changed -- $(COVERAGE_CHANGED_ARGS)
 
-.PHONY: dependency-lower-bounds
-dependency-lower-bounds: check-nox
-	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds -- $(PYTEST_PAR)
-
 # These files and directories are generated only by the coverage session.
 # `rm -rf` is available in the supported POSIX shells, Git Bash, and WSL.
 .PHONY: coverage-erase
@@ -198,6 +199,24 @@ property-test: check-nox
 .PHONY: perf-baseline
 perf-baseline: check-nox
 	$(NOX) $(NOX_FLAGS) -s perf_baseline
+
+# ---- Dependency validation ------------------------------------------------
+
+.PHONY: dependency-lower-bounds
+dependency-lower-bounds: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds -- $(PYTEST_PAR)
+
+.PHONY: dependency-lower-bounds-tests
+dependency-lower-bounds-tests: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_tests -- $(PYTEST_PAR)
+
+.PHONY: dependency-lower-bounds-types
+dependency-lower-bounds-types: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_types
+
+.PHONY: dependency-lower-bounds-ruff
+dependency-lower-bounds-ruff: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_ruff
 
 # ---- Release and packaging ------------------------------------------------
 .PHONY: release-check

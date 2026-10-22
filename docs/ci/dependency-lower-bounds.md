@@ -128,6 +128,17 @@ make dependency-lower-bounds PYTEST_PAR="-n auto"
 The parallel option affects pytest only. The workflow keeps pytest serial so its logs and resource
 use remain predictable on GitHub-hosted runners.
 
+For focused local diagnosis, run one validation at a time. Each command creates and restores its own
+temporary lowest-direct resolution:
+
+| Validation | Command                                                   |
+| ---------- | --------------------------------------------------------- |
+| Tests      | `make dependency-lower-bounds-tests PYTEST_PAR="-n auto"` |
+| Pyright    | `make dependency-lower-bounds-types`                      |
+| Ruff       | `make dependency-lower-bounds-ruff`                       |
+
+`make dependency-lower-bounds` remains the aggregate command and is the workflow's CI contract.
+
 ______________________________________________________________________
 
 ## Maintenance notes
@@ -138,8 +149,8 @@ receive the dependency-maintenance review described in
 rationale, lockfile review, and appropriate normal CI validation.
 
 When adding a new direct dependency, ensure its lower bound is intentional and its normal usage is
-covered by tests or an appropriate tool invocation. Add a focused command to this workflow only when
-pytest, Pyright, or canonical Ruff execution cannot exercise the new dependency's contract.
+covered by tests or an appropriate tool invocation. Add a focused validation only when pytest,
+Pyright, or canonical Ruff execution cannot exercise the new dependency's contract.
 
 ______________________________________________________________________
 
