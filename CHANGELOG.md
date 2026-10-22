@@ -18,9 +18,14 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
-## [Unreleased]
+## [2.1.0] - 2026-10-22
 
-### Added - Unreleased
+TopMark 2.1.0 is a backward-compatible feature release that makes registry discovery more
+expressive. File types, processors, and bindings can now be selected through compact identities and
+activation policies with consistent TEXT, Markdown, JSON, and NDJSON output; the release also
+strengthens contributor validation and documentation tooling.
+
+### Added - 2.1.0
 
 - Added compact endpoint identity queries to `registry bindings`. Positional queries and
   whole-qualified-identity `--match-regex` predicates select a relationship when either its file
@@ -36,19 +41,19 @@ ______________________________________________________________________
   `registry bindings`. Activation values are deduplicated, use OR semantics, and remain restrictive
   alongside other applicable registry filters.
 
-### Changed - Unreleased
+### Changed - 2.1.0
 
 - Integrated the opt-in docstring formatter with Nox and made Ruff the final formatting pass while
   preserving intentional whitespace in embedded code snippets.
 
-### Fixed - Unreleased
+### Fixed - 2.1.0
 
 - Fixed `registry filetypes` and `registry bindings` so repeated or comma-separated `--activation` /
   `-a` values no longer discard earlier requested activations.
 - Prevented the opt-in docstring formatter from capitalizing docstrings that begin with symbol
   names.
 
-### Internal - Unreleased
+### Internal - 2.1.0
 
 - Clarified contributor-automation ownership: Make provides the command menu and local workflows,
   while Nox owns reusable validation contracts and direct-session discovery.
