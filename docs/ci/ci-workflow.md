@@ -35,19 +35,20 @@ ______________________________________________________________________
 
 ## Trigger conditions
 
-| Trigger         | When it runs                                                                                           | Purpose                                                     |
-| --------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| `pull_request`  | Pull requests affecting source, tests, tools, documentation, workflow, dependency, or validation files | Validate proposed changes before merge                      |
-| `push.branches` | Pushes to `main`                                                                                       | Validate committed source changes                           |
-| `push.tags`     | Tags matching `v*`                                                                                     | Validate the tagged source tree and build release artifacts |
+| Trigger         | When it runs                                                                                                                      | Purpose                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `pull_request`  | Pull requests affecting source, tests, tools, documentation (including `CHANGELOG.md`), workflow, dependency, or validation files | Validate proposed changes before merge                      |
+| `push.branches` | Pushes to `main`                                                                                                                  | Validate committed source changes                           |
+| `push.tags`     | Tags matching `v*`                                                                                                                | Validate the tagged source tree and build release artifacts |
 
 Pull-request runs are path-filtered at the workflow level so unrelated changes do not trigger CI.
 Within the workflow, the `changes` job performs finer-grained path filtering so jobs such as lint,
 tests, docs, link checks, pre-commit validation, and API snapshot checks run only when relevant.
-`codecov.yml` is treated as Python-relevant so a configuration-only change regenerates and uploads
-coverage for policy evaluation. The job also writes a short GitHub Step Summary showing which
-changed-file groups were detected, making path-filtered job decisions easier to inspect from the
-workflow run.
+`CHANGELOG.md` is documentation for this purpose: a changelog-only pull request triggers the docs,
+source-link, and pre-commit checks. `codecov.yml` is treated as Python-relevant so a
+configuration-only change regenerates and uploads coverage for policy evaluation. The job also
+writes a short GitHub Step Summary showing which changed-file groups were detected, making
+path-filtered job decisions easier to inspect from the workflow run.
 
 Version-tag pushes are not path-filtered by pull-request change groups. They run the
 release-artifact path after the required validation jobs succeed.

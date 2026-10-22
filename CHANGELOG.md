@@ -18,6 +18,14 @@ sections **Added**, **Changed**, **Removed**, and **Fixed**.
 
 ______________________________________________________________________
 
+## [Unreleased]
+
+### Internal - Unreleased
+
+- Run CI documentation, source-link, and pre-commit checks for changelog-only pull requests.
+
+______________________________________________________________________
+
 ## [2.1.0] - 2026-10-22
 
 TopMark 2.1.0 is a backward-compatible feature release that makes registry discovery more

@@ -41,6 +41,7 @@ on:
       - "README.md"
       - "INSTALL.md"
       - "CONTRIBUTING.md"
+      - "CHANGELOG.md"
       - "lychee.toml"
   push:
     branches: [main]
@@ -86,6 +87,7 @@ jobs:
               - 'README.md'
               - 'INSTALL.md'
               - 'CONTRIBUTING.md'
+              - 'CHANGELOG.md'
               - 'src/**'
               - 'tools/docs/**'
               - '.github/actions/setup-python-nox/**'
@@ -102,6 +104,7 @@ jobs:
               - 'README.md'
               - 'INSTALL.md'
               - 'CONTRIBUTING.md'
+              - 'CHANGELOG.md'
               - 'lychee.toml'
             precommit:
               - 'src/**'
@@ -125,6 +128,7 @@ jobs:
               - 'README.md'
               - 'INSTALL.md'
               - 'CONTRIBUTING.md'
+              - 'CHANGELOG.md'
       - name: Report changed file groups
         shell: bash
         run: |
