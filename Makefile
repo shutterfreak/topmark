@@ -40,9 +40,9 @@ check-lychee:
 help:
 	@echo "Usage: make <target>"
 	@echo ""
-	@echo "Quality checks:"
-	@echo "  verify          Run non-test quality checks: formatting, lint, docs, and links"
+	@echo "Quality and pre-PR:"
 	@echo "  pre-pr          Run the recommended local pre-PR gate; supports PYTEST_PAR=\"-n auto\""
+	@echo "  verify          Run non-test quality checks: formatting, lint, docs, and links"
 	@echo "  lint            Run ruff + pydoclint + mbake"
 	@echo "  lint-fixall     Run ruff with --fix (auto-fix lint issues)"
 	@echo "  format-check    Check code/markdown/toml/Makefile formatting"
@@ -53,15 +53,23 @@ help:
 	@echo "  code-hygiene    Check Python comments/docstrings/string prose hygiene"
 	@echo "  hygiene         Run all prose/documentation hygiene checks"
 	@echo ""
-	@echo "Testing:"
+	@echo "Testing and QA:"
 	@echo "  test            Run the test suite (nox: qa); supports PYTEST_PAR=\"-n auto\""
 	@echo "  smoke           Run the fast marker-selected smoke suite (nox: smoke)"
 	@echo "  pytest          Run current-interpreter tests, excluding slow Hypothesis tests; supports PYTEST_PAR=\"-n auto\""
 	@echo "  pytest-full     Run all current-interpreter tests; supports PYTEST_PAR=\"-n auto\""
+	@echo ""
+	@echo "Coverage and API contracts:"
 	@echo "  coverage        Run product coverage testing; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-tools  Run repository-tooling coverage; supports PYTEST_PAR=\"-n auto\""
 	@echo "  coverage-changed  Diagnose uncovered changed source lines; run coverage first"
 	@echo "  coverage-erase  Remove local coverage output"
+	@echo "  api-snapshot-dev         Check structured API contracts with current interpreter (fast local)"
+	@echo "  api-snapshot             Check structured API contracts across all supported Pythons"
+	@echo "  api-snapshot-update      Regenerate the structured public API snapshot (interactive)"
+	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
+	@echo ""
+	@echo "Specialized developer checks:"
 	@echo "  property-test   Run Hypothesis hardening tests (manual, opt-in)"
 	@echo "  perf-baseline   Run pipeline memory/allocation baselines (manual, opt-in)"
 	@echo ""
@@ -71,27 +79,19 @@ help:
 	@echo "  dependency-lower-bounds-types  Run lower-bound Pyright validation"
 	@echo "  dependency-lower-bounds-ruff  Run lower-bound Ruff validation"
 	@echo ""
-	@echo "Release and packaging:"
-	@echo "  release-check   Run the deterministic pre-release gate; supports PYTEST_PAR=\"-n auto\""
-	@echo "  release-full    Run the full Nox release gate, including the supported-Python matrix"
-	@echo "  package-check   Run package sanity checks (nox: package_check)"
-	@echo ""
-	@echo "Documentation:"
+	@echo "Documentation and link checks:"
 	@echo "  docs-build      Build docs strictly (nox: docs)"
 	@echo "  docs-serve      Serve docs locally (nox: docs_serve)"
 	@echo "  docs-clean      Remove disposable Zensical build output"
-	@echo ""
-	@echo "Link checks:"
 	@echo "  links           Check links in docs/ and tracked Markdown (nox: links)"
 	@echo "  links-src       Check links found in Python docstrings under src/ (nox: links_src)"
 	@echo "  links-all       Check links in docs/, tracked Markdown, and Python docstrings (nox: links_all)"
 	@echo "  links-site      Check built-site links and project-owned hosted documentation routes"
 	@echo ""
-	@echo "Public API contracts:"
-	@echo "  api-snapshot-dev         Check structured API contracts with current interpreter (fast local)"
-	@echo "  api-snapshot             Check structured API contracts across all supported Pythons"
-	@echo "  api-snapshot-update      Regenerate the structured public API snapshot (interactive)"
-	@echo "  api-snapshot-ensure-clean  Fail if snapshot differs from Git index"
+	@echo "Packaging and release:"
+	@echo "  package-check   Run package sanity checks (nox: package_check)"
+	@echo "  release-check   Run the deterministic pre-release gate; supports PYTEST_PAR=\"-n auto\""
+	@echo "  release-full    Run the full Nox release gate, including the supported-Python matrix"
 	@echo ""
 	@echo "Local editor environment (optional, for Pyright/import resolution in IDE):"
 	@echo "  venv            Create an empty .venv via uv (sync targets create it when needed)"
@@ -100,13 +100,14 @@ help:
 	@echo "  venv-sync-docs  Sync docs extras into .venv (removes dev/test/typing packages)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
-	@echo "UV project lock workflow:"
+	@echo "Dependency lock workflow:"
 	@echo "  uv-lock         Generate or refresh uv.lock from pyproject.toml"
 	@echo "  uv-lock-upgrade Refresh uv.lock with dependency upgrades"
 	@echo ""
 	@echo "Platform notes: Make recipes require a POSIX shell. On Windows, use Git Bash or WSL."
 	@echo "Setup details: see CONTRIBUTING.md"
 
+# ---- Quality and pre-PR ---------------------------------------------------
 .PHONY: verify
 verify: check-nox check-lychee
 	$(NOX) $(NOX_FLAGS) -s verify
@@ -151,7 +152,7 @@ code-hygiene: check-nox
 .PHONY: hygiene
 hygiene: docs-hygiene code-hygiene
 
-# ---- Testing --------------------------------------------------------------
+# ---- Testing and QA -------------------------------------------------------
 # Pass PYTEST_PAR after `--` so nox forwards it directly to pytest. When the
 # variable is empty, no additional argument is passed.
 .PHONY: test
@@ -174,6 +175,7 @@ pytest-full: check-uv
 	@echo "Running all pytest locally -- including Hypothesis slow tests"
 	$(UV) run --extra dev --extra typing --extra test pytest $(PYTEST_PAR) -q
 
+# ---- Coverage and API contracts -------------------------------------------
 .PHONY: coverage
 coverage: check-nox
 	$(NOX) $(NOX_FLAGS) -s coverage -- $(PYTEST_PAR)
@@ -191,76 +193,6 @@ coverage-changed: check-nox
 .PHONY: coverage-erase
 coverage-erase:
 	@rm -rf .coverage coverage.xml coverage.json coverage-tools.xml coverage-tools.json htmlcov htmlcov-tools .coverage.*
-
-.PHONY: property-test
-property-test: check-nox
-	$(NOX) $(NOX_FLAGS) -s property_test
-
-.PHONY: perf-baseline
-perf-baseline: check-nox
-	$(NOX) $(NOX_FLAGS) -s perf_baseline
-
-# ---- Dependency validation ------------------------------------------------
-
-.PHONY: dependency-lower-bounds
-dependency-lower-bounds: check-nox
-	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds -- $(PYTEST_PAR)
-
-.PHONY: dependency-lower-bounds-tests
-dependency-lower-bounds-tests: check-nox
-	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_tests -- $(PYTEST_PAR)
-
-.PHONY: dependency-lower-bounds-types
-dependency-lower-bounds-types: check-nox
-	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_types
-
-.PHONY: dependency-lower-bounds-ruff
-dependency-lower-bounds-ruff: check-nox
-	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_ruff
-
-# ---- Release and packaging ------------------------------------------------
-.PHONY: release-check
-release-check: check-nox
-	@echo "Running release gate (deterministic) via nox..."
-	$(NOX) $(NOX_FLAGS) -s release_check -- $(PYTEST_PAR)
-
-.PHONY: release-full
-release-full: check-nox check-lychee
-	$(NOX) $(NOX_FLAGS) -s release_full -- $(PYTEST_PAR)
-
-.PHONY: package-check
-package-check: check-nox
-	@echo "Running packaging sanity checks via nox..."
-	$(NOX) $(NOX_FLAGS) -s package_check
-
-# ---- Documentation --------------------------------------------------------
-.PHONY: docs-build
-docs-build: check-nox
-	$(NOX) $(NOX_FLAGS) -s docs
-
-.PHONY: docs-serve
-docs-serve: check-nox
-	$(NOX) $(NOX_FLAGS) -s docs_serve
-
-.PHONY: docs-clean
-docs-clean:
-	@rm -rf .zensical
-
-.PHONY: links
-links: check-nox check-lychee
-	$(NOX) $(NOX_FLAGS) -s links
-
-.PHONY: links-src
-links-src: check-nox check-lychee
-	$(NOX) $(NOX_FLAGS) -s links_src
-
-.PHONY: links-all
-links-all: check-nox check-lychee
-	$(NOX) $(NOX_FLAGS) -s links_all
-
-.PHONY: links-site
-links-site: check-nox check-lychee
-	$(NOX) $(NOX_FLAGS) -s links_site
 
 # Fast local check using only the current interpreter.
 .PHONY: api-snapshot-dev
@@ -304,6 +236,77 @@ api-snapshot-ensure-clean: check-nox
 		echo "❌ Public API snapshot differs. Re-run: make api-snapshot-update"; \
 		exit 1; \
 	fi
+
+# ---- Specialized developer checks -----------------------------------------
+.PHONY: property-test
+property-test: check-nox
+	$(NOX) $(NOX_FLAGS) -s property_test
+
+.PHONY: perf-baseline
+perf-baseline: check-nox
+	$(NOX) $(NOX_FLAGS) -s perf_baseline
+
+# ---- Dependency validation ------------------------------------------------
+
+.PHONY: dependency-lower-bounds
+dependency-lower-bounds: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds -- $(PYTEST_PAR)
+
+.PHONY: dependency-lower-bounds-tests
+dependency-lower-bounds-tests: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_tests -- $(PYTEST_PAR)
+
+.PHONY: dependency-lower-bounds-types
+dependency-lower-bounds-types: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_types
+
+.PHONY: dependency-lower-bounds-ruff
+dependency-lower-bounds-ruff: check-nox
+	$(NOX) $(NOX_FLAGS) -s dependency_lower_bounds_ruff
+
+# ---- Documentation and link checks ----------------------------------------
+.PHONY: docs-build
+docs-build: check-nox
+	$(NOX) $(NOX_FLAGS) -s docs
+
+.PHONY: docs-serve
+docs-serve: check-nox
+	$(NOX) $(NOX_FLAGS) -s docs_serve
+
+.PHONY: docs-clean
+docs-clean:
+	@rm -rf .zensical
+
+.PHONY: links
+links: check-nox check-lychee
+	$(NOX) $(NOX_FLAGS) -s links
+
+.PHONY: links-src
+links-src: check-nox check-lychee
+	$(NOX) $(NOX_FLAGS) -s links_src
+
+.PHONY: links-all
+links-all: check-nox check-lychee
+	$(NOX) $(NOX_FLAGS) -s links_all
+
+.PHONY: links-site
+links-site: check-nox check-lychee
+	$(NOX) $(NOX_FLAGS) -s links_site
+
+# ---- Packaging and release ------------------------------------------------
+.PHONY: package-check
+package-check: check-nox
+	@echo "Running packaging sanity checks via nox..."
+	$(NOX) $(NOX_FLAGS) -s package_check
+
+.PHONY: release-check
+release-check: check-nox
+	@echo "Running release gate (deterministic) via nox..."
+	$(NOX) $(NOX_FLAGS) -s release_check -- $(PYTEST_PAR)
+
+.PHONY: release-full
+release-full: check-nox check-lychee
+	$(NOX) $(NOX_FLAGS) -s release_full -- $(PYTEST_PAR)
 
 # ---- Optional local editor environment ------------------------------------
 # Keep a project-local .venv for IDE integration; uv manages it directly.

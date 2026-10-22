@@ -50,6 +50,8 @@ ______________________________________________________________________
 
 ### Internal - Unreleased
 
+- Clarified contributor-automation ownership: Make provides the command menu and local workflows,
+  while Nox owns reusable validation contracts and direct-session discovery.
 - Added scheduled and pull-request validation of declared direct dependency lower bounds, with
   aggregate and focused pytest, Pyright, and Ruff commands for local reproduction.
 - Raised the Pyright development-tool lower bound to 1.1.414 after lower-bound validation found that
