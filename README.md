@@ -182,9 +182,9 @@ TopMark stable releases are published on [PyPI](https://pypi.org/project/topmark
 pip install topmark
 ```
 
-TopMark currently supports Python 3.10-3.15. See the
+TopMark supports the CPython release series listed in the
 [Python support policy (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/python-support/)
-for lifecycle and EOL compatibility details.
+for the runtime-support lifecycle.
 
 > [!NOTE] **Upgrading an existing repository**
 >

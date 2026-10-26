@@ -26,10 +26,10 @@ The goal is to keep pipeline tests concise while still using the same
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import NotRequired
+from typing import Required
 from typing import cast
 
-from typing_extensions import NotRequired
-from typing_extensions import Required
 from typing_extensions import TypedDict
 
 from tests.helpers.registry import resolve_processor_for_path

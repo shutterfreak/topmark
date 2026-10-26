@@ -39,6 +39,7 @@ ______________________________________________________________________
 - [Python support policy](python-support.md) - find the supported-runtime range and lifecycle.
 - [Upgrading TopMark](upgrading.md) - choose the guide for the major-version boundaries your
   repository crosses.
+  - [Upgrading to TopMark 3.0](upgrading-to-3.0.md) - move from Python 3.10 to a supported runtime.
   - [Upgrading to TopMark 2.0](upgrading-to-2.0.md) - migrate repositories from 1.0.x.
   - [Upgrading to TopMark 1.0](upgrading-to-1.0.md) - migrate repositories from 0.11.x or earlier.
 - [Command overview](cli.md) - understand the CLI structure and shared command behavior.

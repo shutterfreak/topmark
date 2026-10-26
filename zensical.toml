@@ -50,6 +50,7 @@ nav = [
     { Guides = [
       { Upgrading = [
         { "Overview" = "usage/upgrading.md" },
+        { "Upgrading to 3.0" = "usage/upgrading-to-3.0.md" },
         { "Upgrading to 2.0" = "usage/upgrading-to-2.0.md" },
         { "Upgrading to 1.0" = "usage/upgrading-to-1.0.md" },
       ] },

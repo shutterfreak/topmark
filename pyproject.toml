@@ -47,7 +47,6 @@ classifiers = [
 
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -67,7 +66,7 @@ classifiers = [
 
   "Typing :: Typed",
 ]
-requires-python = ">=3.10,<3.16"
+requires-python = ">=3.11,<3.16"
 
 # Runtime application dependencies (PEP 621)
 dependencies = [
@@ -123,7 +122,7 @@ dependencies = [
   docs = [
     # Production static-site generator. Its native modules provide search,
     # callouts, API navigation, and docstring rendering.
-    "zensical>=0.0.67,<0.1.0",
+    "zensical>=0.0.68,<0.1.0",
     # Python handler used by Zensical's native mkdocstrings module.
     "mkdocstrings-python>=2.0.9,<3.0.0",
     # Docstring formatter:
@@ -247,7 +246,7 @@ exclude = [
   "dist",
   "venv",
 ]
-pythonVersion = "3.10" # Lowest supported Python version
+pythonVersion = "3.11" # Lowest supported Python version
 stubPath = "typings"
 typeCheckingMode = "strict"
 
@@ -353,6 +352,8 @@ line-length = 100
     "TRY003", # tryceratops: Avoid specifying long messages outside the exception class
     "TRY400",
     "TRY401",
+    # StrEnum changes str() output; existing str/Enum classes are compatibility-sensitive.
+    "UP042",
   ]
   external = [
     "DOC", # pydoclint

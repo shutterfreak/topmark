@@ -33,6 +33,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
+from typing import NotRequired
 from typing import ParamSpec
 from typing import TypedDict
 from typing import TypeVar
@@ -40,7 +41,6 @@ from typing import cast
 
 import click
 from click.core import ParameterSource
-from typing_extensions import NotRequired
 from typing_extensions import Unpack
 
 from topmark.cli.cli_types import REGISTRY_REGEX_METAVAR

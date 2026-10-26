@@ -78,10 +78,12 @@ ______________________________________________________________________
 
 | Job                     | Purpose                                                       | Main tools                    |
 | ----------------------- | ------------------------------------------------------------- | ----------------------------- |
-| `validate-lower-bounds` | Validate direct dependency floors on Python 3.10 through 3.15 | `uv`, `pytest`, Pyright, Ruff |
+| `validate-lower-bounds` | Validate direct dependency floors across the supported matrix | `uv`, `pytest`, Pyright, Ruff |
 
 The job runs on `ubuntu-26.04`, installs Nox through the shared setup action, and invokes the
 repository-owned `dependency_lower_bounds` session.
+
+{% include-markdown "\_snippets/python-support-policy.md" %}
 
 For every supported Python version, the session:
 

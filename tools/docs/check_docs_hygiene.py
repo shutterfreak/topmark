@@ -441,7 +441,8 @@ def _allows_relative_links(path: Path) -> bool:
         True when the snippet intentionally permits relative links.
     """
     return _is_snippet(path) and (
-        path.name.startswith("related-pages") or path.name == "terminology.md"
+        path.name.startswith("related-pages")
+        or path.name in {"python-support-policy.md", "terminology.md"}
     )
 
 

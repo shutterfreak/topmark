@@ -30,8 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from typing_extensions import Self
+from typing import Self
 
 from topmark.pipeline.context.status import StatusSnapshot
 from topmark.pipeline.outcome_snapshot import OutcomeSnapshot

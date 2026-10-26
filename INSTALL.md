@@ -29,14 +29,12 @@ ______________________________________________________________________
 
 ### Regular usage
 
-- Python **3.10 - 3.15**
+- A CPython release series supported by TopMark
 
 > [!IMPORTANT] **Python support**
 >
-> TopMark supports final Python release series maintained by CPython and the most recently
-> end-of-life (EOL) series for one year. Python 3.10 reached upstream EOL on 1 October 2026 and
-> remains compatibility-supported through 1 October 2027. Use Python 3.11 or later for new or
-> security-sensitive deployments. See the
+> TopMark supports final CPython release series maintained by CPython. When CPython reaches end of
+> life (EOL), TopMark retires that series in the next applicable release. See the
 > [Python support policy (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/python-support/)
 > for scope and lifecycle details.
 
@@ -371,8 +369,8 @@ ______________________________________________________________________
   ```
 
 - **Multiple Python versions**: if running `nox` across versions locally, install interpreters with
-  `pyenv` (e.g., `3.10-3.15`). `nox` will skip sessions whose interpreter is missing (unless
-  configured to error).
+  `pyenv` (for the supported Python matrix). `nox` will skip sessions whose interpreter is missing
+  (unless configured to error).
 
 - **Windows PowerShell activation**: allow script execution:
 

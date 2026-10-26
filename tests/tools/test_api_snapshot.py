@@ -24,13 +24,13 @@ from dataclasses import field
 from enum import Enum
 from types import ModuleType
 from typing import Literal
+from typing import NotRequired
+from typing import Required
 from typing import TypeAlias
 from typing import TypedDict
 from typing import Union
 
 import pytest
-from typing_extensions import NotRequired
-from typing_extensions import Required
 
 from tools.api_snapshot import SnapshotDocument
 from tools.api_snapshot import SnapshotError

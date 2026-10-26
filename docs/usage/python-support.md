@@ -32,14 +32,12 @@ ______________________________________________________________________
 
 ## Current support
 
-| Python series | Upstream status | TopMark status                                     |
-| ------------- | --------------- | -------------------------------------------------- |
-| 3.11-3.15     | Maintained      | Supported                                          |
-| 3.10          | EOL             | Retirement planned for TopMark 3.0.0 ([#471][471]) |
+| Python series | Upstream status | TopMark status |
+| ------------- | --------------- | -------------- |
+| 3.11-3.15     | Maintained      | Supported      |
 
-Python 3.10 reached upstream EOL on 1 October 2026. TopMark 2.1.x remains installable on Python
-3.10. Its retirement is planned for TopMark 3.0.0; releases after that retirement do not make a
-compatibility, testing, or fix commitment for the retired series.
+TopMark 3.0 and later require Python 3.11 or later. Older TopMark releases retain the support window
+published with those releases.
 
 ______________________________________________________________________
 
@@ -83,5 +81,3 @@ See also:
 - [Installation guide](../install.md)
 - [Contributor guide](../contributing.md)
 - [Test and validation architecture](../ci/test-validation.md)
-
-[471]: https://github.com/shutterfreak/topmark/issues/471

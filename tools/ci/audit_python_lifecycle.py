@@ -18,9 +18,9 @@ import re
 import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
+from datetime import UTC
 from datetime import date
 from datetime import datetime
-from datetime import timezone
 from pathlib import Path
 from typing import Final
 
@@ -260,7 +260,7 @@ def main() -> None:
         raise TypeError("pyproject.toml must define project.requires-python as a string")
     output: tuple[Decision, ...] = decisions(
         requirement,
-        parse_status(fetch(STATUS_URL), datetime.now(timezone.utc).date()),
+        parse_status(fetch(STATUS_URL), datetime.now(UTC).date()),
         parse_rcs(fetch(RELEASES_URL)),
     )
     print(json.dumps([asdict(item) for item in output]))

@@ -56,7 +56,7 @@ DISPLAY_NAME: Final = "TopMark"
 
 # Supported Python version range
 MIN_SUPPORTED_PYTHON_MAJOR: Final[int] = 3
-MIN_SUPPORTED_PYTHON_MINOR: Final[int] = 10
+MIN_SUPPORTED_PYTHON_MINOR: Final[int] = 11
 MIN_SUPPORTED_PYTHON: Final[tuple[int, int]] = (
     MIN_SUPPORTED_PYTHON_MAJOR,
     MIN_SUPPORTED_PYTHON_MINOR,

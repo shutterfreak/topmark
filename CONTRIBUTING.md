@@ -25,7 +25,7 @@ ______________________________________________________________________
 
 ## Prerequisites
 
-- **Python 3.10-3.15**
+- **A CPython release series supported by TopMark**
 - **Git**
 - **make** (for convenience targets; use Git Bash or WSL when running them on Windows)
 - **uv** (install it for your operating system and keep it on your `PATH`)
@@ -45,19 +45,21 @@ local actions-such as `make pytest`, local environment management, lockfile main
 and the interactive API-snapshot update-remain Make or `uv` workflows rather than Nox sessions.
 
 The tracked `.python-version` lists the exact supported interpreter patch releases. Pyenv selects
-the first entry, making Python 3.15 the default local-development and canonical QA interpreter. The
-full supported range is Python 3.10-3.15. Python 3.10 remains in the validation matrix during its
-EOL compatibility window; contributors must preserve its compatibility while it is listed in that
-range. Use the current canonical interpreter for ordinary local work. See the
+the first entry, making Python 3.15 the default local-development and canonical QA interpreter. Use
+the current canonical interpreter for ordinary local work. See the
 [Python support policy (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/python-support/)
-for the support lifecycle and current transition dates.
+for the supported range and lifecycle.
 
 Optional, on systems using pyenv, for local testing across multiple versions:
 
 ```bash
-pyenv install 3.15.0 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
-pyenv local 3.15.0 3.14.8 3.13.16 3.12.15 3.11.17 3.10.22
+pyenv install $(tr '\n' ' ' < .python-version)
+pyenv local $(tr '\n' ' ' < .python-version)
 ```
+
+These commands use POSIX-shell command substitution to pass the space-separated version identifiers
+from `.python-version`. On platforms where that expansion is unavailable, pass those same
+identifiers as arguments to `pyenv install` and `pyenv local`.
 
 All official Python releases are available from the official
 [Python downloads page](https://www.python.org/downloads/).
@@ -371,7 +373,7 @@ ______________________________________________________________________
 
 ## API Stability
 
-TopMark maintains a stable public 1.x API across Python 3.10-3.15.
+TopMark maintains a stable public 1.x API across supported Python versions.
 
 ```bash
 make api-snapshot-dev           # quick local check

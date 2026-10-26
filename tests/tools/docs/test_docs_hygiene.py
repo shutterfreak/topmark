@@ -143,6 +143,12 @@ def test_docs_hygiene_accepts_included_snippet_and_can_fail_warnings(
     assert "headings inside reusable snippets" in capsys.readouterr().out
 
 
+def test_relative_links_are_allowed_only_for_intentional_snippets() -> None:
+    """Known shared-policy snippets may rely on include-markdown link rewriting."""
+    assert hygiene._allows_relative_links(Path("docs/_snippets/python-support-policy.md"))
+    assert not hygiene._allows_relative_links(Path("docs/_snippets/note.md"))
+
+
 def test_docstring_checks_find_raw_urls_and_respect_code_masks(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

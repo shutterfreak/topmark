@@ -22,12 +22,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 import tomlkit
+from packaging.version import Version
 
 import topmark.core.constants as constants
 from topmark.core.constants import DependencyInfo
+from topmark.core.typing_guards import is_mapping
+from topmark.core.typing_guards import is_str_list
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from collections.abc import Mapping
     from types import ModuleType
 
 
@@ -87,7 +91,7 @@ def test_constants_use_stable_fallbacks_when_distribution_metadata_is_unavailabl
     assert reloaded.TOPMARK_VERSION == "0.0.0.dev0"
     assert reloaded.DESCRIPTION == "A Python CLI to inspect and manage license headers."
     assert reloaded.LICENSE == "MIT"
-    assert reloaded.REQUIRES_PYTHON == ">=3.10,<3.16"
+    assert reloaded.REQUIRES_PYTHON == ">=3.11,<3.16"
     assert reloaded.DEPENDENCIES == []
     assert reloaded.DEV_DEPENDENCIES == []
     assert reloaded.DOCS_DEPENDENCIES == []
@@ -102,7 +106,7 @@ def test_dependency_metadata_buckets_core_and_extra_requirements(
     restore_constants_module: None,
 ) -> None:
     """Requires-Dist metadata should be split into core and named extra buckets."""
-    package_metadata = Message()
+    package_metadata: Message = Message()
     package_metadata["Name"] = "TopMark"
     package_metadata["Summary"] = "Metadata-backed summary"
     package_metadata["License-Expression"] = "MIT"
@@ -176,7 +180,7 @@ def test_dependency_metadata_falls_back_to_core_when_extra_marker_cannot_be_extr
     restore_constants_module: None,
 ) -> None:
     """Dependency bucketing should fail open when an extra marker cannot be parsed."""
-    package_metadata = Message()
+    package_metadata: Message = Message()
     package_metadata["Requires-Dist"] = "pluggy; extra == 'test'"
 
     def package_metadata_for(_package_name: str) -> Message:
@@ -228,9 +232,9 @@ def test_public_constants_expose_stable_identity_markers_and_newline_contracts()
     assert constants.PACKAGE_NAME == "topmark"
     assert constants.DISPLAY_NAME == "TopMark"
     assert constants.MIN_SUPPORTED_PYTHON_MAJOR == 3
-    assert constants.MIN_SUPPORTED_PYTHON_MINOR == 10
-    assert constants.MIN_SUPPORTED_PYTHON == (3, 10)
-    assert constants.MIN_SUPPORTED_PYTHON_STR == "3.10"
+    assert constants.MIN_SUPPORTED_PYTHON_MINOR == 11
+    assert constants.MIN_SUPPORTED_PYTHON == (3, 11)
+    assert constants.MIN_SUPPORTED_PYTHON_STR == "3.11"
     assert constants.MAX_SUPPORTED_PYTHON_MAJOR == 3
     assert constants.MAX_SUPPORTED_PYTHON_MINOR == 15
     assert constants.MAX_SUPPORTED_PYTHON == (3, 15)
@@ -262,12 +266,42 @@ def test_public_constants_expose_stable_identity_markers_and_newline_contracts()
     assert constants.STANDARD_NEWLINE_RE == r"\r\n|\n|\r"
 
 
-def test_project_requires_python_matches_runtime_support_bounds() -> None:
-    """Published Python metadata must match the runtime support interval."""
-    project_root = Path(__file__).resolve().parents[2]
-    document = tomlkit.parse((project_root / "pyproject.toml").read_text(encoding="utf-8"))
-    expected = (
+def test_project_python_metadata_matches_runtime_support_bounds() -> None:
+    """Published metadata and pyenv versions must match the runtime support interval."""
+    project_root: Path = Path(__file__).resolve().parents[2]
+    document: tomlkit.TOMLDocument = tomlkit.parse(
+        (project_root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    expected_requirement: str = (
         f">={constants.MIN_SUPPORTED_PYTHON_STR},<{constants.EXCLUSIVE_MAX_SUPPORTED_PYTHON_STR}"
     )
+    expected_minors: tuple[int, ...] = tuple(
+        range(constants.MAX_SUPPORTED_PYTHON_MINOR, constants.MIN_SUPPORTED_PYTHON_MINOR - 1, -1)
+    )
+    expected_classifiers: frozenset[str] = frozenset(
+        f"Programming Language :: Python :: 3.{minor}" for minor in expected_minors
+    )
 
-    assert document["project"]["requires-python"] == expected
+    assert is_mapping(document["project"])
+    project: Mapping[str, object] = document["project"]
+
+    assert is_str_list(project["classifiers"])
+    classifiers: list[str] = project["classifiers"]
+    python_classifiers: frozenset[str] = frozenset(
+        classifier
+        for classifier in classifiers
+        if classifier.startswith("Programming Language :: Python :: 3.")
+        and classifier != "Programming Language :: Python :: 3 :: Only"
+    )
+
+    pyenv_versions: tuple[Version, ...] = tuple(
+        Version(line)
+        for line in (project_root / ".python-version").read_text(encoding="utf-8").splitlines()
+    )
+
+    assert project["requires-python"] == expected_requirement
+    assert python_classifiers == expected_classifiers
+    assert tuple(version.release[:2] for version in pyenv_versions) == tuple(
+        (3, minor) for minor in expected_minors
+    )
+    assert len(pyenv_versions) == len(set(pyenv_versions))

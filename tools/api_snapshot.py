@@ -197,7 +197,7 @@ def _find_alias_in_module(module: types.ModuleType, name: str) -> _AliasDeclarat
 
         # Python 3.12+ ``type Alias = ...`` declarations are accepted when
         # encountered, although TopMark intentionally retains assignment-based
-        # aliases for Python 3.10 compatibility.
+        # aliases for Python 3.11 compatibility.
         type_alias_node: typing.Any = getattr(ast, "TypeAlias", None)
         if type_alias_node is not None and isinstance(node, type_alias_node):
             alias_name: typing.Any = getattr(node, "name", None)

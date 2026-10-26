@@ -50,10 +50,9 @@ from __future__ import annotations
 from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING
+from typing import Self
 from typing import TypeVar
 from typing import cast
-
-from typing_extensions import Self
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

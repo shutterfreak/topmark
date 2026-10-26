@@ -699,6 +699,7 @@ Reusable snippets live in `docs/_snippets/`.
 | `runtime-validation-model.md`    | Defines the short staged runtime-validation model reused by policy and pre-commit pages.                                         | Keep             |
 | `terminology.md`                 | Defines the shared terminology note that links to the project-wide canonical vocabulary page.                                    | Keep             |
 | `ci/related-pages.md`            | Defines the shared related-pages block for CI workflow documentation pages.                                                      | Keep             |
+| `python-support-policy.md`       | Defines the short shared reference to the canonical Python-runtime support policy.                                               | Keep             |
 
 `docs/_snippets/.markdownlint.jsonc` configures Markdown linting for snippet files and is not a
 reusable content snippet.
