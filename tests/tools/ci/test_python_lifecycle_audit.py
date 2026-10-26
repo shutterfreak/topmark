@@ -34,9 +34,9 @@ def test_parser_ignores_unreleased_series() -> None:
 
 def test_rc_and_final_share_one_marker() -> None:
     """An RC issue becomes the final-release issue for the same series."""
-    rc: Decision = decisions(">=3.10,<3.16", "", (), {"3.16": "3.16.0rc2"})[0]
+    rc: Decision = decisions(">=3.10,<3.16", (), {"3.16": "3.16.0rc2"})[0]
     final: Decision = decisions(
-        ">=3.10,<3.16", "", (Status("3.16", "bugfix", "2027-10-01", "2032-10"),), {}
+        ">=3.10,<3.16", (Status("3.16", "bugfix", "2027-10-01", "2032-10"),), {}
     )[0]
     assert rc.marker == final.marker == "topmark-python-lifecycle:release-3.16"
     assert "prepare" in rc.title and "final release" in final.title
@@ -47,3 +47,29 @@ def test_rc_parser_keeps_newest_candidate() -> None:
     assert parse_rcs('<a href="3.16.0rc1/"><a href="3.16.0rc3/"><a href="3.17.0b1/">') == {
         "3.16": "3.16.0rc3"
     }
+
+
+def test_eol_series_still_in_metadata_requires_retirement_decision() -> None:
+    """An EOL series cannot be suppressed by a documentation-only exception."""
+    decision: Decision = decisions(
+        ">=3.10,<3.16",
+        (Status("3.10", "end-of-life", "2021-10-04", "2026-10-01"),),
+        {},
+    )[0]
+
+    assert decision.marker == "topmark-python-lifecycle:eol-3.10"
+    assert decision.title == "build(ci): retire Python 3.10 support after upstream EOL"
+    assert "Observed version/status: 2026-10-01" in decision.body
+    assert "EOL retirement schedule" in decision.body
+
+
+def test_retired_eol_series_does_not_require_a_decision() -> None:
+    """An EOL series outside the declared range needs no further retirement work."""
+    assert (
+        decisions(
+            ">=3.11,<3.16",
+            (Status("3.10", "end-of-life", "2021-10-04", "2026-10-01"),),
+            {},
+        )
+        == ()
+    )

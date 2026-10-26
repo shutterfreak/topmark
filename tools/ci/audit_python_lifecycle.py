@@ -158,7 +158,13 @@ def supported(
     return (major, minor) <= current < (upper_major, upper_minor)
 
 
-def body(marker: str, phase: str, observed: str, source: str, requirement: str) -> str:
+def body(
+    marker: str,
+    phase: str,
+    observed: str,
+    source: str,
+    requirement: str,
+) -> str:
     """Return a consistent issue body for a lifecycle decision."""
     intro: str = (
         "This release candidate starts preparation only; it is not a TopMark support commitment."
@@ -180,8 +186,7 @@ def body(marker: str, phase: str, observed: str, source: str, requirement: str) 
             "",
             "## Review checklist",
             "",
-            "- [ ] Confirm final-release compatibility testing "
-            "(or the EOL compatibility decision).",
+            "- [ ] Confirm final-release compatibility testing (or the EOL retirement schedule).",
             "- [ ] Update `pyproject.toml`, runtime bounds, Nox/CI, "
             "and published-artifact matrices.",
             "- [ ] Refresh and review `uv.lock` when package metadata changes.",
@@ -192,7 +197,9 @@ def body(marker: str, phase: str, observed: str, source: str, requirement: str) 
 
 
 def decisions(
-    requirement: str, policy: str, statuses: tuple[Status, ...], rcs: dict[str, str]
+    requirement: str,
+    statuses: tuple[Status, ...],
+    rcs: dict[str, str],
 ) -> tuple[Decision, ...]:
     """Return RC, final-release, and EOL decisions needing maintainer review."""
     final_series: set[str] = {item.series for item in statuses if item.state != "end-of-life"}
@@ -217,20 +224,12 @@ def decisions(
                     body(marker, "final", item.released, STATUS_URL, requirement),
                 )
             )
-        elif (
-            item.state == "end-of-life"
-            and supported(item.series, requirement)
-            and not re.search(
-                rf"^\|\s*{re.escape(item.series)}\s*\|\s*EOL\s*\|\s*Compatibility-supported",
-                policy,
-                re.MULTILINE,
-            )
-        ):
+        elif item.state == "end-of-life" and supported(item.series, requirement):
             marker = f"topmark-python-lifecycle:eol-{item.series}"
             result.append(
                 Decision(
                     marker,
-                    f"build(ci): evaluate Python {item.series} EOL transition",
+                    f"build(ci): retire Python {item.series} support after upstream EOL",
                     body(marker, "eol", item.eol, STATUS_URL, requirement),
                 )
             )
@@ -259,10 +258,8 @@ def main() -> None:
     requirement: object = project_metadata["requires-python"]
     if not isinstance(requirement, str):
         raise TypeError("pyproject.toml must define project.requires-python as a string")
-    policy: str = (root / "docs/usage/python-support.md").read_text(encoding="utf-8")
     output: tuple[Decision, ...] = decisions(
         requirement,
-        policy,
         parse_status(fetch(STATUS_URL), datetime.now(timezone.utc).date()),
         parse_rcs(fetch(RELEASES_URL)),
     )
