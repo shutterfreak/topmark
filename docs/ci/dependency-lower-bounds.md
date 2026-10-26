@@ -95,8 +95,9 @@ On canonical Python, it also runs `ruff check .` and `ruff format --check .`. Ru
 full Python matrix, but exercising it once verifies that its declared floor works with TopMark's
 source tree.
 
-The session restores the caller's exact `uv.lock` contents even when a check fails. Its isolated
-temporary environments are discarded after the run.
+The session first creates a disposable detached Git worktree, so its temporary `lowest-direct` lock
+never modifies the caller's checkout. Its isolated temporary environments and worktree are discarded
+after the run.
 
 The workflow does not build documentation, run link checks, run all pre-commit hooks, generate
 coverage, or validate every direct tooling command. Those checks remain part of the normal CI and
