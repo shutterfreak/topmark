@@ -25,11 +25,10 @@ ______________________________________________________________________
 
 ## Purpose
 
-TopMark supports final CPython series receiving upstream bugfix or security updates and,
-temporarily, the most recently EOL series. The audit compares the authoritative
-[CPython version-status page](https://devguide.python.org/versions/) with `project.requires-python`
-and the [Python support policy](../usage/python-support.md). Python.org's official release directory
-supplies release-candidate discovery only.
+TopMark supports final CPython series receiving upstream bugfix or security updates. The audit
+compares the authoritative [CPython version-status page](https://devguide.python.org/versions/) with
+`project.requires-python` and prompts maintainers to retire any EOL series that remains in the
+declared range. Python.org's official release directory supplies release-candidate discovery only.
 
 It raises a maintainer decision when any of these is true:
 
@@ -37,8 +36,7 @@ It raises a maintainer decision when any of these is true:
   series.
 - CPython reports a newly released final series in `bugfix` or `security` status that the declared
   support range does not include.
-- CPython reports a TopMark-supported series as EOL but the support policy has not recorded its
-  compatibility window.
+- CPython reports a TopMark-supported series as EOL.
 
 The audit ignores alphas, betas, CPython's `main` development branch, future first-release dates,
 and non-final feature-development rows. A release candidate starts preparation only; it does not
@@ -48,10 +46,10 @@ ______________________________________________________________________
 
 ## Trigger conditions
 
-| Trigger             | When it runs          | Purpose                                       |
-| ------------------- | --------------------- | --------------------------------------------- |
-| `schedule`          | Mondays at 07:23 UTC  | Detect release changes                        |
-| `workflow_dispatch` | Manual maintainer run | Audit immediately or use the dry-run override |
+| Trigger             | When it runs          | Purpose                                                                          |
+| ------------------- | --------------------- | -------------------------------------------------------------------------------- |
+| `schedule`          | Mondays at 07:23 UTC  | Detect release changes                                                           |
+| `workflow_dispatch` | Manual maintainer run | Audit immediately; create or update issues by default, or preview with `dry-run` |
 
 GitHub runs scheduled workflows from the repository default branch. A maintainer can invoke the
 workflow from that branch at any time. The `dry-run` dispatch input reports the issue changes that
@@ -89,10 +87,9 @@ ______________________________________________________________________
 ## Jobs and validation scope
 
 The `audit-python-lifecycle` job runs the fixture-tested `tools/ci/audit_python_lifecycle.py` tool.
-It reads `pyproject.toml` and `docs/usage/python-support.md`, then fetches the CPython
-version-status page and Python.org release directory. It recognizes released final CPython rows only
-when their branch is a `3.x` series, their status is `bugfix`, `security`, or `end-of-life`, and
-their first release date has arrived.
+It reads `pyproject.toml`, then fetches the CPython version-status page and Python.org release
+directory. It recognizes released final CPython rows only when their branch is a `3.x` series, their
+status is `bugfix`, `security`, or `end-of-life`, and their first release date has arrived.
 
 For each required decision, the job uses a stable hidden marker in the issue body. A release
 candidate and its later final release share the same series marker, so re-runs update one open
@@ -111,10 +108,10 @@ ______________________________________________________________________
 
 ## Local reproduction
 
-Use the GitHub Actions **Run workflow** control on the default branch. Select `dry-run` first when
-reviewing a change to the CPython source format or TopMark's policy files. The local repository has
-no equivalent command because the workflow's intended output is a repository issue, not a source
-tree change.
+Use the GitHub Actions **Run workflow** control on the default branch. Leave `dry-run` disabled to
+create or update lifecycle issues; select it when reviewing a change to the CPython source format or
+TopMark's policy files without changing repository issues. The local repository has no equivalent
+command because the workflow's intended output is a repository issue, not a source tree change.
 
 ______________________________________________________________________
 
@@ -126,9 +123,9 @@ supplies release-candidate discovery only. Keep both parsers deliberately narrow
 `X.Y.0rcN`; neither source may turn prereleases into TopMark support claims.
 
 The issue checklist is intentionally broader than the audit's comparison. A maintainer may decide
-that a transition warrants a support change, an EOL compatibility window, or no contract change.
-Only that reviewed decision can modify package metadata, validation matrices, documentation, or
-release notes.
+when the next applicable release will retire an EOL interpreter, but an exception must be explicit,
+time-bounded, and documented. Only that reviewed decision can modify package metadata, validation
+matrices, documentation, or release notes.
 
 ______________________________________________________________________
 

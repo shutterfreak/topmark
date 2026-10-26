@@ -18,7 +18,7 @@ The canonical contributor guide lives at the repository root:
 
 - [CONTRIBUTING.md](https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md)
 
-For the maintained-runtime range and EOL compatibility window, see the
+For the maintained-runtime range and lifecycle transitions, see the
 [Python support policy](usage/python-support.md).
 
 Use this page when browsing the hosted documentation site. Use the root `CONTRIBUTING.md` file when

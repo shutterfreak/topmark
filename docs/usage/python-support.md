@@ -20,8 +20,8 @@ ______________________________________________________________________
 ## Support window
 
 TopMark supports every final Python feature-release series that CPython currently lists as receiving
-bugfix or security updates. It also supports the most recently end-of-life (EOL) series for one year
-after its upstream EOL date.
+bugfix or security updates. When CPython reaches end of life (EOL), TopMark retires that series from
+support in the next applicable TopMark release.
 
 This policy follows the [CPython version-status page](https://devguide.python.org/versions/). It
 does not promise support for unreleased Python versions, prereleases, or CPython's development
@@ -32,25 +32,39 @@ ______________________________________________________________________
 
 ## Current support
 
-| Python series | Upstream status | TopMark status                                 |
-| ------------- | --------------- | ---------------------------------------------- |
-| 3.11-3.15     | Maintained      | Supported                                      |
-| 3.10          | EOL             | Compatibility-supported through 1 October 2027 |
+| Python series | Upstream status | TopMark status                                     |
+| ------------- | --------------- | -------------------------------------------------- |
+| 3.11-3.15     | Maintained      | Supported                                          |
+| 3.10          | EOL             | Retirement planned for TopMark 3.0.0 ([#471][471]) |
 
-Python 3.10 reached upstream EOL on 1 October 2026. Its temporary TopMark support gives existing
-projects time to upgrade without immediately losing access to current TopMark releases.
+Python 3.10 reached upstream EOL on 1 October 2026. TopMark 2.1.x remains installable on Python
+3.10. Its retirement is planned for TopMark 3.0.0; releases after that retirement do not make a
+compatibility, testing, or fix commitment for the retired series.
 
 ______________________________________________________________________
 
-## Security and upgrade guidance
+## Lifecycle transitions
 
-Compatibility support for an upstream-EOL Python series is not security support for that
-interpreter. TopMark cannot patch CPython or its bundled libraries. Use a maintained Python version
-for new deployments and security-sensitive environments.
+- When CPython publishes a release candidate for a new feature-release series, TopMark begins
+  compatibility and packaging readiness work. A release candidate does not itself create a TopMark
+  support commitment.
+- When CPython publishes the final release, TopMark adds that series to its supported range after
+  final validation succeeds.
+- When CPython reaches EOL, TopMark prepares and releases the corresponding retirement change:
+  package metadata, runtime bounds, test and CI matrices, artifact validation, dependency
+  resolution, documentation, and release notes.
 
-When using the EOL compatibility window, plan and test an upgrade before the stated end date. Once
-that window closes, a TopMark release may raise its minimum supported Python version, update package
-metadata, and remove the retired interpreter from its validation matrix.
+______________________________________________________________________
+
+## Rationale and upgrade guidance
+
+This policy aligns TopMark's supported runtimes with CPython's maintained releases. It reduces
+compatibility and security risk by allowing TopMark to adopt dependency updates that no longer
+support retired Python versions, while giving users a clear, predictable upgrade path.
+
+TopMark cannot patch CPython or its bundled libraries. Use a maintained Python version for new
+deployments and security-sensitive environments. Plan and test an upgrade before your Python series
+reaches EOL.
 
 ______________________________________________________________________
 
@@ -69,3 +83,5 @@ See also:
 - [Installation guide](../install.md)
 - [Contributor guide](../contributing.md)
 - [Test and validation architecture](../ci/test-validation.md)
+
+[471]: https://github.com/shutterfreak/topmark/issues/471

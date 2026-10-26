@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   audit-python-lifecycle:
-    name: Track Python release and EOL transitions
+    name: Track Python release and retirement transitions
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
