@@ -20,6 +20,17 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+### Breaking Changes - Unreleased
+
+- **Python 3.10 is no longer supported.** TopMark 3.0 requires Python 3.11 or later. Upgrade the
+  interpreter used by local environments, CI jobs, containers, and pre-commit before installing
+  TopMark 3.0; see [Upgrading to TopMark 3.0](docs/usage/upgrading-to-3.0.md).
+
+### Changed - Unreleased
+
+- Raised the documentation-extra `zensical` floor to 0.0.68, the first release requiring Python 3.11
+  or later.
+
 ### Internal - Unreleased
 
 - Run CI documentation, source-link, and pre-commit checks for changelog-only pull requests.

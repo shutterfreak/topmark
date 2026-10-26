@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from importlib import import_module
 from pathlib import Path
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from typing import cast
 
@@ -166,13 +165,13 @@ def test_plugin_filetypes_ignore_non_iterable_and_non_filetype_payloads(
         def load(self) -> object:
             return lambda: ["not-a-filetype", plugin]
 
-    def _select(group: str) -> list[object]:
+    def _entry_points(*, group: str) -> list[object]:
         assert group == "topmark.filetypes"
         return [_NonIterableEntryPoint(), _MixedEntryPoint()]
 
     monkeypatch.setattr(
         "topmark.filetypes.instances.entry_points",
-        lambda: SimpleNamespace(select=_select),
+        _entry_points,
     )
 
     assert list(_iter_plugin_filetypes()) == [plugin]

@@ -23,7 +23,7 @@ context and can short-circuit with a terminal filesystem status.
 
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import UTC
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -114,7 +114,7 @@ def test_sniffer_healthy_path_records_bounded_facts_without_reader_image(
     assert step.axes_written == (Axis.FS,)
     assert ctx.status.fs == FsStatus.OK
     assert ctx.timestamp is not None
-    assert ctx.timestamp.tzinfo == timezone.utc
+    assert ctx.timestamp.tzinfo == UTC
     assert ctx.newline_hist == {"\r\n": 2}
     assert ctx.dominant_newline == "\r\n"
     assert ctx.dominance_ratio == 1.0

@@ -224,11 +224,11 @@ def normalize_payload(obj: object) -> object:
         return normalize_payload(to_dict_func())
 
     if isinstance(obj, Mapping):
-        mapping = cast("Mapping[object, object]", obj)
+        mapping: Mapping[object, object] = cast("Mapping[object, object]", obj)
         return {str(key): normalize_payload(value) for key, value in mapping.items()}
 
     if isinstance(obj, list | tuple | set | frozenset):
-        values = cast("Iterable[object]", obj)
+        values: Iterable[object] = cast("Iterable[object]", obj)
         return [normalize_payload(value) for value in values]
 
     return obj

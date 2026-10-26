@@ -23,8 +23,8 @@ Naming convention:
 
 from __future__ import annotations
 
+from datetime import UTC
 from datetime import datetime
-from datetime import timezone
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
@@ -40,7 +40,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 def get_utc_now() -> datetime:
     """Return the current time as an aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def get_path_mtime_utc(*, path: Path) -> datetime:
@@ -56,7 +56,7 @@ def get_path_mtime_utc(*, path: Path) -> datetime:
     """
     try:
         ts: float = path.stat().st_mtime
-        return datetime.fromtimestamp(ts, tz=timezone.utc)
+        return datetime.fromtimestamp(ts, tz=UTC)
     except OSError as e:
         logger.warning("Could not access mtime for %s: %s. Using 'now'.", path, e)
         return get_utc_now()
@@ -75,7 +75,7 @@ def format_iso8601_timestamp(*, dt: datetime | None = None) -> str:
     Returns:
         ISO-8601 timestamp string in UTC (e.g. `2026-02-21T19:16:49.056550+00:00`).
     """
-    value: datetime = get_utc_now() if dt is None else dt.astimezone(timezone.utc)
+    value: datetime = get_utc_now() if dt is None else dt.astimezone(UTC)
     return value.isoformat()
 
 
@@ -97,5 +97,5 @@ def format_gnu_diff_timestamp(*, dt: datetime | None = None) -> str:
     Returns:
         A string representing the GNU diff timestamp (e.g., '2026-02-21 19:16:49 +0000').
     """
-    value: datetime = get_utc_now() if dt is None else dt.astimezone(timezone.utc)
+    value: datetime = get_utc_now() if dt is None else dt.astimezone(UTC)
     return value.strftime(_GNU_DIFF_TIMESTAMP_FMT)

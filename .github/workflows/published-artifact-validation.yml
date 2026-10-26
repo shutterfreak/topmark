@@ -44,7 +44,6 @@ on:
         type: choice
         options:
           - all
-          - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
@@ -76,7 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(inputs.platform == 'all' && '["ubuntu-26.04", "macos-latest", "windows-latest"]' || format('["{0}"]', inputs.platform)) }}
-        python-version: ${{ fromJSON(inputs.python-version == 'all' && '["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]' || format('["{0}"]', inputs.python-version)) }}
+        python-version: ${{ fromJSON(inputs.python-version == 'all' && '["3.11", "3.12", "3.13", "3.14", "3.15"]' || format('["{0}"]', inputs.python-version)) }}
 
     steps:
       - name: Set up Python

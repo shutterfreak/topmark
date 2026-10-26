@@ -38,8 +38,7 @@ from topmark.api.types import RunStartedEvent
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-
-    from typing_extensions import Self
+    from typing import Self
 
     from topmark.api.types import ContentStreamEvent
     from topmark.api.types import DiagnosticEntry

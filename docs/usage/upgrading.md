@@ -26,11 +26,11 @@ First identify the installed version:
 topmark version
 ```
 
-| Current version | Target version | Guide                                              |
-| --------------- | -------------- | -------------------------------------------------- |
-| 0.11.x or older | 1.0.x          | [Upgrading to TopMark 1.0](upgrading-to-1.0.md)    |
-| 1.0.x           | 2.0.x          | [Upgrading to TopMark 2.0](upgrading-to-2.0.md)    |
-| 0.11.x or older | 2.0.x          | Follow the 1.0 guide, then the 2.0 guide in order. |
+| Current version | Target version | Required migration guides                                                             |
+| --------------- | -------------- | ------------------------------------------------------------------------------------- |
+| 2.x             | 3.0.x          | [Upgrading to TopMark 3.0](upgrading-to-3.0.md)                                       |
+| 1.x             | 3.0.x          | [Upgrading to 2.0](upgrading-to-2.0.md), then [Upgrading to 3.0](upgrading-to-3.0.md) |
+| 0.11.x or older | 3.0.x          | [Upgrading to 1.0](upgrading-to-1.0.md), then 2.0, then 3.0, in order                 |
 
 The historical 1.0 guide remains at its published URL for older repositories. Do not skip it when
 moving directly from a pre-1.0 release: the 2.0 guide assumes the 1.0 configuration and command

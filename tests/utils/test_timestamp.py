@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import UTC
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
@@ -34,12 +35,12 @@ if TYPE_CHECKING:
 
 def test_get_utc_now_returns_aware_current_utc_datetime() -> None:
     """The current-time source should be bounded, aware, and explicitly UTC."""
-    before: datetime = datetime.now(timezone.utc)
+    before: datetime = datetime.now(UTC)
     value: datetime = get_utc_now()
-    after: datetime = datetime.now(timezone.utc)
+    after: datetime = datetime.now(UTC)
 
     assert before <= value <= after
-    assert value.tzinfo is timezone.utc
+    assert value.tzinfo is UTC
 
 
 def test_get_path_mtime_utc_returns_exact_aware_utc_datetime(
@@ -55,14 +56,14 @@ def test_get_path_mtime_utc_returns_exact_aware_utc_datetime(
         4,
         5,
         6,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
     os.utime(path, (expected.timestamp(), expected.timestamp()))
 
     value: datetime = get_path_mtime_utc(path=path)
 
     assert value == expected
-    assert value.tzinfo is timezone.utc
+    assert value.tzinfo is UTC
 
 
 def test_get_path_mtime_utc_logs_and_uses_current_time_once_on_stat_failure(
@@ -79,7 +80,7 @@ def test_get_path_mtime_utc_logs_and_uses_current_time_once_on_stat_failure(
         8,
         9,
         10,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
     calls: list[None] = []
 
@@ -186,7 +187,7 @@ def test_timestamp_formatters_obtain_current_utc_time_once(
         16,
         49,
         56550,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
     calls: list[None] = []
 

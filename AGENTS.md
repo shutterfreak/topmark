@@ -43,7 +43,7 @@ ______________________________________________________________________
 
 ## Project constraints
 
-- Preserve support for Python 3.10 through 3.15.
+- Preserve support for Python 3.11 through 3.15.
 - Treat Python 3.15 as the canonical local QA interpreter.
 - Preserve the stable public API exported through `topmark.api.__all__`.
 - Treat CLI behavior, configuration semantics, machine-readable output, and filesystem/path

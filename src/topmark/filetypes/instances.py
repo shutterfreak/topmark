@@ -97,13 +97,10 @@ def _iter_plugin_filetypes() -> Generator[FileType, None, None]:
         ``topmark.filetypes`` entry point group.
     """
     try:
-        eps = entry_points()
+        candidates: EntryPoints = entry_points(group=_ENTRYPOINT_GROUP)
     except Exception:
         logger.exception("Failed to read entry points")
         return
-
-    # Python 3.10+ API: EntryPoints.select is available and typed
-    candidates: EntryPoints = eps.select(group=_ENTRYPOINT_GROUP)
 
     for ep in candidates:
         try:

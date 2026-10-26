@@ -164,8 +164,10 @@ replacement for GitHub CI.
 The public API snapshot is a schema-versioned structural equality check derived from
 `topmark.api.__all__`. It protects callable signatures, exported dataclass and TypedDict contracts,
 public type-alias expressions, enum members, and the deliberately narrow ordinary-class category.
-Use `make api-snapshot-dev` for the current interpreter, `make api-snapshot` for Python 3.10-3.15,
-and `make api-snapshot-update` only for an intentional, reviewed golden-file change.
+Use `make api-snapshot-dev` for the current interpreter, `make api-snapshot` for the supported
+Python matrix, and `make api-snapshot-update` only for an intentional, reviewed golden-file change.
+
+{% include-markdown "\_snippets/python-support-policy.md" %}
 
 Run the full default test suite through nox on the canonical Python version:
 

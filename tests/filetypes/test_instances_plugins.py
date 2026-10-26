@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 from types import ModuleType
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import cast
@@ -54,12 +53,13 @@ def test_plugins_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
         name: str = "fake"
         load = staticmethod(lambda: _provider)
 
-    def _select(group: str) -> list[_EP]:
+    def _entry_points(*, group: str) -> list[_EP]:
+        assert group == "topmark.filetypes"
         return [_EP()]
 
     monkeypatch.setattr(
         "topmark.filetypes.instances.entry_points",
-        lambda: SimpleNamespace(select=_select),
+        _entry_points,
     )
 
     get_base_file_type_registry.cache_clear()
@@ -166,13 +166,13 @@ def test_plugin_filetype_loading_skips_broken_entry_points(
         def load(self) -> object:
             return lambda: [valid]
 
-    def _select(group: str) -> list[object]:
+    def _entry_points(*, group: str) -> list[object]:
         assert group == "topmark.filetypes"
         return [_BrokenEntryPoint(), _ValidEntryPoint()]
 
     monkeypatch.setattr(
         "topmark.filetypes.instances.entry_points",
-        lambda: SimpleNamespace(select=_select),
+        _entry_points,
     )
 
     assert list(_iter_plugin_filetypes()) == [valid]

@@ -118,7 +118,6 @@ Supported Python-version selections are:
 | Value  | Meaning                                          |
 | ------ | ------------------------------------------------ |
 | `all`  | Run the complete supported Python-version matrix |
-| `3.10` | Validate Python 3.10 only                        |
 | `3.11` | Validate Python 3.11 only                        |
 | `3.12` | Validate Python 3.12 only                        |
 | `3.13` | Validate Python 3.13 only                        |
@@ -158,7 +157,6 @@ this workflow uses them to detect compatibility with the current GitHub-hosted p
 
 The matrix also covers supported Python versions:
 
-- 3.10
 - 3.11
 - 3.12
 - 3.13
@@ -168,6 +166,10 @@ The matrix also covers supported Python versions:
 The `platform` and `python-version` workflow inputs can reduce the matrix to a single platform or
 single Python version when reproducing or diagnosing platform-specific installation or runtime
 issues.
+
+The workflow validates the current release support contract; it does not retain a historical matrix
+for older TopMark releases. Those releases were validated against their own supported Python matrix
+when they were published.
 
 The matrix uses:
 

@@ -23,7 +23,7 @@ It is not a release history or a parallel backlog:
 - [GitHub issues](https://github.com/shutterfreak/topmark/issues/) are the source of truth for
   actionable work, acceptance criteria, and progress.
 - `CHANGELOG.md` is the canonical record of released upgrade outcomes and compatibility notes.
-- [Upgrading to TopMark 2.0](../usage/upgrading-to-2.0.md) is the user-facing migration guide.
+- [Upgrading TopMark](../usage/upgrading.md) is the user-facing migration-guide index.
 - [Road to TopMark 1.0](road-to-1.0.md) preserves the architectural rationale of the 1.0
   stabilization effort.
 
@@ -105,7 +105,7 @@ ______________________________________________________________________
 
 ## Related pages
 
-- [Upgrading to TopMark 2.0](../usage/upgrading-to-2.0.md)
+- [Upgrading TopMark](../usage/upgrading.md)
 - [Road to TopMark 1.0](road-to-1.0.md)
 - [Release process](release-process.md)
 - [Documentation conventions](documentation-conventions.md)

@@ -35,8 +35,7 @@ Design notes:
 from __future__ import annotations
 
 from enum import Enum
-
-from typing_extensions import Self
+from typing import Self
 
 
 class StyleRole(str, Enum):
