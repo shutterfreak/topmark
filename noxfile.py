@@ -297,6 +297,7 @@ def qa_api(session: nox.Session) -> None:
 
 def _run_dependency_lower_bound_tests(
     session: nox.Session,
+    project_path: str,
     python_version: str,
     environment_variables: dict[str, str],
 ) -> None:
@@ -304,6 +305,8 @@ def _run_dependency_lower_bound_tests(
     session.run(
         "uv",
         "run",
+        "--directory",
+        project_path,
         "--all-extras",
         "--locked",
         "--resolution",
@@ -323,6 +326,7 @@ def _run_dependency_lower_bound_tests(
 
 def _run_dependency_lower_bound_types(
     session: nox.Session,
+    project_path: str,
     python_version: str,
     environment_variables: dict[str, str],
 ) -> None:
@@ -330,6 +334,8 @@ def _run_dependency_lower_bound_types(
     session.run(
         "uv",
         "run",
+        "--directory",
+        project_path,
         "--all-extras",
         "--locked",
         "--resolution",
@@ -346,6 +352,7 @@ def _run_dependency_lower_bound_types(
 
 def _run_dependency_lower_bound_ruff(
     session: nox.Session,
+    project_path: str,
     python_version: str,
     environment_variables: dict[str, str],
 ) -> None:
@@ -357,6 +364,8 @@ def _run_dependency_lower_bound_ruff(
         session.run(
             "uv",
             "run",
+            "--directory",
+            project_path,
             "--all-extras",
             "--locked",
             "--resolution",
@@ -378,9 +387,9 @@ def _run_dependency_lower_bounds(
 
     ``uv lock`` normally prefers the committed resolution, which means ordinary CI does not test
     whether the lowest declared direct dependencies work. This session produces a temporary
-    ``lowest-direct`` resolution, validates it across the supported Python matrix through isolated
-    ``uv run --locked`` environments, and restores the caller's exact lockfile contents even if
-    validation fails.
+    ``lowest-direct`` resolution in a disposable Git worktree, then validates it across the
+    supported Python matrix through isolated ``uv run --locked`` environments. The caller's
+    checkout, including its lockfile, is never modified.
 
     The temporary resolution deliberately keeps transitive dependencies current. TopMark promises
     direct lower bounds in ``pyproject.toml``; it does not promise every historical transitive
@@ -391,56 +400,78 @@ def _run_dependency_lower_bounds(
         message: str = ", ".join(sorted(unknown_validations))
         raise ValueError(f"Unknown dependency lower-bound validations: {message}")
 
-    lock_path = pathlib.Path("uv.lock")
-    original_lock: bytes = lock_path.read_bytes()
-
-    try:
+    with tempfile.TemporaryDirectory(prefix="topmark-dependency-lower-bounds-") as workspace_root:
+        project_path = pathlib.Path(workspace_root, "project")
         session.run(
-            "uv",
-            "lock",
-            "--upgrade",
-            "--resolution",
-            "lowest-direct",
+            "git",
+            "worktree",
+            "add",
+            "--detach",
+            str(project_path),
+            "HEAD",
             external=True,
         )
+        try:
+            temporary_project = str(project_path)
+            session.run(
+                "uv",
+                "lock",
+                "--directory",
+                temporary_project,
+                "--upgrade",
+                "--resolution",
+                "lowest-direct",
+                external=True,
+            )
 
-        # `nox-uv` installs the project with `uv pip install`, which resolves independently from
-        # `uv.lock`. Use `uv run --locked` so every test environment consumes the temporary lock.
-        with tempfile.TemporaryDirectory(
-            prefix="topmark-dependency-lower-bounds-"
-        ) as environment_root:
-            uses_python_matrix = bool(validations & {"tests", "types"})
-            python_versions: list[str] = PYTHONS if uses_python_matrix else [CANONICAL_PYTHON]
-            for python_version in python_versions:
-                environment = str(pathlib.Path(environment_root, python_version))
-                environment_variables: dict[str, str] = {
-                    "UV_PROJECT_ENVIRONMENT": environment,
-                    "VIRTUAL_ENV": environment,
-                }
-                session.log(
-                    "Validating dependency floors on Python %s",
-                    python_version,
-                )
-                if "tests" in validations:
-                    _run_dependency_lower_bound_tests(
-                        session,
+            # `nox-uv` installs the project with `uv pip install`, which resolves independently
+            # from `uv.lock`. Use `uv run --locked` so every test environment consumes the
+            # temporary lock.
+            with tempfile.TemporaryDirectory(
+                prefix="topmark-dependency-lower-bounds-environments-"
+            ) as environment_root:
+                uses_python_matrix = bool(validations & {"tests", "types"})
+                python_versions: list[str] = PYTHONS if uses_python_matrix else [CANONICAL_PYTHON]
+                for python_version in python_versions:
+                    environment = str(pathlib.Path(environment_root, python_version))
+                    environment_variables: dict[str, str] = {
+                        "UV_PROJECT_ENVIRONMENT": environment,
+                        "VIRTUAL_ENV": environment,
+                    }
+                    session.log(
+                        "Validating dependency floors on Python %s",
                         python_version,
-                        environment_variables,
                     )
-                if "types" in validations:
-                    _run_dependency_lower_bound_types(
-                        session,
-                        python_version,
-                        environment_variables,
-                    )
-                if "ruff" in validations and python_version == CANONICAL_PYTHON:
-                    _run_dependency_lower_bound_ruff(
-                        session,
-                        python_version,
-                        environment_variables,
-                    )
-    finally:
-        lock_path.write_bytes(original_lock)
+                    if "tests" in validations:
+                        _run_dependency_lower_bound_tests(
+                            session,
+                            temporary_project,
+                            python_version,
+                            environment_variables,
+                        )
+                    if "types" in validations:
+                        _run_dependency_lower_bound_types(
+                            session,
+                            temporary_project,
+                            python_version,
+                            environment_variables,
+                        )
+                    if "ruff" in validations and python_version == CANONICAL_PYTHON:
+                        _run_dependency_lower_bound_ruff(
+                            session,
+                            temporary_project,
+                            python_version,
+                            environment_variables,
+                        )
+        finally:
+            session.run(
+                "git",
+                "worktree",
+                "remove",
+                "--force",
+                str(project_path),
+                external=True,
+            )
 
 
 @nox.session(python=False)

@@ -36,6 +36,8 @@ ______________________________________________________________________
 - Run CI documentation, source-link, and pre-commit checks for changelog-only pull requests.
 - Revised the Python lifecycle policy and audit so an upstream-EOL interpreter still included in
   package metadata requires a scheduled retirement decision for the next applicable release.
+- Run lower-bound dependency validation in a disposable Git worktree so an interrupted run cannot
+  leave the contributor checkout with a temporary dependency resolution.
 
 ______________________________________________________________________
 
