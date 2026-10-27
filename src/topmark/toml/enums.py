@@ -17,10 +17,10 @@ output.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class FilesSerializationMode(str, Enum):
+class FilesSerializationMode(StrEnum):
     """How to serialize the `[files]` section when exporting configuration.
 
     Modes:

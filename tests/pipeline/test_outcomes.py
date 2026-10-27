@@ -78,6 +78,13 @@ def test_result_bucket_repr_uses_fallback_reason() -> None:
     assert repr(ResultBucket(outcome=Outcome.PENDING)) == (f"pending: {NO_REASON_PROVIDED}")
 
 
+@pytest.mark.parametrize("outcome", Outcome)
+def test_public_outcome_tokens_render_as_values(outcome: Outcome) -> None:
+    """Public outcome values should remain stable in human-facing text."""
+    assert str(outcome) == outcome.value
+    assert f"{outcome}" == outcome.value
+
+
 @pytest.mark.parametrize(
     "apply",
     [

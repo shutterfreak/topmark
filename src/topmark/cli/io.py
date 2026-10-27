@@ -22,7 +22,7 @@ from __future__ import annotations
 import sys
 import tempfile
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Literal
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 # Keep this module narrowly scoped to STDIN handling only.
 
 
-class StdinMode(str, Enum):
+class StdinMode(StrEnum):
     """How STDIN was interpreted by consume_stdin()."""
 
     NONE = "none"  # No STDIN was consumed (TTY or empty)

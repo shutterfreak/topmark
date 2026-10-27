@@ -24,10 +24,10 @@ records.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class TomlKey(str, Enum):
+class TomlKey(StrEnum):
     """Stable keys for TOML provenance payload fragments.
 
     These keys are owned by the TOML machine-readable output domain. They describe the

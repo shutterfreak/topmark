@@ -26,7 +26,7 @@ refactor:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from topmark.diagnostic.model import DiagnosticLevel
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import MutableDiagnosticLog
 
 
-class TomlDiagnosticCode(str, Enum):
+class TomlDiagnosticCode(StrEnum):
     """Stable codes for TOML schema-validation diagnostics.
 
     These codes identify the structural kind of TOML validation issue without

@@ -19,10 +19,10 @@ from __future__ import annotations
 
 import os
 import sys
-from enum import Enum
+from enum import StrEnum
 
 
-class ColorMode(str, Enum):
+class ColorMode(StrEnum):
     """User intent for colorized terminal output.
 
     Attributes:

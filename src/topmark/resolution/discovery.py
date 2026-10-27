@@ -19,14 +19,14 @@ path excluded during file discovery has no file-type candidates yet.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FileSelectionStatus(str, Enum):
+class FileSelectionStatus(StrEnum):
     """Machine-friendly status for explicit input selection.
 
     Attributes:
@@ -40,7 +40,7 @@ class FileSelectionStatus(str, Enum):
     NOT_FOUND = "not_found"
 
 
-class FileSelectionReason(str, Enum):
+class FileSelectionReason(StrEnum):
     """Machine-friendly reason for explicit input selection.
 
     Attributes:

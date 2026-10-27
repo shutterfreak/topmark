@@ -20,14 +20,14 @@ cross-module private imports.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class ResolutionProbeStatus(str, Enum):
+class ResolutionProbeStatus(StrEnum):
     """Machine-friendly status for the overall probe outcome.
 
     Attributes:
@@ -46,7 +46,7 @@ class ResolutionProbeStatus(str, Enum):
     ACTIVATION_BLOCKED = "activation_blocked"
 
 
-class ResolutionProbeReason(str, Enum):
+class ResolutionProbeReason(StrEnum):
     """Machine-friendly reason explaining the probe outcome.
 
     Attributes:

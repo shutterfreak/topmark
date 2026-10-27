@@ -74,7 +74,7 @@ Notes:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Final
 
@@ -185,7 +185,7 @@ class PipelineDefinition:
     emits_patch: bool = False
 
 
-class Pipeline(str, Enum):
+class Pipeline(StrEnum):
     """Available named pipeline variants for file processing.
 
     Enum values are stable internal variant identifiers. Rich execution metadata

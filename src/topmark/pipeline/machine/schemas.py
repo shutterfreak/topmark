@@ -52,11 +52,11 @@ Notes:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TypedDict
 
 
-class PipelineKey(str, Enum):
+class PipelineKey(StrEnum):
     """Stable pipeline-domain keys for machine-readable payloads.
 
     Attributes:
@@ -76,7 +76,7 @@ class PipelineKey(str, Enum):
     DIFF = "diff"
 
 
-class PipelineRecordKind(str, Enum):
+class PipelineRecordKind(StrEnum):
     """Stable NDJSON record kinds emitted by the pipeline machine-readable output domain.
 
     Attributes:

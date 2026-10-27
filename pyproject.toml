@@ -352,8 +352,6 @@ line-length = 100
     "TRY003", # tryceratops: Avoid specifying long messages outside the exception class
     "TRY400",
     "TRY401",
-    # StrEnum changes str() output; existing str/Enum classes are compatibility-sensitive.
-    "UP042",
   ]
   external = [
     "DOC", # pydoclint

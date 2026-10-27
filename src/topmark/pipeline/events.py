@@ -12,10 +12,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class StreamEventKind(str, Enum):
+class StreamEventKind(StrEnum):
     """Stable stream event kinds."""
 
     RUN_STARTED = "run_started"

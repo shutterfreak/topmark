@@ -34,7 +34,7 @@ from collections.abc import Iterable
 from collections.abc import Iterator
 from dataclasses import dataclass
 from dataclasses import field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class DiagnosticLevel(str, Enum):
+class DiagnosticLevel(StrEnum):
     """Severity levels for diagnostics collected during processing.
 
     Levels map to semantic style roles and are ordered by importance:

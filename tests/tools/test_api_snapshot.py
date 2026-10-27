@@ -21,7 +21,7 @@ import sys
 import typing
 from dataclasses import dataclass
 from dataclasses import field
-from enum import Enum
+from enum import StrEnum
 from types import ModuleType
 from typing import Literal
 from typing import NotRequired
@@ -49,7 +49,7 @@ NestedAlias: TypeAlias = BuiltinAlias | TypingAlias
 RecursiveAlias: TypeAlias = list["RecursiveAlias"]
 
 
-class FixtureEnum(str, Enum):
+class FixtureEnum(StrEnum):
     """Enum used to exercise stable enum defaults and member serialization."""
 
     ONE = "one"

@@ -25,10 +25,10 @@ Notes:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ArgKey(str, Enum):
+class ArgKey(StrEnum):
     """Canonical argument keys used by the TopMark CLI / API.
 
     Notes:

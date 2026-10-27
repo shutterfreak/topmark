@@ -55,7 +55,7 @@ idempotence (insert → strip → insert) and preserve user-authored content.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from topmark.core.logging import get_logger
@@ -66,7 +66,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class BlankCollapseMode(str, Enum):
+class BlankCollapseMode(StrEnum):
     r"""How to identify and collapse *blank* lines during header insert/strip repairs.
 
     Members:

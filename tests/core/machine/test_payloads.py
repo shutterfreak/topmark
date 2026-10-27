@@ -12,13 +12,16 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 from topmark.core.machine import payloads
 from topmark.core.machine.payloads import build_meta_payload
 from topmark.core.machine.payloads import with_detail_level
 from topmark.core.machine.schemas import DetailLevel
+from topmark.core.machine.schemas import MachineDomain
 from topmark.core.machine.schemas import MachineMetaKey
+from topmark.core.machine.schemas import normalize_payload
 
 if TYPE_CHECKING:
     from pytest import MonkeyPatch
@@ -28,6 +31,20 @@ def test_machine_meta_keys_use_literal_json_field_names() -> None:
     """Machine metadata enum values should remain stable JSON field names."""
     assert MachineMetaKey.PYTHON_VERSION.value == "python_version"
     assert MachineMetaKey.MACHINE.value == "machine"
+
+
+def test_normalize_payload_emits_machine_enum_value_tokens() -> None:
+    """Machine enums should retain their documented JSON strings at the boundary."""
+    payload: dict[str, object] = {
+        "domain": MachineDomain.PIPELINE,
+        "detail_level": DetailLevel.LONG,
+    }
+
+    normalized: object = normalize_payload(payload)
+
+    assert json.dumps(normalized, sort_keys=True) == (
+        '{"detail_level": "long", "domain": "pipeline"}'
+    )
 
 
 def test_build_meta_payload_includes_normalized_runtime_provenance(

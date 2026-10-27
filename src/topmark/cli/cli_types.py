@@ -21,6 +21,7 @@ from __future__ import annotations
 import glob
 import re
 from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
@@ -67,7 +68,7 @@ REGISTRY_REGEX_METAVAR: Final[str] = "PATTERN"
 # --- Custom Click parameter types and validators for TopMark CLI ---
 
 
-class CliWriteMode(str, Enum):
+class CliWriteMode(StrEnum):
     """Private CLI vocabulary for selecting the write destination and strategy.
 
     Runtime code decomposes this Click-boundary type into the existing

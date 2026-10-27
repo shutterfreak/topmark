@@ -35,6 +35,7 @@ from topmark.cli.options import option_with_underscore_traps
 from topmark.cli.options import split_nonempty_lines
 from topmark.cli.options import strip_dash_sentinels
 from topmark.cli.validators import validate_mutually_exclusive
+from topmark.core.formats import OutputFormat
 from topmark.core.keys import ArgKey
 
 
@@ -176,6 +177,14 @@ def test_enum_value_help_text_marks_raw_string_default_and_boundary_spellings() 
         "Multiword CLI values additionally require hyphens; config, API, and machine-readable "
         "output use underscore values (machine_readable). "
         "Choose carefully."
+    )
+
+
+def test_output_format_help_uses_stable_cli_value_tokens() -> None:
+    """Output-format help should list public CLI tokens, not Python member names."""
+    assert enum_value_help_text(OutputFormat, default=OutputFormat.TEXT) == (
+        "Accepted values: 'text' (default), 'markdown', 'json', 'ndjson'. "
+        "CLI values require exact lowercase spelling."
     )
 
 

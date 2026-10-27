@@ -25,6 +25,7 @@ Shape construction and serialization are handled by:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from topmark.core.machine.schemas import MachineKey
@@ -37,10 +38,8 @@ if TYPE_CHECKING:
     from topmark.diagnostic.machine.schemas import MachineDiagnosticCounts
     from topmark.diagnostic.machine.schemas import MachineDiagnosticEntry
 
-from enum import Enum
 
-
-class ConfigKey(str, Enum):
+class ConfigKey(StrEnum):
     """Stable config-domain keys for machine-readable payloads.
 
     These keys belong to the config machine-readable output domain and should be used for
@@ -70,7 +69,7 @@ class ConfigKey(str, Enum):
     STRICT = "strict"
 
 
-class ConfigKind(str, Enum):
+class ConfigKind(StrEnum):
     """Stable NDJSON kinds emitted by the config machine-readable output domain.
 
     Attributes:

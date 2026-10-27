@@ -26,7 +26,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from dataclasses import field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Final
 from typing import Protocol
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class ContentGate(Enum):
+class ContentGate(StrEnum):
     """Policy that controls *when* a `FileType.content_matcher` may run.
 
     Use a gate to prevent accidental matches (e.g., Markdown containing `//`).
@@ -79,7 +79,7 @@ class ContentGate(Enum):
     ALWAYS = "always"  # use sparingly
 
 
-class FileTypeActivation(str, Enum):
+class FileTypeActivation(StrEnum):
     """Authorization policy declared by a file type.
 
     ``DEFAULT`` types may be processed when bound. ``OPT_IN`` types remain
@@ -114,7 +114,7 @@ class ContentMatcher(Protocol):
         ...
 
 
-class InsertCapability(Enum):
+class InsertCapability(StrEnum):
     """Advisory on whether a header insertion is advisable in the current context.
 
     Attributes:
