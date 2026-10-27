@@ -36,6 +36,8 @@ ______________________________________________________________________
 
 ### Internal - Unreleased
 
+- Raised the development-tool `uv` floor to 0.13.4 following the eMudhra / emSign CA security
+  incident, preventing vulnerable uv releases from being installed in developer environments.
 - Run CI documentation, source-link, and pre-commit checks for changelog-only pull requests.
 - Revised the Python lifecycle policy and audit so an upstream-EOL interpreter still included in
   package metadata requires a scheduled retirement decision for the next applicable release.
