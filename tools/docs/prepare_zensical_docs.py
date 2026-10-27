@@ -18,7 +18,8 @@ MkDocs plugins in an ignored ``.zensical/`` staging tree:
 * version-token replacement happens before the Zensical build, while GitHub-style callouts use
   Zensical's native ``callouts`` module;
 * ``mkdocs-include-markdown-plugin`` becomes a strict local-snippet expander with link rewriting;
-* MkDocs ``draft_docs`` and the private ``_snippets/`` files are excluded from publishable inputs.
+* Zensical's native ``draft_docs`` configuration controls draft visibility, while private
+  ``_snippets/`` files are removed from publishable inputs after expansion.
 
 The include implementation is intentionally *not* a general replacement for the upstream plugin:
 it accepts only TopMark's current local Markdown-file directive form and fails for anything else.
@@ -68,7 +69,7 @@ def _ignore_docs_copy(
     directory: str,
     names: list[str],
 ) -> set[str]:
-    """Exclude non-publishable draft and cache directories from the staging copy.
+    """Exclude only Python bytecode caches from the staging copy.
 
     Args:
         directory: Directory currently being copied; unused because exclusions are name-based.
@@ -78,7 +79,7 @@ def _ignore_docs_copy(
         Directory names that ``copytree`` must skip.
     """
     del directory
-    return {name for name in names if name in {"_drafts", "__pycache__"}}
+    return {name for name in names if name == "__pycache__"}
 
 
 def _write_staging_config() -> None:

@@ -51,6 +51,13 @@ def check_site(site_dir: Path) -> list[str]:
         if expected_content not in page.read_text(encoding="utf-8"):
             failures.append(f"route does not contain representative content: {route}")
 
+    for draft_dir in sorted(site_dir.rglob("_drafts")):
+        if not draft_dir.is_dir():
+            continue
+        for page in sorted(draft_dir.rglob("*.html")):
+            route: str = page.relative_to(site_dir).as_posix()
+            failures.append(f"excluded draft route was published: {route}")
+
     index_page: Path = site_dir / "index.html"
     if index_page.is_file():
         index_html: str = index_page.read_text(encoding="utf-8")
