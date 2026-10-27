@@ -12,6 +12,9 @@
 
 from __future__ import annotations
 
+import re
+
+from topmark.core.machine.schemas import MachineKey
 from topmark.core.machine.schemas import MetaPayload
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_mapping
@@ -25,6 +28,11 @@ REQUIRED_META_KEYS: frozenset[str] = frozenset(
         "machine",
     }
 )
+
+PYTHON_ENUM_REPR_RE: re.Pattern[str] = re.compile(
+    r"(?:<)?(?:[A-Za-z_]\w*\.)+[A-Z][A-Za-z0-9_]*\.[A-Z][A-Za-z0-9_]*",
+)
+"""Python enum-style representation that must not appear in machine output."""
 
 
 def machine_meta() -> MetaPayload:
@@ -68,3 +76,43 @@ def assert_machine_meta(
             assert detail_level_obj == expected_detail_level
 
     return meta
+
+
+def assert_machine_stdout_is_clean(
+    output: str,
+) -> None:
+    """Assert that raw machine output has no presentation or enum-repr leakage.
+
+    Args:
+        output: Raw JSON or NDJSON bytes decoded as text by Click's test result.
+
+    Raises:
+        AssertionError: If ANSI escapes or a Python enum representation is present.
+    """
+    assert "\x1b" not in output
+    assert PYTHON_ENUM_REPR_RE.search(output) is None
+
+
+def assert_ndjson_record_envelopes(
+    records: list[dict[str, object]],
+    *,
+    expected_detail_level: str | None = None,
+) -> None:
+    """Assert the documented envelope shared by all NDJSON records.
+
+    Args:
+        records: Parsed NDJSON records in their emitted order.
+        expected_detail_level: Expected metadata detail level when emitted.
+
+    Raises:
+        AssertionError: If a record lacks its kind, metadata, or payload container.
+    """
+    assert records
+    for record in records:
+        kind_obj: object | None = record.get(MachineKey.KIND.value)
+        assert isinstance(kind_obj, str)
+        assert_machine_meta(
+            record.get(MachineKey.META.value),
+            expected_detail_level=expected_detail_level,
+        )
+        assert kind_obj in record

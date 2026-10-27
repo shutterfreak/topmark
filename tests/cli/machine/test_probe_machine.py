@@ -32,6 +32,7 @@ from tests.helpers.console import CapturedConsole
 from tests.helpers.console import make_captured_console
 from tests.helpers.json import parse_json_object
 from tests.helpers.machine import assert_machine_meta
+from tests.helpers.machine import assert_machine_stdout_is_clean
 from tests.helpers.machine import machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
@@ -143,6 +144,7 @@ def test_probe_json_output_separates_payload_from_stderr(tmp_path: Path) -> None
 
     assert_SUCCESS(result)
     assert result.stderr == ""
+    assert_machine_stdout_is_clean(result.stdout)
     payload: dict[str, object] = parse_json_object(result.stdout)
     assert "probes" in payload
 
@@ -811,6 +813,7 @@ def test_probe_ndjson_output_separates_payload_from_stderr(tmp_path: Path) -> No
 
     assert_SUCCESS(result)
     assert result.stderr == ""
+    assert_machine_stdout_is_clean(result.stdout)
     records: list[dict[str, object]] = parse_ndjson_records(result.stdout)
     assert "probe" in record_kinds(records)
 
