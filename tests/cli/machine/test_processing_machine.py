@@ -52,6 +52,7 @@ from tests.helpers.console import CapturedConsole
 from tests.helpers.console import make_captured_console
 from tests.helpers.json import parse_json_object
 from tests.helpers.machine import assert_machine_meta
+from tests.helpers.machine import assert_machine_stdout_is_clean
 from tests.helpers.machine import machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from tests.helpers.ndjson import record_kinds
@@ -307,6 +308,7 @@ def test_processing_machine_detail_output_separates_payload_from_stderr(
 
     assert_SUCCESS_or_WOULD_CHANGE(result)
     assert result.stderr == ""
+    assert_machine_stdout_is_clean(result.stdout)
 
     if output_format is OutputFormat.JSON:
         payload: dict[str, object] = parse_json_object(result.stdout)
