@@ -122,7 +122,7 @@ dependencies = [
   docs = [
     # Production static-site generator. Its native modules provide search,
     # callouts, API navigation, and docstring rendering.
-    "zensical>=0.0.68,<0.1.0",
+    "zensical>=0.0.71,<0.1.0",
     # Python handler used by Zensical's native mkdocstrings module.
     "mkdocstrings-python>=2.0.9,<3.0.0",
     # Docstring formatter:

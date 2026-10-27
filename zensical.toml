@@ -9,15 +9,19 @@
 # topmark:header:end
 
 [project]
-site_name        = "TopMark"
+site_name = "TopMark"
 site_description = "A tool to inspect, validate, and manage file headers in codebases."
-site_author      = "Olivier Biot"
-copyright        = "Copyright &copy; 2025 Olivier Biot. Licensed under the MIT license."
-site_url         = "https://topmark.readthedocs.io/"
-repo_name        = "shutterfreak/topmark"
-repo_url         = "https://github.com/shutterfreak/topmark"
-edit_uri         = "edit/main/docs/"
+site_author = "Olivier Biot"
+copyright = "Copyright &copy; 2025 Olivier Biot. Licensed under the MIT license."
+site_url = "https://topmark.readthedocs.io/"
+repo_name = "shutterfreak/topmark"
+repo_url = "https://github.com/shutterfreak/topmark"
+edit_uri = "edit/main/docs/"
 extra_javascript = ["assets/version-warning.js"]
+draft_docs = """
+/_drafts/
+**/_drafts/
+"""
 
 nav = [
   { Home = "index.md" },

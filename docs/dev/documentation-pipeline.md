@@ -112,7 +112,7 @@ that TopMark uses today:
 | API pages and navigation                     | Use Zensical-native `api-autonav` after rebasing source paths to `../src`.                                | Zensical owns this feature; retain only the source-path rewrite while staging is needed.                       |
 | Version expansion and GitHub alerts          | Expand `%%TOPMARK_VERSION%%`; use native `callouts` for alerts.                                           | TopMark owns version expansion; no alert bridge remains.                                                       |
 | Local snippets with rewritten relative links | Expand only current local Markdown directives recursively, rewrite links, and delete staged `_snippets/`. | TopMark docs maintainers; remove when `zensical/backlog#127` supplies the required behavior and parity passes. |
-| Draft and private inputs                     | Omit `_drafts` while copying and delete private snippets after expansion.                                 | TopMark docs maintainers; remove only after an equivalent production configuration is verified.                |
+| Draft and private inputs                     | Zensical's `draft_docs` controls drafts; delete private snippets after expansion.                         | Zensical owns draft visibility; TopMark owns snippet expansion and removal.                                    |
 
 The staged configuration is derived from `zensical.toml` and redirects `mkdocstrings` and
 `api-autonav` source discovery to `../src`. It contains no ignored production plugins; the bridges
@@ -365,10 +365,10 @@ docs/**/_drafts/
 
 are:
 
-- Omitted from the staging copy
+- Copied to the staging tree and matched by Zensical's `draft_docs` configuration
 - Ignored by version control
 - Safe for work-in-progress documentation
-- optionally visible when serving documentation locally (marked as draft)
+- Excluded from production builds and visible when serving documentation locally (marked as draft)
 
 ### Markdown snippets
 

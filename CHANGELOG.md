@@ -31,8 +31,8 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
-- Raised the documentation-extra `zensical` floor to 0.0.68, the first release requiring Python 3.11
-  or later.
+- Raised the documentation-extra `zensical` floor to 0.0.71, which requires Python 3.11 or later.
+- Use Zensical native `draft_docs` handling for local draft previews.
 
 ### Internal - Unreleased
 

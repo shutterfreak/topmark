@@ -49,3 +49,26 @@ def test_check_site_reports_missing_route_and_search_index(tmp_path: Path) -> No
 
     assert "missing required route: usage/cli/index.html" in failures
     assert "missing search index: search.json" in failures
+
+
+def test_check_site_reports_published_draft_routes(tmp_path: Path) -> None:
+    """Production parity rejects root and nested routes reserved for draft preview."""
+    _write_contract_site(tmp_path)
+    root_draft_route: Path = tmp_path / "_drafts/pipeline/index.html"
+    nested_draft_route: Path = tmp_path / "ci/_drafts/release/index.html"
+    for draft_route in (root_draft_route, nested_draft_route):
+        draft_route.parent.mkdir(parents=True, exist_ok=True)
+        draft_route.write_text("Draft", encoding="utf-8")
+
+    assert check_site(tmp_path) == [
+        "excluded draft route was published: _drafts/pipeline/index.html",
+        "excluded draft route was published: ci/_drafts/release/index.html",
+    ]
+
+
+def test_check_site_ignores_a_file_named_drafts(tmp_path: Path) -> None:
+    """A non-directory named ``_drafts`` does not represent a published draft route."""
+    _write_contract_site(tmp_path)
+    (tmp_path / "_drafts").write_text("Not a draft directory", encoding="utf-8")
+
+    assert check_site(tmp_path) == []
