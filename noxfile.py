@@ -328,6 +328,7 @@ def _run_dependency_lower_bound_types(
     session: nox.Session,
     project_path: str,
     python_version: str,
+    virtual_environment_parent: str,
     environment_variables: dict[str, str],
 ) -> None:
     """Run lower-bound Pyright validation for one Python version."""
@@ -345,6 +346,8 @@ def _run_dependency_lower_bound_types(
         "pyright",
         "--pythonversion",
         python_version,
+        "--venvpath",
+        virtual_environment_parent,
         external=True,
         env=environment_variables,
     )
@@ -433,7 +436,8 @@ def _run_dependency_lower_bounds(
                 uses_python_matrix = bool(validations & {"tests", "types"})
                 python_versions: list[str] = PYTHONS if uses_python_matrix else [CANONICAL_PYTHON]
                 for python_version in python_versions:
-                    environment = str(pathlib.Path(environment_root, python_version))
+                    virtual_environment_parent = pathlib.Path(environment_root, python_version)
+                    environment = str(virtual_environment_parent / ".venv")
                     environment_variables: dict[str, str] = {
                         "UV_PROJECT_ENVIRONMENT": environment,
                         "VIRTUAL_ENV": environment,
@@ -454,6 +458,7 @@ def _run_dependency_lower_bounds(
                             session,
                             temporary_project,
                             python_version,
+                            str(virtual_environment_parent),
                             environment_variables,
                         )
                     if "ruff" in validations and python_version == CANONICAL_PYTHON:
