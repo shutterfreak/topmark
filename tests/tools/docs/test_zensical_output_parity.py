@@ -64,3 +64,11 @@ def test_check_site_reports_published_draft_routes(tmp_path: Path) -> None:
         "excluded draft route was published: _drafts/pipeline/index.html",
         "excluded draft route was published: ci/_drafts/release/index.html",
     ]
+
+
+def test_check_site_ignores_a_file_named_drafts(tmp_path: Path) -> None:
+    """A non-directory named ``_drafts`` does not represent a published draft route."""
+    _write_contract_site(tmp_path)
+    (tmp_path / "_drafts").write_text("Not a draft directory", encoding="utf-8")
+
+    assert check_site(tmp_path) == []
