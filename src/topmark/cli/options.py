@@ -32,6 +32,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import NotRequired
 from typing import ParamSpec
@@ -89,7 +90,7 @@ PATH_COMMAND_CONTEXT_SETTINGS: dict[str, list[str] | bool] = {
 }
 
 
-class StdinUse(str, Enum):
+class StdinUse(StrEnum):
     """Identify which `--*-from` option (if any) consumes STDIN.
 
     Values:
@@ -554,10 +555,10 @@ def enum_value_help_text(
         Help text suitable for inclusion in a Click option description.
     """
     default_value: str | None
-    if isinstance(default, Enum):
-        default_value = str(default.value)
-    elif default is None:
+    if default is None:
         default_value = None
+    elif isinstance(default, Enum):
+        default_value = str(default.value)
     else:
         default_value = str(default)
 

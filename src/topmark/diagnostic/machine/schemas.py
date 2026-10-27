@@ -26,7 +26,7 @@ typically prebuild lists of `MachineDiagnosticEntry` and a
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from topmark.diagnostic.model import DiagnosticStats
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import Diagnostic
 
 
-class DiagnosticKey(str, Enum):
+class DiagnosticKey(StrEnum):
     """Stable keys used by diagnostic machine-readable output payloads.
 
     These keys belong to the shared diagnostic domain and are reused by other
@@ -65,7 +65,7 @@ class DiagnosticKey(str, Enum):
     ERROR = "error"
 
 
-class DiagnosticKind(str, Enum):
+class DiagnosticKind(StrEnum):
     """Stable NDJSON record kinds owned by the diagnostic domain.
 
     Attributes:

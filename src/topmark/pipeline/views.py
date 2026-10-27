@@ -23,7 +23,7 @@ dataclasses per phase.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Protocol
 from typing import runtime_checkable
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class ViewSlot(str, Enum):
+class ViewSlot(StrEnum):
     """Named view slots that pipeline steps may consume.
 
     The values are intentionally plain strings so they remain stable in logs,
@@ -293,7 +293,7 @@ def compose_updated_content(*segments: Sequence[str]) -> SegmentUpdatedContent:
     return SegmentUpdatedContent(segments=tuple(segments))
 
 
-class PlanEditKind(str, Enum):
+class PlanEditKind(StrEnum):
     """Kind of contiguous edit planned for an updated file image."""
 
     INSERT = "insert"

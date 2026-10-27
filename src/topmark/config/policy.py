@@ -43,7 +43,7 @@ TOML mapping:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Protocol
 
@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-class HeaderMutationMode(str, Enum):
+class HeaderMutationMode(StrEnum):
     """Defines how headers may be mutated.
 
     Attributes:
@@ -70,7 +70,7 @@ class HeaderMutationMode(str, Enum):
     UPDATE_ONLY = "update_only"
 
 
-class EmptyInsertMode(str, Enum):
+class EmptyInsertMode(StrEnum):
     """How TopMark classifies "empty" inputs for header insertion.
 
     The selected mode determines which files count as "empty" when evaluating
@@ -90,7 +90,7 @@ class EmptyInsertMode(str, Enum):
     WHITESPACE_EMPTY = "whitespace_empty"
 
 
-class BomBeforeShebangMode(str, Enum):
+class BomBeforeShebangMode(StrEnum):
     """How TopMark handles a UTF-8 BOM immediately before a shebang.
 
     Attributes:
@@ -102,7 +102,7 @@ class BomBeforeShebangMode(str, Enum):
     REMOVE_BOM = "remove_bom"
 
 
-class MixedLineEndingsMode(str, Enum):
+class MixedLineEndingsMode(StrEnum):
     """How TopMark handles files containing multiple physical newline styles.
 
     Attributes:

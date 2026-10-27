@@ -22,14 +22,14 @@ pipeline, API-command, CLI, and presentation imports.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Final
 
 NO_REASON_PROVIDED: Final[str] = "(no reason provided)"
 """Outcome reason when no reason provided."""
 
 
-class Outcome(str, Enum):
+class Outcome(StrEnum):
     """Stable per-file outcome bucket used by the public API.
 
     Values mirror the high-level outcome categories exposed by the CLI and API.

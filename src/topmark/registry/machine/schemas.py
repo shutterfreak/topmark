@@ -38,12 +38,12 @@ Envelope/record shaping lives in
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TypeAlias
 from typing import TypedDict
 
 
-class RegistryKey(str, Enum):
+class RegistryKey(StrEnum):
     """Stable registry-domain keys for machine-readable payloads.
 
     These keys describe the JSON payload containers used by registry-related
@@ -66,7 +66,7 @@ class RegistryKey(str, Enum):
     UNUSED_PROCESSORS = "unused_processors"
 
 
-class RegistryKind(str, Enum):
+class RegistryKind(StrEnum):
     """Stable NDJSON kinds emitted by the registry machine-readable output domain.
 
     Attributes:

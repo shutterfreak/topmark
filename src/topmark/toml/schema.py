@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from difflib import get_close_matches
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Final
 
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlValue
 
 
-class TomlSection(str, Enum):
+class TomlSection(StrEnum):
     """Known top-level TOML sections owned by TopMark."""
 
     CONFIG = "config"
@@ -64,7 +64,7 @@ class TomlSection(str, Enum):
     FILES = "files"
 
 
-class TomlValidationMode(str, Enum):
+class TomlValidationMode(StrEnum):
     """Validation modes for TopMark TOML documents.
 
     `INPUT` validates user-authored configuration. `PROVENANCE` additionally

@@ -19,10 +19,10 @@ Machine-readable formats (JSON, NDJSON) are intended to be stable and colorless
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Output format for CLI rendering.
 
     Attributes:

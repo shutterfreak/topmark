@@ -25,6 +25,9 @@ ______________________________________________________________________
 - **Python 3.10 is no longer supported.** TopMark 3.0 requires Python 3.11 or later. Upgrade the
   interpreter used by local environments, CI jobs, containers, and pre-commit before installing
   TopMark 3.0; see [Upgrading to TopMark 3.0](docs/usage/upgrading-to-3.0.md).
+- **String enum rendering now uses canonical values.** Passing a TopMark string enum member to
+  `str()` or an f-string now produces its configured value instead of a Python `Class.MEMBER`
+  representation. Callers that require the member identifier must use `.name` explicitly.
 
 ### Changed - Unreleased
 
@@ -38,6 +41,7 @@ ______________________________________________________________________
   package metadata requires a scheduled retirement decision for the next applicable release.
 - Run lower-bound dependency validation in a disposable Git worktree so an interrupted run cannot
   leave the contributor checkout with a temporary dependency resolution.
+- Removed the unused internal `enum_from_name` and `KeyedStrEnum` utilities.
 
 ______________________________________________________________________
 

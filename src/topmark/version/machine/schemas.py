@@ -18,10 +18,10 @@ record kinds live in `topmark.diagnostic.machine.schemas`.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class VersionKey(str, Enum):
+class VersionKey(StrEnum):
     """Stable version-domain keys for machine-readable payloads.
 
     Attributes:
@@ -35,7 +35,7 @@ class VersionKey(str, Enum):
     VERSION_FORMAT = "version_format"
 
 
-class VersionKind(str, Enum):
+class VersionKind(StrEnum):
     """Stable NDJSON kinds emitted by the version machine-readable output domain.
 
     Attributes:

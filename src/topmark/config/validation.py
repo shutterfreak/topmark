@@ -42,13 +42,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from enum import Enum
+from enum import StrEnum
 
 from topmark.diagnostic.model import FrozenDiagnosticLog
 from topmark.diagnostic.model import MutableDiagnosticLog
 
 
-class ValidationStage(str, Enum):
+class ValidationStage(StrEnum):
     """Named validation stages for config-loading and preflight diagnostics."""
 
     TOML_SOURCE = "toml_source"

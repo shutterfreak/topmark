@@ -37,7 +37,7 @@ Notes:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Protocol
 
@@ -178,7 +178,7 @@ class SupportsOutcomeClassification(Protocol):
         ...
 
 
-class ResultActionIntent(str, Enum):
+class ResultActionIntent(StrEnum):
     """Per-result action intent inferred from pipeline status.
 
     `ResultActionIntent` is a small internal classification used by

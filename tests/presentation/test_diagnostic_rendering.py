@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import cast
 
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from topmark.presentation.shared.diagnostic import HumanDiagnostics
 
 
-class CustomLevel(str, Enum):
+class CustomLevel(StrEnum):
     """Non-standard level used to exercise human diagnostic fallback handling."""
 
     NOTICE = "notice"

@@ -34,11 +34,11 @@ Design notes:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 
-class StyleRole(str, Enum):
+class StyleRole(StrEnum):
     """Semantic styling role for human-facing rendering.
 
     `StyleRole` expresses *meaning* (severity, outcome, emphasis) without prescribing a concrete
@@ -92,7 +92,7 @@ class StyleRole(str, Enum):
 # --- Semantic string enum for backend-agnostic styling -------------------------------------------
 
 
-class StyledStrEnum(str, Enum):
+class StyledStrEnum(StrEnum):
     """Enum whose value is a display string and that carries a semantic `StyleRole`.
 
     This is a backend-agnostic enum helper: core code attaches semantic meaning (`StyleRole`)

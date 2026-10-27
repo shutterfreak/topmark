@@ -61,6 +61,7 @@ def test_content_stream_event_contract_uses_public_file_result() -> None:
         "file_result",
         "run_completed",
     ]
+    assert all(type(event.kind) is str for event in stream)
     assert file_event.result is file_result
     assert completed.summary == {"would update": 1}
 
@@ -134,6 +135,7 @@ def test_stream_check_matches_batch_result_and_order(
         "file_result",
         "run_completed",
     ]
+    assert all(type(event.kind) is str for event in events)
     started = events[0]
     assert isinstance(started, api.RunStartedEvent)
     assert started.command == "check"
@@ -227,6 +229,7 @@ def test_stream_probe_matches_batch_result_and_includes_synthetic_missing(
         "file_result",
         "run_completed",
     ]
+    assert all(type(event.kind) is str for event in events)
     started = events[0]
     assert isinstance(started, api.RunStartedEvent)
     assert started.command == "probe"

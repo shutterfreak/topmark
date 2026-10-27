@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import pytest
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
 
 
-class SampleMode(str, Enum):
+class SampleMode(StrEnum):
     """Small enum used to test checked enum extraction."""
 
     FAST = "fast"

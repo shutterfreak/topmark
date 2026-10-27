@@ -40,7 +40,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from dataclasses import field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from topmark.core.enum_mixins import EnumIntrospectionMixin
@@ -56,7 +56,7 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-class Axis(EnumIntrospectionMixin, str, Enum):
+class Axis(EnumIntrospectionMixin, StrEnum):
     """Canonical axes that can emit hints.
 
     Values are short, machine-friendly strings that align with pipeline status axes.
@@ -142,7 +142,7 @@ class Cluster(EnumIntrospectionMixin, StyledStrEnum):
     )
 
 
-class KnownCode(EnumIntrospectionMixin, str, Enum):
+class KnownCode(EnumIntrospectionMixin, StrEnum):
     """Illustrative, non-exhaustive set of codes.
 
     Codes are short, namespaced, and machine-friendly. Treat this enum as a

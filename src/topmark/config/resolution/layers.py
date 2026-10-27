@@ -18,7 +18,7 @@ resolved TOML sources.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
@@ -47,7 +47,7 @@ FIRST_SOURCE_LAYER_PRECEDENCE: Final[int] = 1
 """Stable precedence assigned to the first non-default resolved TOML source layer."""
 
 
-class ConfigLayerKind(str, Enum):
+class ConfigLayerKind(StrEnum):
     """Provenance kinds used during layered config resolution."""
 
     DEFAULT = "default"

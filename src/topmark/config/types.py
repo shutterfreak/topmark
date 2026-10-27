@@ -29,12 +29,12 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from pathspec import PathSpec
 from pathspec.patterns.gitignore.basic import GitIgnoreBasicPattern
 
-from topmark.core.enum_mixins import KeyedStrEnum
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
@@ -131,19 +131,25 @@ class PatternGroup:
         return _compile_gitignore_pathspec_cached(self.patterns)
 
 
-class OutputTarget(KeyedStrEnum):
-    """Available targets for writing processed file content."""
+class OutputTarget(StrEnum):
+    """Available targets for writing processed file content.
 
-    FILE = ("file", "Write to file", ("FILE",))
-    STDOUT = ("stdout", "Write to STDOUT", ("STDOUT",))
-
-
-class FileWriteStrategy(KeyedStrEnum):
-    """Available strategies for writing file content.
-
-    The enum `.value` is the stable machine key used in config and JSON.
-    The human label lives in `.label`.
+    Attributes:
+        FILE: Write to file.
+        STDOUT: Write to STDOUT.
     """
 
-    ATOMIC = ("atomic", "Safe atomic writer (default)", ("ATOMIC", "safe", "default"))
-    INPLACE = ("inplace", "Fast in-place writer", ("IN_PLACE", "INPLACE", "in_place", "fast"))
+    FILE = "file"
+    STDOUT = "stdout"
+
+
+class FileWriteStrategy(StrEnum):
+    """Available strategies for writing file content.
+
+    Attributes:
+        ATOMIC: Safe atomic writer (default).
+        INPLACE: Fast in-place writer.
+    """
+
+    ATOMIC = "atomic"
+    INPLACE = "inplace"

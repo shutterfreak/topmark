@@ -37,6 +37,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TypedDict
 from typing import cast
@@ -44,7 +45,7 @@ from typing import cast
 from topmark.utils.path import format_machine_path
 
 
-class MachineKey(str, Enum):
+class MachineKey(StrEnum):
     """Stable keys shared by all machine-readable output envelopes.
 
     These keys are intentionally limited to the shared envelope layer and other
@@ -71,7 +72,7 @@ class MachineKey(str, Enum):
     SUBCOMMAND = "subcommand"
 
 
-class MachineMetaKey(str, Enum):
+class MachineMetaKey(StrEnum):
     """Stable keys for the shared machine-readable output metadata payload.
 
     Attributes:
@@ -89,7 +90,7 @@ class MachineMetaKey(str, Enum):
     MACHINE = "machine"
 
 
-class MachineDomain(str, Enum):
+class MachineDomain(StrEnum):
     """Stable diagnostic domains shared across machine-readable output emitters.
 
     These values are used as the payload value for the envelope-level
@@ -108,7 +109,7 @@ class MachineDomain(str, Enum):
     VERSION = "version"
 
 
-class DetailLevel(str, Enum):
+class DetailLevel(StrEnum):
     """Enumeration of supported machine-readable output detail levels.
 
     These values describe how much information is included in a payload and are
