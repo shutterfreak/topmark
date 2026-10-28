@@ -723,8 +723,8 @@ File-backed configuration provenance uses configuration-source identity based on
 configuration-file target. Symlink spellings for configuration files are therefore not preserved for
 machine-readable provenance, precedence, scope, or applicability evaluation.
 
-Project-chain discovery begins from the resolved discovery anchor before configuration-source
-identity is established. Machine-readable provenance payloads expose that resolved starting point as
+Configuration-source discovery resolves input paths before collecting ancestor chains and directory
+descendants. Machine-readable provenance payloads expose the primary resolved starting point as
 `discovery_anchor`, then describe the resolved configuration sources and, when available, their
 resolved scope roots. If multiple entries resolve to the same configuration-source identity,
 provenance keeps the highest-precedence occurrence and emits one layer for that source identity. The
@@ -752,7 +752,9 @@ ______________________________________________________________________
 
 ## Registry machine-readable output
 
-Registry commands expose the effective composed runtime registry composition.
+Registry commands expose the effective composed runtime registry composition. They do not load
+project configuration or apply per-file configuration layers; use `probe` to inspect
+configuration-sensitive processing behavior.
 
 File type `filenames` fields are emitted as canonical POSIX-style registry matching rules.
 Tail-subpath rules therefore use `/` separators consistently across platforms, regardless of the

@@ -87,9 +87,9 @@ This distinction matters for
 For the canonical user-facing discovery, precedence, path-resolution, and staged validation
 contract, see [Configuration discovery, precedence, and policy](../configuration/discovery.md).
 
-Configuration discovery begins from a discovery anchor (the current working directory or an input
-path). Project-chain discovery walks upward from the resolved discovery anchor before layered
-configuration precedence is evaluated.
+For file-processing commands, each explicit directory input contributes its resolved ancestor chain
+and descendant configuration sources before layered configuration precedence is evaluated.
+File-agnostic configuration inspection uses the current working directory chain.
 
 For file-backed configuration sources, schema processing operates on configuration-source identity
 based on the resolved configuration-file target.

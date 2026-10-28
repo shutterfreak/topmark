@@ -223,6 +223,19 @@ ______________________________________________________________________
 
 ## Resolution terminology
 
+### Configuration source discovery
+
+The process of locating TopMark TOML sources for an invocation before layered configuration is
+built. A file-processing directory input contributes its resolved ancestor chain and descendant
+sources; file-agnostic configuration inspection uses the current working directory chain. Discovery
+is distinct from per-file layer applicability and from processing-file selection.
+
+### Configuration scope
+
+The directory subtree to which a file-backed configuration layer applies. A layer's scope begins at
+the resolved directory containing its source. Nested layers can override inherited settings for
+files in their subtree but do not affect sibling paths.
+
 ### Resolution
 
 The process of selecting the most appropriate file type for a path or input.

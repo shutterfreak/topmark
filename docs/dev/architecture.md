@@ -161,7 +161,7 @@ ______________________________________________________________________
 TopMark separates configuration concerns into three layers:
 
 - **TOML layer** (\[`topmark.toml`\][topmark.toml]):
-  - workspace-root and configuration-discovery anchoring from the resolved discovery anchor
+  - configuration-source discovery from resolved input chains and directory descendants
   - discovery of configuration sources
   - parsing of TOML tables
   - whole-source TOML schema validation (unknown sections / keys, malformed section shapes, missing
@@ -200,9 +200,9 @@ pipeline definition from the pipeline catalogue using the requested pipeline fam
 \[`RunOptions`\][topmark.runtime.model.RunOptions] then copies the overlapping execution state from
 that selection, so mutation mode and diff emission are not repeated independently by each caller.
 
-Project-chain discovery starts from the resolved discovery anchor before configuration-source
-identity is evaluated. This keeps workspace-root discovery separate from configuration-source
-identity normalization and from runtime processing-target identity.
+Configuration-source discovery resolves input paths before walking their ancestor chains and
+directory descendants. This keeps discovery separate from configuration-source identity
+normalization and runtime processing-target identity.
 
 If multiple discovered or explicit configuration entries resolve to the same configuration-source
 identity, TopMark keeps only the highest-precedence occurrence in the layered configuration model.

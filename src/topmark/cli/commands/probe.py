@@ -54,6 +54,7 @@ from topmark.cli.cmd_common import PreparedCliConfig
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
+from topmark.cli.cmd_common import build_scoped_path_configs
 from topmark.cli.cmd_common import exit_for_config_validation_error
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import init_common_state
@@ -424,6 +425,12 @@ def probe_command(
         temp_path=temp_path,
     )
     file_list: list[Path] = list(file_resolution.selected)
+    path_configs: dict[Path, FrozenConfig] = build_scoped_path_configs(
+        layers=prepared_cli_config.layers,
+        config=config,
+        file_list=file_list,
+        stdin_mode=run_options.stdin_mode,
+    )
 
     # Explain only explicit inputs that disappear during discovery/filtering.
     # Recursive traversal may exclude many files; reporting all of them would be
@@ -476,7 +483,7 @@ def probe_command(
         iter_steps_for_files(
             run_options=run_options,
             config=config,
-            path_configs=None,
+            path_configs=path_configs,
             pipeline=pipeline,
             file_list=file_list,
             state=execution_state,

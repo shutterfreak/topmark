@@ -300,9 +300,13 @@ Common configuration sources include:
 - explicit `--config` files
 - CLI options
 
-Project-chain discovery starts from the resolved discovery anchor before layered configuration is
-built. Loaded file-backed configuration sources then use configuration-source identity based on
-resolved configuration-file targets. Layered configuration provenance, applicability evaluation, and
+For file-processing commands, every explicit directory input contributes both its resolved ancestor
+chain and supported descendant configuration sources. Each file receives only the applicable scoped
+layers, so a nested configuration overrides inherited settings within its subtree without affecting
+siblings.
+
+Loaded file-backed configuration sources use configuration-source identity based on resolved
+configuration-file targets. Layered configuration provenance, applicability evaluation, and
 precedence therefore behave consistently when working directories, input anchors, or configuration
 files are accessed through symlinks.
 

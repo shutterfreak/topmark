@@ -28,6 +28,10 @@ ______________________________________________________________________
 - **String enum rendering now uses canonical values.** Passing a TopMark string enum member to
   `str()` or an f-string now produces its configured value instead of a Python `Class.MEMBER`
   representation. Callers that require the member identifier must use `.name` explicitly.
+- **Directory processing now honors nested configuration sources.** Running a processing command
+  from a directory root discovers nested `topmark.toml` / `pyproject.toml` sources and applies them
+  only within their subtree. This corrects prior incomplete discovery, but can change selected files
+  or rendered headers for repositories that already contain nested configuration. See #486.
 
 ### Changed - Unreleased
 

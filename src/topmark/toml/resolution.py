@@ -196,6 +196,18 @@ def _discover_user_config_file() -> Path | None:
 # ---- Project/local upward discovery ----
 
 
+def _config_source_sort_key(
+    path: Path,
+) -> tuple[int, str, int]:
+    """Return the stable precedence key for a discovered config source."""
+    parent: Path = path.resolve().parent
+    return (
+        len(parent.parts),
+        parent.as_posix(),
+        0 if path.name == "pyproject.toml" else 1,
+    )
+
+
 def _discover_local_config_files(start: Path) -> list[Path]:
     """Return config files discovered by walking upward from ``start``.
 
@@ -285,6 +297,73 @@ def _discover_local_config_files(start: Path) -> list[Path]:
         ordered.extend(dir_list)  # pyproject then topmark within the directory
 
     return ordered
+
+
+def _discover_descendant_config_files(
+    input_paths: Iterable[Path],
+) -> list[Path]:
+    """Return supported config files below directory input paths.
+
+    Descendant source discovery is intentionally independent of file selection.
+    A nested source can itself refine include or exclude settings, so consulting
+    already-selected files here would be circular. Processing-target traversal
+    still applies the effective per-path filters later.
+
+    Args:
+        input_paths: Explicit processing paths supplied for the invocation.
+
+    Returns:
+        Existing descendant configuration files in stable directory and
+        same-directory precedence order.
+    """
+    entries: list[Path] = []
+    seen: set[Path] = set()
+
+    for raw_input_path in input_paths:
+        root: Path = raw_input_path.resolve()
+        if not root.is_dir():
+            continue
+
+        for directory in sorted(path for path in root.rglob("*") if path.is_dir()):
+            for name in ("pyproject.toml", "topmark.toml"):
+                candidate: Path = directory / name
+                if not candidate.is_file():
+                    continue
+                identity: Path = candidate.resolve()
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                entries.append(candidate)
+
+    return sorted(entries, key=_config_source_sort_key)
+
+
+def _discover_local_config_files_for_inputs(
+    input_paths: Iterable[Path],
+) -> list[Path]:
+    """Return project config sources relevant to explicit input paths.
+
+    Each input contributes its upward project chain. Directory inputs also
+    contribute descendant config sources so that a local source can be selected
+    later for files in its scope. Unrelated sibling sources may share a stable
+    global ordering because per-path applicability prevents them from merging.
+
+    Args:
+        input_paths: Explicit processing paths supplied for the invocation.
+
+    Returns:
+        Unique project configuration files in stable precedence order.
+    """
+    candidates: list[Path] = []
+    for input_path in input_paths:
+        candidates.extend(_discover_local_config_files(input_path))
+    candidates.extend(_discover_descendant_config_files(input_paths))
+
+    unique: dict[Path, Path] = {}
+    for candidate in candidates:
+        unique.setdefault(candidate.resolve(), candidate)
+
+    return sorted(unique.values(), key=_config_source_sort_key)
 
 
 # ---- Resolve TOML-side settings ----
@@ -409,7 +488,12 @@ def resolve_topmark_toml_sources(
         if user_cfg_path is not None:
             _append_loaded_source(source_entries, user_cfg_path, kind="user")
 
-        for cfg_path in _discover_local_config_files(anchor):
+        local_config_paths: list[Path] = (
+            _discover_local_config_files_for_inputs(input_path_list)
+            if input_path_list
+            else _discover_local_config_files(anchor)
+        )
+        for cfg_path in local_config_paths:
             _append_loaded_source(source_entries, cfg_path, kind="discovered")
     else:
         logger.debug("Skipping discovered TOML sources because no_config=True")

@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import NoReturn
@@ -45,6 +47,9 @@ from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
+from topmark.config.resolution.layers import ConfigLayer
+from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
+from topmark.config.resolution.merge import build_effective_config_for_path
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.core.constants import CLI_OVERRIDE_STR
@@ -341,6 +346,43 @@ def build_cli_policy_overrides(state: TopmarkCliState) -> PolicyOverrides:
 # ---- Config/TOML preparation for a CLI run ----
 
 
+def _empty_config_layers() -> list[ConfigLayer]:
+    """Return an empty default layer list for prepared CLI config state."""
+    return []
+
+
+def build_scoped_path_configs(
+    *,
+    layers: list[ConfigLayer],
+    config: FrozenConfig,
+    file_list: list[Path],
+    stdin_mode: bool,
+) -> dict[Path, FrozenConfig]:
+    """Build per-file TOML configs while retaining invocation-wide overlays.
+
+    Args:
+        layers: Discovered TOML provenance layers.
+        config: Fully resolved invocation configuration.
+        file_list: Selected processing files.
+        stdin_mode: Whether files are temporary content-STDIN materializations.
+
+    Returns:
+        Effective configuration for every selected file.
+    """
+    if stdin_mode:
+        return dict.fromkeys(file_list, config)
+
+    return {
+        path: replace(
+            build_effective_config_for_path(layers, path).freeze(),
+            policy=config.policy,
+            policy_by_type=config.policy_by_type,
+            opt_in_file_types=config.opt_in_file_types,
+        )
+        for path in file_list
+    }
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class PreparedCliConfig:
     """Prepared CLI config state for a command run.
@@ -348,10 +390,14 @@ class PreparedCliConfig:
     Attributes:
         resolved_toml: Resolved TOML-side state for the current invocation.
         draft: Mutable config draft after layered CLI overrides.
+        layers: Source layers used to resolve file-specific configuration.
     """
 
     resolved_toml: ResolvedTopmarkTomlSources
     draft: MutableConfig
+    layers: list[ConfigLayer] = field(
+        default_factory=_empty_config_layers,
+    )
 
 
 def exit_for_config_validation_error(
@@ -521,8 +567,12 @@ def build_resolved_toml_sources_and_config_for_plan(
     )
 
     overridden_draft: MutableConfig = apply_config_overrides(draft, overrides=overrides)
+    layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(
+        resolved_toml.sources,
+    )
 
     return PreparedCliConfig(
         resolved_toml=resolved_toml,
         draft=overridden_draft,
+        layers=layers,
     )

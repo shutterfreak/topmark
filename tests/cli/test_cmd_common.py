@@ -24,6 +24,7 @@ from topmark.cli.cmd_common import PreparedCliConfig
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
+from topmark.cli.cmd_common import build_scoped_path_configs
 from topmark.cli.cmd_common import exit_for_config_validation_error
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import resolve_human_console
@@ -94,6 +95,40 @@ def _empty_input_plan(
         include_patterns=include_patterns or [],
         exclude_patterns=exclude_patterns or [],
     )
+
+
+def test_prepared_cli_config_default_layers_are_empty() -> None:
+    """Prepared CLI config keeps an independent empty default layer collection."""
+    prepared: PreparedCliConfig = PreparedCliConfig(
+        resolved_toml=ResolvedTopmarkTomlSources(
+            sources=[],
+            writer_options=None,
+            strict=None,
+        ),
+        draft=MutableConfig(),
+    )
+
+    assert prepared.layers == []
+
+
+@pytest.mark.parametrize("stdin_mode", [False, True])
+def test_build_scoped_path_configs_handles_stdin_and_filesystem_paths(
+    tmp_path: Path,
+    stdin_mode: bool,
+) -> None:
+    """Scoped config construction preserves the resolved invocation policy."""
+    target: Path = tmp_path / "module.py"
+    target.write_text("x\n", encoding="utf-8")
+    config: FrozenConfig = MutableConfig().freeze()
+
+    path_configs: dict[Path, FrozenConfig] = build_scoped_path_configs(
+        layers=[],
+        config=config,
+        file_list=[target],
+        stdin_mode=stdin_mode,
+    )
+
+    assert path_configs[target].policy == config.policy
 
 
 def _mutable_config_with_error() -> MutableConfig:
