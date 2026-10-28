@@ -36,9 +36,11 @@ TopMark classifies protocols as:
 
 Add a Pyright-only fixture under `tests/typecheck/<subsystem>/` when a real concrete provider is
 intended to satisfy a protocol, that relationship matters architecturally, and ordinary production
-typing does not make the relationship sufficiently explicit. A verifier accepts the real concrete
+typing does not make the relationship sufficiently explicit. The fixture accepts the real concrete
 type and returns the protocol type. Keep type-only imports under `TYPE_CHECKING`; do not use `Any`,
-`cast()`, ignored errors, unreachable calls, nominal test subclasses, or artificial doubles.
+`cast()`, ignored errors, unreachable calls, nominal test subclasses, or artificial doubles. In
+particular, do not invent a provider for a compatibility vocabulary that has no canonical TopMark
+implementation.
 
 These fixtures are not pytest tests. They are never invoked and do not contribute runtime coverage;
 strict Pyright analysis is the assertion. Positive conformance fixtures must remain clean on both
@@ -142,7 +144,8 @@ For each new or changed protocol:
 
 1. Name its owner and classification, concrete providers, and consumers.
 1. Keep the surface minimal and read-only unless mutation is part of the contract.
-1. Add a `tests/typecheck` fixture only for a durable, otherwise non-obvious relationship.
+1. Add a `tests/typecheck` fixture only for a durable, otherwise non-obvious relationship with a
+   real TopMark provider; never manufacture a provider merely to type-check the protocol.
 1. Use `@runtime_checkable` only for an intentional dynamic boundary and test TopMark's real control
    flow, not protocol metadata.
 1. Treat public or plugin-facing member changes as compatibility changes; update documentation,
