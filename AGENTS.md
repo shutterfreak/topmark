@@ -65,37 +65,73 @@ ______________________________________________________________________
 
 ## Implementation practices
 
+### Core workflows
+
 - Inspect the working tree before editing and preserve unrelated user changes.
+- Leave changes unstaged by default. Do not auto-commit; stage or commit only when the user
+  explicitly asks.
 - Keep changes focused and add or update tests alongside behavioral changes.
 - Prefer the existing Make, Nox, and repository tool entry points over ad hoc replacements.
 - For ad hoc Python or tool invocation, use `uv run` (e.g., `uv run pytest`, `uv run pyright`) to
   ensure execution inside the project environment. Prefer the documented Make or Nox entry points
   for repository validation.
+- Keep documentation links relative inside `docs/` unless the documented conventions specifically
+  require a hosted URL.
+- Update documentation when behavior, configuration, commands, CI, or supported workflows change.
+
+### Code quality and validation
+
 - When Pyright or Ruff reports an error, fix the root cause (e.g., correct the type annotation or
   refactor) rather than masking it with `# type: ignore` or `# noqa` unless there is a documented,
   unavoidable justification.
 - Follow the Ruff and Pyright configuration in `pyproject.toml`.
+
+### Docstring formatting rules
+
 - Use Google-style docstrings and maintain accurate public exception contracts.
-- Keep documentation links relative inside `docs/` unless the documented conventions specifically
-  require a hosted URL.
-- Update documentation when behavior, configuration, commands, CI, or supported workflows change.
+- Every public module, class, function, and method must contain a docstring.
+- If a docstring requires more than 1 line, structure it exactly with the following ordering and
+  spacing:
+  1. A concise, single-line "title" summary string.
+  1. Exactly one blank line.
+  1. An expanded descriptive paragraph detailing functional behavior (one or more paragraphs).
+  1. Exactly one blank line.
+  1. An `Args:` or `Attributes:` section itemizing elements, matching block indentation.
+  1. Exactly one blank line.
+  1. A `Returns:` section itemizing the output description.
+- **No Type Redundancy:** Never repeat type annotations or structural shapes inside the text
+  descriptions of `Args:`, `Attributes:`, or `Returns:` sections. Let the source code type
+  declarations handle type definitions natively.
 
 ______________________________________________________________________
 
 ## Python coding standards for agents
 
-- **Single-Line Imports Only:** Ruff is configured with `force-single-line = true`. Never write
-  multi-line bracketed imports (e.g., `from x import (a, b)`). Each imported name must be on its own
-  line (`from x import a`, `from x import b`).
-- **Pathlib Over OS Path:** Ruff's `PTH` rules are active. Prefer `pathlib.Path` for filesystem path
-  construction and traversal; use `os.path` only for a platform-specific operation that `Path` does
-  not express clearly, and document the reason.
-- **Strict Typing & Annotations:**
-  - Every function and method argument and return value must be fully annotated (`ANN` rules +
-    Pyright strict mode).
-  - Include `from __future__ import annotations` at the top of every new Python file (enforced by
-    isort rules).
-  - Do not use `# type: ignore` or `Any` as a shortcut; fix type errors at the root.
+### Imports
+
+Ruff is configured with `force-single-line = true`. Never write multi-line bracketed imports (for
+example, `from x import (a, b)`); put each imported name on its own line.
+
+### Filesystem behavior
+
+Ruff's `PTH` rules are active. Prefer `pathlib.Path` for filesystem construction and traversal, and
+write code and tests against platform-independent path behavior whenever possible. Use `os.path`,
+native path strings, or other platform-specific behavior only when the contract requires it, and
+document why. Mark tests that require a particular platform with `@pytest.mark.skipif()` and a brief
+reason; prefer `PurePath` variants or portable fixtures when they can exercise the same contract on
+every host.
+
+### Typing
+
+Every function and method argument and return value must be fully annotated (`ANN` rules and Pyright
+strict mode). Include `from __future__ import annotations` at the top of every new Python file, as
+enforced by isort. Do not use `# type: ignore` or `Any` as shortcuts; fix the type error at its
+root. Use `typing.cast()` only when a documented invariant cannot be expressed to Pyright. Prefer an
+`isinstance` check, a type guard, a protocol, or a better annotation, and keep any necessary cast
+tightly scoped to the boundary it represents. Use built-in generic types in annotations
+(`dict[str, int]`, `list[Path]`, `tuple[str, ...]`) rather than deprecated `typing.Dict`,
+`typing.List`, and similar aliases. Use `collections.abc` for abstract container interfaces where
+appropriate.
 
 ______________________________________________________________________
 
@@ -120,22 +156,30 @@ make coverage
 make coverage-tools
 ```
 
-Additional rules:
+### Test execution
 
-- Parallelize pytest-capable Make targets when useful by passing `PYTEST_PAR="-n auto"`, for example
-  `make pre-pr PYTEST_PAR="-n auto"`, `make pytest PYTEST_PAR="-n auto"`, or
-  `make dependency-lower-bounds PYTEST_PAR="-n auto"`.
-- Run `make docs-build` for documentation, docstring, or generated-reference changes.
-- Run `make links-site` when changing documentation links or link-validation behavior.
-- Run `make api-snapshot-dev` when touching the stable public API.
-- Run `make api-snapshot-update` only for an intentional, reviewed public API change.
-- For behavior-changing product code, run `make coverage` when feasible, then inspect changed
-  executable lines and branches with `make coverage-changed`; report the diagnostic result or why it
-  was not run. For behavior-changing repository tooling, run `make coverage-tools` when feasible.
-  Coverage is a diagnostic, not a percentage-driven release gate.
-- After dependency edits, update `uv.lock` with `make uv-lock` or `make uv-lock-upgrade`, as
+Run the narrowest check that exercises the change while iterating, then run `make pre-pr` before
+handoff for a PR-sized change. Where it helps, parallelize pytest-capable Make targets with
+`PYTEST_PAR="-n auto"` (including `pre-pr`, `pytest`, `coverage`, `coverage-tools`, and
+`dependency-lower-bounds`). Use the documented Make or Nox targets for the full supported-Python
+matrix rather than inventing an ad hoc replacement.
+
+### Change-triggered checks
+
+- Documentation, docstrings, or generated-reference changes: run `make docs-build`.
+- Documentation links or link-validation behavior: also run `make links-site`.
+- Stable public API changes: run `make api-snapshot-dev`; run `make api-snapshot-update` only for an
+  intentional, reviewed baseline change.
+- Dependency changes: update `uv.lock` with `make uv-lock` or `make uv-lock-upgrade`, as
   appropriate.
-- Report checks that were not run and the reason they were skipped.
+
+### Coverage and handoff
+
+For behavior-changing product code, run `make coverage` when feasible, followed by
+`make coverage-changed`; inspect the changed executable lines and branches. For behavior-changing
+repository tooling, run `make coverage-tools` when feasible. Coverage is diagnostic, not a
+percentage-driven release gate. Report every relevant check run, its result, and any skipped check
+with the reason.
 
 ______________________________________________________________________
 
