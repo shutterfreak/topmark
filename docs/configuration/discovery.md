@@ -40,13 +40,14 @@ Configuration sources are discovered as follows, from lowest to highest preceden
    - `$XDG_CONFIG_HOME/topmark/topmark.toml`, or
    - `~/.topmark.toml`
 
-1. **Project configs (root → current)**\
-   Discovered upward from the **discovery anchor** to the filesystem root:
+1. **Project configs (root → target)**\
+   TopMark discovers each explicit input's ancestor chain and, for directory inputs, supported
+   configuration sources below that directory. This lets a local source override inherited settings
+   for its own subtree without affecting siblings:
 
-   - **Anchor selection:** the first input path you pass (its **parent** directory if it is a
-     file).\
-     If no input paths are given (or you read from STDIN), the anchor is the **current working
-     directory**.\
+   - **Anchor selection:** a file input contributes its parent directory; each directory input
+     contributes its ancestor chain and descendant sources. If no input paths are given (or you read
+     from STDIN), discovery uses the **current working directory** chain only.\
      Use `--no-config` to skip this layer.
    - **Anchor spelling:** discovery anchors are resolved before walking upward, so a symlinked
      anchor follows the resolved target path for project-chain discovery.
@@ -55,7 +56,8 @@ Configuration sources are discovered as follows, from lowest to highest preceden
      - `topmark.toml`
    - **Same-directory precedence:** `pyproject.toml` is merged first, then `topmark.toml` can
      override it.
-   - **Nearest-last wins:** directories are merged **root → current** (the nearest config wins).
+   - **Nearest-last wins:** applicable directories are merged **root → target** (the nearest config
+     wins).
    - **Stopping discovery:** set `[config].root = true` (or `[tool.topmark.config].root = true` in
      `pyproject.toml`) to stop traversal above that directory.
 
@@ -68,6 +70,13 @@ Configuration sources are discovered as follows, from lowest to highest preceden
 > **Summary:** defaults -> user -> project chain (root -> current, stop on `[config].root = true`)
 > -> `--config` (in order) -> CLI.\
 > Use `--no-config` to skip project/user discovery.
+
+Descendant source discovery is separate from processing-file selection. TopMark loads each candidate
+source once before selecting files, because a nested source may define the include/exclude rules
+used for its own subtree. This does not cause excluded files to be processed: normal per-file
+filtering still applies after the effective scoped configuration is built. `config check` and
+`config dump` remain file-agnostic and inspect only the current working directory's ancestor chain
+unless explicit `--config` files are supplied.
 
 ### Configuration-source identity
 

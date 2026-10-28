@@ -37,6 +37,29 @@ Python minor release.
 
 ______________________________________________________________________
 
+## Review nested configuration
+
+TopMark 3.0 discovers configuration sources below a directory processing target. When you run a
+processing command such as `topmark check .`, a nested `topmark.toml` or `pyproject.toml` now
+applies to files in its own directory tree, without changing configuration for siblings. Earlier
+releases could leave those sources undiscovered unless the nested directory or file was named as an
+input explicitly.
+
+Review repositories that already contain nested configuration before upgrading. Their effective
+settings can now change file selection or header rendering when processed from a higher directory.
+Use `root = true` in a nested source when it should stop inheriting project configuration above its
+directory, and run your usual dry-run check to review the result:
+
+```bash
+topmark config check --strict
+topmark check --report noncompliant .
+```
+
+See [Configuration discovery](../configuration/discovery.md) for precedence, source scope, and
+explicit-configuration behavior. This intentional compatibility change resolves [#486].
+
+______________________________________________________________________
+
 ## Update repository automation
 
 Search repository automation for Python 3.10 references and replace them with a supported version or

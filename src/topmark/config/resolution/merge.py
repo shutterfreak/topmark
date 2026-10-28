@@ -24,6 +24,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
+from topmark.config.resolution.layers import ConfigLayerKind
 from topmark.core.logging import get_logger
 from topmark.utils.path import canonical_processing_path
 
@@ -104,6 +105,31 @@ def select_applicable_layers(
         scope_root: Path | None = layer.scope_root
         if scope_root is None or _is_within_scope(resolved_path, scope_root):
             applicable.append(layer)
+
+    # `root = true` stops upward *project* discovery for paths below the
+    # declaring directory. Descendant discovery can load both sides of that
+    # boundary in one invocation, so reapply the boundary while selecting the
+    # effective per-path subset. User and explicit sources retain their normal
+    # applicability and precedence contracts.
+    root_scopes: list[Path] = [
+        layer.scope_root
+        for layer in applicable
+        if layer.kind == ConfigLayerKind.DISCOVERED
+        and layer.root_stop
+        and layer.scope_root is not None
+    ]
+    if root_scopes:
+        nearest_root: Path = max(
+            root_scopes,
+            key=lambda scope: len(scope.parts),
+        )
+        applicable = [
+            layer
+            for layer in applicable
+            if layer.kind != ConfigLayerKind.DISCOVERED
+            or layer.scope_root is None
+            or _is_within_scope(layer.scope_root, nearest_root)
+        ]
 
     logger.debug(
         "Selected %d/%d applicable config layer(s) for %s",

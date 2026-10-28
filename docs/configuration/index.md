@@ -16,9 +16,9 @@ TopMark supports layered configuration with explicit precedence:
 
 - **Defaults** -> **User** (e.g. `$HOME/.config/topmark.toml`) -> **Project chain** (root ->
   current) -> **`--config`** -> **CLI**
-- **Project-chain discovery** starts from the discovery anchor and walks upward using the resolved
-  anchor path, so symlinked working directories or input anchors are followed to their filesystem
-  targets before project configs are discovered.
+- **Project configuration discovery** walks each explicit input's resolved ancestor chain and, for
+  directory inputs, discovers supported nested sources. Scoped layers then apply only to their own
+  subtree, so a nested override does not affect siblings.
 - **Globs declared in config files** are resolved relative to the **directory of that config file**.
 - **Globs declared via CLI** are resolved relative to the **current working directory** (invocation
   site).
@@ -42,6 +42,8 @@ TopMark supports layered configuration with explicit precedence:
   the qualified file type identifier `topmark:python`. TopMark normalizes identifiers to canonical
   qualified file type identities during configuration normalization. For the user-facing contract,
   see [User configuration](../usage/configuration.md#file-type-identifiers).
+
+{% include-markdown "\_snippets/descendant-config-discovery.md" %}
 
 {% include-markdown "\_snippets/config-strictness.md" %}
 

@@ -71,6 +71,7 @@ class ConfigLayer:
         precedence: Stable merge precedence; lower values are applied earlier.
         kind: Provenance kind for the layer.
         config: Parsed layered config fragment contributed by this layer only.
+        root_stop: Whether this discovered source establishes a project-root boundary.
     """
 
     origin: Path | SyntheticConfigSource
@@ -78,6 +79,7 @@ class ConfigLayer:
     precedence: int
     kind: ConfigLayerKind
     config: MutableConfig
+    root_stop: bool = False
 
 
 # ---- Internal layer construction helpers ----
@@ -145,6 +147,7 @@ def _make_layer_from_layered_toml_table(
     data: TomlTable,
     kind: ConfigLayerKind,
     precedence: int,
+    root_stop: bool = False,
 ) -> ConfigLayer:
     """Build one config provenance layer from a layered TOML fragment.
 
@@ -155,6 +158,7 @@ def _make_layer_from_layered_toml_table(
             TOML source and already validated at the TOML layer.
         kind: Provenance kind for the resulting config layer.
         precedence: Stable merge precedence for the resulting config layer.
+        root_stop: Whether the source declares a project-root boundary.
 
     Returns:
         Normalized config provenance layer built from the layered TOML
@@ -176,6 +180,7 @@ def _make_layer_from_layered_toml_table(
             precedence=precedence,
             scope_root=resolved_path.parent,
             config=config,
+            root_stop=root_stop,
         )
 
     config = mutable_config_from_layered_toml_table(
@@ -240,6 +245,7 @@ def build_config_layers_from_resolved_toml_sources(
             data=source.parsed.layered_config,
             kind=_kind_from_resolved_toml_source(source),
             precedence=precedence,
+            root_stop=source.parsed.source_options.root is True,
         )
         layers.append(layer)
         logger.debug(

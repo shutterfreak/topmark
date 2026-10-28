@@ -15,7 +15,7 @@ same discovery/precedence model as the CLI:
   * root → current directory order (nearest wins)
   * same-directory precedence: pyproject.toml first, then topmark.toml
   * honors `root = true` to stop traversal
-  * discovery anchor is the first input path (its parent if a file), else CWD
+  * directory inputs discover scoped descendant configuration sources
 """
 
 from __future__ import annotations
@@ -181,6 +181,37 @@ def test_discovery_anchor_subdir_nearest_wins(tmp_path: Path) -> None:
 
     cli_diff: str = first.views.diff.text or "" if first.views.diff else ""
     assert _contains_aligned_fields(cli_diff), "CLI-like did not honor nearest (child) config"
+
+
+@pytest.mark.integration
+def test_api_directory_root_applies_nested_config_only_to_descendants(
+    tmp_path: Path,
+) -> None:
+    """API root runs apply a descendant config without leaking it to siblings."""
+    root: Path = tmp_path / "project"
+    child: Path = root / "package"
+    sibling: Path = root / "docs"
+    _write(child / "module.py", _mk_py_headerless())
+    _write(sibling / "guide.py", _mk_py_headerless())
+    _write(
+        root / "topmark.toml",
+        f"[{Toml.SECTION_FORMATTING}]\n{Toml.KEY_ALIGN_FIELDS} = true\n",
+    )
+    _write(
+        child / "topmark.toml",
+        f"[{Toml.SECTION_FORMATTING}]\n{Toml.KEY_ALIGN_FIELDS} = false\n",
+    )
+
+    result: api.RunResult = api.check(
+        [root],
+        diff=True,
+        prune_views=False,
+        include_file_types=("python",),
+    )
+    diffs: dict[Path, str] = {item.path: item.diff or "" for item in result.files}
+
+    assert _contains_unaligned_fields(diffs[child / "module.py"])
+    assert _contains_aligned_fields(diffs[sibling / "guide.py"])
 
 
 @pytest.mark.integration

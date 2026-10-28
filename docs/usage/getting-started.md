@@ -178,9 +178,10 @@ topmark check --files-from files.txt
 > resolves equivalent path spellings, such as symlink spellings, to the selected processing path
 > used for runtime processing and machine-readable output.
 >
-> Configuration discovery is evaluated earlier. When TopMark discovers project configuration files,
-> it starts from a discovery anchor (the current working directory or an input path) and walks the
-> project chain from the resolved anchor location.
+> For file-processing commands, every explicit directory input contributes its resolved ancestor
+> chain and supported descendant configuration sources. Each file receives only the applicable
+> scoped layers, so a nested configuration overrides inherited settings within its subtree without
+> affecting siblings.
 >
 > Hard-link policy is evaluated as a processing-target eligibility check. If multiple selected paths
 > refer to the same filesystem object through hard links, TopMark reports each affected path
