@@ -31,8 +31,9 @@ ______________________________________________________________________
 - `src/topmark/` contains the Python package.
 - `tests/` mirrors the package and contains integration, repository-tooling, and
   developer-validation tests.
-- `tests/typecheck/` contains Pyright-only protocol-conformance fixtures; they are not pytest tests
-  and do not contribute runtime coverage. See `docs/dev/protocol-contracts.md`.
+- `tests/typecheck/` contains Pyright-only structural-conformance fixtures. They are not pytest
+  tests and do not contribute runtime coverage; use real production providers rather than test
+  doubles. See `docs/dev/protocol-contracts.md`.
 - `docs/` contains the Zensical documentation source.
 - `tools/` contains repository maintenance and validation utilities.
 - `.github/` contains CI, release, and dependency-maintenance automation.
