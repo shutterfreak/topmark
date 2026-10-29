@@ -1602,7 +1602,6 @@ def test_render_pipeline_command_human_stream_output_rejects_missing_start(
         "quote'and$dollar.json",
         "`tick`.json",
         " leading.json",
-        "trailing.json ",
         r"literal\backslash.json",
         "a=b:c,雪.json",
         "-leading.json",

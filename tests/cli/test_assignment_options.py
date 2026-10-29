@@ -13,6 +13,8 @@
 from __future__ import annotations
 
 import shlex
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
@@ -36,8 +38,6 @@ from topmark.core.typing_guards import is_any_list
 from topmark.pipeline.reporting import ReportScope
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from topmark.config.assignments import FileTypeRule
 
 
@@ -682,6 +682,19 @@ def test_filtered_inference_control_keeps_winner_and_superseded_provenance(
     assert as_object_dict(matches[-1])["action"] == "infer"
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "literal[1] 'quoted'.json",
+        pytest.param(
+            "trailing.json ",
+            marks=pytest.mark.skipif(
+                sys.platform == "win32",
+                reason="Windows filesystem paths do not preserve trailing-space filenames",
+            ),
+        ),
+    ],
+)
 @pytest.mark.parametrize("source", ["cli", "toml"])
 @pytest.mark.parametrize("command", [CliCmd.CHECK, CliCmd.STRIP])
 @pytest.mark.parametrize("fmt", [OutputFormat.TEXT, OutputFormat.MARKDOWN])
@@ -689,6 +702,7 @@ def test_assignment_guidance_command_can_be_replayed_for_one_literal_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     source: str,
+    filename: str,
     command: str,
     fmt: OutputFormat,
 ) -> None:
@@ -696,11 +710,11 @@ def test_assignment_guidance_command_can_be_replayed_for_one_literal_file(
     monkeypatch.chdir(tmp_path)
     directory: Path = tmp_path / "tests"
     directory.mkdir()
-    path: Path = directory / "literal[1] 'quoted'.json"
+    path: Path = directory / filename
     path.write_text("{}\n", encoding="utf-8")
     options: list[str] = [
         CliOpt.ASSIGN_FILETYPE,
-        "jsonc=tests/**/*.json",
+        "jsonc=tests/**/*.json*",
     ]
     if source == "toml":
         (tmp_path / "topmark.toml").write_text(
@@ -708,7 +722,7 @@ def test_assignment_guidance_command_can_be_replayed_for_one_literal_file(
 root = true
 [[files.file_type_assignments]]
 file_type = "jsonc"
-patterns = ["tests/**/*.json"]
+patterns = ["tests/**/*.json*"]
 """,
             encoding="utf-8",
         )
@@ -745,7 +759,9 @@ patterns = ["tests/**/*.json"]
     ]
     assert args[3].startswith("topmark:jsonc=")
     assert "**" not in args[3]
-    assert args[-1] == path.relative_to(tmp_path).as_posix()
+    # Human command paths may use native separators; rule patterns always use POSIX.
+    assert Path(args[-1]) == path.relative_to(tmp_path)
+    assert args[3].partition("=")[2].startswith("tests/")
     # Remove the source rule to prove the suggestion carries its own exact assignment.
     if source == "toml":
         (tmp_path / "topmark.toml").unlink()
