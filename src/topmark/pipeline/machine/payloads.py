@@ -70,6 +70,8 @@ def build_probe_result_payload(
             "path": format_machine_path(result.path),
             "status": "probe_missing",
             "reason": "no_resolution_probe_result",
+            "selection_method": "inference",
+            "rule_matches": [],
             "selected_file_type": None,
             "selected_processor": None,
             "activation": None,

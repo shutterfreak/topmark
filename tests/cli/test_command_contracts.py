@@ -37,6 +37,7 @@ from tests.helpers.machine import assert_machine_meta
 from tests.helpers.ndjson import parse_ndjson_records
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.cli.keys import CliShortOpt
 from topmark.cli.main import cli
 from topmark.core.formats import OutputFormat
 from topmark.core.machine.schemas import MachineKey
@@ -64,7 +65,12 @@ DISPLAY_OPTIONS: Final[frozenset[str]] = frozenset(
 QUIET_OPTION: Final[frozenset[str]] = frozenset({CliOpt.QUIET})
 OUTPUT_OPTION: Final[frozenset[str]] = frozenset({CliOpt.OUTPUT_FORMAT})
 CONFIG_RESOLUTION_OPTIONS: Final[frozenset[str]] = frozenset(
-    {CliOpt.CONFIG_FILES, CliOpt.NO_CONFIG}
+    {
+        CliOpt.CONFIG_FILES,
+        CliOpt.NO_CONFIG,
+        CliOpt.ASSIGN_FILETYPE,
+        CliOpt.INFER_FILETYPE,
+    }
 )
 PATH_INPUT_OPTIONS: Final[frozenset[str]] = frozenset(
     {CliOpt.STDIN_FILENAME, CliOpt.FILES_FROM, CliOpt.INCLUDE_FROM, CliOpt.EXCLUDE_FROM}
@@ -468,3 +474,105 @@ def test_machine_output_projections_retain_the_shared_envelope(path: CommandPath
         assert isinstance(kind, str)
         assert_machine_meta(record.get(MachineKey.META.value), expected_detail_level="brief")
         assert kind in record
+
+
+def test_cli_command_constant_spellings_are_stable() -> None:
+    """Pin public command spellings independently of orchestration."""
+    cli_cmd_keys: set[str] = {key for key in vars(CliCmd) if key.isupper()}
+    assert {key: value for key, value in vars(CliCmd).items() if key in cli_cmd_keys} == {
+        "PROBE": "probe",
+        "CHECK": "check",
+        "STRIP": "strip",
+        "CONFIG": "config",
+        "CONFIG_CHECK": "check",
+        "CONFIG_DUMP": "dump",
+        "CONFIG_DEFAULTS": "defaults",
+        "CONFIG_INIT": "init",
+        "REGISTRY": "registry",
+        "REGISTRY_BINDINGS": "bindings",
+        "REGISTRY_FILETYPES": "filetypes",
+        "REGISTRY_PROCESSORS": "processors",
+        "VERSION": "version",
+    }
+    assert len(cli_cmd_keys) == 13
+
+
+def test_cli_long_option_constant_spellings_are_stable() -> None:
+    """Pin public long-option spellings independently of orchestration."""
+    cli_opt_keys: set[str] = {key for key in vars(CliOpt) if key.isupper()}
+    assert {key: value for key, value in vars(CliOpt).items() if key in cli_opt_keys} == {
+        "ASSIGN_FILETYPE": "--assign-filetype",
+        "INFER_FILETYPE": "--infer-filetype",
+        "INCLUDE_FILE_TYPES": "--include-file-types",
+        "INCLUDE_FILE_TYPE": "--include-file-type",
+        "EXCLUDE_FILE_TYPES": "--exclude-file-types",
+        "EXCLUDE_FILE_TYPE": "--exclude-file-type",
+        "OPT_IN_FILE_TYPE": "--opt-in-file-type",
+        "INCLUDE_FROM": "--include-from",
+        "EXCLUDE_FROM": "--exclude-from",
+        "INCLUDE_PATTERNS": "--include",
+        "EXCLUDE_PATTERNS": "--exclude",
+        "FILES_FROM": "--files-from",
+        "CONFIG_FILES": "--config",
+        "NO_CONFIG": "--no-config",
+        "SHOW_CONFIG_LAYERS": "--show-layers",
+        "HEADER_FIELDS": "--header-fields",
+        "FIELD_VALUES": "--field-values",
+        "ALIGN_FIELDS": "--align-fields",
+        "NO_ALIGN_FIELDS": "--no-align-fields",
+        "RELATIVE_TO": "--relative-to",
+        "POLICY_HEADER_MUTATION_MODE": "--header-mutation-mode",
+        "POLICY_BOM_BEFORE_SHEBANG": "--bom-before-shebang",
+        "POLICY_MIXED_LINE_ENDINGS": "--mixed-line-endings",
+        "POLICY_ALLOW_HEADER_IN_EMPTY_FILES": "--allow-header-in-empty-files",
+        "POLICY_NO_ALLOW_HEADER_IN_EMPTY_FILES": "--no-allow-header-in-empty-files",
+        "POLICY_EMPTY_INSERT_MODE": "--empty-insert-mode",
+        "POLICY_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS": "--render-empty-header-when-no-fields",
+        "POLICY_NO_RENDER_EMPTY_HEADER_WHEN_NO_FIELDS": "--no-render-empty-header-when-no-fields",
+        "POLICY_ALLOW_REFLOW": "--allow-reflow",
+        "POLICY_NO_ALLOW_REFLOW": "--no-allow-reflow",
+        "POLICY_ALLOW_CONTENT_PROBE": "--allow-content-probe",
+        "POLICY_NO_ALLOW_CONTENT_PROBE": "--no-allow-content-probe",
+        "REPORT": "--report",
+        "WRITE_MODE": "--write-mode",
+        "APPLY_CHANGES": "--apply",
+        "RENDER_DIFF": "--diff",
+        "RESULTS_SUMMARY_MODE": "--summary",
+        "OUTPUT_FORMAT": "--output-format",
+        "SHOW_DETAILS": "--long",
+        "VERBOSE": "--verbose",
+        "QUIET": "--quiet",
+        "COLOR_MODE": "--color",
+        "NO_COLOR_MODE": "--no-color",
+        "STDIN_FILENAME": "--stdin-filename",
+        "HELP": "--help",
+        "CONFIG_FOR_PYPROJECT": "--pyproject",
+        "SEMVER_VERSION": "--semver",
+        "STRICT": "--strict",
+        "NO_STRICT": "--no-strict",
+        "CONFIG_ROOT": "--root",
+        "ACTIVATION": "--activation",
+        "MATCH_REGEX": "--match-regex",
+        "REGISTRY_BUILTIN": "--builtin",
+    }
+    assert len(cli_opt_keys) == 53
+
+
+def test_cli_short_option_constant_spellings_are_stable() -> None:
+    """Pin public short-option spellings independently of orchestration."""
+    cli_short_opt_keys: set[str] = {key for key in vars(CliShortOpt) if key.isupper()}
+    assert {
+        key: value for key, value in vars(CliShortOpt).items() if key in cli_short_opt_keys
+    } == {
+        "HELP": "-h",
+        "VERBOSE": "-v",
+        "QUIET": "-q",
+        "INCLUDE_FILE_TYPES": "-t",
+        "EXCLUDE_FILE_TYPES": "-T",
+        "CONFIG_FILES": "-c",
+        "INCLUDE_PATTERNS": "-i",
+        "EXCLUDE_PATTERNS": "-e",
+        "SHOW_DETAILS": "-l",
+        "ACTIVATION": "-a",
+    }
+    assert len(cli_short_opt_keys) == 10

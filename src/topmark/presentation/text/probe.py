@@ -25,6 +25,7 @@ from topmark.cli.presentation import style_for_role
 from topmark.core.presentation import StyleRole
 from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.probe import format_probe_match_signals
+from topmark.presentation.shared.probe import format_probe_rule_details
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
 if TYPE_CHECKING:
@@ -267,6 +268,12 @@ def _render_probe_results_text(
                 )
             )
 
+            parts.extend(
+                format_probe_rule_details(
+                    probe,
+                    include_superseded=verbosity_level > 0,
+                )
+            )
             if verbosity_level > 0:
                 parts.extend(
                     _render_probe_selected_details_text(

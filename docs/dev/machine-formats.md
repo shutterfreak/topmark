@@ -750,6 +750,17 @@ diagnostic keys used within config payloads are defined in
 
 ______________________________________________________________________
 
+## Assignment provenance extension
+
+Probe payloads add `selection_method` and ordered `rule_matches` as documented in
+[Machine-readable output](../usage/machine-output.md#file-type-rule-provenance-in-probe-output).
+This additive extension retains existing fields and envelope versions. Superseded matches are always
+serialized, independently of human-output verbosity. Assignments carry neither synthetic candidate
+scores nor invented positive content signals. Configuration serialization retains absolute rule
+bases/scopes so dumps preserve source-relative semantics when moved.
+
+______________________________________________________________________
+
 ## Registry machine-readable output
 
 Registry commands expose the effective composed runtime registry composition. They do not load

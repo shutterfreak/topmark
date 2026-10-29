@@ -23,7 +23,7 @@
 # ----------------------------------------------------------------------------
 # TopMark resolves configuration using the following precedence order
 # (lowest to highest):
-#   1. Built-in defaults (this file bundled with TopMark)
+#   1. Built-in defaults (defined by TopMark)
 #   2. User configuration files (~/.config/topmark/topmark.toml or
 #      ~/.topmark.toml)
 #   3. Project configuration files discovered for each input:
@@ -184,8 +184,9 @@ fields = ["file", "file_relpath"]
 align_fields = true
 
 # Optional soft maximum for complete physical header field lines. The value
-# counts Unicode code points after processor prefixes, suffixes, and indentation.
-# Unbreakable content may exceed the target and is never hard-split.
+# counts Unicode code points after processor prefixes, suffixes, and
+# indentation. Unbreakable content may exceed the target and is never
+# hard-split.
 # max_header_line_length = 100
 
 # Fields eligible for automatic prose wrapping. Wrapping is active only when
@@ -310,11 +311,12 @@ allow_content_probe = true
 # File discovery, activation, filtering, and runtime selection behavior.
 #
 # Processing pipeline:
-#   1. A file type's declared activation is considered; opt-in types require
-#      explicit consent through opt_in_file_types.
-#   2. Path-based and file-type include/exclude filters select or veto files.
-#   3. Matching, content probing, and scoring select a file type; a processor
-#      binding is then required before TopMark can mutate the file.
+#   1. Input paths and path-based include/exclude filters select candidates.
+#   2. The last applicable matching file-type rule selects a registered type
+#      directly, or restores ordinary automatic recognition. Without a winning
+#      assignment, name/content matching and scoring select the type.
+#   3. File-type filters, activation consent, processor bindings, and runtime
+#      policies still govern whether the selected file can be processed.
 #
 # Include/exclude glob patterns.
 # Patterns in configuration files are evaluated relative to the configuration
@@ -354,6 +356,104 @@ allow_content_probe = true
 # Optional list of input paths (files/directories) to scan.
 # These are typically specified via CLI.
 # files = ["src", "tests", "README.md"]
+
+
+# ----------------------------------------------------------------------------
+# File-type assignments and inference controls
+# ----------------------------------------------------------------------------
+#
+# Assign existing registered file types to selected paths. This does not define
+# new file types or change processor bindings. Assignments bypass automatic
+# name/content recognition, but retain type-specific policies, activation
+# consent, type filters, insertion checks, and runtime safety checks.
+# A filtered, unauthorized, never-processable, or unbound assigned type does
+# not fall back to another type. Rules do not add input paths or bypass path
+# exclusions.
+#
+# Rules accumulate in source/layer order; the last applicable matching rule
+# wins. Ancestor rules precede local rules; same-directory pyproject.toml rules
+# precede topmark.toml rules. Explicit --config sources follow discovered
+# sources, and CLI rules follow configuration rules. Local configurations affect
+# only their subtree and honor discovered root = true boundaries.
+#
+# Patterns use the declaring configuration directory as their definition base;
+# CLI patterns use the invocation directory. Matching follows resolved target
+# paths, so symlink aliases use the target's scope. Patterns are case-sensitive
+# gitignore-style positive globs with POSIX '/' separators on every platform:
+#   - A basename such as '.project_ignore' matches at any depth, including
+#     dotfiles.
+#   - 'config/*.json' and '/config/*.json' are anchored to the definition base.
+#   - '*' stays within one directory; '**' can match across directories.
+#   - Backslashes escape literal glob characters and significant trailing
+#     spaces.
+# Leading spaces are literal; unescaped trailing spaces are ignored.
+# Empty, whitespace-only, negated ('!'), comment ('#'), and malformed patterns
+# are invalid. Escape an initial literal '!' or '#' with a backslash.
+#
+# Type filters apply to the assigned identity: excluding topmark:json does not
+# block a topmark:jsonc assignment; excluding topmark:jsonc does, without fallback.
+# Include filters do not grant activation consent for opt-in types.
+#
+# An empty file_type_assignments list adds no rules and retains inherited
+# assignments. A separate clear-all setting is deferred from the initial
+# release.
+# file_type_assignments = []
+
+# Each assignment requires one file_type and a nonempty list of patterns.
+# Omitted action means "assign"; explicit action = "assign" is also valid.
+# Unknown actions, missing targets, conflicting fields, and invalid shapes are
+# configuration errors. Unknown keys follow the normal warning/strict policy.
+# Local identifiers are accepted only when unambiguous and are normalized to
+# canonical qualified identities. Use the identities shown here in shared files.
+#
+# Uncomment the desired entries below. In pyproject.toml, use
+# [[tool.topmark.files.file_type_assignments]] for each entry instead.
+#
+# Reuse the existing git-meta type and its pound-comment processor:
+# [[files.file_type_assignments]]
+# file_type = "topmark:git-meta"
+# patterns = [".project_ignore"]
+#
+# Treat known JSONC documents as JSONC even before they contain comments:
+# [[files.file_type_assignments]]
+# file_type = "topmark:jsonc"
+# patterns = ["config/service.json", "config/local/*.json"]
+#
+# Restore automatic recognition for matching paths. This entry must omit the
+# file_type key entirely. A winning inference rule cancels earlier assignments
+# without resuming the search through them; there is no reserved 'auto' type.
+# [[files.file_type_assignments]]
+# action = "infer"
+# patterns = ["generated/**"]
+#
+# A later assignment can override the inference control for one selected path:
+# [[files.file_type_assignments]]
+# action = "assign"
+# file_type = "topmark:jsonc"
+# patterns = ["generated/special.json"]
+#
+# For JSON documents known to permit comments, assign topmark:jsonc, rather
+# than topmark:json-as-jsonc. The latter retains its content-based automatic
+# recognition and separate insertion guard, and still requires opt-in consent.
+# Ordinary unassigned JSON keeps its existing never-processable behavior.
+#
+# CLI equivalents for check, strip, probe, config check, and config dump:
+#   --assign-filetype 'topmark:jsonc=*.json'
+#   --infer-filetype 'generated/**'
+#   --assign-filetype 'topmark:jsonc=generated/special.json'
+# Both options are repeatable and share one sequence in actual argument order.
+# One assignment occurrence supplies one type and one pattern, split at the
+# first '=' only. Further '=', colons, commas, spaces, Unicode, and glob syntax
+# remain part of the pattern. Values are not trimmed or comma-split; quote them
+# against shell expansion. The --option=VALUE spelling is also supported.
+#
+# Ordinary overlaps are valid overrides. Contradictory duplicate patterns in
+# the same source warn; strict mode treats warnings as validation failures.
+# 'topmark probe' explains the winner and its source/base/scope/order; use -v
+# to show superseded rules in TEXT; Markdown always shows them and ignores -v.
+# 'topmark config check' validates rules without requiring matching files to
+# exist. Configuration dumps retain absolute rule bases/scopes rather than
+# relocating them to a new checkout.
 
 
 # ============================================================================

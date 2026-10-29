@@ -44,9 +44,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from topmark.config.types import PatternGroup  # runtime use
-from topmark.config.types import PatternSource  # runtime use
-from topmark.config.types import compile_gitignore_pathspec  # runtime use
+from topmark.config.assignments import FileTypeRule
+from topmark.config.assignments import matching_file_type_rules
+from topmark.config.types import compile_gitignore_pathspec
 from topmark.core.errors import AmbiguousFileTypeIdentifierError
 from topmark.core.errors import InvalidRegistryIdentityError
 from topmark.core.logging import TRACE_LEVEL
@@ -59,11 +59,13 @@ from topmark.resolution.discovery import FileSelectionStatus
 from topmark.utils.path import canonical_processing_path
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Sequence
 
     from topmark.config.model import FrozenConfig
     from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.config.types import GitIgnorePathSpec
+    from topmark.config.types import PatternGroup
     from topmark.config.types import PatternSource
     from topmark.core.logging import TopmarkLogger
     from topmark.filetypes.model import FileType
@@ -373,6 +375,12 @@ def _is_excluded_by_file_type_filters(
         True if file-type include/exclude filters explain why the path did not
         reach probing.
     """
+    matches: tuple[tuple[FileTypeRule, str], ...] = matching_file_type_rules(
+        path,
+        config.file_type_assignments,
+    )
+    if matches:
+        return False
     include_file_types: frozenset[str] = frozenset(config.include_file_types)
     if include_file_types:
         selected_include_types: list[FileType] = _resolve_configured_file_types(include_file_types)
@@ -552,6 +560,8 @@ def _matches_any_file_type(
 
 def resolve_file_list_with_diagnostics(
     config: FrozenConfig,
+    *,
+    file_type_config_for_path: Callable[[Path], FrozenConfig] | None = None,
 ) -> FileListResolution:
     """Return concrete input files plus discovery diagnostics.
 
@@ -570,8 +580,11 @@ def resolve_file_list_with_diagnostics(
       4. **Exclude subtraction**: If any exclude patterns
          (from exclude pattern groups or `exclude_from` files)
          are given, remove any files matching the exclusion patterns from the set.
-      5. **File type filter**: If `include_file_types` or `exclude_file_types` are specified,
-         further restrict to files matching those types.
+      5. **Scoped file-type filtering**: Use the target's applicable configuration and
+         invocation overrides. For paths without matching explicit rules, apply the established
+         name-based include/exclude type filters here. Keep paths with assignment or inference
+         controls until shared resolution applies filters to their effective type and captures
+         the winning rule, activation, and filter outcome. Path exclusions from step 4 remain final.
       6. **Processing identity**: Dedupe selected files by resolved target path.
          If a file is reachable through both a symlink and its target, process
          the resolved target once.
@@ -581,6 +594,7 @@ def resolve_file_list_with_diagnostics(
 
     Args:
         config: Effective layered configuration.
+        file_type_config_for_path: Optional scoped provider for type selection and filters.
 
     Returns:
         A [FileListResolution][topmark.resolution.files.FileListResolution]
@@ -808,34 +822,21 @@ def resolve_file_list_with_diagnostics(
 
     filtered_paths: set[Path] = candidate_set
 
-    # Step 5: Filter files by configured file type identifiers if specified.
-    #
-    # Config values may contain either unqualified names ("markdown") or
-    # qualified identifiers ("topmark:markdown"). Resolve them through the
-    # namespace-aware file type registry before applying path-based matching.
-
-    # 5.1: whitelisted file types
-    # Invalid entries are handled and reported as Config diagnostic in MutableConfig.sanitize()
-    if include_file_types:
-        selected_include_types: list[FileType] = _resolve_configured_file_types(include_file_types)
-
-        # Whitelisting:
-        filtered_paths = {
-            file_path
-            for file_path in filtered_paths
-            if _matches_any_file_type(file_path, selected_include_types)
-        }
-
-    # 5.2: blacklisted file types
-    if exclude_file_types:
-        selected_exclude_types: list[FileType] = _resolve_configured_file_types(exclude_file_types)
-
-        # Blacklisting:
-        filtered_paths = {
-            file_path
-            for file_path in filtered_paths
-            if not _matches_any_file_type(file_path, selected_exclude_types)
-        }
+    # Step 5: Apply file-type filters in each target's effective scope.
+    # Ordinary paths retain the existing name-based allowlist/denylist behavior.
+    # Matching explicit rules require deferred filtering: the assigned type can
+    # differ from every automatic name match, and a winning inference control must
+    # remain visible in probe output even when its inferred type is filtered.
+    # The shared resolver applies the final filters without falling back from an
+    # assigned type. This does not restore paths already excluded in step 4.
+    filtered_paths = {
+        path
+        for path in filtered_paths
+        if not _is_excluded_by_file_type_filters(
+            path,
+            file_type_config_for_path(path) if file_type_config_for_path else config,
+        )
+    }
 
     # Step 6 (Finalize): dedupe by resolved processing identity, then prefer
     # CWD-relative spelling for the selected processing path when possible.

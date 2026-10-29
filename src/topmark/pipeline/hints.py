@@ -151,7 +151,7 @@ class KnownCode(EnumIntrospectionMixin, StrEnum):
     extensions and experiments remain frictionless.
 
     Examples (selected):
-        discovery/resolve: 'discovery:unsupported', 'discovery:no_processor'
+        discovery/resolve: 'discovery:filtered', 'discovery:unsupported', 'discovery:no_processor'
 
         fs:               'fs:mixed_newlines', 'fs:bom_before_shebang'
 
@@ -179,6 +179,7 @@ class KnownCode(EnumIntrospectionMixin, StrEnum):
     """
 
     # Resolve/discovery
+    DISCOVERY_FILTERED = "discovery:filtered"
     DISCOVERY_UNSUPPORTED = "discovery:unsupported"
     DISCOVERY_NO_PROCESSOR = "discovery:no_processor"
     # FS

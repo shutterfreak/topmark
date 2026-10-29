@@ -303,11 +303,16 @@ def test_merge_invariant_policy_by_type_merges_by_key() -> None:
 
     merged: MutableConfig = base.merge_with(override)
 
-    assert set(merged.policy_by_type) == {"python", "markdown", "html"}
-    assert merged.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
-    assert merged.policy_by_type["python"].allow_content_probe is True
-    assert merged.policy_by_type["markdown"].allow_content_probe is False
-    assert merged.policy_by_type["html"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
+    # Merging mutable configs normalizes file type identifiers; use qualified identifier:
+    assert set(merged.policy_by_type) == {"topmark:python", "topmark:markdown", "topmark:html"}
+    assert (
+        merged.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
+    )
+    assert merged.policy_by_type["topmark:python"].allow_content_probe is True
+    assert merged.policy_by_type["topmark:markdown"].allow_content_probe is False
+    assert (
+        merged.policy_by_type["topmark:html"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
+    )
 
 
 # --- Additional three-layer invariants ---
@@ -353,11 +358,18 @@ def test_merge_invariant_three_layer_field_values_and_policy_overlay() -> None:
         "file": "pkg/module.py",
     }
 
-    assert set(merged.policy_by_type) == {"python", "markdown", "html"}
-    assert merged.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
-    assert merged.policy_by_type["python"].allow_content_probe is False
-    assert merged.policy_by_type["markdown"].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
-    assert merged.policy_by_type["html"].allow_content_probe is True
+    # Merging mutable configs normalizes file type identifiers; use qualified identifier:
+    assert set(merged.policy_by_type) == {"topmark:python", "topmark:markdown", "topmark:html"}
+    assert (
+        merged.policy_by_type["topmark:python"].header_mutation_mode
+        == HeaderMutationMode.UPDATE_ONLY
+    )
+    assert merged.policy_by_type["topmark:python"].allow_content_probe is False
+    assert (
+        merged.policy_by_type["topmark:markdown"].header_mutation_mode
+        == HeaderMutationMode.UPDATE_ONLY
+    )
+    assert merged.policy_by_type["topmark:html"].allow_content_probe is True
 
 
 def test_merge_invariant_three_layer_include_from_accumulates_in_order() -> None:

@@ -43,6 +43,7 @@ from topmark.api.types import ProbeCandidateInfo
 from topmark.api.types import ProbeFileResult
 from topmark.api.types import ProbeRunResult
 from topmark.api.types import RunResult
+from topmark.config.assignments import file_type_rule_to_table
 from topmark.core.logging import get_logger
 from topmark.core.outcomes import NO_REASON_PROVIDED
 from topmark.pipeline.outcomes import ResultBucket
@@ -54,6 +55,7 @@ from topmark.pipeline.reporting import filter_results_for_report
 from topmark.pipeline.reporting import would_change_result
 from topmark.pipeline.status import PlanStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.resolution.probe import FileTypeSelectionMethod
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -188,6 +190,19 @@ def to_probe_file_result(
             probe.selected_processor.local_key if probe.selected_processor is not None else None
         ),
         candidates=_probe_candidate_infos(probe),
+        selection_method=(
+            "assignment"
+            if probe.selection_method == FileTypeSelectionMethod.ASSIGNMENT
+            else "inference"
+        ),
+        rule_matches=tuple(
+            dict(
+                file_type_rule_to_table(rule),
+                matching_pattern=pattern,
+                selected=index == len(probe.rule_matches) - 1,
+            )
+            for index, (rule, pattern) in enumerate(probe.rule_matches)
+        ),
     )
 
 

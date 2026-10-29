@@ -31,6 +31,7 @@ import tomlkit
 from topmark.config.resolution.layers import ConfigLayer
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import merge_layers_globally
+from topmark.config.resolution.synthetic import API_CONFIG_SOURCE
 from topmark.config.resolution.synthetic import BUILTIN_DEFAULTS_TOML_SOURCE
 from topmark.config.resolution.synthetic import BUNDLED_TEMPLATE_TOML_SOURCE
 from topmark.config.resolution.synthetic import SyntheticConfigSource
@@ -47,6 +48,7 @@ from topmark.toml.validation import add_toml_issues
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from collections.abc import Mapping
 
     from topmark.config.model import MutableConfig
     from topmark.toml.defaults import DefaultTomlTemplateText
@@ -158,24 +160,24 @@ def resolve_toml_sources_and_build_mutable_config(
     )
 
 
-def _resolve_single_builtin_toml_table_and_build_mutable_config(
+def _resolve_single_toml_table_and_build_mutable_config(
     *,
     table: TomlTable,
     source_path: Path | SyntheticConfigSource,
     load_diagnostics: MutableDiagnosticLog | None = None,
 ) -> ResolvedConfigDraft:
-    """Resolve one bundled TOML table and build its config draft.
+    """Resolve one in-memory TOML source and build its config draft.
 
     Args:
         table: Parsed TopMark TOML table to load, validate, and resolve.
         source_path: Real path or synthetic source marker used in diagnostics
-            and provenance to identify the bundled TOML source.
+            and provenance to identify the source.
         load_diagnostics: Optional diagnostics collected while loading the
-            bundled resource before TOML table parsing.
+            source before TOML table parsing.
 
     Returns:
         Resolved TOML-side state and merged mutable config draft built from the
-        bundled source.
+        source.
     """
     diagnostics: MutableDiagnosticLog = load_diagnostics or MutableDiagnosticLog()
     parsed: ParsedTopmarkToml | None = load_topmark_toml_table(
@@ -200,6 +202,30 @@ def _resolve_single_builtin_toml_table_and_build_mutable_config(
     return ResolvedConfigDraft(
         resolved=resolved,
         draft=build_mutable_config_from_resolved_toml_sources(resolved),
+    )
+
+
+def resolve_config_mapping_and_build_mutable_config(
+    data: Mapping[str, object],
+) -> ResolvedConfigDraft:
+    """Resolve an explicit API mapping without filesystem discovery.
+
+    Reuse whole-source schema validation and split parsing so source-local strictness
+    and writer preferences survive alongside the layered config and staged diagnostics.
+    Definition-relative paths use the invocation working directory.
+
+    Args:
+        data: TopMark configuration source supplied as a mapping.
+
+    Returns:
+        Resolved source-local state and the merged mutable configuration.
+
+    Raises:
+        TypeError: If a mapping value is not TOML-compatible.
+    """  # noqa: DOC502 - documents normalization errors propagated by toml_table_from_mapping.
+    return _resolve_single_toml_table_and_build_mutable_config(
+        table=toml_table_from_mapping(data),
+        source_path=API_CONFIG_SOURCE,
     )
 
 
@@ -228,7 +254,7 @@ def resolve_default_template_and_build_mutable_config() -> ResolvedConfigDraft:
 
     doc: tomlkit.TOMLDocument = tomlkit.parse(toml_text)
     table: TomlTable = toml_table_from_mapping(as_object_dict(doc.unwrap()))
-    return _resolve_single_builtin_toml_table_and_build_mutable_config(
+    return _resolve_single_toml_table_and_build_mutable_config(
         table=table,
         source_path=BUNDLED_TEMPLATE_TOML_SOURCE,
         load_diagnostics=diagnostics,
@@ -246,7 +272,7 @@ def resolve_default_table_and_build_mutable_config() -> ResolvedConfigDraft:
         Resolved TOML-side state and mutable config draft built from the canonical
         default TOML table.
     """
-    return _resolve_single_builtin_toml_table_and_build_mutable_config(
+    return _resolve_single_toml_table_and_build_mutable_config(
         table=build_default_topmark_toml_table(),
         source_path=BUILTIN_DEFAULTS_TOML_SOURCE,
     )

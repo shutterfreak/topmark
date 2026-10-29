@@ -21,13 +21,14 @@ topmark:header:end
 > - merged-config diagnostics;
 > - runtime applicability diagnostics.
 >
-> When strict validation fails, TopMark exits with `CONFIG_ERROR`. The diagnostics that triggered
-> the failure remain visible in human-readable and machine-readable output formats.
+> When configuration validation fails, CLI commands exit with `CONFIG_ERROR`, preserving the
+> diagnostics in human-readable and machine-readable output. Public API calls raise
+> \[`ConfigValidationError`\][topmark.core.errors.ConfigValidationError] with those diagnostics.
 >
 > `strict` is resolved during TOML loading and does not become a layered configuration field.
 >
-> In non-strict mode, configuration diagnostics remain advisory. Markdown reports include advisory
-> diagnostics for completeness. Default TEXT output may instead report only the resulting runtime
-> outcome, such as a file being filtered after configuration normalization. When `--strict` is
-> enabled, advisory diagnostics become fatal configuration errors and are surfaced consistently
-> across output formats.
+> Configuration errors are fatal in both modes. In non-strict mode, warnings remain advisory.
+> Markdown reports include advisory diagnostics for completeness. Default TEXT output may instead
+> report only the resulting runtime outcome, such as a file being filtered after configuration
+> normalization. When `--strict` is enabled, warning diagnostics make configuration validation fail
+> and are surfaced consistently across output formats.

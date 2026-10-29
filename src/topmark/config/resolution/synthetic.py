@@ -69,3 +69,40 @@ BUNDLED_TEMPLATE_TOML_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSour
     label="<bundled topmark-template.toml>",
 )
 """Synthetic provenance marker for the bundled starter TOML template."""
+
+API_CONFIG_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
+    label="<API config>",
+)
+"""Explicit mapping supplied through an API configuration entry point."""
+
+API_OVERRIDE_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
+    label="<API overrides>",
+)
+"""Invocation-level API configuration overrides."""
+
+API_POLICY_OVERRIDE_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
+    label="<API policy overrides>",
+)
+"""API policy overlay and its corresponding scoped layer."""
+
+CLI_OVERRIDE_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
+    label="<CLI overrides>",
+)
+"""CLI invocation override config and its corresponding final layer."""
+
+CLI_ASSIGNMENT_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
+    label="<CLI assignments>",
+)
+"""Ordered assignment/inference component of the CLI override layer.
+
+The historical component label has no separate precedence or scope.
+"""
+
+ANONYMOUS_CONFIG_SOURCE: Final[SyntheticConfigSource] = SyntheticConfigSource(
+    label="<anonymous config>",
+)
+"""Neutral rule provenance when a fragment has no supplied origin.
+
+The enclosing config retains an empty config_files list. Missing provenance
+provides no evidence of API ownership.
+"""

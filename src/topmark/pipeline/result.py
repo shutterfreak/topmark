@@ -32,16 +32,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Self
 
+from topmark.config.assignments import FileTypeRuleAction
+from topmark.config.assignments import file_type_rule_to_table
 from topmark.pipeline.context.status import StatusSnapshot
 from topmark.pipeline.outcome_snapshot import OutcomeSnapshot
 from topmark.pipeline.pre_insert_advisory import PreInsertAdvisorySnapshot
+from topmark.resolution.probe import FileTypeSelectionMethod
 from topmark.utils.path import format_machine_path
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from topmark.config.assignments import FileTypeRule
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.filetypes.model import FileType
+    from topmark.filetypes.model import FileTypeActivation
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.hints import Hint
     from topmark.pipeline.kinds import PipelineKindLiteral
@@ -354,6 +359,7 @@ class ProbeSnapshot:
             resolution reached activation authorization.
         activation_authorized: Whether the declared activation policy permits
             processing for this invocation, if `activation` is available.
+        rule_matches: Ordered immutable rule matches with definition provenance.
     """
 
     path: Path
@@ -362,8 +368,9 @@ class ProbeSnapshot:
     candidates: tuple[ProbeCandidateSnapshot, ...]
     selected_file_type: ProbeSelectionSnapshot | None
     selected_processor: ProbeSelectionSnapshot | None
-    activation: str | None = None
+    activation: FileTypeActivation | None = None
     activation_authorized: bool | None = None
+    rule_matches: tuple[tuple[FileTypeRule, str], ...] = ()
 
     @classmethod
     def from_probe_result(
@@ -379,6 +386,7 @@ class ProbeSnapshot:
             Detached durable probe snapshot.
         """
         return cls(
+            rule_matches=probe.rule_matches,
             path=Path(probe.path),
             status=probe.status.value,
             reason=probe.reason.value,
@@ -421,6 +429,13 @@ class ProbeSnapshot:
             return None
         return cls.from_probe_result(ctx.resolution_probe)
 
+    @property
+    def selection_method(self) -> FileTypeSelectionMethod:
+        """Return the explicit or automatic selection method captured by this snapshot."""
+        if self.rule_matches and self.rule_matches[-1][0].action == FileTypeRuleAction.ASSIGN:
+            return FileTypeSelectionMethod.ASSIGNMENT
+        return FileTypeSelectionMethod.INFERENCE
+
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly representation of this probe snapshot.
 
@@ -431,11 +446,20 @@ class ProbeSnapshot:
             "path": format_machine_path(self.path),
             "status": self.status,
             "reason": self.reason,
+            "selection_method": self.selection_method.value,
+            "rule_matches": [
+                dict(
+                    file_type_rule_to_table(rule),
+                    matching_pattern=pattern,
+                    selected=index == len(self.rule_matches) - 1,
+                )
+                for index, (rule, pattern) in enumerate(self.rule_matches)
+            ],
             "selected_file_type": _probe_selection_to_dict(self.selected_file_type),
             "selected_processor": _probe_selection_to_dict(self.selected_processor),
             "activation": (
                 {
-                    "declared": self.activation,
+                    "declared": self.activation.value,
                     "authorized": self.activation_authorized,
                 }
                 if self.activation is not None and self.activation_authorized is not None
@@ -513,6 +537,8 @@ class ProcessingResult:
         detail: Durable report-detail facts captured without retaining volatile
             context-owned views.
         probe: Durable resolution-probe snapshot for probe runs.
+        file_type_assigned: Whether selection used an explicit assignment, or None when no
+            file type was selected.
     """
 
     path: Path
@@ -530,6 +556,7 @@ class ProcessingResult:
     outcome: OutcomeSnapshot
     detail: ProcessingDetailSnapshot
     probe: ProbeSnapshot | None
+    file_type_assigned: bool | None = None
 
     @classmethod
     def from_context(
@@ -578,6 +605,7 @@ class ProcessingResult:
             outcome=OutcomeSnapshot.from_context(ctx),
             detail=ProcessingDetailSnapshot.from_context(ctx),
             probe=ProbeSnapshot.from_context(ctx),
+            file_type_assigned=ctx.file_type_assigned,
         )
 
     @property
@@ -601,6 +629,7 @@ class ProcessingResult:
         return {
             "path": format_machine_path(self.path),
             "file_type": self.file_type.to_dict() if self.file_type is not None else None,
+            "file_type_assigned": self.file_type_assigned,
             "execution_mode": self.execution_mode.to_dict(),
             "steps": list(self.steps),
             "step_axes": self.step_axes_dict,

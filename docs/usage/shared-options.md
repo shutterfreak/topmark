@@ -43,7 +43,7 @@ These formats behave consistently across commands that support machine-readable 
 - Human-facing output:
   - `text` (default): intended for interactive terminal use; when color is enabled, output is
     rendered in color by default (disable with `--color never`).
-  - `markdown`: document-oriented Markdown output; ignores TEXT-specific verbosity rendering.
+  - `markdown`: document-oriented output, independent of TEXT verbosity and quiet controls.
 - Machine-readable formats:
   - `json`: emits a single machine-readable JSON document formatted for readability and tooling.
   - `ndjson`: emits one machine-readable NDJSON record per line.
@@ -102,7 +102,8 @@ TopMark also respects the standard `NO_COLOR` environment variable for TEXT rend
 
 ### Verbosity
 
-TopMark supports verbosity controls for TEXT-oriented human-readable output.
+TopMark supports verbosity controls for TEXT-oriented human-readable output. Markdown and machine
+output remain independent of verbosity. Probe Markdown always includes superseded file-type rules.
 
 ```bash
 --verbose       # Increase TEXT output verbosity

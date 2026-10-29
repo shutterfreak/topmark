@@ -36,8 +36,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from topmark.config.assignments import AssignmentRule
+from topmark.config.assignments import matching_file_type_rules
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import ContentGate
 from topmark.filetypes.model import FileType
@@ -57,6 +60,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from topmark.config.assignments import FileTypeRule
     from topmark.core.logging import TopmarkLogger
     from topmark.processors.base import HeaderProcessor
 
@@ -459,6 +463,8 @@ def get_file_type_candidates_for_path(
 def probe_resolution_for_path(
     path: Path,
     *,
+    file_type_assignments: tuple[FileTypeRule, ...] = (),
+    assignment_path: Path | None = None,
     opt_in_file_types: Collection[str] | None = None,
     include_file_types: Collection[str] | None = None,
     exclude_file_types: Collection[str] | None = None,
@@ -471,6 +477,8 @@ def probe_resolution_for_path(
 
     Args:
         path: Filesystem path of the file being resolved.
+        file_type_assignments: Ordered explicit selection rules.
+        assignment_path: Optional logical filename used only for rule matching.
         opt_in_file_types: Explicitly authorized opt-in file type identifiers.
         include_file_types: Optional set of file type identifiers to include.
             Frozen config passes canonical qualified keys. Direct callers may
@@ -483,6 +491,42 @@ def probe_resolution_for_path(
         Probe result containing candidates, selected file type, selected processor,
         status, and reason.
     """
+    matches: tuple[tuple[FileTypeRule, str], ...] = matching_file_type_rules(
+        assignment_path or path,
+        file_type_assignments,
+    )
+    if matches:
+        winner, _ = matches[-1]
+        if isinstance(winner, AssignmentRule):
+            return _probe_assigned_type(
+                path,
+                winner,
+                matches,
+                opt_in_file_types=opt_in_file_types,
+                include_file_types=include_file_types,
+                exclude_file_types=exclude_file_types,
+            )
+
+        # Else: isinstance(winner, InferenceRule)
+        inferred: ResolutionProbeResult = probe_resolution_for_path(
+            path,
+            opt_in_file_types=opt_in_file_types,
+            include_file_types=include_file_types,
+            exclude_file_types=exclude_file_types,
+        )
+        if inferred.status == ResolutionProbeStatus.UNSUPPORTED and (
+            include_file_types or exclude_file_types
+        ):
+            unfiltered: ResolutionProbeResult = probe_resolution_for_path(
+                path, opt_in_file_types=opt_in_file_types
+            )
+            if unfiltered.selected_file_type is not None:
+                inferred = replace(
+                    unfiltered,
+                    status=ResolutionProbeStatus.FILTERED,
+                    reason=ResolutionProbeReason.EXCLUDED_BY_FILE_TYPE_FILTER,
+                )
+        return replace(inferred, rule_matches=matches)
     drafts: list[_ProbeCandidateDraft] = _get_probe_candidate_drafts_for_path(
         path,
         include_file_types=include_file_types,
@@ -574,7 +618,78 @@ def probe_resolution_for_path(
         selected_file_type=selected_file_type,
         selected_processor=selected_processor,
         activation=ResolutionProbeActivation(
-            declared=activation.value,
+            declared=activation,
             authorized=authorized,
         ),
+    )
+
+
+def _probe_assigned_type(
+    path: Path,
+    rule: AssignmentRule,
+    matches: tuple[tuple[FileTypeRule, str], ...],
+    *,
+    opt_in_file_types: Collection[str] | None,
+    include_file_types: Collection[str] | None,
+    exclude_file_types: Collection[str] | None,
+) -> ResolutionProbeResult:
+    """Resolve a selected registered type without automatic candidate scoring."""
+    from topmark.registry.registry import Registry
+
+    ft: FileType | None = FileTypeRegistry.resolve_filetype_id(rule.file_type)
+    if ft is None:
+        raise ValueError(f"Assigned file type is no longer registered: {rule.file_type}")
+
+    # Filters constrain the effective assigned identity. A path formerly recognized
+    # as JSON remains eligible when JSON is excluded but its assigned JSONC is not.
+    # A veto never retries the original type or earlier assignment rules.
+
+    processor: HeaderProcessor | None = Registry.resolve_processor(ft.qualified_key)
+    authorized: bool = ft.activation == FileTypeActivation.DEFAULT or (
+        ft.activation == FileTypeActivation.OPT_IN
+        and _matches_file_type_filter(ft, opt_in_file_types or ())
+    )
+
+    status: ResolutionProbeStatus = ResolutionProbeStatus.RESOLVED
+    reason: ResolutionProbeReason = ResolutionProbeReason.SELECTED_BY_ASSIGNMENT
+
+    if (
+        include_file_types
+        and not _matches_file_type_filter(ft, include_file_types)
+        or exclude_file_types
+        and _matches_file_type_filter(ft, exclude_file_types)
+    ):
+        status = ResolutionProbeStatus.FILTERED
+        reason = ResolutionProbeReason.EXCLUDED_BY_FILE_TYPE_FILTER
+    elif ft.activation == FileTypeActivation.NEVER:
+        status = ResolutionProbeStatus.ACTIVATION_BLOCKED
+        reason = ResolutionProbeReason.SELECTED_FILE_TYPE_NEVER_PROCESSABLE
+    elif not authorized:
+        status = ResolutionProbeStatus.ACTIVATION_BLOCKED
+        reason = ResolutionProbeReason.SELECTED_FILE_TYPE_REQUIRES_OPT_IN
+    elif processor is None:
+        status = ResolutionProbeStatus.NO_PROCESSOR
+        reason = ResolutionProbeReason.SELECTED_FILE_TYPE_HAS_NO_BOUND_PROCESSOR
+    return ResolutionProbeResult(
+        path=path,
+        status=status,
+        reason=reason,
+        candidates=(),
+        selected_file_type=ResolutionProbeSelection(
+            qualified_key=ft.qualified_key,
+            namespace=ft.namespace,
+            local_key=ft.local_key,
+        ),
+        selected_processor=ResolutionProbeSelection(
+            qualified_key=processor.qualified_key,
+            namespace=processor.namespace,
+            local_key=processor.local_key,
+        )
+        if processor
+        else None,
+        activation=ResolutionProbeActivation(
+            declared=ft.activation,
+            authorized=authorized,
+        ),
+        rule_matches=matches,
     )

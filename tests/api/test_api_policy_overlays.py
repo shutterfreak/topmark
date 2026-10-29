@@ -31,6 +31,7 @@ from tests.api.conftest import has_header
 from tests.helpers.io import read_text
 from topmark import api
 from topmark.api.types import PublicPolicy
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.errors import InvalidPolicyError
 
 if TYPE_CHECKING:
@@ -323,7 +324,7 @@ def test_api_invalid_policy_by_type_header_mutation_mode_raises_invalid_policy_e
 ) -> None:
     """Invalid per-type public `header_mutation_mode` values must be rejected."""
     with pytest.raises(InvalidPolicyError):
-        _ = api.check(
+        _: api.RunResult = api.check(
             [repo_py_with_and_without_header / "src"],
             apply=False,
             include_file_types=["python"],
@@ -331,3 +332,36 @@ def test_api_invalid_policy_by_type_header_mutation_mode_raises_invalid_policy_e
                 policy_file_type_id: unsafe_public_policy({"header_mutation_mode": "bogus"}),
             },
         )
+
+
+@pytest.mark.parametrize("override", [False, True])
+@pytest.mark.parametrize("per_type", [False, True])
+def test_api_policy_overlay_preserves_scoped_policy_and_precedence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    override: bool,
+    per_type: bool,
+) -> None:
+    """Public invocation overlays keep unspecified local policy out of sibling scopes."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "topmark.toml").write_text("[config]\nroot = true\n", encoding="utf-8")
+    for directory in ("local", "sibling"):
+        (tmp_path / directory).mkdir()
+        (tmp_path / directory / "a.py").write_text("print(1)\n", encoding="utf-8")
+    section: str = 'policy_by_type."topmark:python"' if per_type else "policy"
+    (tmp_path / "local/topmark.toml").write_text(
+        f'[{section}]\nheader_mutation_mode = "update_only"\n',
+        encoding="utf-8",
+    )
+    policy: PublicPolicy | None = {"header_mutation_mode": "all"} if override else None
+    api.check(
+        [tmp_path],
+        apply=True,
+        include_file_types=["python"],
+        policy=policy if not per_type else None,
+        policy_by_type={"python": policy} if per_type and policy is not None else None,
+    )
+    assert (
+        TOPMARK_START_MARKER in (tmp_path / "local/a.py").read_text(encoding="utf-8")
+    ) is override
+    assert TOPMARK_START_MARKER in (tmp_path / "sibling/a.py").read_text(encoding="utf-8")

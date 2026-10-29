@@ -44,6 +44,8 @@ from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_fenced_code_block_markdown
 from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.presentation.shared.paths import get_display_path
+from topmark.presentation.shared.pipeline import format_apply_guidance
+from topmark.presentation.shared.pipeline import render_apply_command
 from topmark.presentation.shared.pipeline import summarize_pipeline_file
 
 if TYPE_CHECKING:
@@ -127,31 +129,6 @@ def _render_pipeline_banner_markdown(
 # ---- Command guidance rendering ----
 
 
-def _render_apply_command_markdown(
-    *,
-    command: str,
-    result: ProcessingResult,
-) -> str:
-    """Render the suggested apply command for Markdown guidance.
-
-    The command uses the shared human-facing display-path policy so STDIN-backed
-    content is represented by its logical `--stdin-filename` value while regular
-    file processing uses the normal display path. The returned command is plain
-    text; callers are responsible for Markdown escaping.
-
-    Args:
-        command: TopMark subcommand name.
-        result: Durable processing result for the file.
-
-    Returns:
-        Suggested apply command for Markdown guidance output.
-    """
-    path_name: str = get_display_path(result)
-    if result.from_stdin:
-        return f"topmark {command} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} {path_name} -"
-    return f"topmark {command} {CliOpt.APPLY_CHANGES} {path_name}"
-
-
 def _render_check_guidance_message_markdown(
     result: ProcessingResult,
 ) -> str | None:
@@ -189,7 +166,10 @@ def _render_check_guidance_message_markdown(
             else f"✏️  Updating header in {path_label}"
         )
 
-    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.CHECK, result=result)
+    apply_cmd: str | None = render_apply_command(
+        command=CliCmd.CHECK,
+        result=result,
+    )
 
     if intent == ResultActionIntent.INSERT:
         action: str = "add a TopMark header to this file"
@@ -199,8 +179,11 @@ def _render_check_guidance_message_markdown(
         raise TopmarkCliPipelineError(
             message=f"Unexpected intent {intent.value} in 'check' pipeline.",
         )
-    cmd_md: str = markdown_code_span(apply_cmd)
-    return f"🛠️  Run {cmd_md} to {action}."
+    return format_apply_guidance(
+        command_label=markdown_code_span(apply_cmd) if apply_cmd is not None else None,
+        action=action,
+        apply_label=markdown_code_span(CliOpt.APPLY_CHANGES),
+    )
 
 
 def _render_strip_guidance_message_markdown(
@@ -236,7 +219,7 @@ def _render_strip_guidance_message_markdown(
 
         return f"🧹 Stripping header in {path_label}"
 
-    apply_cmd: str = _render_apply_command_markdown(command=CliCmd.STRIP, result=result)
+    apply_cmd: str | None = render_apply_command(command=CliCmd.STRIP, result=result)
 
     if intent == ResultActionIntent.STRIP:
         action: str = "strip the TopMark header from this file"
@@ -244,8 +227,11 @@ def _render_strip_guidance_message_markdown(
         raise TopmarkCliPipelineError(
             message=f"Unexpected intent {intent.value} in 'strip' pipeline.",
         )
-    cmd_md: str = markdown_code_span(apply_cmd)
-    return f"🛠️  Run {cmd_md} to {action}."
+    return format_apply_guidance(
+        command_label=markdown_code_span(apply_cmd) if apply_cmd is not None else None,
+        action=action,
+        apply_label=markdown_code_span(CliOpt.APPLY_CHANGES),
+    )
 
 
 # ---- Per-file rendering ----

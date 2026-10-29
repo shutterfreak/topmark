@@ -51,6 +51,7 @@ import click
 import rich_click
 
 from topmark.api.runtime import ensure_config_valid
+from topmark.cli.assignments import AssignmentCommand
 from topmark.cli.cmd_common import build_file_resolution
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import build_run_options
@@ -154,6 +155,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @rich_click.command(
+    cls=AssignmentCommand,
     name=CliCmd.STRIP,
     context_settings=PATH_COMMAND_CONTEXT_SETTINGS,
     help=(
@@ -487,6 +489,7 @@ def strip_command(
     temp_path: Path | None = plan.temp_path  # for cleanup/STDIN-apply branch
 
     file_resolution: FileListResolution = build_file_resolution(
+        layers=prepared_cli_config.layers,
         run_options=run_options,
         config=config,
         temp_path=temp_path,

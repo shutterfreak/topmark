@@ -36,6 +36,7 @@ from tests.cli.conftest import run_cli
 from tests.cli.conftest import run_cli_in
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.constants import TOPMARK_START_MARKER
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,7 +51,7 @@ def _read_text(path: Path) -> str:
 
 def _has_topmark_header(path: Path) -> bool:
     """Return whether the file contains a TopMark header sentinel."""
-    return "topmark:header:start" in _read_text(path)
+    return TOPMARK_START_MARKER in _read_text(path)
 
 
 # --- Help output: exposed policy surface ---
@@ -517,3 +518,34 @@ def test_check_rejects_noncanonical_case_with_lowercase_suggestion(
     assert_rich_output_contains(result.stderr, expected=f"Invalid value '{invalid_value}'")
     assert_rich_output_contains(result.stderr, expected=f"Did you mean '{canonical_value}'?")
     assert_rich_output_contains(result.stderr, expected=f"Must be one of: {choice_listing}")
+
+
+@pytest.mark.parametrize("override", [False, True])
+def test_cli_policy_overlay_preserves_local_policy_and_precedence(
+    tmp_path: Path,
+    override: bool,
+) -> None:
+    """Only an explicit invocation override replaces a subtree's policy."""
+    (tmp_path / "topmark.toml").write_text("[config]\nroot = true\n", encoding="utf-8")
+    for directory in ("local", "sibling"):
+        (tmp_path / directory).mkdir()
+        (tmp_path / directory / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (tmp_path / "local/topmark.toml").write_text(
+        '[policy]\nheader_mutation_mode = "update_only"\n',
+        encoding="utf-8",
+    )
+    args: list[str] = [
+        CliCmd.CHECK,
+        ".",
+        CliOpt.APPLY_CHANGES,
+        CliOpt.INCLUDE_FILE_TYPES,
+        "python",
+    ]
+    if override:
+        args.extend([CliOpt.POLICY_HEADER_MUTATION_MODE, "all"])
+    result: Result = run_cli_in(tmp_path, args)
+    assert_SUCCESS(result)
+    assert (
+        TOPMARK_START_MARKER in (tmp_path / "local/a.py").read_text(encoding="utf-8")
+    ) is override
+    assert TOPMARK_START_MARKER in (tmp_path / "sibling/a.py").read_text(encoding="utf-8")

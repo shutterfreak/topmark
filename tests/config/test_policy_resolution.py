@@ -44,6 +44,7 @@ from tests.helpers.registry import make_file_type
 from tests.helpers.registry import patched_effective_registries
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
+from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
@@ -59,7 +60,6 @@ from topmark.config.policy import make_policy_registry
 
 if TYPE_CHECKING:
     from topmark.config.model import FrozenConfig
-    from topmark.config.model import MutableConfig
     from topmark.filetypes.model import FileType
     from topmark.toml.types import TomlTable
 
@@ -206,12 +206,14 @@ def test_mutable_config_policy_merge_global_and_per_type() -> None:
     # Global policy (tri-state) should have both flags set at this stage.
     assert merged.policy.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
 
+    # Merging mutable configs normalizes file type identifiers; use qualified identifier
+    #
     # Per-type "python" should also see last-wins per field.
-    py_mut: MutablePolicy = merged.policy_by_type["python"]
+    py_mut: MutablePolicy = merged.policy_by_type["topmark:python"]
     assert py_mut.header_mutation_mode == HeaderMutationMode.UPDATE_ONLY
 
     # Per-type "markdown" should be taken as-is from override.
-    md_mut: MutablePolicy = merged.policy_by_type["markdown"]
+    md_mut: MutablePolicy = merged.policy_by_type["topmark:markdown"]
     assert md_mut.allow_content_probe is False
 
 
@@ -229,9 +231,12 @@ def test_mutable_config_policy_by_type_merge_preserves_unrelated_parent_keys() -
 
     merged: MutableConfig = base.merge_with(override)
 
-    assert set(merged.policy_by_type.keys()) == {"python", "markdown"}
-    assert merged.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
-    assert merged.policy_by_type["markdown"].allow_content_probe is False
+    # Merging mutable configs normalizes file type identifiers; use qualified identifier
+    assert set(merged.policy_by_type.keys()) == {"topmark:python", "topmark:markdown"}
+    assert (
+        merged.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
+    )
+    assert merged.policy_by_type["topmark:markdown"].allow_content_probe is False
 
 
 def test_freeze_resolves_global_header_mutation_mode() -> None:
@@ -451,7 +456,10 @@ def test_effective_policy_accepts_canonical_qualified_file_type_key() -> None:
     assert effective_frozen_policy(cfg, "unknown") is global_pol
 
 
-def test_policy_by_type_ambiguous_local_identifier_is_ignored() -> None:
+@pytest.mark.parametrize("merge_first", [False, True])
+def test_policy_by_type_ambiguous_local_identifier_is_ignored(
+    merge_first: bool,
+) -> None:
     """Ambiguous local policy_by_type identifiers should not survive freeze."""
     first: FileType = make_file_type(
         local_key="shared",
@@ -476,7 +484,7 @@ def test_policy_by_type_ambiguous_local_identifier_is_ignored() -> None:
         filetypes={"first-shared": first, "second-shared": second},
         processors={},
     ):
-        cfg: FrozenConfig = mc.freeze()
+        cfg: FrozenConfig = (mc.merge_with(MutableConfig()) if merge_first else mc).freeze()
 
     assert cfg.policy_by_type == {}
 
@@ -489,8 +497,10 @@ def test_policy_by_type_ambiguous_local_identifier_is_ignored() -> None:
         "topmark:python:extra",
     ],
 )
+@pytest.mark.parametrize("merge_first", [False, True])
 def test_policy_by_type_malformed_identifier_is_ignored(
     policy_file_type_id: str,
+    merge_first: bool,
 ) -> None:
     """Malformed qualified policy_by_type identifiers should not survive freeze."""
     mc: MutableConfig = mutable_config_from_defaults()
@@ -500,12 +510,15 @@ def test_policy_by_type_malformed_identifier_is_ignored(
         ),
     }
 
-    cfg: FrozenConfig = mc.freeze()
+    cfg: FrozenConfig = (mc.merge_with(MutableConfig()) if merge_first else mc).freeze()
 
     assert cfg.policy_by_type == {}
 
 
-def test_policy_by_type_unknown_identifier_is_ignored() -> None:
+@pytest.mark.parametrize("merge_first", [False, True])
+def test_policy_by_type_unknown_identifier_is_ignored(
+    merge_first: bool,
+) -> None:
     """Unknown well-formed policy_by_type identifiers should not survive freeze."""
     mc: MutableConfig = mutable_config_from_defaults()
     mc.policy_by_type = {
@@ -514,7 +527,7 @@ def test_policy_by_type_unknown_identifier_is_ignored() -> None:
         ),
     }
 
-    cfg: FrozenConfig = mc.freeze()
+    cfg: FrozenConfig = (mc.merge_with(MutableConfig()) if merge_first else mc).freeze()
 
     assert cfg.policy_by_type == {}
 
@@ -758,3 +771,48 @@ def test_make_policy_registry_builds_constant_time_policy_lookup() -> None:
     assert registry.for_type(None) is cfg.policy
     assert registry.for_type("topmark:python") is cfg.policy_by_type["topmark:python"]
     assert registry.for_type("topmark:missing") is cfg.policy
+
+
+@pytest.mark.parametrize("first", ["python", "topmark:python"])
+@pytest.mark.parametrize("second", ["python", "topmark:python"])
+def test_policy_aliases_preserve_layer_order_across_repeated_overrides(
+    first: str,
+    second: str,
+) -> None:
+    """Canonical and local keys identify one policy through every merge boundary."""
+    ancestor = MutableConfig(
+        policy_by_type={
+            first: MutablePolicy(
+                header_mutation_mode=HeaderMutationMode.UPDATE_ONLY,
+            )
+        }
+    )
+    local = MutableConfig(
+        policy_by_type={
+            second: MutablePolicy(
+                header_mutation_mode=HeaderMutationMode.ALL,
+            )
+        }
+    )
+    final = MutableConfig(
+        policy_by_type={
+            first: MutablePolicy(
+                header_mutation_mode=HeaderMutationMode.ADD_ONLY,
+            )
+        }
+    )
+
+    # Merging mutable configs normalizes file type identifiers; use qualified identifier:
+    assert (
+        ancestor.merge_with(local).freeze().policy_by_type["topmark:python"].header_mutation_mode
+        == HeaderMutationMode.ALL
+    )
+    assert (
+        ancestor.merge_with(local)
+        .merge_with(final)
+        .freeze()
+        .policy_by_type["topmark:python"]
+        .header_mutation_mode
+        == HeaderMutationMode.ADD_ONLY
+    )
+    assert ancestor.policy_by_type[first].header_mutation_mode == HeaderMutationMode.UPDATE_ONLY

@@ -62,6 +62,8 @@ def test_probe_payload_items_iterate_durable_results(tmp_path: Path) -> None:
             "path": result.path.as_posix(),
             "status": "probe_missing",
             "reason": "no_resolution_probe_result",
+            "selection_method": "inference",
+            "rule_matches": [],
             "selected_file_type": None,
             "selected_processor": None,
             "activation": None,

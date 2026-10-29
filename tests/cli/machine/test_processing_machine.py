@@ -66,6 +66,8 @@ from topmark.cli.emitters.machine import emit_processing_stream_json_machine
 from topmark.cli.emitters.machine import emit_processing_stream_machine
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
+from topmark.core.constants import TOPMARK_END_MARKER
+from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.formats import OutputFormat
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_any_list
@@ -132,13 +134,13 @@ def _write_markdown_file_with_topmark_header(tmp_path: Path) -> Path:
         "\n".join(
             [
                 "<!--",
-                "topmark:header:start",
+                TOPMARK_START_MARKER,
                 "",
                 "  project   : Example",
                 "  file      : README.md",
                 "  license   : MIT",
                 "",
-                "topmark:header:end",
+                TOPMARK_END_MARKER,
                 "-->",
                 "",
                 "# Example",

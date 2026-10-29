@@ -413,10 +413,15 @@ def check(
     Returns:
         Filtered per-file outcomes, counts, diagnostics, and write stats.
 
+    Raises:
+        ConfigValidationError: If configuration contains errors, or warnings under
+            effective source-local strictness. Invocation and scoped discovery checks
+            complete before processing, including when applying changes.
+
     Notes:
         Reporting/view filtering is handled by the public view layer. It does not
         change which files are eligible to be written when `apply=True`.
-    """
+    """  # noqa: DOC502 - documents ConfigValidationError propagated by shared API preparation.
     result: _ContentPipelineRun = _run_content_pipeline(
         paths,
         pipeline_kind="check",
@@ -464,11 +469,35 @@ def stream_check(
 ) -> Iterator[ContentStreamEvent]:
     """Stream public events for a `check()` invocation.
 
-    The emitted file-result events use the same public `FileResult` DTOs and
-    report-scope filtering semantics as `check()`. Ordering is deterministic:
-    one run-start event, zero or more file-result events, then one run-completed
-    event.
-    """
+    Configuration is prepared and validated when iteration starts, before the first
+    run-start event is yielded or any processing file is written. Successful runs
+    emit run-start, per-file result, and run-completed events in deterministic order.
+
+    Args:
+        paths: Files and/or directories to process. Globs are allowed by the caller;
+            TopMark will recurse and filter internally.
+        apply: If `True`, write changes in-place; otherwise perform a dry run.
+        diff: If `True`, include unified diffs for changes where applicable.
+        config: Optional plain mapping or immutable
+            [`FrozenConfig`][topmark.config.model.FrozenConfig] to seed configuration.
+            When `None`, project discovery and layered merge are performed.
+        policy: Optional global policy overrides in the public API shape. These
+            are merged after discovery using standard policy resolution.
+        policy_by_type: Optional per-type policy overrides in the public API shape,
+            merged after discovery.
+        include_file_types: Optional whitelist of file type identifiers to restrict discovery.
+        exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
+        report: Reporting scope for the returned API view (`actionable`,
+            `noncompliant`, or `all`).
+        prune_views: If True, release consumed volatile views between pipeline steps.
+
+    Yields:
+        Public events using the same result DTOs and reporting semantics as the batch command.
+
+    Raises:
+        ConfigValidationError: If configuration contains errors, or warnings under
+            effective source-local strictness. The iterator yields no events on failure.
+    """  # noqa: DOC502 - documents ConfigValidationError propagated by shared API preparation.
     result: _ContentPipelineRun = _run_content_pipeline(
         paths,
         pipeline_kind="check",
@@ -529,10 +558,15 @@ def strip(
     Returns:
         Filtered per-file outcomes, counts, diagnostics, and write stats.
 
+    Raises:
+        ConfigValidationError: If configuration contains errors, or warnings under
+            effective source-local strictness. Invocation and scoped discovery checks
+            complete before processing, including when applying changes.
+
     Notes:
         Reporting/view filtering is handled by the public view layer and does not
         modify pipeline write decisions.
-    """
+    """  # noqa: DOC502 - documents ConfigValidationError propagated by shared API preparation.
     result: _ContentPipelineRun = _run_content_pipeline(
         paths,
         pipeline_kind="strip",
@@ -580,11 +614,34 @@ def stream_strip(
 ) -> Iterator[ContentStreamEvent]:
     """Stream public events for a `strip()` invocation.
 
-    The emitted file-result events use the same public `FileResult` DTOs and
-    report-scope filtering semantics as `strip()`. Ordering is deterministic:
-    one run-start event, zero or more file-result events, then one run-completed
-    event.
-    """
+    Configuration is prepared and validated when iteration starts, before the first
+    run-start event is yielded or any processing file is written. Successful runs
+    emit run-start, per-file result, and run-completed events in deterministic order.
+
+    Args:
+        paths: Files and/or directories to process. Globs are allowed.
+        apply: If `True`, write changes in-place; otherwise perform a dry run.
+        diff: If `True`, include unified diffs for changes where applicable.
+        config: Optional plain mapping or immutable
+            [`FrozenConfig`][topmark.config.model.FrozenConfig] to seed configuration.
+            When `None`, project discovery and layered merge are performed.
+        policy: Optional global policy overrides in the public API shape. Strip
+            flows are currently policy-agnostic, but this is accepted for forward
+            compatibility.
+        policy_by_type: Optional per-type policy overrides in the public API shape.
+        include_file_types: Optional whitelist of file type identifiers to restrict discovery.
+        exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
+        report: Reporting scope for the returned API view (`actionable`,
+            `noncompliant`, or `all`).
+        prune_views: If True, release consumed volatile views between pipeline steps.
+
+    Yields:
+        Public events using the same result DTOs and reporting semantics as the batch command.
+
+    Raises:
+        ConfigValidationError: If configuration contains errors, or warnings under
+            effective source-local strictness. The iterator yields no events on failure.
+    """  # noqa: DOC502 - documents ConfigValidationError propagated by shared API preparation.
     result: _ContentPipelineRun = _run_content_pipeline(
         paths,
         pipeline_kind="strip",
@@ -644,10 +701,15 @@ def probe(
         Stable probe results, summary counts, diagnostics, and any fatal
         pipeline-level exit code.
 
+    Raises:
+        ConfigValidationError: If configuration contains errors, or warnings under
+            effective source-local strictness. Invocation and scoped discovery checks
+            complete before processing, including when applying changes.
+
     Notes:
         `probe()` is always read-only. It has no `apply` or `diff` mode because it
         explains resolution rather than planning or applying header mutations.
-    """
+    """  # noqa: DOC502 - documents ConfigValidationError propagated by shared API preparation.
     result: _ProbePipelineRun = _run_probe_pipeline(
         paths,
         config=config,
@@ -679,11 +741,31 @@ def stream_probe(
 ) -> Iterator[ProbeStreamEvent]:
     """Stream public events for a `probe()` invocation.
 
-    Probe joined the initial public streaming entry-point PR because the probe
-    event DTO was already part of the public compatibility contract. The emitted
-    file-result events use the same public `ProbeFileResult` DTOs and ordering
-    semantics as `probe()`.
-    """
+    Configuration is prepared and validated when iteration starts, before the first
+    run-start event is yielded or any processing file is written. Successful runs
+    emit run-start, per-file result, and run-completed events in deterministic order.
+
+    Args:
+        paths: Files and/or directories to probe. Globs are allowed by the caller;
+            TopMark will recurse and filter internally.
+        config: Optional plain mapping or immutable
+            [`FrozenConfig`][topmark.config.model.FrozenConfig] to seed configuration.
+            When `None`, project discovery and layered merge are performed.
+        policy: Optional global policy overrides. For probe, this is primarily
+            useful for resolver-affecting options such as `allow_content_probe`.
+        policy_by_type: Optional per-type policy overrides merged after discovery.
+        include_file_types: Optional whitelist of file type identifiers to restrict discovery.
+        exclude_file_types: Optional blacklist of file type identifiers to exclude from discovery.
+        prune_views: If True, release consumed volatile views between pipeline steps.
+            Probe results are built from resolution data, not presentation views.
+
+    Yields:
+        Public events using the same result DTOs and reporting semantics as the batch command.
+
+    Raises:
+        ConfigValidationError: If configuration contains errors, or warnings under
+            effective source-local strictness. The iterator yields no events on failure.
+    """  # noqa: DOC502 - documents ConfigValidationError propagated by shared API preparation.
     result: _ProbePipelineRun = _run_probe_pipeline(
         paths,
         config=config,

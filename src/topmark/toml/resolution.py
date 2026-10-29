@@ -48,7 +48,9 @@ from typing import TypeAlias
 
 from topmark.core.logging import get_logger
 from topmark.diagnostic.model import MutableDiagnosticLog
+from topmark.toml.loaders import load_toml_table
 from topmark.toml.loaders import load_topmark_toml_source
+from topmark.toml.loaders import load_topmark_toml_table
 from topmark.utils.path import canonical_processing_path
 
 if TYPE_CHECKING:
@@ -59,6 +61,7 @@ if TYPE_CHECKING:
     from topmark.diagnostic.model import FrozenDiagnosticLog
     from topmark.runtime.writer_options import WriterOptions
     from topmark.toml.parse import ParsedTopmarkToml
+    from topmark.toml.types import TomlTable
     from topmark.toml.validation import TomlValidationIssue
 
 
@@ -140,7 +143,20 @@ def _append_loaded_source(
 ) -> None:
     """Load one TOML source and append it with preserved source diagnostics."""
     resolved_path: Path = canonical_processing_path(path)
-    parsed: ParsedTopmarkToml | None = load_topmark_toml_source(resolved_path)
+    table: TomlTable | None = load_toml_table(resolved_path)
+    parsed: ParsedTopmarkToml | None = (
+        load_topmark_toml_table(
+            table,
+            source_path=resolved_path,
+            from_pyproject=resolved_path.name == "pyproject.toml",
+        )
+        if table is not None
+        else None
+    )
+    if table is not None and parsed is None:
+        # Valid project metadata without an owned [tool.topmark] table is not
+        # a TopMark source. Preserve real read/parse errors below instead.
+        return
     if parsed is None:
         logger.debug(
             "Preserving unreadable or invalid TOML source during resolution: %s", resolved_path

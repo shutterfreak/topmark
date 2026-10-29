@@ -20,6 +20,7 @@ Sets:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from topmark.core.constants import VALUE_NOT_SET
@@ -59,6 +60,12 @@ def _ensure_resolution_probe(
     if ctx.resolution_probe is None:
         ctx.resolution_probe = probe_resolution_for_path(
             ctx.path,
+            assignment_path=(
+                Path(ctx.run_options.stdin_filename)
+                if ctx.run_options.stdin_mode and ctx.run_options.stdin_filename
+                else None
+            ),
+            file_type_assignments=ctx.config.file_type_assignments,
             opt_in_file_types=ctx.config.opt_in_file_types or None,
             include_file_types=ctx.config.include_file_types or None,
             exclude_file_types=ctx.config.exclude_file_types or None,
@@ -84,6 +91,14 @@ def apply_probe_resolution_to_context(
     """
     ctx.status.resolve = ResolveStatus.PENDING
     probe: ResolutionProbeResult = _ensure_resolution_probe(ctx)
+    ctx.file_type_assigned = probe.file_type_assigned
+
+    if probe.status == ResolutionProbeStatus.FILTERED:
+        if probe.selected_file_type is not None:
+            ctx.file_type = Registry.get_filetype(probe.selected_file_type.qualified_key)
+        ctx.status.resolve = ResolveStatus.TYPE_RESOLVED_FILTERED
+        ctx.request_halt(reason="Selected file type excluded by type filters.", at_step=step)
+        return
 
     if probe.selected_file_type is None:
         logger.info("Unsupported file type for '%s' (no matcher)", ctx.path)
@@ -256,6 +271,14 @@ class ResolverStep(BaseStep):
                 pass  # healthy, no hint
 
             # Stop processing:
+            case ResolveStatus.TYPE_RESOLVED_FILTERED:
+                ctx.hint(
+                    axis=Axis.RESOLVE,
+                    code=KnownCode.DISCOVERY_FILTERED,
+                    cluster=Cluster.SKIPPED,
+                    message="selected file type excluded by filter",
+                    terminal=True,
+                )
             case ResolveStatus.TYPE_RESOLVED_NO_PROCESSOR_REGISTERED:
                 ctx.hint(
                     axis=Axis.RESOLVE,

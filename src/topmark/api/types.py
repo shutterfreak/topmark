@@ -74,6 +74,11 @@ DiagnosticLevelLiteral: TypeAlias = Literal[
 ]
 """Allowed public diagnostic severity tokens."""
 
+SelectionMethodLiteral: TypeAlias = Literal[
+    "inference",
+    "assignment",
+]
+"""Whether the effective selection used assignment or inference."""
 
 # ---- Public diagnostics and run-result shapes ----
 
@@ -150,6 +155,8 @@ class ProbeFileResult:
             one is bound for the selected file type.
         candidates: Ordered, normalized candidate list considered during file-type
             resolution. Empty for missing or discovery-filtered paths.
+        selection_method: Whether the effective selection used assignment or inference.
+        rule_matches: Ordered matching rules including winner and superseded provenance.
 
     Notes:
         `status` and `reason` are plain strings to keep the public API JSON-friendly
@@ -163,6 +170,8 @@ class ProbeFileResult:
     selected_file_type: str | None
     selected_processor: str | None
     candidates: Sequence[ProbeCandidateInfo]
+    selection_method: SelectionMethodLiteral = "inference"
+    rule_matches: tuple[Mapping[str, object], ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

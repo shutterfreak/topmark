@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import replace
 from typing import TYPE_CHECKING
 from typing import cast
@@ -23,10 +24,15 @@ from tests.helpers.pipeline import unsupported_output_format
 from tests.helpers.registry import make_file_type
 from tests.presentation.conftest import find_table_row
 from topmark.cli.errors import TopmarkCliPipelineError
+from topmark.cli.keys import CliCmd
+from topmark.cli.keys import CliOpt
+from topmark.config.assignments import InferenceRule
+from topmark.config.assignments import matching_file_type_rules
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.formats import OutputFormat
 from topmark.diagnostic.model import Diagnostic
 from topmark.diagnostic.model import DiagnosticLevel
+from topmark.pipeline.context.model import ProcessingContext
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import Cluster
 from topmark.pipeline.hints import KnownCode
@@ -36,6 +42,7 @@ from topmark.pipeline.machine.streaming import iter_machine_processing_stream
 from topmark.pipeline.reduction import reduce_processing_contexts
 from topmark.pipeline.reporting import ReportScope
 from topmark.pipeline.reporting import would_add_or_update_result
+from topmark.pipeline.result import ProcessingResult
 from topmark.pipeline.status import ComparisonStatus
 from topmark.pipeline.status import ContentStatus
 from topmark.pipeline.status import FsStatus
@@ -58,6 +65,7 @@ from topmark.presentation.shared.paths import render_path_display_text
 from topmark.presentation.shared.pipeline import PipelineCommandHumanReport
 from topmark.presentation.shared.pipeline import PipelineHumanPresentationOptions
 from topmark.presentation.shared.pipeline import get_file_type_label
+from topmark.presentation.shared.pipeline import render_apply_command
 from topmark.presentation.shared.pipeline import summarize_pipeline_file
 from topmark.presentation.text.pipeline import render_pipeline_apply_summary_text
 from topmark.presentation.text.pipeline import render_pipeline_diffs_text
@@ -738,7 +746,7 @@ def test_render_pipeline_output_markdown_check_guidance_uses_stdin_filename(
 
     assert "`logical/input.py` (python)" in output
     assert (
-        "Run `topmark check --apply --stdin-filename logical/input.py -` "
+        "Run `topmark check --apply --stdin-filename 'logical/input.py' -` "
         "to add a TopMark header to this file."
     ) in output
 
@@ -1582,3 +1590,170 @@ def test_render_pipeline_command_human_stream_output_rejects_missing_start(
             fmt=OutputFormat.TEXT,
             would_change=would_add_or_update_result,
         )
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "ordinary.json",
+        "config/data[1].json",
+        "literal*.json",
+        "literal?.json",
+        "quote'and$dollar.json",
+        "`tick`.json",
+        " leading.json",
+        r"literal\backslash.json",
+        "a=b:c,雪.json",
+        "-leading.json",
+        "#comment.json",
+        "#config/item.json",
+        "!config/item.json",
+        "!negated.json",
+    ],
+)
+def test_assignment_apply_command_quotes_literal_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    filename: str,
+) -> None:
+    """Shell quoting and glob escaping independently preserve a literal single-file target."""
+    monkeypatch.chdir(tmp_path)
+    ctx: ProcessingContext = _make_context(tmp_path / "placeholder.py")
+    ctx.file_type_assigned = True
+    result: ProcessingResult = replace(
+        reduce_processing_contexts([ctx]).results[0],
+        path=tmp_path / filename,
+        display_path=filename,
+    )
+    command: str | None = render_apply_command(
+        command=CliCmd.CHECK,
+        result=result,
+    )
+    assert command is not None
+    args: list[str] = shlex.split(command)
+    assert args[:3] == [
+        "topmark",
+        CliCmd.CHECK,
+        CliOpt.ASSIGN_FILETYPE,
+    ]
+    assert result.file_type is not None
+    target, _, pattern = args[3].partition("=")
+    assert target == result.file_type.qualified_key
+    assert args[4] == "--apply"
+    assert (tmp_path / args[5]).resolve() == (tmp_path / filename).resolve()
+    rule = InferenceRule(patterns=(pattern,), base=tmp_path, scope=None, source="hint", order=0)
+    assert matching_file_type_rules(tmp_path / filename, (rule,))
+    assert not matching_file_type_rules(tmp_path / "unrelated" / filename, (rule,))
+
+
+@pytest.mark.parametrize("assigned", [None, False, True])
+def test_apply_command_origin_and_stdin_filename(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    assigned: bool | None,
+) -> None:
+    """Only explicit assignments add an override, using the logical STDIN filename."""
+    monkeypatch.chdir(tmp_path)
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "temporary.py",
+        stdin_mode=True,
+        stdin_filename="logical/input[1].py",
+    )
+    ctx.file_type_assigned = assigned
+    result: ProcessingResult = reduce_processing_contexts([ctx]).results[0]
+    command: str | None = render_apply_command(command=CliCmd.CHECK, result=result)
+    assert command is not None
+    args: list[str] = shlex.split(command)
+    assert (CliOpt.ASSIGN_FILETYPE in args) is (assigned is True)
+    assert args[-3:] == [
+        CliOpt.STDIN_FILENAME,
+        "logical/input[1].py",
+        "-",
+    ]
+    assert "temporary.py" not in command
+
+
+@pytest.mark.parametrize("reason", ["outside", "control", "missing_type"])
+@pytest.mark.parametrize("pipeline_kind", ["check", "strip"])
+@pytest.mark.parametrize("fmt", [OutputFormat.TEXT, OutputFormat.MARKDOWN])
+def test_assignment_guidance_falls_back_when_exact_replay_is_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+    pipeline_kind: PipelineKindLiteral,
+    fmt: OutputFormat,
+) -> None:
+    """Unrepresentable assignment replays explain how to rerun without a broken command."""
+    monkeypatch.chdir(tmp_path)
+    ctx: ProcessingContext = _make_context(
+        tmp_path / "a.py",
+        pipeline_kind=pipeline_kind,
+    )
+    ctx.file_type_assigned = True
+    if pipeline_kind == "strip":
+        ctx.status.header = HeaderStatus.DETECTED
+        ctx.status.strip = StripStatus.READY
+    result: ProcessingResult = reduce_processing_contexts([ctx]).results[0]
+    if reason == "outside":
+        result = replace(result, display_path=str(tmp_path.parent / "outside.py"))
+    elif reason == "control":
+        result = replace(result, display_path="invalid\nname.py")
+    else:
+        result = replace(result, file_type=None)
+    assert render_apply_command(command=pipeline_kind, result=result) is None
+    report: PipelineCommandHumanReport = _make_report(
+        pipeline_kind=pipeline_kind,
+        view_results=(result,),
+    )
+    output: str = (
+        render_pipeline_output_text(report)
+        if fmt == OutputFormat.TEXT
+        else render_pipeline_output_markdown(report)
+    )
+    assert "Rerun this command" in output
+    assert "same configuration" in output
+    assert "Run `None`" not in output
+
+
+@pytest.mark.parametrize("pipeline_kind", ["check", "strip"])
+def test_markdown_apply_guidance_preserves_shell_args_with_backtick_fences(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline_kind: PipelineKindLiteral,
+) -> None:
+    """Markdown fences protect shell literals without adding escapes to their contents."""
+    monkeypatch.chdir(tmp_path)
+    ctx: ProcessingContext = _make_context(tmp_path / "placeholder.py", pipeline_kind=pipeline_kind)
+    ctx.file_type_assigned = True
+    if pipeline_kind == "strip":
+        ctx.status.header = HeaderStatus.DETECTED
+        ctx.status.strip = StripStatus.READY
+    result: ProcessingResult = replace(
+        reduce_processing_contexts([ctx]).results[0],
+        path=tmp_path / "data`[1]雪.py",
+        display_path="data`[1]雪.py",
+    )
+    report: PipelineCommandHumanReport = _make_report(
+        pipeline_kind=pipeline_kind, view_results=(result,)
+    )
+    rendered: str = render_pipeline_output_markdown(report)
+    guidance: str = next(
+        line for line in rendered.splitlines() if "Run " in line and CliOpt.APPLY_CHANGES in line
+    )
+    assert "Run ``topmark " in guidance
+    command: str = guidance.split("``", 2)[1]
+    args: list[str] = shlex.split(command)
+    assert args[-1] == "data`[1]雪.py"
+    assert "'data`[1]雪.py'" in command
+    assert "\\`" not in command
+    target, _, pattern = args[3].partition("=")
+    assert result.file_type is not None and target == result.file_type.qualified_key
+    rule = InferenceRule(
+        patterns=(pattern,),
+        base=tmp_path,
+        scope=None,
+        source="hint",
+        order=0,
+    )
+    assert matching_file_type_rules(result.path, (rule,))
+    assert not matching_file_type_rules(tmp_path / "data`1雪.py", (rule,))

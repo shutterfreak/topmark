@@ -25,6 +25,7 @@ from topmark.presentation.markdown.paths import render_path_display_markdown
 from topmark.presentation.markdown.utils import markdown_code_span
 from topmark.presentation.markdown.utils import render_markdown_table
 from topmark.presentation.shared.probe import format_probe_match_signals
+from topmark.presentation.shared.probe import format_probe_rule_details
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -192,6 +193,13 @@ def _render_probe_result_markdown(
         "",
     ]
     lines.extend(_render_probe_selected_details_markdown(probe))
+    lines.extend(
+        "- " + markdown_code_span(line)
+        for line in format_probe_rule_details(
+            probe,
+            include_superseded=True,
+        )
+    )
 
     if len(ctx.diagnostics) > 0:
         diag_md: str = render_diagnostics_markdown(

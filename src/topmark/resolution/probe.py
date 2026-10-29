@@ -23,15 +23,27 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from topmark.config.assignments import FileTypeRuleAction
+
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from topmark.config.assignments import FileTypeRule
+    from topmark.filetypes.model import FileTypeActivation
+
+
+class FileTypeSelectionMethod(StrEnum):
+    """Origin of the effective registered file-type selection."""
+
+    ASSIGNMENT = "assignment"
+    INFERENCE = "inference"
 
 
 class ResolutionProbeStatus(StrEnum):
     """Machine-friendly status for the overall probe outcome.
 
     Attributes:
-        FILTERED: The path was excluded during discovery before file-type probing.
+        FILTERED: Discovery or effective-type filters excluded this path.
         RESOLVED: A file type and processor were successfully selected.
         UNSUPPORTED: No file type candidates matched the path.
         NO_PROCESSOR: A file type was selected, but no processor was bound.
@@ -54,6 +66,7 @@ class ResolutionProbeReason(StrEnum):
         EXCLUDED_BY_FILE_TYPE_FILTER: The path was filtered by file-type filters.
         EXCLUDED_BY_DISCOVERY_FILTER: The path was filtered out before probing, but the exact
             discovery filter category was not identified.
+        SELECTED_BY_ASSIGNMENT: An explicit rule selected the registered type.
         SELECTED_HIGHEST_SCORE: The selected file type had the highest score.
         SELECTED_BY_TIE_BREAK: Multiple candidates shared the top score and were
             ordered deterministically by tie-break rules.
@@ -70,6 +83,7 @@ class ResolutionProbeReason(StrEnum):
     EXCLUDED_BY_PATH_FILTER = "excluded_by_path_filter"
     EXCLUDED_BY_FILE_TYPE_FILTER = "excluded_by_file_type_filter"
     EXCLUDED_BY_DISCOVERY_FILTER = "excluded_by_discovery_filter"
+    SELECTED_BY_ASSIGNMENT = "selected_by_assignment"
     SELECTED_HIGHEST_SCORE = "selected_highest_score"
     SELECTED_BY_TIE_BREAK = "selected_by_tie_break"
     NO_CANDIDATES = "no_candidates"
@@ -144,7 +158,7 @@ class ResolutionProbeSelection:
 class ResolutionProbeActivation:
     """Declared activation and dynamic authorization for the selected type."""
 
-    declared: str
+    declared: FileTypeActivation
     authorized: bool
 
 
@@ -153,6 +167,7 @@ class ResolutionProbeResult:
     """Probe result explaining file type and processor resolution for one path.
 
     Attributes:
+        rule_matches: Ordered actual rule matches, with the winner last.
         path: Filesystem path that was probed.
         status: Machine-friendly probe status.
         reason: Machine-friendly reason for the probe outcome.
@@ -167,6 +182,7 @@ class ResolutionProbeResult:
             selected file type, or ``None`` when no type was selected.
     """
 
+    rule_matches: tuple[tuple[FileTypeRule, str], ...] = ()
     path: Path
     status: ResolutionProbeStatus
     reason: ResolutionProbeReason
@@ -174,3 +190,19 @@ class ResolutionProbeResult:
     selected_file_type: ResolutionProbeSelection | None
     selected_processor: ResolutionProbeSelection | None
     activation: ResolutionProbeActivation | None = None
+
+    @property
+    def file_type_assigned(self) -> bool | None:
+        """Return whether the selected type came from an explicit assignment."""
+        if self.selected_file_type is None:
+            return None
+        return bool(
+            self.rule_matches and self.selection_method == FileTypeSelectionMethod.ASSIGNMENT
+        )
+
+    @property
+    def selection_method(self) -> FileTypeSelectionMethod:
+        """Return the winning rule's selection method, defaulting to inference."""
+        if self.rule_matches and self.rule_matches[-1][0].action == FileTypeRuleAction.ASSIGN:
+            return FileTypeSelectionMethod.ASSIGNMENT
+        return FileTypeSelectionMethod.INFERENCE

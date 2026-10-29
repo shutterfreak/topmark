@@ -999,3 +999,17 @@ Filtered or missing explicit inputs are not produced by
 \[`ProberStep`\][topmark.pipeline.steps.prober.ProberStep] itself. Probe orchestration represents
 them as durable synthetic probe results before final presentation, API, and machine-readable output
 packaging.
+
+______________________________________________________________________
+
+## Compact file-type selection origin
+
+The shared resolution result derives `file_type_assigned` from the selected type and winning rule.
+The resolver copies it to `ProcessingContext`, and reduction retains it in `ProcessingResult` for
+all pipeline families. The value is `None` without a selected type, `True` for assignments, and
+`False` for automatic recognition, including inference-control winners. Full probe snapshots remain
+probe-specific; ordinary results retain only the compact origin flag.
+
+Shared human guidance uses this flag and the canonical type identity to construct a single-file
+assignment. Literal glob escaping is separate from shell quoting. Origin alone does not reconstruct
+configuration, activation, or policy arguments from the original invocation.

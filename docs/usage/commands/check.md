@@ -478,6 +478,8 @@ ______________________________________________________________________
 | `--include-from`              | File of patterns to include (one per line, `#` comments allowed).            |
 | `--exclude`                   | Exclude paths by glob (can be used multiple times).                          |
 | `--exclude-from`              | File of patterns to exclude.                                                 |
+| `--assign-filetype TYPE=GLOB` | Assign a registered file type to matching paths (repeatable).                |
+| `--infer-filetype GLOB`       | Restore automatic recognition; interleaves with assignments (repeatable).    |
 | `--include-file-types` / `-t` | Restrict to local or qualified TopMark file type identifiers.                |
 | `--exclude-file-types` / `-T` | Exclude local or qualified TopMark file type identifiers.                    |
 | `--opt-in-file-type`          | Authorize a local or qualified opt-in file type identifier.                  |
@@ -486,6 +488,9 @@ ______________________________________________________________________
 | `--empty-insert-mode`         | Check-only policy override controlling empty-file classification.            |
 | `--strict` / `--no-strict`    | Override effective configuration-loading validation strictness for this run. |
 | `--stdin-filename`            | Assumed filename when PATH is '-' (content from STDIN).                      |
+
+See [File-type assignments](../configuration.md#assign-existing-file-types) for shared rule
+precedence, pattern syntax, and inference restoration.
 
 > Run `topmark check -h` for the full list of options and help text.
 

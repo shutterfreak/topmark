@@ -431,8 +431,8 @@ def validate_output_verbosity_policy(
         fmt: Effective output format for this invocation.
 
     Behavior:
-        - For non-TEXT formats, `--verbose` and `--quiet` are cleared silently.
         - For TEXT output, `--verbose` and `--quiet` are mutually exclusive.
+        - Non-TEXT formats clear `--verbose` and `--quiet` silently.
     """
     state: TopmarkCliState = get_cli_state(ctx)
 

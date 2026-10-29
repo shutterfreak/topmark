@@ -46,6 +46,8 @@ class ArgKey(StrEnum):
     EXCLUDE_FROM = "exclude_from"
     FILES_FROM = "files_from"
     OPT_IN_FILE_TYPES = "opt_in_file_types"
+    ASSIGN_FILETYPE = "assign_filetype"
+    INFER_FILETYPE = "infer_filetype"
     INCLUDE_FILE_TYPES = "include_file_types"
     EXCLUDE_FILE_TYPES = "exclude_file_types"
 

@@ -183,21 +183,26 @@ ______________________________________________________________________
 
 ## Command-specific options
 
-| Option               | Description                                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `--config`           | Merge an explicit TOML configuration file (can be repeated).                                        |
-| `--no-config`        | Do not discover local project/user configuration file.                                              |
-| `--include`          | Add include patterns (can be repeated).                                                             |
-| `--exclude`          | Add exclude patterns (can be repeated).                                                             |
-| `--include-from`     | Read include patterns from file (one per line, `#` comments allowed).                               |
-| `--exclude-from`     | Read exclude patterns from file (one per line, `#` comments allowed).                               |
-| `--files-from`       | Accept a file-list input for compatibility; listed paths do not affect the dumped configuration.    |
-| `--file-type`        | Restrict to local or qualified TopMark file type identifiers (affects runtime configuration state). |
-| `--opt-in-file-type` | Authorize a local or qualified opt-in file type identifier in the dumped runtime configuration.     |
-| `--relative-to`      | Base directory for relative path handling in configuration.                                         |
-| `--align-fields`     | Whether to align header fields (captured in configuration).                                         |
-| `--header-format`    | Header rendering format override (captured in configuration).                                       |
-| `-q`, `--quiet`      | Suppress TEXT rendering while preserving the command's exit status.                                 |
+| Option                        | Description                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `--config`                    | Merge an explicit TOML configuration file (can be repeated).                                        |
+| `--no-config`                 | Do not discover local project/user configuration file.                                              |
+| `--assign-filetype TYPE=GLOB` | Append a file-type assignment to the dumped rules (repeatable).                                     |
+| `--infer-filetype GLOB`       | Restore automatic recognition; interleaves with assignments (repeatable).                           |
+| `--include`                   | Add include patterns (can be repeated).                                                             |
+| `--exclude`                   | Add exclude patterns (can be repeated).                                                             |
+| `--include-from`              | Read include patterns from file (one per line, `#` comments allowed).                               |
+| `--exclude-from`              | Read exclude patterns from file (one per line, `#` comments allowed).                               |
+| `--files-from`                | Accept a file-list input for compatibility; listed paths do not affect the dumped configuration.    |
+| `--file-type`                 | Restrict to local or qualified TopMark file type identifiers (affects runtime configuration state). |
+| `--opt-in-file-type`          | Authorize a local or qualified opt-in file type identifier in the dumped runtime configuration.     |
+| `--relative-to`               | Base directory for relative path handling in configuration.                                         |
+| `--align-fields`              | Whether to align header fields (captured in configuration).                                         |
+| `--header-format`             | Header rendering format override (captured in configuration).                                       |
+| `-q`, `--quiet`               | Suppress TEXT rendering while preserving the command's exit status.                                 |
+
+See [File-type assignments](../../configuration.md#assign-existing-file-types) for shared rule
+precedence, pattern syntax, and inference restoration.
 
 > Run `topmark config dump -h` for the full list of options and help text.
 

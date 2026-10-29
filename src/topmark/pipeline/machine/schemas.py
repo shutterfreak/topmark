@@ -40,10 +40,15 @@ fragments** (not full JSON/NDJSON envelopes):
   probe result. Individual probe payloads are built from
   [`ResolutionProbeResult`][topmark.resolution.probe.ResolutionProbeResult], including
   filtered explicit inputs that never reached file-type probing.
+  Each payload includes `selection_method` and ordered `rule_matches`, independently
+  of verbosity. Assignment winners have no scored candidates; rule provenance
+  carries their source, matching pattern, base, scope, precedence, and order.
 
 Notes:
     - These are `TypedDict` definitions (static typing only). Runtime validation is
       intentionally out-of-scope.
+    - Processing results include `file_type_assigned`: true for explicit assignment,
+      false for automatic selection, and null without a selected type.
     - `outcome` is the stable machine identifier (string value of `Outcome`).
     - `reason` is the stable bucket reason emitted by the current summary serializer.
     - Probe `status` and `reason` values are owned by

@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from topmark.config.assignments import FileTypeRule
     from topmark.config.resolution.synthetic import SyntheticConfigSource
     from topmark.config.types import PatternGroup
     from topmark.config.types import PatternSource
@@ -139,6 +140,7 @@ class FrozenConfig:
             file discovery.
         exclude_file_types: Blacklist of file type identifiers to exclude from
             file discovery.
+        file_type_assignments: Ordered explicit type assignments and inference controls.
         validation_logs: Stage-aware diagnostics collected during config
             loading and preflight validation.
 
@@ -188,6 +190,8 @@ class FrozenConfig:
     opt_in_file_types: frozenset[str]
     include_file_types: frozenset[str]
     exclude_file_types: frozenset[str]
+
+    file_type_assignments: tuple[FileTypeRule, ...] = ()
 
     # Collected diagnostics while loading / merging / sanitizing config.
     validation_logs: FrozenValidationLogs
@@ -273,6 +277,7 @@ class FrozenConfig:
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             files=list(self.files),
+            file_type_assignments=list(self.file_type_assignments),
             include_from=list(self.include_from),
             exclude_from=list(self.exclude_from),
             include_pattern_groups=list(self.include_pattern_groups),
@@ -331,6 +336,7 @@ class MutableConfig:
             inherited allowlist.
         relative_to_raw: Original string from config or CLI
         relative_to: Base path used only for resolving header metadata (e.g., `file_relpath`).
+        file_type_assignments: Ordered explicit type assignments and inference controls.
         files: List of files to process.
         include_from: Files containing include patterns.
         exclude_from: Files containing exclude patterns.
@@ -367,6 +373,7 @@ class MutableConfig:
     relative_to: Path | None = None  # resolved version (used at runtime)
 
     # File processing options
+    file_type_assignments: list[FileTypeRule] = field(default_factory=lambda: [])
     files: list[str] = field(default_factory=lambda: [])
 
     include_from: list[PatternSource] = field(default_factory=lambda: [])
@@ -475,6 +482,7 @@ class MutableConfig:
             relative_to_raw=self.relative_to_raw,
             relative_to=self.relative_to,
             files=tuple(self.files),
+            file_type_assignments=tuple(self.file_type_assignments),
             include_from=tuple(self.include_from),
             exclude_from=tuple(self.exclude_from),
             files_from=tuple(self.files_from),
@@ -540,21 +548,22 @@ class MutableConfig:
         # matching parent values without collapsing `None` too early.
         merged_global: MutablePolicy = self.policy.merge_with(other.policy)
 
-        # Merge per-type policies key-wise, then tri-state merge per shared key.
+        # Normalize aliases before merging, preserving declaration and layer order.
+        # A set union of raw local/qualified keys makes alias collisions depend on
+        # hash iteration order when sanitize() later resolves both to one type.
         merged_by_type: dict[str, MutablePolicy] = {}
-        all_policy_keys: set[str] = set(self.policy_by_type.keys()) | set(
-            other.policy_by_type.keys()
-        )
-        for key in all_policy_keys:
-            base: MutablePolicy | None = self.policy_by_type.get(key)
-            override: MutablePolicy | None = other.policy_by_type.get(key)
-            if base is None:
-                if override is not None:
-                    merged_by_type[key] = override
-            elif override is None:
-                merged_by_type[key] = base
-            else:
-                merged_by_type[key] = base.merge_with(override)
+        for policies in (self.policy_by_type, other.policy_by_type):
+            for key, policy in policies.items():
+                try:
+                    canonical_key: str = _resolve_file_type_id(key) or key
+                except (AmbiguousFileTypeIdentifierError, InvalidRegistryIdentityError):
+                    # Retain invalid keys for the existing staged validation path;
+                    # merging must not drop diagnostics or introduce a new exception.
+                    canonical_key = key
+                previous: MutablePolicy | None = merged_by_type.get(canonical_key)
+                merged_by_type[canonical_key] = (
+                    previous.merge_with(policy) if previous is not None else policy
+                )
 
         # Provenance accumulates across layers. Validation diagnostics also
         # accumulate, but remain separated by stage so flattened diagnostics can
@@ -637,6 +646,7 @@ class MutableConfig:
             relative_to_raw=merged_relative_to_raw,
             relative_to=merged_relative_to,
             files=merged_files,
+            file_type_assignments=[*self.file_type_assignments, *other.file_type_assignments],
             include_from=merged_include_from,
             exclude_from=merged_exclude_from,
             files_from=merged_files_from,
@@ -710,39 +720,6 @@ class MutableConfig:
         _sanitize_sources(Toml.KEY_INCLUDE_FROM, self.include_from)
         _sanitize_sources(Toml.KEY_EXCLUDE_FROM, self.exclude_from)
         _sanitize_sources(Toml.KEY_FILES_FROM, self.files_from)
-
-        def _resolve_file_type_id(file_type_id: str) -> str | None:
-            """Return the canonical qualified key for a public file type identifier.
-
-            Public configuration accepts either a qualified identifier such as
-            `topmark:python` or an unqualified local identifier such as `python`.
-            Local identifiers are accepted only when they are unambiguous in the
-            effective file type registry.
-
-            Args:
-                file_type_id: Public file type identifier from config, CLI, or API
-                    overrides.
-
-            Returns:
-                The canonical qualified file type key, or `None` when the
-                identifier is empty or unknown.
-
-            Raises:
-                AmbiguousFileTypeIdentifierError: If an unqualified local
-                    identifier matches more than one registered file type.
-                InvalidRegistryIdentityError: If a qualified identifier is
-                    malformed.
-            """  # noqa: DOC502 - documents propagated exceptions from delegated registry helpers
-            if not file_type_id:
-                return None
-
-            # Local import to keep config import-safe and avoid incidental cycles.
-            from topmark.registry.filetypes import FileTypeRegistry
-
-            file_type: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
-            if file_type is None:
-                return None
-            return file_type.qualified_key
 
         def _sanitize_file_type_ids(
             name: str,
@@ -879,6 +856,42 @@ class MutableConfig:
             self.policy_by_type = normalized
 
         _sanitize_policy_by_type()
+
+
+def _resolve_file_type_id(
+    file_type_id: str,
+) -> str | None:
+    """Return the canonical qualified key for a public file type identifier.
+
+    Public configuration accepts either a qualified identifier such as
+    `topmark:python` or an unqualified local identifier such as `python`.
+    Local identifiers are accepted only when they are unambiguous in the
+    effective file type registry.
+
+    Args:
+        file_type_id: Public file type identifier from config, CLI, or API
+            overrides.
+
+    Returns:
+        The canonical qualified file type key, or `None` when the
+        identifier is empty or unknown.
+
+    Raises:
+        AmbiguousFileTypeIdentifierError: If an unqualified local
+            identifier matches more than one registered file type.
+        InvalidRegistryIdentityError: If a qualified identifier is
+            malformed.
+    """  # noqa: DOC502 - documents propagated exceptions from delegated registry helpers
+    if not file_type_id:
+        return None
+
+    # Local import to keep config import-safe and avoid incidental cycles.
+    from topmark.registry.filetypes import FileTypeRegistry
+
+    file_type: FileType | None = FileTypeRegistry.resolve_filetype_id(file_type_id)
+    if file_type is None:
+        return None
+    return file_type.qualified_key
 
 
 # --------------------------- Validation helpers ---------------------------

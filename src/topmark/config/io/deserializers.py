@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 
+from topmark.config.assignments import parse_file_type_rules
 from topmark.config.model import MutableConfig
 from topmark.config.paths import abs_path_from
 from topmark.config.paths import extend_pattern_sources
@@ -55,6 +56,7 @@ from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MixedLineEndingsMode
 from topmark.config.policy import MutablePolicy
+from topmark.config.resolution.synthetic import ANONYMOUS_CONFIG_SOURCE
 from topmark.config.types import PatternGroup
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
@@ -158,7 +160,8 @@ def mutable_config_from_layered_toml_table(
     Args:
         data: Parsed layered TopMark TOML fragment.
         config_file: Optional real filesystem config path or synthetic config
-            source marker used for provenance.
+            source marker used for provenance. Unattributed fragments use a neutral
+            rule marker and do not add an entry to config_files.
 
     Returns:
         The resulting [`MutableConfig`][topmark.config.model.MutableConfig] instance.
@@ -279,6 +282,15 @@ def mutable_config_from_layered_toml_table(
         at the TOML layer.
         """
         where_files: Final[str] = f"[{Toml.SECTION_FILES}]"
+
+        if Toml.KEY_FILE_TYPE_ASSIGNMENTS in files_tbl:
+            draft.file_type_assignments = parse_file_type_rules(
+                files_tbl[Toml.KEY_FILE_TYPE_ASSIGNMENTS],
+                base=cfg_dir or Path.cwd().resolve(),
+                source=config_file if config_file is not None else ANONYMOUS_CONFIG_SOURCE,
+                scope=cfg_dir,
+                diagnostics=merged_diagnostics,
+            )
 
         # ---- files: normalize to absolute paths against the config file dir (when known) ----
         raw_files: list[str] = get_string_list_value_checked(
