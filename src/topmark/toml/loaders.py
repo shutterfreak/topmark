@@ -52,7 +52,9 @@ if TYPE_CHECKING:
 logger: TopmarkLogger = get_logger(__name__)
 
 
-def _load_toml_table(path: Path) -> TomlTable | None:
+def load_toml_table(
+    path: Path,
+) -> TomlTable | None:
     """Load one TOML document from disk as a plain-Python TOML table.
 
     Args:
@@ -150,7 +152,7 @@ def load_topmark_toml_source(path: Path) -> ParsedTopmarkToml | None:
         The per-source split parse result, or `None` when the file cannot be
         loaded or does not contain a valid TopMark TOML source table.
     """
-    data: TomlTable | None = _load_toml_table(path)
+    data: TomlTable | None = load_toml_table(path)
     if data is None:
         return None
 

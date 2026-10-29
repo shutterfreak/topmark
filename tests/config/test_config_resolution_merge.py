@@ -513,7 +513,10 @@ def test_merge_policy_by_type_preserves_parent_when_override_key_missing() -> No
 
     merged: MutableConfig = base.merge_with(override)
 
-    assert merged.policy_by_type["python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
+    # Merging mutable configs normalizes file type identifiers; use qualified identifier:
+    assert (
+        merged.policy_by_type["topmark:python"].header_mutation_mode == HeaderMutationMode.ADD_ONLY
+    )
 
 
 def test_freeze_records_unknown_excluded_file_type_diagnostic() -> None:

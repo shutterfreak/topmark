@@ -41,14 +41,15 @@ from typing import TYPE_CHECKING
 from topmark.config.paths import extend_pattern_sources
 from topmark.config.paths import pattern_source_from_cwd
 from topmark.config.policy import MutablePolicy
+from topmark.config.resolution.synthetic import CLI_OVERRIDE_SOURCE
 from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.config.types import PatternGroup
-from topmark.core.constants import CLI_OVERRIDE_STR
 from topmark.core.constants import TOPMARK_END_MARKER
 from topmark.core.constants import TOPMARK_START_MARKER
 from topmark.core.logging import get_logger
 
 if TYPE_CHECKING:
+    from topmark.config.assignments import FileTypeRule
     from topmark.config.model import MutableConfig
     from topmark.config.policy import BomBeforeShebangMode
     from topmark.config.policy import EmptyInsertMode
@@ -106,6 +107,7 @@ class ConfigOverrides:
         policy: Internal global policy override values applied after discovery.
         policy_by_type: Internal per-file-type policy override values applied
             after discovery.
+        file_type_assignments: Ordered explicit type assignments and inference controls.
         files: List of files to process.
         files_from: Paths to files that list newline-delimited candidate
             file paths to add before filtering.
@@ -131,13 +133,15 @@ class ConfigOverrides:
     """
 
     # Config-related options
-    config_origin: Path | SyntheticConfigSource = SyntheticConfigSource(label=CLI_OVERRIDE_STR)
+    config_origin: Path | SyntheticConfigSource = CLI_OVERRIDE_SOURCE
     config_base: Path = field(default_factory=lambda: Path.cwd().resolve())
     strict: bool | None = None
 
     # Policy (global and overrides by file type)
     policy: PolicyOverrides = field(default_factory=PolicyOverrides)
     policy_by_type: dict[str, PolicyOverrides] = field(default_factory=lambda: {})
+
+    file_type_assignments: tuple[FileTypeRule, ...] = ()
 
     # Files
     files: list[str] | None = None
@@ -225,6 +229,7 @@ def apply_config_overrides(
           validation stage. Flattening is now performed only at reporting and
           output boundaries.
     """
+    config.file_type_assignments.extend(overrides.file_type_assignments)
     merged_diagnostics: MutableDiagnosticLog = config.validation_logs.merged_config
 
     # Record that a highest-precedence CLI/API override layer was applied.

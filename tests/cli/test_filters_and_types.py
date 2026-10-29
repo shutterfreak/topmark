@@ -21,7 +21,6 @@ would change; the primary contract is resolver/filter behavior.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -150,3 +149,32 @@ def test_check_file_type_exclude_filter_skips_matching_file_types(
 
     assert TOPMARK_START_MARKER not in py.read_text("utf-8")
     assert TOPMARK_START_MARKER not in md.read_text("utf-8")
+
+
+@pytest.mark.parametrize("inputs", [["."], ["local", "sibling"]])
+def test_descendant_type_filters_do_not_discard_sibling_inputs(
+    tmp_path: Path,
+    inputs: list[str],
+) -> None:
+    """Discovery applies local type filters before processing without leaking into siblings."""
+    (tmp_path / "topmark.toml").write_text("[config]\nroot = true\n", encoding="utf-8")
+    for directory in ("local", "sibling"):
+        (tmp_path / directory).mkdir()
+        (tmp_path / directory / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (tmp_path / "local/topmark.toml").write_text(
+        '[files]\nexclude_file_types = ["python"]\n',
+        encoding="utf-8",
+    )
+    result: Result = run_cli_in(
+        tmp_path,
+        [
+            CliCmd.CHECK,
+            *inputs,
+            CliOpt.APPLY_CHANGES,
+            CliOpt.INCLUDE_FILE_TYPES,
+            "python",
+        ],
+    )
+    assert_SUCCESS(result)
+    assert (tmp_path / "local/a.py").read_text(encoding="utf-8") == "print(1)\n"
+    assert TOPMARK_START_MARKER in (tmp_path / "sibling/a.py").read_text(encoding="utf-8")

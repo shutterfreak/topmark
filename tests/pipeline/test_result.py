@@ -14,15 +14,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.helpers.pipeline import make_context_from_text
+from topmark.config.assignments import parse_file_type_rules
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.core.typing_guards import is_mapping
+from topmark.diagnostic.model import MutableDiagnosticLog
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.hints import KnownCode
 from topmark.pipeline.result import ProcessingResult
 from topmark.pipeline.status import HeaderStatus
 from topmark.pipeline.status import ResolveStatus
 from topmark.pipeline.status import WriteStatus
+from topmark.pipeline.steps.resolver import ResolverStep
 from topmark.pipeline.views import DiffView
 from topmark.runtime.model import RunOptions
 from topmark.utils.path import format_machine_path
@@ -31,6 +36,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from topmark.config.model import FrozenConfig
+    from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
     from topmark.pipeline.kinds import PipelineKindLiteral
 
@@ -296,3 +302,76 @@ def test_processing_result_omits_probe_snapshot_for_missing_probe_state(
 
     assert result.probe is None
     assert result.to_dict()["probe"] is None
+
+
+@pytest.mark.parametrize("assigned", [None, False, True])
+@pytest.mark.parametrize("pipeline_kind", ["check", "strip", "probe"])
+def test_processing_result_preserves_file_type_assignment_origin(
+    tmp_path: Path,
+    assigned: bool | None,
+    pipeline_kind: PipelineKindLiteral,
+) -> None:
+    """The compact origin flag survives reduction independently of full probe retention."""
+    ctx: ProcessingContext = _make_result_context(tmp_path, pipeline_kind=pipeline_kind)
+    ctx.file_type_assigned = assigned
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+    ctx.file_type_assigned = not assigned
+    assert result.file_type_assigned is assigned
+    assert result.to_dict()["file_type_assigned"] is assigned
+
+
+@pytest.mark.parametrize("pipeline_kind", ["check", "strip", "probe"])
+@pytest.mark.parametrize(
+    ("selection", "assigned"),
+    [
+        ("automatic", False),
+        ("assign", True),
+        ("infer", False),
+        ("unsupported", None),
+    ],
+)
+def test_resolved_origin_flows_from_probe_through_context_to_result(
+    tmp_path: Path,
+    pipeline_kind: PipelineKindLiteral,
+    selection: str,
+    assigned: bool | None,
+) -> None:
+    """The shared resolver establishes explicit versus inferred origin for every pipeline family."""
+    ctx: ProcessingContext = _make_result_context(tmp_path, pipeline_kind=pipeline_kind)
+    ctx.path = tmp_path / ("sample.unknown" if selection == "unsupported" else "sample.py")
+    ctx.path.write_text("{}\n", encoding="utf-8")
+    draft: MutableConfig = mutable_config_from_defaults()
+    entries: list[dict[str, object]] = []
+    if selection in ("assign", "infer"):
+        entries.append(
+            {
+                "file_type": "jsonc",
+                "patterns": ["*.py"],
+            }
+        )
+    if selection == "infer":
+        entries.append(
+            {
+                "action": "infer",
+                "patterns": ["*.py"],
+            }
+        )
+    log = MutableDiagnosticLog()
+    draft.file_type_assignments = parse_file_type_rules(
+        entries,
+        base=tmp_path,
+        source="test",
+        scope=None,
+        diagnostics=log,
+    )
+    assert log.stats().n_error == 0
+    ctx.config = draft.freeze()
+    ctx.resolution_probe = None
+    ctx.file_type = None
+    ResolverStep()(ctx)
+    assert ctx.resolution_probe is not None
+    assert ctx.resolution_probe.file_type_assigned is assigned
+    assert ctx.file_type_assigned is assigned
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+    assert result.file_type_assigned is assigned
+    assert result.to_dict()["file_type_assigned"] is assigned

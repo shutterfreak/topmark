@@ -18,6 +18,7 @@ resolved TOML sources.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import replace
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -25,6 +26,7 @@ from typing import Final
 
 from topmark.config.io.deserializers import mutable_config_from_defaults
 from topmark.config.io.deserializers import mutable_config_from_layered_toml_table
+from topmark.config.resolution.synthetic import DEFAULT_CONFIG_SOURCE
 from topmark.config.resolution.synthetic import SyntheticConfigSource
 from topmark.core.logging import get_logger
 from topmark.utils.path import canonical_processing_path
@@ -36,9 +38,6 @@ if TYPE_CHECKING:
     from topmark.toml.types import TomlTable
 
 logger: TopmarkLogger = get_logger(__name__)
-
-DEFAULT_LAYER_ORIGIN: Final[str] = "<defaults>"
-"""Origin of built-in defaults layer."""
 
 DEFAULT_LAYER_PRECEDENCE: Final[int] = 0
 """Stable precedence assigned to the built-in defaults layer."""
@@ -134,7 +133,7 @@ def _best_effort_provenance_path(path: Path) -> Path:
 def _make_default_config_layer() -> ConfigLayer:
     """Return the built-in defaults as the first config provenance layer."""
     return _make_config_layer(
-        origin=SyntheticConfigSource(label=DEFAULT_LAYER_ORIGIN),
+        origin=DEFAULT_CONFIG_SOURCE,
         kind=ConfigLayerKind.DEFAULT,
         precedence=DEFAULT_LAYER_PRECEDENCE,
         config=mutable_config_from_defaults(),
@@ -174,6 +173,9 @@ def _make_layer_from_layered_toml_table(
             data,
             config_file=resolved_path,
         )
+        config.file_type_assignments = [
+            replace(rule, precedence=precedence) for rule in config.file_type_assignments
+        ]
         return ConfigLayer(
             origin=resolved_path,
             kind=kind,

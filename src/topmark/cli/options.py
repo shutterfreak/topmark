@@ -147,6 +147,7 @@ class _ClickOptionKwargs(TypedDict, total=True):
     count: NotRequired[bool]
     is_flag: NotRequired[bool]
     multiple: NotRequired[bool]
+    expose_value: NotRequired[bool]
     show_default: NotRequired[bool]
     hidden: NotRequired[bool]
     help: NotRequired[str | None]
@@ -1194,6 +1195,37 @@ def config_root_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     return f
 
 
+def _file_type_assignment_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """Attach ordered file-type assignment controls to an assignment-aware command.
+
+    Values are captured by AssignmentCommand before Click groups occurrences.
+    They are retained in typed CLI state rather than exposed as callback kwargs.
+
+    Args:
+        f: Command callback to decorate.
+
+    Returns:
+        Callback with repeatable assignment and inference-control options.
+    """
+    f = option_with_underscore_traps(
+        CliOpt.ASSIGN_FILETYPE,
+        ArgKey.ASSIGN_FILETYPE,
+        multiple=True,
+        expose_value=False,
+        metavar="TYPE=GLOB",
+        help="Assign an existing type to a pattern; repeat in precedence order.",
+    )(f)
+    f = option_with_underscore_traps(
+        CliOpt.INFER_FILETYPE,
+        ArgKey.INFER_FILETYPE,
+        multiple=True,
+        expose_value=False,
+        metavar="GLOB",
+        help="Restore inference for a pattern; interleaves with --assign-filetype.",
+    )(f)
+    return f
+
+
 def common_config_resolution_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Apply common config resolution options to a Click command.
 
@@ -1221,7 +1253,7 @@ def common_config_resolution_options(f: Callable[_P, _R]) -> Callable[_P, _R]:
         help="Additional config file(s) to load and merge.",
     )(f)
 
-    return f
+    return _file_type_assignment_options(f)
 
 
 def config_dump_provenance_options(f: Callable[_P, _R]) -> Callable[_P, _R]:

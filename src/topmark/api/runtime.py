@@ -45,10 +45,14 @@ from topmark.config.policy import BomBeforeShebangMode
 from topmark.config.policy import EmptyInsertMode
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.policy import MixedLineEndingsMode
+from topmark.config.resolution.bridge import resolve_config_mapping_and_build_mutable_config
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
+from topmark.config.resolution.layers import ConfigLayer
+from topmark.config.resolution.layers import ConfigLayerKind
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
-from topmark.config.resolution.synthetic import SyntheticConfigSource
+from topmark.config.resolution.synthetic import API_OVERRIDE_SOURCE
+from topmark.config.resolution.synthetic import API_POLICY_OVERRIDE_SOURCE
 from topmark.core.constants import TOPMARK_VERSION
 from topmark.core.errors import InvalidPolicyError
 from topmark.core.logging import get_logger
@@ -71,7 +75,6 @@ if TYPE_CHECKING:
 
     from topmark.api.types import PublicPolicy
     from topmark.config.resolution.bridge import ResolvedConfigDraft
-    from topmark.config.resolution.layers import ConfigLayer
     from topmark.core.exit_codes import ExitCode
     from topmark.core.logging import TopmarkLogger
     from topmark.pipeline.context.model import ProcessingContext
@@ -102,7 +105,9 @@ class PreparedApiRun:
         file_resolution: Diagnostic file-list resolution result.
         file_list: Selected files that should enter pipeline execution.
         discovered_layers: FrozenConfig provenance layers used to compute per-path
-            effective configs, or `None` when discovery was bypassed.
+            effective configs, or `None` for an explicit config seed.
+        include_file_types_override: Explicit invocation allowlist, if supplied.
+        exclude_file_types_override: Explicit invocation denylist, if supplied.
     """
 
     effective_cfg: FrozenConfig
@@ -110,6 +115,8 @@ class PreparedApiRun:
     file_resolution: FileListResolution
     file_list: list[Path]
     discovered_layers: Sequence[ConfigLayer] | None
+    include_file_types_override: frozenset[str] | None = None
+    exclude_file_types_override: frozenset[str] | None = None
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -146,15 +153,14 @@ class PreparedTomlConfig:
     """TOML-side resolved state prepared for an API run.
 
     This value object replaces the private mixed tuple previously used while
-    preparing layered config discovery. Both fields are `None` when the caller
-    supplied an explicit `base_config`, because explicit config seeds
-    intentionally bypass layered TOML discovery.
+    preparing configuration sources. Explicit mappings supply source-local state
+    without discovery; both fields are `None` for an immutable config seed.
 
     Attributes:
         resolved: Resolved TOML-side state used for config provenance and
-            writer-option discovery, or `None` when discovery was bypassed.
+            writer preferences, or `None` for an immutable config seed.
         draft: Pre-merged mutable config draft built from `resolved`, or `None`
-            when discovery was bypassed.
+            for an immutable config seed.
     """
 
     resolved: ResolvedTopmarkTomlSources | None
@@ -336,7 +342,7 @@ def _build_resolved_config_for_run(
     # part of the resolved config because it directly affects which files are
     # selected for pipeline execution.
     overrides = ConfigOverrides(
-        config_origin=SyntheticConfigSource(label="<API overrides>"),
+        config_origin=API_OVERRIDE_SOURCE,
         config_base=Path.cwd().resolve(),
         files=paths_str,
         include_file_types=list(include_file_types) if include_file_types is not None else None,
@@ -360,9 +366,8 @@ def _prepare_toml_and_mutable_config_for_api_run(
 ) -> PreparedTomlConfig:
     """Resolve TOML sources once and prebuild the merged config draft.
 
-    Explicit `base_config` seeds intentionally bypass layered TOML discovery,
-    so this helper returns a result with both fields set to `None` in that
-    mode.
+    Explicit seeds bypass filesystem configuration discovery. Mappings are split-parsed
+    as a single in-memory source; immutable seeds carry no source-local loading state.
 
     In normal discovery mode, TOML schema validation has already happened before
     the merged draft is returned here.
@@ -373,11 +378,19 @@ def _prepare_toml_and_mutable_config_for_api_run(
         base_config: Optional explicit config seed supplied by the caller.
 
     Returns:
-        Prepared TOML-side state and merged mutable config draft, or empty
-        fields when layered discovery is intentionally bypassed.
+        Resolved discovery or mapping state and its draft, or empty fields
+        for an immutable seed.
     """
-    if base_config is not None:
+    if isinstance(base_config, FrozenConfig):
         return PreparedTomlConfig(resolved=None, draft=None)
+    if base_config is not None:
+        resolved_mapping: ResolvedConfigDraft = resolve_config_mapping_and_build_mutable_config(
+            base_config,
+        )
+        return PreparedTomlConfig(
+            resolved=resolved_mapping.resolved,
+            draft=resolved_mapping.draft,
+        )
 
     path_list: list[Path] = [Path(p) for p in paths] or [Path.cwd()]
     resolved_config: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
@@ -400,13 +413,15 @@ def _build_path_configs(
     layers: Sequence[ConfigLayer] | None,
     file_list: Sequence[Path],
     effective_cfg: FrozenConfig,
+    include_file_types_override: frozenset[str] | None = None,
+    exclude_file_types_override: frozenset[str] | None = None,
 ) -> dict[Path, FrozenConfig]:
     """Build per-path effective layered configs for a run.
 
     When provenance layers are available, each file path receives a config built from the subset of
-    layers whose scope applies to that path. Config-like runtime policy overlays are copied onto the
-    per-path effective config so pipeline steps see the same invocation policy regardless of where
-    the file-specific fields came from.
+    layers whose scope applies to that path. Explicit API policy overlays are already represented
+    by final invocation layers, preserving local policies and consent in sibling scopes. Only
+    explicitly supplied type-filter arguments replace the corresponding per-path filter values.
 
     When no layers are available, this helper falls back to using the single run-level config for
     every path.
@@ -415,6 +430,8 @@ def _build_path_configs(
         layers: Optional discovered config provenance layers for the run.
         file_list: Files that will be processed.
         effective_cfg: Final runtime config carrying any runtime policy overlays.
+        include_file_types_override: Explicit invocation allowlist, if supplied.
+        exclude_file_types_override: Explicit invocation denylist, if supplied.
 
     Returns:
         A mapping from file path to the effective runtime config that should be used when
@@ -428,8 +445,16 @@ def _build_path_configs(
         per_path_cfg: FrozenConfig = build_effective_config_for_path(layers, path).freeze()
         path_configs[path] = replace(
             per_path_cfg,
-            policy=effective_cfg.policy,
-            policy_by_type=effective_cfg.policy_by_type,
+            include_file_types=(
+                include_file_types_override
+                if include_file_types_override is not None
+                else per_path_cfg.include_file_types
+            ),
+            exclude_file_types=(
+                exclude_file_types_override
+                if exclude_file_types_override is not None
+                else per_path_cfg.exclude_file_types
+            ),
         )
 
     return path_configs
@@ -472,7 +497,7 @@ def _apply_runtime_policy_overlays(
     draft = apply_config_overrides(
         draft,
         ConfigOverrides(
-            config_origin=SyntheticConfigSource(label="<API policy overrides>"),
+            config_origin=API_POLICY_OVERRIDE_SOURCE,
             config_base=Path.cwd().resolve(),
             policy=policy_overrides,
             policy_by_type=policy_by_type_overrides,
@@ -633,7 +658,7 @@ def _prepare_api_pipeline_run(
 
     discovered_layers: list[ConfigLayer] | None = (
         build_config_layers_from_resolved_toml_sources(prepared_toml.resolved.sources)
-        if prepared_toml.resolved is not None
+        if base_config is None and prepared_toml.resolved is not None
         else None
     )
     resolved_writer_options: WriterOptions | None = (
@@ -659,7 +684,40 @@ def _prepare_api_pipeline_run(
         policy=policy,
         policy_by_type=policy_by_type,
     )
+    if discovered_layers is not None and (policy is not None or policy_by_type is not None):
+        invocation_layer: MutableConfig = apply_config_overrides(
+            MutableConfig(),
+            ConfigOverrides(
+                config_origin=API_POLICY_OVERRIDE_SOURCE,
+                policy=(
+                    _build_public_policy_overrides(policy)
+                    if policy is not None
+                    else PolicyOverrides()
+                ),
+                policy_by_type=(
+                    _build_public_policy_by_type_overrides(policy_by_type)
+                    if policy_by_type is not None
+                    else {}
+                ),
+            ),
+        )
+        discovered_layers.append(
+            ConfigLayer(
+                origin=API_POLICY_OVERRIDE_SOURCE,
+                kind=ConfigLayerKind.API,
+                precedence=len(discovered_layers),
+                scope_root=None,
+                config=invocation_layer,
+            )
+        )
     logger.debug("(2) Effective config after runtime policy overlays: %s", effective_cfg)
+
+    # Validate the final configuration before file discovery or pipeline execution.
+    # Source-local strictness belongs to resolved TOML/mapping state, not FrozenConfig.
+    effective_strict: bool = (
+        bool(prepared_toml.resolved.strict) if prepared_toml.resolved is not None else False
+    )
+    effective_cfg.ensure_valid(strict=effective_strict)
 
     # (3) Consume execution-only run options supplied by the caller and overlay
     # resolved persisted writer preferences when they do not conflict with
@@ -671,7 +729,26 @@ def _prepare_api_pipeline_run(
     logger.debug("(3) Run options for invocation: %s", effective_run_options)
 
     # (4) Resolve the selected file list after policy overlays.
-    file_resolution: FileListResolution = resolve_file_list_with_diagnostics(effective_cfg)
+    def scoped_config(path: Path) -> FrozenConfig:
+        scoped: FrozenConfig = _build_path_configs(
+            layers=discovered_layers,
+            file_list=[path],
+            effective_cfg=effective_cfg,
+            include_file_types_override=(
+                effective_cfg.include_file_types if include_file_types is not None else None
+            ),
+            exclude_file_types_override=(
+                effective_cfg.exclude_file_types if exclude_file_types is not None else None
+            ),
+        )[path]
+        # Runtime-applicability warnings in one scope can be masked in the
+        # aggregate draft by a sibling's higher-precedence filter values.
+        scoped.ensure_valid(strict=effective_strict)
+        return scoped
+
+    file_resolution: FileListResolution = resolve_file_list_with_diagnostics(
+        effective_cfg, file_type_config_for_path=scoped_config if discovered_layers else None
+    )
     file_list: list[Path] = list(file_resolution.selected)
     logger.debug("(4) Files found: %s", len(file_list))
 
@@ -681,6 +758,12 @@ def _prepare_api_pipeline_run(
         file_resolution=file_resolution,
         file_list=file_list,
         discovered_layers=discovered_layers,
+        include_file_types_override=effective_cfg.include_file_types
+        if include_file_types is not None
+        else None,
+        exclude_file_types_override=effective_cfg.exclude_file_types
+        if exclude_file_types is not None
+        else None,
     )
 
 
@@ -714,6 +797,8 @@ def _iter_pipeline_results_for_file_list(
         layers=prepared.discovered_layers,
         file_list=prepared.file_list,
         effective_cfg=prepared.effective_cfg,
+        include_file_types_override=prepared.include_file_types_override,
+        exclude_file_types_override=prepared.exclude_file_types_override,
     )
 
     contexts: Iterator[ProcessingContext] = iter_steps_for_files(

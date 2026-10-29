@@ -22,6 +22,12 @@ ______________________________________________________________________
 
 ### Breaking Changes - Unreleased
 
+- **Public pipeline APIs now reject invalid configuration before processing.** Batch calls raise
+  `ConfigValidationError`; streaming calls raise on iteration before yielding events. Errors always
+  fail, and warnings fail under resolved source-local strictness, including `config.strict` in
+  mapping seeds. Callers that previously relied on processing continuing after invalid configuration
+  must correct those inputs or handle the exception. Successful DTOs and signatures are unchanged.
+  See [#490](https://github.com/shutterfreak/topmark/issues/490).
 - **Python 3.10 is no longer supported.** TopMark 3.0 requires Python 3.11 or later. Upgrade the
   interpreter used by local environments, CI jobs, containers, and pre-commit before installing
   TopMark 3.0; see [Upgrading to TopMark 3.0](docs/usage/upgrading-to-3.0.md).
@@ -33,6 +39,40 @@ ______________________________________________________________________
   only within their subtree. This corrects prior incomplete discovery, but can change selected files
   or rendered headers for repositories that already contain nested configuration. See #486.
 
+### Fixed - Unreleased
+
+- Enforce staged API configuration validation after invocation overlays, including scoped runtime
+  diagnostics that sibling settings could mask. Preserve mapping-source strictness through the
+  existing split parser. Valid `pyproject.toml` documents without an owned `[tool.topmark]` table no
+  longer produce spurious configuration-source load errors; genuine read/parse failures remain
+  errors. See [#490](https://github.com/shutterfreak/topmark/issues/490).
+- Apply descendant file-type filters per input scope during discovery and retain CLI/API invocation
+  overrides as final scoped layers. Sibling policy and opt-in settings remain isolated; API policy
+  overlays now have parity with CLI overrides under nested configuration. These corrections can
+  change the selected files or effective policies of existing multi-input runs. Normalize
+  local/qualified per-type policy aliases before merging so layer order determines precedence. See
+  [#488](https://github.com/shutterfreak/topmark/issues/488) and
+  [#489](https://github.com/shutterfreak/topmark/issues/489).
+
+### Added - Unreleased
+
+- Single-file apply hints preserve assigned types with canonical exact-path `--assign-filetype`
+  overrides, using literal glob escaping and shell quoting in TEXT and Markdown. Processing
+  contexts, durable results, and processing machine payloads retain `file_type_assigned` as `true`,
+  `false`, or `null`; inference-control winners remain automatic selections.
+- Ordered `files.file_type_assignments` for existing registered types, with mutually exclusive
+  assignment and `action = "infer"` rules. Repeatable `--assign-filetype TYPE=GLOB` and
+  `--infer-filetype GLOB` preserve cross-option CLI order on processing and config diagnostics.
+  Assignments bypass recognition gates while retaining activation, filters, bindings, insertion, and
+  runtime checks. Probe output and public API results add stable winning/superseded rule provenance.
+  Markdown probe reports include superseded rules independently of TEXT verbosity and quiet
+  controls. Dumps preserve absolute definition bases and scopes when relocated. Filtered selections
+  retain their type and use the distinct `TYPE_RESOLVED_FILTERED` processing status. Public probe
+  DTOs type selection origin with `SelectionMethodLiteral`; wire values remain plain strings. See
+  #485.
+- Empty assignment lists retain inherited rules. A separate clear-all inheritance setting is
+  deliberately deferred from the initial 3.0 release.
+
 ### Changed - Unreleased
 
 - Raised the documentation-extra `zensical` floor to 0.0.71, which requires Python 3.11 or later.
@@ -40,6 +80,12 @@ ______________________________________________________________________
 
 ### Internal - Unreleased
 
+- Centralize typed synthetic configuration origins across defaults, loading, invocation overlays,
+  assignment rules, and serialization. Preserve existing emitted labels, duplicate-warning
+  identities, and legacy dump source metadata. The new assignment provenance reports anonymous
+  layered fragments as `<anonymous config>`; only explicitly supplied API mappings use
+  `<API config>`. CLI assignments remain a labeled component of the CLI override layer. See
+  [#492](https://github.com/shutterfreak/topmark/issues/492).
 - Raised the development-tool `uv` floor to 0.13.4 following the eMudhra / emSign CA security
   incident, preventing vulnerable uv releases from being installed in developer environments.
 - Run CI documentation, source-link, and pre-commit checks for changelog-only pull requests.

@@ -25,6 +25,7 @@ import pytest
 
 from tests.helpers.paths import symlink_or_skip
 from tests.toml.conftest import write_toml_document
+from topmark.config.resolution.bridge import ResolvedConfigDraft
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
@@ -461,3 +462,28 @@ def test_malformed_toml_in_discovered_config_is_ignored(
     ]
     assert resolved_config.resolved.sources[0].parsed is None
     assert resolved_config.resolved.sources[1].parsed is not None
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "",
+        '[tool.example]\nname="demo"\n',
+        "tool=2\n",
+        "[tool]\ntopmark=2\n",
+    ],
+)
+def test_unowned_pyproject_is_not_an_invalid_topmark_source(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    """Valid project metadata without an owned table must not produce a load error."""
+    path: Path = tmp_path / "pyproject.toml"
+    path.write_text(content, encoding="utf-8")
+    resolved: ResolvedConfigDraft = resolve_toml_sources_and_build_mutable_config(
+        no_config=True,
+        extra_config_files=[path],
+        strict=True,
+    )
+    assert resolved.resolved.sources == []
+    assert resolved.draft.freeze().is_valid(strict=True)

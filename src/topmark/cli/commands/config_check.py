@@ -26,6 +26,7 @@ Resolution mechanism:
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -33,6 +34,8 @@ import click
 import rich_click
 
 from topmark.api.runtime import is_config_valid
+from topmark.cli.assignments import AssignmentCommand
+from topmark.cli.assignments import cli_file_type_rules
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.documentation import command_reference_url
 from topmark.cli.emitters.machine import emit_config_check_machine
@@ -42,6 +45,7 @@ from topmark.cli.help import rich_click_option_panel
 from topmark.cli.help_panels import CONFIGURATION_RESOLUTION_PANEL_OPTIONS
 from topmark.cli.help_panels import CONFIGURATION_STRICTNESS_PANEL_OPTIONS
 from topmark.cli.help_panels import DISPLAY_PANEL_OPTIONS
+from topmark.cli.help_panels import FILE_TYPE_ASSIGNMENT_PANEL_OPTIONS
 from topmark.cli.help_panels import OUTPUT_AND_HELP_PANEL_OPTIONS
 from topmark.cli.help_panels import TEXT_OUTPUT_PANEL_OPTIONS
 from topmark.cli.keys import CliCmd
@@ -80,6 +84,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @rich_click.command(
+    cls=AssignmentCommand,
     name=CliCmd.CONFIG_CHECK,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(
@@ -122,6 +127,7 @@ logger: TopmarkLogger = get_logger(__name__)
     "Configuration validation",
     options=[
         *CONFIGURATION_RESOLUTION_PANEL_OPTIONS,
+        *FILE_TYPE_ASSIGNMENT_PANEL_OPTIONS,
         *CONFIGURATION_STRICTNESS_PANEL_OPTIONS,
     ],
 )
@@ -218,6 +224,13 @@ def config_check_command(
     resolved_toml: ResolvedTopmarkTomlSources = resolved_config.resolved
 
     # Freeze ensures sanitize + schema validation runs (and produces diagnostics)
+    resolved_config.draft.file_type_assignments.extend(
+        replace(rule, precedence=len(resolved_toml.sources) + 1)
+        for rule in cli_file_type_rules(ctx)
+    )
+    resolved_config.draft.validation_logs.merged_config.items.extend(
+        state.file_type_rule_diagnostics,
+    )
     config: FrozenConfig = resolved_config.draft.freeze()
     logger.trace("Run config after layered CLI overrides: %s", config)
 

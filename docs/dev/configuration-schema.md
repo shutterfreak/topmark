@@ -348,8 +348,8 @@ topmark:
     # Runtime processing order:
     # 1) File-type activation authorization (opt_in_file_types)
     # 2) Path filters (include/exclude patterns + *_from + files_from)
-    # 3) File-type filters (include_file_types / exclude_file_types)
-    # 4) Matching, content probing, and scoring
+    # 3) Ordered assignment/inference rules; filters apply to the effective type
+    # 4) Automatic matching, content probing, and scoring if inference wins
     # 5) Processor binding and file mutation
     #
     # Filesystem-identity eligibility checks such as hard-link policy are runtime
@@ -382,6 +382,21 @@ topmark:
       default: []
       description: Files containing explicit file lists (one path per line; comments allowed;
         resolved relative to the declaring configuration file).
+
+    file_type_assignments:
+      type: list[assignment | inference_control]
+      default: []
+      merge: append; an empty list retains inherited rules
+      assignment:
+        action: optional "assign" (default)
+        file_type: required registered local or qualified identity
+        patterns: required nonempty list of valid nonempty positive patterns
+      inference_control:
+        action: required "infer"
+        file_type: forbidden, including empty or null-like values
+        patterns: required nonempty list of valid nonempty positive patterns
+      description: Last applicable matching rule wins; CLI rules follow source rules.
+        Definition base, source, scope, precedence, and order survive merging and dumps.
 
     include_file_types:
       type: list[str]
@@ -462,6 +477,23 @@ Malformed identifiers participate in staged config-loading validation diagnostic
 
 ______________________________________________________________________
 
+## Ordered file-type selection rules
+
+`files.file_type_assignments` accumulates ordered immutable assignment and inference-control
+variants through deserialization, merging, freezing, and scoped layer selection. Both TOML and API
+mapping inputs use the same variant validator. An assignment requires a registered `file_type`; an
+inference control forbids that key. Both require nonempty positive pattern lists. CLI rules are
+validated through the same parser after token-order capture. Empty arrays add nothing.
+
+Rule definition base and applicability scope are independent provenance values. Source-layer order
+and declaration order decide precedence, without glob specificity or alphabetic tie-breaking. The
+shared resolver collects actual path matches before automatic candidate scoring. Explicit
+assignments never become scored candidates. See
+[the user configuration contract](../usage/configuration.md#assign-existing-file-types) for
+validation, matching, dump relocation, and deferred clear-all semantics.
+
+______________________________________________________________________
+
 ## Policy token notes
 
 ### header_mutation_mode
@@ -522,3 +554,34 @@ This behavior mirrors the path-spelling normalization part of TopMark's processi
 model for runtime file processing. Runtime processing-target eligibility checks, such as hard-link
 policy enforcement, are separate from configuration-source identity and are not exposed by the
 external configuration schema.
+
+______________________________________________________________________
+
+## Synthetic configuration origins
+
+Bundled documents and invocation overrides contribute configuration without a backing filesystem
+path. Representing their origins as paths would allow filesystem normalization to turn a stable
+label into a working-directory-dependent location. Typed synthetic markers preserve that
+distinction, while a shared catalog prevents labels from drifting between configuration records,
+layer records, diagnostics, and exports. Explicit attribution at the owning entry point also keeps
+unknown provenance from being mistaken for an API source.
+
+Synthetic origins are frozen `SyntheticConfigSource` values cataloged in
+`topmark.config.resolution.synthetic`. Entry points supply the origin they own; a missing
+configuration path never implies API ownership. Anonymous layered fragments retain an empty
+`config_files` list and use `<anonymous config>` for rule provenance.
+
+The defaults layer (`<defaults>`), built-in defaults document (`<built-in topmark defaults>`), and
+starter template (`<bundled topmark-template.toml>`) identify distinct roles. API mapping,
+invocation overrides, and policy overrides likewise retain their existing distinct labels. CLI
+assignment/inference rules use `<CLI assignments>` as a component of the enclosing `<CLI overrides>`
+layer, with the same invocation scope and precedence; the component label does not create another
+layer.
+
+Source-aware records preserve real paths and synthetic markers through merging and freezing.
+`format_config_source_path()` projects them to stable strings at diagnostics and serialization
+boundaries. Rule `source` metadata read from dumps remains an opaque legacy string: it is never
+interpreted as a filesystem path or used to infer API ownership. Contradictory-duplicate identities
+continue to compare the serialized source label, definition base, scope, and pattern. Thus a typed
+origin and its legacy string representation diagnose identically; distinct labels remain distinct.
+Custom synthetic markers remain supported, without a second source registry or semantic dispatch.

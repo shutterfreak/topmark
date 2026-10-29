@@ -216,8 +216,6 @@ TOPMARK_NAMESPACE: Final = "topmark"
 
 VALUE_NOT_SET: Final = "<not set>"
 
-CLI_OVERRIDE_STR: Final = "<CLI overrides>"
-
 # --- Patterns and Regular Expressions ---
 
 VALID_REGISTRY_TOKEN_RE: Final = r"[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*"  # noqa: S105

@@ -29,11 +29,13 @@ from topmark.cli.cmd_common import exit_for_config_validation_error
 from topmark.cli.cmd_common import exit_if_no_files
 from topmark.cli.cmd_common import resolve_human_console
 from topmark.cli.io import InputPlan
+from topmark.cli.keys import CliCmd
 from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.config.model import FrozenConfig
 from topmark.config.model import MutableConfig
 from topmark.config.resolution.bridge import ResolvedConfigDraft
+from topmark.config.resolution.synthetic import CLI_OVERRIDE_SOURCE
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
 from topmark.core.errors import ConfigValidationError
@@ -485,6 +487,7 @@ def test_build_resolved_config_uses_stdin_filename_as_discovery_anchor(
         expected_inputs = [Path(stdin_filename).parent]
     captured_inputs: list[Path] | None = None
     draft = MutableConfig()
+    override_targets: list[MutableConfig] = []
     writer_options = WriterOptions(file_write_strategy=FileWriteStrategy.ATOMIC)
 
     def fake_resolve(
@@ -513,7 +516,7 @@ def test_build_resolved_config_uses_stdin_filename_as_discovery_anchor(
         *,
         overrides: ConfigOverrides,
     ) -> MutableConfig:
-        assert config is draft
+        override_targets.append(config)
         return config
 
     monkeypatch.setattr(
@@ -541,6 +544,10 @@ def test_build_resolved_config_uses_stdin_filename_as_discovery_anchor(
     assert captured_inputs == expected_inputs
     assert state.resolved_writer_options is writer_options
     assert prepared.draft is draft
+    assert len(override_targets) == 2
+    assert override_targets[0] is prepared.layers[-1].config
+    assert override_targets[0] is not draft
+    assert override_targets[1] is draft
 
 
 def test_build_resolved_config_applies_cli_override_payload(
@@ -550,6 +557,7 @@ def test_build_resolved_config_applies_cli_override_payload(
     captured_inputs: list[Path] | None = None
     captured_overrides: ConfigOverrides | None = None
     draft = MutableConfig()
+    override_targets: list[MutableConfig] = []
 
     def fake_resolve(
         *,
@@ -578,7 +586,7 @@ def test_build_resolved_config_applies_cli_override_payload(
         overrides: ConfigOverrides,
     ) -> MutableConfig:
         nonlocal captured_overrides
-        assert config is draft
+        override_targets.append(config)
         captured_overrides = overrides
         return config
 
@@ -598,7 +606,7 @@ def test_build_resolved_config_applies_cli_override_payload(
         exclude_patterns=["build/**"],
     )
 
-    build_resolved_toml_sources_and_config_for_plan(
+    prepared: PreparedCliConfig = build_resolved_toml_sources_and_config_for_plan(
         ctx=ctx,
         plan=plan,
         no_config=True,
@@ -611,8 +619,14 @@ def test_build_resolved_config_applies_cli_override_payload(
         relative_to="src",
     )
 
+    assert len(override_targets) == 2
+    assert override_targets[0] is prepared.layers[-1].config
+    assert override_targets[0] is not draft
+    assert override_targets[1] is draft
     assert captured_inputs == [Path("src/topmark/__init__.py")]
     assert captured_overrides is not None
+    assert captured_overrides.config_origin is CLI_OVERRIDE_SOURCE
+    assert prepared.layers[-1].origin is CLI_OVERRIDE_SOURCE
     assert captured_overrides.files == ["src/topmark/__init__.py", "-"]
     assert captured_overrides.files_from == ["files.txt"]
     assert captured_overrides.include_from == ["include.txt"]
@@ -623,3 +637,27 @@ def test_build_resolved_config_applies_cli_override_payload(
     assert captured_overrides.exclude_file_types == ["json"]
     assert captured_overrides.align_fields is True
     assert captured_overrides.relative_to == "src"
+
+
+def test_cli_config_and_layer_keep_synthetic_origin(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Real override application retains one typed invocation origin in both views."""
+    monkeypatch.chdir(tmp_path)
+    prepared: PreparedCliConfig = build_resolved_toml_sources_and_config_for_plan(
+        ctx=click.Context(click.Command(CliCmd.CHECK)),
+        plan=_empty_input_plan(paths=["example.py"]),
+        no_config=True,
+        config_paths=[],
+        strict=None,
+        opt_in_file_types=[],
+        include_file_types=[],
+        exclude_file_types=[],
+        align_fields=None,
+        relative_to=None,
+    )
+    assert prepared.layers[-1].origin is CLI_OVERRIDE_SOURCE
+    assert prepared.layers[-1].config.config_files == [CLI_OVERRIDE_SOURCE]
+    assert prepared.draft.config_files == [CLI_OVERRIDE_SOURCE]
+    assert prepared.draft.freeze().thaw().config_files[0] is CLI_OVERRIDE_SOURCE

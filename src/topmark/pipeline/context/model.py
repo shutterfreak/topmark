@@ -123,6 +123,8 @@ class ProcessingContext:
             current file path.
         file_type: Resolved file type for the file (for example, a Python or Markdown file type),
             if applicable.
+        file_type_assigned: Whether selection used an explicit assignment, or None when no
+            file type was selected.
         status: Aggregated status for each pipeline axis, kept as the single source of truth for
             per-axis outcomes.
         halt_state: Information about an early, terminal halt for this file. ``None`` means
@@ -178,6 +180,7 @@ class ProcessingContext:
     resolution_probe: ResolutionProbeResult | None = None
 
     file_type: FileType | None = None  # Resolved file type (e.g., PythonFileType)
+    file_type_assigned: bool | None = None
     status: ProcessingStatus = field(default_factory=ProcessingStatus)
     halt_state: HaltState | None = None
 

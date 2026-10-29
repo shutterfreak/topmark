@@ -145,14 +145,19 @@ ______________________________________________________________________
 
 ## Command-specific options
 
-| Option                 | Description                                                         |
-| ---------------------- | ------------------------------------------------------------------- |
-| `--strict/--no-strict` | Override resolved TOML strict configuration checking for this run.  |
-| `--output-format`      | Output format (`text`, `markdown`, `json`, `ndjson`).               |
-| `-q`, `--quiet`        | Suppress TEXT rendering while preserving the command's exit status. |
-| `--config`             | Merge an explicit TOML config file (can be repeated).               |
-| `--no-config`          | Do not discover local project/user config.                          |
-| `-v`, `--verbose`      | Increase human-readable diagnostic detail.                          |
+| Option                        | Description                                                               |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| `--strict/--no-strict`        | Override resolved TOML strict configuration checking for this run.        |
+| `--output-format`             | Output format (`text`, `markdown`, `json`, `ndjson`).                     |
+| `-q`, `--quiet`               | Suppress TEXT rendering while preserving the command's exit status.       |
+| `--config`                    | Merge an explicit TOML config file (can be repeated).                     |
+| `--no-config`                 | Do not discover local project/user config.                                |
+| `--assign-filetype TYPE=GLOB` | Append a file-type assignment to the rules being validated (repeatable).  |
+| `--infer-filetype GLOB`       | Restore automatic recognition; interleaves with assignments (repeatable). |
+| `-v`, `--verbose`             | Increase human-readable diagnostic detail.                                |
+
+See [File-type assignments](../../configuration.md#assign-existing-file-types) for shared rule
+precedence, pattern syntax, and inference restoration.
 
 > Run `topmark config check -h` for the full list of options and help text.
 

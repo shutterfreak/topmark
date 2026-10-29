@@ -50,6 +50,8 @@ Configuration contract:
   [`FrozenConfig`][topmark.config.model.FrozenConfig].
 - Passing ``config=None`` triggers layered discovery (defaults → user → project) using the
   same rules as the CLI.
+- Invalid configuration raises [`ConfigValidationError`][topmark.core.errors.ConfigValidationError]
+  before processing. Streaming APIs raise when iteration starts, before events.
 - The internal [`MutableConfig`][topmark.config.model.MutableConfig] builder is not part of
   the public API; it exists to perform discovery/merging and is frozen immediately into an immutable
   [`FrozenConfig`][topmark.config.model.FrozenConfig] before execution.

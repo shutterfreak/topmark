@@ -51,6 +51,8 @@ from topmark.presentation.shared.outcomes import collect_outcome_counts_styled
 from topmark.presentation.shared.outcomes import get_outcome_style_role
 from topmark.presentation.shared.paths import get_display_path
 from topmark.presentation.shared.paths import render_path_display_text
+from topmark.presentation.shared.pipeline import format_apply_guidance
+from topmark.presentation.shared.pipeline import render_apply_command
 from topmark.presentation.shared.pipeline import summarize_pipeline_file
 from topmark.presentation.text.diagnostic import render_diagnostics_text
 
@@ -216,30 +218,6 @@ def _render_pipeline_banner_text(
 # ---- Command guidance rendering ----
 
 
-def _render_apply_command_text(
-    *,
-    command: str,
-    result: ProcessingResult,
-) -> str:
-    """Render the suggested apply command for a processing result.
-
-    The command uses the shared human-facing display-path policy so STDIN-backed
-    content is represented by its logical `--stdin-filename` value while regular
-    file processing uses the normal display path.
-
-    Args:
-        command: TopMark subcommand name.
-        result: Durable processing result for the file.
-
-    Returns:
-        Suggested apply command for TEXT guidance output.
-    """
-    path_name: str = get_display_path(result)
-    if result.from_stdin:
-        return f"topmark {command} {CliOpt.APPLY_CHANGES} {CliOpt.STDIN_FILENAME} '{path_name}' -"
-    return f"topmark {command} {CliOpt.APPLY_CHANGES} '{path_name}'"
-
-
 def _render_check_guidance_message_text(
     result: ProcessingResult,
 ) -> str | None:
@@ -277,7 +255,7 @@ def _render_check_guidance_message_text(
             else f"✏️  Updating header in {path_label}"
         )
 
-    apply_cmd: str = _render_apply_command_text(
+    apply_cmd: str | None = render_apply_command(
         command=CliCmd.CHECK,
         result=result,
     )
@@ -290,7 +268,11 @@ def _render_check_guidance_message_text(
         raise TopmarkCliPipelineError(
             message=f"Unexpected intent {intent.value} in 'check' pipeline.",
         )
-    return f"🛠️  Run `{apply_cmd}` to {action}."
+    return format_apply_guidance(
+        command_label=f"`{apply_cmd}`" if apply_cmd is not None else None,
+        action=action,
+        apply_label=CliOpt.APPLY_CHANGES,
+    )
 
 
 def _render_strip_guidance_message_text(
@@ -326,7 +308,7 @@ def _render_strip_guidance_message_text(
 
         return f"🧹 Stripping header in {path_label}"
 
-    apply_cmd: str = _render_apply_command_text(
+    apply_cmd: str | None = render_apply_command(
         command=CliCmd.STRIP,
         result=result,
     )
@@ -337,7 +319,11 @@ def _render_strip_guidance_message_text(
         raise TopmarkCliPipelineError(
             message=f"Unexpected intent {intent.value} in 'strip' pipeline.",
         )
-    return f"🛠️  Run `{apply_cmd}` to {action}."
+    return format_apply_guidance(
+        command_label=f"`{apply_cmd}`" if apply_cmd is not None else None,
+        action=action,
+        apply_label=CliOpt.APPLY_CHANGES,
+    )
 
 
 # ---- Per-file rendering ----

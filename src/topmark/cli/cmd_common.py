@@ -31,6 +31,7 @@ from typing import NoReturn
 
 import click
 
+from topmark.cli.assignments import cli_file_type_rules
 from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.console.click_console import Console
 from topmark.cli.console.color import resolve_color_mode
@@ -43,16 +44,18 @@ from topmark.cli.state import TopmarkCliState
 from topmark.cli.state import bootstrap_cli_state
 from topmark.cli.state import get_cli_state
 from topmark.cli.validators import validate_output_verbosity_policy
+from topmark.config.model import MutableConfig
 from topmark.config.overrides import ConfigOverrides
 from topmark.config.overrides import PolicyOverrides
 from topmark.config.overrides import apply_config_overrides
 from topmark.config.resolution.bridge import resolve_toml_sources_and_build_mutable_config
 from topmark.config.resolution.layers import ConfigLayer
+from topmark.config.resolution.layers import ConfigLayerKind
 from topmark.config.resolution.layers import build_config_layers_from_resolved_toml_sources
 from topmark.config.resolution.merge import build_effective_config_for_path
+from topmark.config.resolution.synthetic import CLI_OVERRIDE_SOURCE
 from topmark.config.types import FileWriteStrategy
 from topmark.config.types import OutputTarget
-from topmark.core.constants import CLI_OVERRIDE_STR
 from topmark.core.exit_codes import ExitCode
 from topmark.core.formats import OutputFormat
 from topmark.core.logging import resolve_env_log_level
@@ -70,8 +73,8 @@ from topmark.utils.merge import none_if_empty
 if TYPE_CHECKING:
     from topmark.cli.console.protocols import ConsoleProtocol
     from topmark.cli.io import InputPlan
+    from topmark.config.assignments import FileTypeRule
     from topmark.config.model import FrozenConfig
-    from topmark.config.model import MutableConfig
     from topmark.config.policy import MutablePolicy
     from topmark.config.resolution.bridge import ResolvedConfigDraft
     from topmark.core.errors import ConfigValidationError
@@ -152,6 +155,7 @@ def build_file_resolution(
     run_options: RunOptions,
     config: FrozenConfig,
     temp_path: Path | None,
+    layers: list[ConfigLayer] | None = None,
 ) -> FileListResolution:
     """Return file-list resolution diagnostics for the current invocation.
 
@@ -164,6 +168,7 @@ def build_file_resolution(
         run_options: Invocation-wide runtime options for the current run.
         config: Effective run config used for file discovery.
         temp_path: Temporary file path created for content-on-STDIN mode, if any.
+        layers: Optional source layers for scoped type assignment and filtering.
 
     Returns:
         A [FileListResolution][topmark.resolution.files.FileListResolution]
@@ -180,7 +185,19 @@ def build_file_resolution(
             missing_literals=(),
             unmatched_patterns=(),
         )
-    resolution: FileListResolution = resolve_file_list_with_diagnostics(config)
+
+    def scoped_config(path: Path) -> FrozenConfig:
+        return build_scoped_path_configs(
+            layers=layers or [],
+            config=config,
+            file_list=[path],
+            stdin_mode=False,
+        )[path]
+
+    resolution: FileListResolution = resolve_file_list_with_diagnostics(
+        config,
+        file_type_config_for_path=scoped_config if layers is not None else None,
+    )
     return resolution
 
 
@@ -372,15 +389,9 @@ def build_scoped_path_configs(
     if stdin_mode:
         return dict.fromkeys(file_list, config)
 
-    return {
-        path: replace(
-            build_effective_config_for_path(layers, path).freeze(),
-            policy=config.policy,
-            policy_by_type=config.policy_by_type,
-            opt_in_file_types=config.opt_in_file_types,
-        )
-        for path in file_list
-    }
+    if not layers:
+        return dict.fromkeys(file_list, config)
+    return {path: build_effective_config_for_path(layers, path).freeze() for path in file_list}
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -547,11 +558,22 @@ def build_resolved_toml_sources_and_config_for_plan(
     draft: MutableConfig = resolved_config.draft
 
     state: TopmarkCliState = bootstrap_cli_state(ctx)
+    draft.validation_logs.merged_config.items.extend(state.file_type_rule_diagnostics)
+
     state.resolved_writer_options = resolved_toml.writer_options
+
+    layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(
+        resolved_toml.sources,
+    )
+
+    cli_rules: tuple[FileTypeRule, ...] = tuple(
+        replace(rule, precedence=len(layers)) for rule in cli_file_type_rules(ctx)
+    )
 
     policy_overrides: PolicyOverrides = build_cli_policy_overrides(state)
     overrides: ConfigOverrides = ConfigOverrides(
-        config_origin=Path(CLI_OVERRIDE_STR),
+        file_type_assignments=cli_rules,
+        config_origin=CLI_OVERRIDE_SOURCE,
         policy=policy_overrides,
         files=plan.paths,
         files_from=none_if_empty(plan.files_from),
@@ -559,18 +581,27 @@ def build_resolved_toml_sources_and_config_for_plan(
         exclude_from=none_if_empty(plan.exclude_from),
         include_patterns=none_if_empty(plan.include_patterns),
         exclude_patterns=none_if_empty(plan.exclude_patterns),
-        opt_in_file_types=opt_in_file_types,
-        include_file_types=include_file_types,
-        exclude_file_types=exclude_file_types,
+        opt_in_file_types=none_if_empty(opt_in_file_types),
+        include_file_types=none_if_empty(include_file_types),
+        exclude_file_types=none_if_empty(exclude_file_types),
         align_fields=align_fields,
         relative_to=relative_to,
     )
 
-    overridden_draft: MutableConfig = apply_config_overrides(draft, overrides=overrides)
-    layers: list[ConfigLayer] = build_config_layers_from_resolved_toml_sources(
-        resolved_toml.sources,
+    invocation_layer: MutableConfig = apply_config_overrides(
+        MutableConfig(),
+        overrides=overrides,
     )
-
+    layers.append(
+        ConfigLayer(
+            origin=CLI_OVERRIDE_SOURCE,
+            kind=ConfigLayerKind.CLI,
+            precedence=len(layers),
+            scope_root=None,
+            config=invocation_layer,
+        )
+    )
+    overridden_draft: MutableConfig = apply_config_overrides(draft, overrides=overrides)
     return PreparedCliConfig(
         resolved_toml=resolved_toml,
         draft=overridden_draft,

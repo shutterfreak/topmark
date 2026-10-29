@@ -58,6 +58,33 @@ topmark check --report noncompliant .
 See [Configuration discovery](../configuration/discovery.md) for precedence, source scope, and
 explicit-configuration behavior. This intentional compatibility change resolves [#486].
 
+File-type filters also use each input's scoped configuration during discovery. Policies and
+activation consent from one subtree no longer leak into siblings. Explicit CLI overrides and API
+policy overlays remain final invocation layers, so they survive per-file scoped recomputation. These
+corrections can change selection and processing in existing multi-input runs; review
+`include_file_types`, `exclude_file_types`, opt-in consent, and per-type policies in nested sources.
+These fixes are tracked in [#488](https://github.com/shutterfreak/topmark/issues/488) and
+[#489](https://github.com/shutterfreak/topmark/issues/489).
+
+______________________________________________________________________
+
+## Handle API configuration failures
+
+Public `check()`, `strip()`, and `probe()` now raise `ConfigValidationError` before processing if
+any configuration stage contains an error. Warnings also fail when resolved source strictness is
+true. Explicit mapping seeds retain `config.strict`; frozen seeds retain diagnostics but do not
+carry source-local strictness. Explicit policy and type-filter overrides are applied before
+validation.
+
+Earlier API versions could continue after configuration errors or process files despite a discovered
+`strict = true` preference. New file-type assignments are covered by this same validation boundary.
+Update integrations to correct invalid inputs and handle configuration failures. The streaming
+variants raise when iteration starts, before any events are yielded or processing files are changed.
+Successful result and event shapes, and public function signatures, remain unchanged.
+
+See [Public API configuration](../api/public.md#configuration-via-mappings) and
+[#490](https://github.com/shutterfreak/topmark/issues/490).
+
 ______________________________________________________________________
 
 ## Update repository automation
@@ -88,6 +115,25 @@ ______________________________________________________________________
 
 TopMark tracks CPython's maintained feature-release series. See the
 [Python support policy](python-support.md) for the current supported range and lifecycle rules.
+
+______________________________________________________________________
+
+## Assign existing file types explicitly
+
+TopMark 3.0 adds ordered `files.file_type_assignments`, `--assign-filetype TYPE=GLOB`, and
+`--infer-filetype GLOB`. These rules select existing registered types and preserve activation,
+filters, processor bindings, insertion checks, and runtime eligibility. A winning `infer` rule
+restores ordinary automatic recognition for selected paths. CLI occurrences interleave in their
+actual argument order. See [Configuration](configuration.md#assign-existing-file-types).
+
+Empty rule arrays retain inherited assignments. A separate clear-all inheritance setting is
+intentionally deferred from the initial release. New declarative types, processor-binding overrides,
+and direct path-to-processor selection are also outside this feature.
+
+Probe machine output and public API results add `selection_method` and `rule_matches`. Consumers
+should accept these additive fields and use the explicit selection method instead of expecting a
+score for every selected type. Portable project files should retain authored relative rules;
+configuration dumps preserve absolute origin bases/scopes when reloaded from another location.
 
 ______________________________________________________________________
 

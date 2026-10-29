@@ -27,11 +27,16 @@ output and ignore TEXT-only verbosity and styling controls.
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from topmark.cli.keys import CliOpt
+from topmark.config.assignments import validate_assignment_pattern
 from topmark.pipeline.outcomes import map_bucket
 from topmark.pipeline.status import FsStatus
+from topmark.presentation.shared.paths import get_display_path
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -248,4 +253,94 @@ def summarize_pipeline_file(
         label=bucket.reason or "(no reason provided)",
         secondary_parts=tuple(secondary_parts),
         diagnostic_total=diagnostic_total,
+    )
+
+
+def render_apply_command(
+    *,
+    command: str,
+    result: ProcessingResult,
+) -> str | None:
+    """Build a single-file remediation command retaining explicit type selection.
+
+    Render literal, source-relative patterns independently from shell quoting.
+    Keep inference selections unchanged and decline to synthesize an assignment
+    when its target cannot be represented from the invocation directory.
+
+    Args:
+        command: Processing subcommand to rerun.
+        result: Durable result carrying the selected type and its origin.
+
+    Returns:
+        Suggested command, or no command when assignment replay requires the
+        original invocation settings.
+    """
+    path_name: str = get_display_path(result)
+    args: list[str] = ["topmark", command]
+    if result.file_type_assigned:
+        if result.file_type is None:
+            return None
+        try:
+            relative: str = Path(path_name).resolve().relative_to(Path.cwd().resolve()).as_posix()
+        except ValueError:
+            return None
+        pattern: str = "".join("\\" + char if char in "\\*?[] #!" else char for char in relative)
+        # A slash anchors a basename; directory-relative patterns are already anchored.
+        if "/" not in pattern:
+            pattern = "/" + pattern
+        try:
+            validate_assignment_pattern(pattern)
+        except ValueError:
+            return None
+        args.extend(
+            [
+                CliOpt.ASSIGN_FILETYPE,
+                shlex.quote(result.file_type.qualified_key + "=" + pattern),
+            ]
+        )
+    args.append(CliOpt.APPLY_CHANGES)
+    # Prevent a selected filename beginning with '-' from becoming a CLI option or STDIN marker.
+    path_argument: str = path_name
+    if not result.from_stdin and path_name.startswith("-"):
+        path_argument = "./" + path_name
+    quoted_path: str = shlex.quote(path_argument)
+    if quoted_path == path_argument:
+        quoted_path = "'" + path_argument + "'"
+    if result.from_stdin:
+        args.extend(
+            [
+                CliOpt.STDIN_FILENAME,
+                quoted_path,
+                "-",
+            ]
+        )
+    else:
+        args.append(quoted_path)
+    return " ".join(args)
+
+
+def format_apply_guidance(
+    *,
+    command_label: str | None,
+    action: str,
+    apply_label: str,
+) -> str:
+    """Format shared guidance after each renderer has escaped its code labels.
+
+    Labels are prepared at the format boundary. Shell arguments remain unchanged
+    inside Markdown code spans, while ordinary prose stays presentation-neutral.
+
+    Args:
+        command_label: Formatted command, if safe replay is available.
+        action: Description of the requested processing action.
+        apply_label: Format-specific label for the apply option.
+
+    Returns:
+        Per-file remediation guidance with an explicit fallback when necessary.
+    """
+    if command_label is not None:
+        return f"🛠️  Run {command_label} to {action}."
+    return (
+        f"🛠️  Rerun this command with {apply_label}, preserving the same configuration "
+        f"and file-type overrides, to {action}."
     )

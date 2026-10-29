@@ -112,6 +112,10 @@ class ResolveStatus(BaseStatus):
         "resolved",
         StyleRole.OK,
     )
+    TYPE_RESOLVED_FILTERED = (
+        "known file type, excluded by filter",
+        StyleRole.BLOCKED_POLICY,
+    )
     TYPE_RESOLVED_HEADERS_UNSUPPORTED = (
         "known file type, headers not supported",
         StyleRole.UNSUPPORTED,

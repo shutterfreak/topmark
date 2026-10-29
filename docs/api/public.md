@@ -95,6 +95,11 @@ streaming core used by NDJSON, human presentation, public stream APIs, and batch
 Public API functions accept either a plain mapping (mirroring the TOML structure) or an immutable
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig].
 
+The mapping accepts ordered `files.file_type_assignments` entries, including mutually exclusive
+assignment and `action = "infer"` variants. See
+[File-type assignments](../usage/configuration.md#assign-existing-file-types) for patterns,
+inheritance, validation, and source-base semantics. Explicit API seeds skip configuration discovery.
+
 Internally, TopMark merges mapping input into mutable runtime configuration state and immediately
 \[`freeze()`s\][topmark.config.model.MutableConfig.freeze] it into an immutable runtime snapshot
 before execution. This prevents accidental mutation and keeps results deterministic.
@@ -125,6 +130,33 @@ validation:
 - TOML-source diagnostics
 - merged-config diagnostics
 - runtime-applicability diagnostics
+
+Public `check()`, `strip()`, and `probe()` calls validate final invocation configuration after
+explicit configuration and policy overlays, before processing-target discovery. Scoped checks during
+discovery also complete before pipeline execution:
+
+- Errors in any validation stage always raise
+  \[`ConfigValidationError`\][topmark.core.errors.ConfigValidationError].
+- Warnings raise that exception when effective source-local `strict` is true; otherwise they remain
+  advisory. Informational diagnostics do not make configuration invalid.
+- Explicit mappings are validated as a single in-memory source and retain `config.strict` without
+  discovering project files. Discovered TOML uses its resolved strictness preference.
+- An explicit `FrozenConfig` retains its staged diagnostics but carries no source-local strictness;
+  errors are fatal and warnings are advisory. Validate with `ensure_valid(strict=True)` before
+  supplying such a seed if strict checking is required.
+- Scoped configurations are also validated during target discovery, so a sibling's settings cannot
+  hide a runtime-applicability warning in another subtree.
+
+The exception's `context.diagnostics` preserves the flattened diagnostics and their original
+severities. A rejected configuration produces no normal result DTO and changes no processing file.
+For `stream_check()`, `stream_strip()`, and `stream_probe()`, validation happens when iteration
+starts; a failure raises before the first run-start event and yields no events. Catch the exception
+around iteration, including when using `apply=True`.
+
+This enforcement is a 3.0 behavioral correction: earlier API calls could continue despite
+configuration errors or strict-mode warnings. New file-type assignments follow this same validation
+boundary: an `action = "infer"` entry containing `file_type` is rejected before automatic inference
+can reach processing. Public function signatures and successful result/event shapes are unchanged.
 
 These options are resolved separately from layered
 \[`FrozenConfig`\][topmark.config.model.FrozenConfig] values and do not participate in layered
@@ -258,6 +290,12 @@ The probe API is read-only and returns stable JSON-friendly DTOs:
 - \[`ProbeCandidateInfo`\][topmark.api.types.ProbeCandidateInfo] → normalized candidate information
 
 Candidates are returned in resolver order (best match first).
+
+`ProbeFileResult.selection_method` distinguishes assignment from inference. Its ordered
+`rule_matches` contains winning and superseded rule provenance, including source, matching pattern,
+definition base, scope, and precedence/order. Assignments do not fabricate scored candidates or
+content signals. Activation, type filters, processor bindings, and later insertion checks retain
+their existing effect; successful resolution does not imply insertion eligibility.
 
 For inputs that reach normal probing, `ProbeFileResult.path` reports the selected processing path,
 not necessarily the original invocation spelling. Missing and filtered explicit inputs still report

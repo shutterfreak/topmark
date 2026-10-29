@@ -507,9 +507,11 @@ Missing explicit input shape:
 }
 ```
 
-Filtered probe payloads are emitted only for explicit file inputs supplied to
+Synthetic discovery-filtered probe payloads are emitted only for explicit file inputs supplied to
 [`topmark probe`](../usage/commands/probe.md) (including paths loaded via `--files-from`). TopMark
-does not enumerate every recursively discovered file that was ignored by discovery filters.
+does not enumerate every recursively discovered file that was ignored by discovery filters. A
+matching assignment or inference-control rule defers effective-type filtering until shared probing;
+those real probe results can therefore be filtered even for recursively discovered inputs.
 
 Explicit directories that successfully expand to selected child files are treated as discovery
 sources and are not emitted as separate filtered probe payloads. Explicit missing inputs are emitted
@@ -532,8 +534,11 @@ Fields:
   - `resolved` - a file type and processor were selected.
   - `unsupported` - no file type candidate matched.
   - `no_processor` - a file type was selected, but no processor binding was available.
-  - `filtered` - an explicitly requested file input was filtered during discovery before file-type
-    probing.
+  - `activation_blocked` - the selected type requires missing opt-in consent or is never
+    processable.
+  - `filtered` - an input was excluded by discovery or effective file-type filters; assignment and
+    inference-control matches retain their provenance. An explicit discovery exclusion occurs before
+    file-type probing.
   - `probe_missing` - an explicit input could not produce a normal resolution probe payload.
 - `reason`: machine-friendly explanation for the status and selection, for example:
   - `selected_highest_score`
@@ -546,9 +551,10 @@ Fields:
   - `no_resolution_probe_result`
   - `hard_link_duplicate`
 - `selected_file_type`: selected canonical file type identity and score, or `null` when unresolved,
-  unbound, filtered, or missing.
-- `selected_processor`: selected processor identity, or `null` when unresolved, unbound, filtered,
-  or missing.
+  discovery-filtered, or missing. Assigned types have `score: null` and retain their identity when a
+  later activation, processor-binding, or type-filter gate blocks processing.
+- `selected_processor`: bound processor identity for a selected type (including filtered
+  assignments), or `null` when unresolved, unbound, discovery-filtered, or missing.
 - `activation`: the activation authorization evaluated for the selected file type, or `null` when no
   file type reached that stage. When present, it has:
   - `declared`: the registry declaration (`default`, `opt-in`, or `never`).
@@ -1450,3 +1456,86 @@ configuration sources and scope roots where applicable.
 
 Breaking machine-readable output changes should be signaled through Conventional Commits using the
 `!` marker and documented in the changelog.
+
+______________________________________________________________________
+
+## Compact origin in processing output
+
+Each JSON processing result and NDJSON `result` payload adds `file_type_assigned`:
+
+- `true`: an explicit assignment selected the file type, including a selection later blocked by
+  activation or type filters;
+- `false`: automatic recognition selected a file type, including after a winning `infer` rule;
+- `null`: no file type was selected or resolution did not run.
+
+The value is independent of verbosity and survives reduction into a durable processing result. It
+records selection origin, rather than proving that an assignment was necessary for recognition.
+Detailed winning and superseded rules remain available through probe output. A processing result
+blocked by an effective-type filter uses resolve status name `TYPE_RESOLVED_FILTERED`, skipped
+outcome, and hint code `discovery:filtered`, retaining the selected type. It is distinct from an
+unsupported file. This additive status token is available since 3.0.
+
+______________________________________________________________________
+
+## File-type rule provenance in probe output
+
+Probe JSON objects and NDJSON `probe` payloads add these stable fields:
+
+- `selection_method`: `"assignment"` for an explicit type winner, otherwise `"inference"`.
+- `rule_matches`: all actual matching rules in precedence order, including superseded matches. Each
+  contains `action`, `patterns`, `matching_pattern`, `source`, absolute POSIX `base`, `scope`,
+  integer `precedence` and `order`, and boolean `selected`. Orders are zero-based; precedence is
+  layer order and order is declaration order within that layer. Assignment matches also contain the
+  canonical qualified `file_type`; inference controls omit it. Empty `scope` denotes global scope.
+  The last match has `selected = true`; no matches produce an empty array.
+
+For example, these entries in a probe's `rule_matches` show a source assignment superseded by a CLI
+inference control. The enclosing probe has `selection_method: "inference"`; ordinary recognition
+supplies its candidate scores and selection outcome. `selected` identifies the winning rule, rather
+than a promise that processing is permitted.
+
+```json
+[
+  {
+    "action": "assign",
+    "file_type": "topmark:jsonc",
+    "patterns": ["*.json"],
+    "matching_pattern": "*.json",
+    "source": "/work/project/topmark.toml",
+    "base": "/work/project",
+    "scope": "/work/project",
+    "precedence": 1,
+    "order": 0,
+    "selected": false
+  },
+  {
+    "action": "infer",
+    "patterns": ["generated/**"],
+    "matching_pattern": "generated/**",
+    "source": "<CLI assignments>",
+    "base": "/work/project",
+    "scope": "",
+    "precedence": 2,
+    "order": 0,
+    "selected": true
+  }
+]
+```
+
+A winning inference control remains visible even when automatic recognition finds no candidates.
+Assignment winners have no candidate score and an empty `candidates` array. Existing activation,
+processor, status, and reason fields describe the result of retained gates; a successful probe does
+not guarantee insertion eligibility. `selected_by_assignment` identifies a successful assignment.
+Verbosity affects neither machine fields nor severity, resolution, or exit status.
+
+Markdown always includes the complete rule explanation; TEXT reveals superseded matches with `-v`.
+
+{% include-markdown "\_snippets/output-contract.md" %}
+
+Activation `declared` continues to use the existing `"default"`, `"opt-in"`, or `"never"` wire
+values. Internal enum types do not change these tokens. Public API `selection_method` uses
+`SelectionMethodLiteral`, preserving plain string values.
+
+Public API probe DTOs expose equivalent `selection_method` and `rule_matches` fields. Configuration
+payloads include ordered `files.file_type_assignments` with the same origin metadata used by TOML
+dumps. See [Configuration](configuration.md#diagnostics-and-portable-dumps).

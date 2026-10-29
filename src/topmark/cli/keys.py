@@ -58,6 +58,8 @@ class CliOpt:
     """
 
     # File selection & filters
+    ASSIGN_FILETYPE: Final = "--assign-filetype"
+    INFER_FILETYPE: Final = "--infer-filetype"
     INCLUDE_FILE_TYPES: Final = "--include-file-types"
     INCLUDE_FILE_TYPE: Final = "--include-file-type"
     EXCLUDE_FILE_TYPES: Final = "--exclude-file-types"

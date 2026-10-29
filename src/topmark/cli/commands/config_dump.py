@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 import click
 import rich_click
 
+from topmark.cli.assignments import AssignmentCommand
 from topmark.cli.cmd_common import build_resolved_toml_sources_and_config_for_plan
 from topmark.cli.cmd_common import init_common_state
 from topmark.cli.cmd_common import resolve_human_console
@@ -89,6 +90,7 @@ logger: TopmarkLogger = get_logger(__name__)
 
 
 @rich_click.command(
+    cls=AssignmentCommand,
     name=CliCmd.CONFIG_DUMP,
     context_settings=GROUP_CONTEXT_SETTINGS,
     help=(

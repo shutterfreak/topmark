@@ -239,7 +239,8 @@ Use `--output-format markdown` to render a document-oriented report.
 
 Notes:
 
-- Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls.
+- Markdown output is document-oriented, always includes superseded rules, and ignores TEXT-oriented
+  verbosity and quiet controls.
 - Always includes selected details and candidate tables
 - Suitable for documentation or review artifacts
 
@@ -273,9 +274,10 @@ documented in [shared options](../shared-options.md) and [exit codes](../exit-co
 
 TEXT verbosity is separate from internal logging:
 
-- `-v`, `--verbose` increases TEXT output detail for probe diagnostics.
+- `-v`, `--verbose` increases TEXT detail, including superseded rules.
 - `-q`, `--quiet` suppresses TEXT rendering while preserving the command's exit status.
-- Markdown output is document-oriented and ignores TEXT-oriented verbosity and quiet controls.
+- Markdown output is document-oriented, always includes superseded rules, and ignores TEXT-oriented
+  verbosity and quiet controls.
 - Machine-readable JSON and NDJSON output are unaffected by TEXT-oriented verbosity and quiet
   controls.
 
@@ -365,20 +367,25 @@ ______________________________________________________________________
 
 ## Command-specific options
 
-| Option                                               | Description                                                             |
-| ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| `-q`, `--quiet`                                      | Suppress TEXT rendering while preserving exit status.                   |
-| `--files-from`                                       | Read newline-delimited paths from file (use '-' for STDIN).             |
-| `-` (PATH)                                           | Read one virtual file from STDIN content (requires `--stdin-filename`). |
-| `--include`                                          | Add paths by glob.                                                      |
-| `--include-from`                                     | File of patterns to include.                                            |
-| `--exclude`                                          | Exclude paths by glob.                                                  |
-| `--exclude-from`                                     | File of patterns to exclude.                                            |
-| `--include-file-types` / `-t`                        | Restrict to local or qualified file type identifiers.                   |
-| `--exclude-file-types` / `-T`                        | Exclude local or qualified file type identifiers.                       |
-| `--opt-in-file-type`                                 | Authorize a local or qualified opt-in file type identifier.             |
-| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                 |
-| `--allow-content-probe` / `--no-allow-content-probe` | Shared runtime policy override for file-type detection.                 |
+| Option                                               | Description                                                               |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| `-q`, `--quiet`                                      | Suppress TEXT rendering while preserving exit status.                     |
+| `--files-from`                                       | Read newline-delimited paths from file (use '-' for STDIN).               |
+| `-` (PATH)                                           | Read one virtual file from STDIN content (requires `--stdin-filename`).   |
+| `--include`                                          | Add paths by glob.                                                        |
+| `--include-from`                                     | File of patterns to include.                                              |
+| `--exclude`                                          | Exclude paths by glob.                                                    |
+| `--exclude-from`                                     | File of patterns to exclude.                                              |
+| `--assign-filetype TYPE=GLOB`                        | Assign a registered file type before probing (repeatable).                |
+| `--infer-filetype GLOB`                              | Restore automatic recognition; interleaves with assignments (repeatable). |
+| `--include-file-types` / `-t`                        | Restrict to local or qualified file type identifiers.                     |
+| `--exclude-file-types` / `-T`                        | Exclude local or qualified file type identifiers.                         |
+| `--opt-in-file-type`                                 | Authorize a local or qualified opt-in file type identifier.               |
+| `--stdin-filename`                                   | Assumed filename when PATH is '-' (content from STDIN).                   |
+| `--allow-content-probe` / `--no-allow-content-probe` | Shared runtime policy override for file-type detection.                   |
+
+See [File-type assignments](../configuration.md#assign-existing-file-types) for shared rule
+precedence, pattern syntax, and inference restoration.
 
 > Run `topmark probe -h` for the full list of options.
 

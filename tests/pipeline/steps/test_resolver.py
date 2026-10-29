@@ -22,7 +22,6 @@ fully deterministic and independent of the built-in definitions.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tests.helpers.pipeline import make_pipeline_context
@@ -56,6 +55,7 @@ if TYPE_CHECKING:
     import pytest
 
     from tests.conftest import EffectiveRegistries
+    from topmark.config.assignments import FileTypeRule
     from topmark.config.model import FrozenConfig
     from topmark.config.model import MutableConfig
     from topmark.pipeline.context.model import ProcessingContext
@@ -377,10 +377,14 @@ def test_resolver_forwards_effective_file_type_filters_when_creating_probe(
         def record_probe(
             path: Path,
             *,
+            file_type_assignments: tuple[FileTypeRule, ...] = (),
+            assignment_path: Path | None = None,
             opt_in_file_types: Collection[str] | None = None,
             include_file_types: Collection[str] | None = None,
             exclude_file_types: Collection[str] | None = None,
         ) -> ResolutionProbeResult:
+            assert file_type_assignments == ctx.config.file_type_assignments
+            assert assignment_path is None
             calls.append((path, include_file_types, exclude_file_types, opt_in_file_types))
             return ResolutionProbeResult(
                 path=path,
@@ -1308,3 +1312,67 @@ def test_resolve_deep_filename_tail_normalization(
     )
     assert ctx.status.resolve == ResolveStatus.RESOLVED
     assert ctx.file_type and ctx.file_type.local_key == ft_toolcfg_name
+
+
+def test_filtered_assignment_retains_type_and_has_distinct_skipped_status(
+    tmp_path: Path,
+) -> None:
+    """Filtered selections retain identity and produce a skipped rather than unsupported result."""
+    from topmark.config.assignments import AssignmentRule
+    from topmark.config.model import MutableConfig
+    from topmark.pipeline.outcomes import Outcome
+    from topmark.pipeline.outcomes import map_bucket
+    from topmark.pipeline.result import ProcessingResult
+
+    path: Path = tmp_path / "service.json"
+    path.write_text("{}\n", encoding="utf-8")
+    config = MutableConfig()
+    config.file_type_assignments = [
+        AssignmentRule(
+            file_type="topmark:jsonc",
+            patterns=(path.name,),
+            base=tmp_path,
+            scope=None,
+            source="test",
+            order=0,
+        )
+    ]
+    config.exclude_file_types = {
+        "topmark:jsonc",
+    }
+    ctx: ProcessingContext = make_pipeline_context(path=path, cfg=config.freeze())
+    run_resolver(ctx)
+    assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_FILTERED
+    assert ctx.file_type is not None and ctx.file_type.qualified_key == "topmark:jsonc"
+    assert ctx.file_type_assigned is True
+    assert ctx.header_processor is None
+    assert ctx.is_halted
+    assert ctx.diagnostic_hints.items[0].code == KnownCode.DISCOVERY_FILTERED
+    result: ProcessingResult = ProcessingResult.from_context(ctx)
+    assert map_bucket(result, apply=False).outcome == Outcome.SKIPPED
+    assert result.to_dict()["file_type_assigned"] is True
+    assert result.status.to_dict()["resolve"]["name"] == "TYPE_RESOLVED_FILTERED"
+
+
+def test_discovery_filtered_probe_without_selected_type_stays_filtered(
+    tmp_path: Path,
+) -> None:
+    """Synthetic discovery exclusions do not invent an effective type or processor."""
+    from topmark.config.model import MutableConfig
+
+    ctx: ProcessingContext = make_pipeline_context(
+        tmp_path / "excluded.py",
+        MutableConfig().freeze(),
+    )
+    ctx.resolution_probe = ResolutionProbeResult(
+        path=ctx.path,
+        status=ResolutionProbeStatus.FILTERED,
+        reason=ResolutionProbeReason.EXCLUDED_BY_PATH_FILTER,
+        candidates=(),
+        selected_file_type=None,
+        selected_processor=None,
+    )
+    run_resolver(ctx)
+    assert ctx.status.resolve == ResolveStatus.TYPE_RESOLVED_FILTERED
+    assert ctx.file_type is None and ctx.header_processor is None
+    assert ctx.file_type_assigned is None

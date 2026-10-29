@@ -40,7 +40,14 @@ PATH_FILTERING_PANEL_OPTIONS: Final[tuple[str, ...]] = (
 )
 """Shared path-pattern filtering controls."""
 
+FILE_TYPE_ASSIGNMENT_PANEL_OPTIONS: Final[tuple[str, ...]] = (
+    CliOpt.ASSIGN_FILETYPE,
+    CliOpt.INFER_FILETYPE,
+)
+"""Shared ordered file-type assignment and inference controls."""
+
 FILE_TYPE_FILTERING_PANEL_OPTIONS: Final[tuple[str, ...]] = (
+    *FILE_TYPE_ASSIGNMENT_PANEL_OPTIONS,
     CliOpt.INCLUDE_FILE_TYPES,
     CliOpt.EXCLUDE_FILE_TYPES,
     CliOpt.OPT_IN_FILE_TYPE,

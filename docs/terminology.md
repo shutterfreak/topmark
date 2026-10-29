@@ -381,6 +381,18 @@ Runtime filesystem-identity eligibility checks, including hard-link policy, do n
 configuration loading, layered provenance, source precedence, applicability evaluation, discovery
 anchors, or project-chain discovery.
 
+### Synthetic configuration origin
+
+A provenance marker identifying configuration contributed without a backing filesystem path, such as
+built-in defaults, an API mapping, or CLI invocation overrides.
+
+Synthetic origins remain typed internally and render as stable labels such as `<defaults>` or
+`<CLI overrides>` in diagnostics and exports. They never undergo filesystem normalization. A missing
+configuration path does not imply API ownership; anonymous fragments use a neutral rule origin.
+
+See [Synthetic configuration origins](dev/configuration-schema.md#synthetic-configuration-origins)
+for the source catalog, attribution rules, and serialization compatibility.
+
 ______________________________________________________________________
 
 ## Pipeline terminology

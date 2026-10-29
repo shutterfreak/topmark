@@ -46,6 +46,10 @@ ______________________________________________________________________
 
 ## Multiline field values
 
+> [!NOTE]
+>
+> Available since version 2.0.0.
+
 The target design in [#339](https://github.com/shutterfreak/topmark/issues/339) changes multiline
 field rendering. Under that design, custom `[fields]` values may use TOML multiline strings; TopMark
 removes their incidental leading and trailing blank lines, then renders multiline values using
@@ -293,6 +297,170 @@ resolved configuration target rather than the symlink spelling used to reach it.
 Hard-link processing policy is not represented in the runtime configuration model because it is a
 processing-target eligibility rule evaluated by runtime file-processing commands rather than a
 configuration-layering concern.
+
+______________________________________________________________________
+
+## Assign existing file types
+
+> [!NOTE]
+>
+> Available since version 3.0.0.
+
+Use ordered rules to select registered file types for otherwise unrecognized paths or to override
+automatic recognition. In `topmark.toml`:
+
+```toml
+[[files.file_type_assignments]]
+file_type = "topmark:git-meta"
+patterns = [".project_ignore"]
+
+[[files.file_type_assignments]]
+file_type = "topmark:jsonc"
+patterns = ["config/service.json", "config/local/*.json"]
+
+[[files.file_type_assignments]]
+action = "infer"
+patterns = ["generated/**"]
+```
+
+> [!INFO]
+>
+> Rules belong to `[files]` because they control selection of processing inputs alongside path and
+> type filters. They do not define registry types or processor bindings.
+
+In `pyproject.toml`, use `[[tool.topmark.files.file_type_assignments]]`. Assignment entries require
+one existing `file_type` and a nonempty pattern list. An omitted action means `"assign"`;
+`action = "assign"` is equivalent. Inference controls require `action = "infer"` and patterns, and
+forbid the `file_type` key entirely, including empty values. Unknown actions, malformed shapes,
+unknown or ambiguous identifiers, and invalid patterns are errors. Unknown keys follow normal
+warning/strict-mode conventions. Local type identifiers are accepted when unambiguous; effective
+configuration uses canonical qualified identities.
+
+The last applicable matching rule wins. Ancestor rules precede local rules; within a directory,
+`pyproject.toml` precedes `topmark.toml`. Explicit configuration sources retain their existing scope
+and follow discovered sources in argument order. CLI rules follow configuration rules. A winning
+inference control cancels earlier assignments and runs ordinary recognition; it never resumes an
+earlier assignment. Empty assignment lists retain inherited rules. TopMark 3.0 does not provide a
+separate clear-all inheritance setting.
+
+Assignments select a type directly, bypassing filename and content recognition gates. The selected
+type retains its processor binding, policies, activation consent, include/exclude type filters,
+insertion checks, encoding checks, and runtime safety checks. A blocked, filtered,
+never-processable, or unbound assignment has no fallback. Assignments add no discovery roots and do
+not override path exclusions. Registry introspection remains independent of project rules.
+
+Type filters apply to the effective assigned identity, rather than every identity that could match
+the path automatically. For example, `exclude_file_types = ["topmark:json"]` does not block a
+`topmark:jsonc` assignment to `config/service.json`. Excluding `topmark:jsonc`, or including only
+other types, blocks that assignment without retrying automatic JSON recognition. Activation consent
+is independent: including a type does not authorize an opt-in type.
+
+For comment-free JSON documents known to permit comments, assign `topmark:jsonc`. This enables
+normal header insertion and stripping through its existing processor. `json-as-jsonc` retains both
+its conservative content-based automatic recognition and its separate insertion guard. Successful
+probing does not promise successful insertion.
+
+### Pattern and scope contract
+
+Rules use TopMark's case-sensitive gitignore-style positive patterns, with POSIX `/` separators on
+all platforms. A basename pattern such as `.project_ignore` or `*.json` matches at any depth,
+including dotfiles. A pattern containing a directory separator is relative to its definition base; a
+leading `/` anchors it there. `*` does not cross directories; `**` can. Character classes, `?`, and
+backslash escaping use the existing pathspec gitignore conventions. Unclosed brackets are literals,
+while invalid ranges and dangling escapes are errors. Empty, whitespace-only, comment (`#`), negated
+(`!`), and control-character patterns are rejected. Escape a literal initial `#` or `!` with a
+backslash.
+
+The raw pattern is preserved. Leading spaces are literal; unescaped trailing spaces follow gitignore
+semantics and are ignored during matching. Escape trailing spaces to match them. Backslashes escape
+glob characters; use `/` for directory separators. Matching uses the selected resolved processing
+path, so symlink spellings collapse to the target and follow its scope. Patterns are interpreted
+relative to the declaring configuration directory, independently of applicability scope. CLI
+patterns use the invocation directory. Nested sources apply only to their subtree and honor
+`root = true` boundaries. STDIN rules match the logical `--stdin-filename`; content probes continue
+to read the staged input.
+
+### CLI ordering and exact values
+
+`check`, `strip`, `probe`, `config check`, and `config dump` accept both repeatable options:
+
+```console
+topmark probe . --assign-filetype 'topmark:jsonc=*.json' \
+  --infer-filetype 'generated/**' \
+  --assign-filetype 'topmark:jsonc=generated/special.json'
+```
+
+Both option kinds participate in one sequence, preserving their actual command-line interleaving.
+Reversing matching assignment/inference occurrences reverses the winner. One assignment occurrence
+contains exactly one type and one pattern, split at the first `=`. Registry identifiers cannot
+contain `=`. Everything after that delimiter is preserved, including further equals signs, colons,
+spaces, Unicode, commas, brackets, and backslashes. Values are never comma-split or trimmed.
+Whitespace around the type identifier is invalid. Quote values to prevent shell expansion.
+`--assign-filetype=TYPE=GLOB` and `--infer-filetype=GLOB` are equivalent to separate-value forms.
+Leading-dash values are accepted in both forms; the equals form makes that intent clearest.
+
+### Single-file remediation hints
+
+For an assignment-selected file, `check` and `strip` suggest an apply command with the canonical
+file type and an exact-path assignment, rather than repeating the original broad glob:
+
+```console
+topmark check --assign-filetype 'topmark:jsonc=tests/api/public_api_snapshot.json' --apply 'tests/api/public_api_snapshot.json'
+```
+
+The pattern is anchored to the invocation directory, with glob metacharacters and spaces escaped
+literally and shell arguments quoted separately. STDIN hints use the logical `--stdin-filename`.
+Automatic recognition and winning `infer` rules do not generate assignment overrides. Run the
+suggestion from the same directory and retain any required explicit configuration files, activation
+consent, and policy overrides: the minimal assignment reproduces file-type selection, rather than
+all invocation settings. For paths outside the invocation directory or patterns that cannot be
+represented safely, guidance asks you to rerun with the original settings instead of supplying an
+incomplete command. Shell quoting follows POSIX shell conventions.
+
+### Diagnostics and portable dumps
+
+Ordinary overlaps are valid overrides. Probe collects actual matches lazily without static glob
+intersection or additional filesystem scans. Identical outcomes are harmless. Contradictory
+duplicate patterns in one source warn, and strict validation rejects those warnings. Diagnostics are
+emitted once per declaration rather than once per matching file. Ancestor/local and broad/narrow
+overrides do not generate overlap warning floods.
+
+Probe always explains the winning rule; `-v` reveals superseded matches in TEXT. Markdown always
+includes superseded matches and ignores verbosity and quiet controls. JSON and NDJSON include the
+complete ordered `rule_matches` independently of verbosity, with `selection_method` equal to
+`assignment` or `inference`. No scores or content hits are fabricated for assignment winners. See
+[Machine-readable output](machine-output.md).
+
+Configuration dumps retain rule order and absolute `base` and `scope`, plus `source`, `order`, and
+`precedence` provenance. These exported entry fields can be read back. Empty exported `scope` means
+global applicability. Reloading a dump preserves absolute pattern locations rather than relocating
+rules to a new checkout. File-backed source scope still applies: place a dump at a common ancestor
+of its original scopes, or use its mapping as an explicit API configuration seed, to retain full
+applicability. Moving a TOML source outside the original tree does not expand its source scope. For
+a portable project configuration, keep the authored entries with source-relative patterns and omit
+exported provenance fields. Rule array order controls resolution; provenance numbers describe the
+original layers.
+
+Public API configuration accepts the same structured mapping, for example
+`config={"files": {"file_type_assignments": [{"file_type": "jsonc", "patterns": ["*.json"]}]}}`.
+Explicit API configuration retains its existing discovery-skipping seed behavior. Public probe
+results add `selection_method` and `rule_matches`, with no changes to command signatures.
+
+______________________________________________________________________
+
+## Synthetic configuration provenance
+
+Configuration inspection uses stable labels for sources without a filesystem path. These include
+`<defaults>`, `<API config>`, `<API overrides>`, `<API policy overrides>`, and `<CLI overrides>`.
+The built-in defaults document and bundled starter template retain their distinct labels
+`<built-in topmark defaults>` and `<bundled topmark-template.toml>`.
+
+Assignment and inference-control rules supplied on the CLI report `<CLI assignments>` within the CLI
+override layer. Anonymous in-memory fragments report `<anonymous config>` for rules; only explicit
+API mappings report `<API config>`. These labels are provenance metadata and are never resolved as
+filesystem paths. Rule labels in exported TOML remain strings when reloaded; absolute rule bases and
+scopes preserve matching behavior when the dump is relocated. JSON, NDJSON, and human output retain
+the same label spellings.
 
 ______________________________________________________________________
 

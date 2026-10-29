@@ -123,7 +123,7 @@ def format_header_metadata_path(path: Path) -> str:
     return format_posix_path(path)
 
 
-def format_config_source_path(source: Path | SyntheticConfigSource) -> str:
+def format_config_source_path(source: Path | SyntheticConfigSource | str) -> str:
     """Format real and synthetic config source identifiers for TOML export.
 
     Synthetic config sources use bracketed identifiers such as
@@ -132,10 +132,13 @@ def format_config_source_path(source: Path | SyntheticConfigSource) -> str:
     directory.
 
     Args:
-        source: Real filesystem path or synthetic config source identifier.
+        source: Real filesystem path, synthetic config source identifier, or
+            opaque legacy rule-source metadata read from a dump.
 
     Returns:
         POSIX-style path string for real filesystem paths, or the stable label
         for synthetic config sources.
     """
+    if isinstance(source, str):
+        return source
     return source.label if isinstance(source, SyntheticConfigSource) else format_posix_path(source)

@@ -35,6 +35,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from topmark.config.assignments import file_type_rule_to_table
 from topmark.core.errors import TomlRenderError
 from topmark.core.logging import get_logger
 from topmark.toml.enums import FilesSerializationMode
@@ -147,6 +148,10 @@ def config_to_topmark_toml_table(
             format_config_source_path(p) for p in config.config_files
         ),
     }
+    if config.file_type_assignments:
+        files_tbl[Toml.KEY_FILE_TYPE_ASSIGNMENTS] = as_toml_table_list(
+            file_type_rule_to_table(rule) for rule in config.file_type_assignments
+        )
     insert_if_present(
         files_tbl,
         Toml.KEY_RELATIVE_TO,

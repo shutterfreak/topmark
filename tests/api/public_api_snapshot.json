@@ -355,6 +355,26 @@
           "init": true,
           "kw_only": true,
           "name": "candidates"
+        },
+        {
+          "annotation": "SelectionMethodLiteral",
+          "default": {
+            "kind": "literal",
+            "value": "inference"
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "selection_method"
+        },
+        {
+          "annotation": "tuple[Mapping[str, object], ...]",
+          "default": {
+            "items": [],
+            "kind": "tuple"
+          },
+          "init": true,
+          "kw_only": true,
+          "name": "rule_matches"
         }
       ],
       "frozen": true,

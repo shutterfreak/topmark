@@ -24,10 +24,12 @@ from topmark.cli.console.protocols import is_console_protocol
 from topmark.config.policy import MutablePolicy
 from topmark.core.formats import OutputFormat
 from topmark.core.typing_guards import is_mapping
+from topmark.diagnostic.model import FrozenDiagnosticLog
 
 if TYPE_CHECKING:
     import click
 
+    from topmark.config.assignments import FileTypeRule
     from topmark.runtime.writer_options import WriterOptions
 
 
@@ -47,13 +49,19 @@ class TopmarkCliState:
     output_format: OutputFormat = OutputFormat.TEXT
     color_mode: ColorMode = ColorMode.AUTO
     color_enabled: bool = False
-    console: ConsoleProtocol = field(default_factory=lambda: Console(enable_color=False))
+    console: ConsoleProtocol = field(
+        default_factory=lambda: Console(enable_color=False),
+    )
     log_level: int | None = None
     prune_pipeline_views: bool = True
     apply_changes: bool = False
     write_mode: CliWriteMode | None = None
     resolved_writer_options: WriterOptions | None = None
     policy: MutablePolicy = field(default_factory=MutablePolicy)
+    file_type_rules: tuple[FileTypeRule, ...] = ()
+    file_type_rule_diagnostics: FrozenDiagnosticLog = field(
+        default_factory=lambda: FrozenDiagnosticLog(items=()),
+    )
 
 
 def bootstrap_cli_state(ctx: click.Context) -> TopmarkCliState:
