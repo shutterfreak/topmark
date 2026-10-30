@@ -54,8 +54,10 @@ ______________________________________________________________________
 
 ## Local commit-message validation
 
-The repository's pre-commit configuration enforces the same Conventional Commit structure at the
-`commit-msg` hook stage. Install or refresh the hooks with:
+The repository's Commit Check hook reads `.github/cchk.toml` and checks Conventional Commit
+structure and allowed types at the `commit-msg` stage. It also checks subject length, imperative
+wording, and DCO sign-offs; the GitHub title workflow does not enforce these extra local checks.
+Install or refresh the hooks with:
 
 ```bash
 pre-commit install --install-hooks
@@ -77,7 +79,7 @@ ______________________________________________________________________
 
 ## Maintenance notes
 
-Keep the allowed types synchronized between `.pre-commit-config.yaml`, this workflow, and
+Keep the allowed types synchronized between `.github/cchk.toml`, this workflow, and
 `CONTRIBUTING.md`. The workflow action is pinned to a full commit SHA; update it through the normal
 GitHub Action dependency-maintenance process and action-pin audit.
 

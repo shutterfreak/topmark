@@ -56,6 +56,8 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Added GitHub bug report, feature request, and pull request templates with contributor guidance for
+  reporting validation and taking responsibility for AI-assisted changes.
 - Single-file apply hints preserve assigned types with canonical exact-path `--assign-filetype`
   overrides, using literal glob escaping and shell quoting in TEXT and Markdown. Processing
   contexts, durable results, and processing machine payloads retain `file_type_assigned` as `true`,
@@ -75,6 +77,10 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Require contributors to sign off their commits under the Developer Certificate of Origin and
+  preserve relevant sign-offs when squash merging; document GitHub `noreply` email setup.
+- Replace the local Conventional Commit hook with Commit Check, enforcing DCO sign-off trailers,
+  allowed types, 10-72-character subjects, and imperative wording at the `commit-msg` stage.
 - Raised the documentation-extra `zensical` floor to 0.0.71, which requires Python 3.11 or later.
 - Use Zensical native `draft_docs` handling for local draft previews.
 

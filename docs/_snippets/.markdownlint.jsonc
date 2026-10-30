@@ -9,8 +9,7 @@
 // topmark:header:end
 
 {
-  // Line length is handled by mdformat
-  "line_length": false,
+  "extends": "../../.markdownlint.jsonc",
   // Suppress first-line-h1 for Markdown snippets
   "MD041": false
 }

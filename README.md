@@ -20,6 +20,7 @@ topmark:header:end
 [![Documentation Status](https://readthedocs.org/projects/topmark/badge/?version=latest)](https://topmark.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Development Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](https://pypi.org/project/topmark/)
+[![commit-check](https://commit-check.com/badge.svg)](https://commit-check.com)
 [![Downloads](https://static.pepy.tech/badge/topmark)](https://pepy.tech/project/topmark)
 
 **TopMark** is a dry-run-first Python CLI for keeping license, copyright, project, and file metadata
