@@ -1,0 +1,67 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : 01-bug-report.yml
+#   file_relpath : .github/ISSUE_TEMPLATE/01-bug-report.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+name: Bug report
+description: Report a problem with TopMark.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first and remove private information from examples and output.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is the problem?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal example, command, configuration, and input file where applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include relevant output or errors.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Paste the output of `topmark version --output-format json`. If the command cannot run,
+        provide the TopMark and Python versions if known, or enter unknown.
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      description: Include the version if known, or enter unknown.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any other information that may help investigate.

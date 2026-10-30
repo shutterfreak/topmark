@@ -450,7 +450,8 @@ pre-commit install --install-hooks
 
 Common repository-local hooks include:
 
-- `conventional-pre-commit` - validates Conventional Commit structure at the `commit-msg` stage
+- `check-message` (Commit Check) - validates commit subjects and DCO sign-offs at the `commit-msg`
+  stage
 - `topmark-check` - validates headers without mutating files
 - `topmark-apply` - updates headers when run manually
 - Ruff, Taplo, mdformat, markdownlint-cli2, Pyright, pydoclint, and repository hygiene checks
@@ -492,20 +493,72 @@ Follow the Conventional Commits specification:
 - `feat(cli): add --skip-unsupported flag`
 - `fix(renderer): avoid duplicate header insertion`
 
-Keep titles short (≤72 chars) and use the body to explain *why*. For a non-trivial message, pass the
+Keep titles between 10 and 72 characters and use the body to explain *why*. Write the description in
+the imperative mood, such as "handle" rather than "handled". For a non-trivial message, pass the
 title and each body paragraph as separate `-m` arguments. This preserves paragraph breaks; do not
 write literal `\n` escape sequences in the message.
 
 ```bash
-git commit \
+git commit -s \
   -m "docs: clarify contributor setup" \
   -m "Explain the required pre-commit reinstall after changing Python."
 ```
 
-The `commit-msg` hook validates the allowed type and structural punctuation locally. GitHub also
-validates pull request titles using the same allowed types, including after title edits. Neither
-check decides whether the selected type accurately describes the change; that remains reviewer
-judgment.
+The Commit Check `commit-msg` hook reads `.github/cchk.toml` and validates the allowed type,
+structure, subject length, imperative wording, and sign-off locally. The imperative check is a
+heuristic and may misinterpret some wording. GitHub separately validates pull request title
+structure using the same allowed types, including after title edits; it does not enforce the local
+length or imperative checks. Neither check decides whether the selected type accurately describes
+the change; that remains reviewer judgment.
+
+### Developer Certificate of Origin
+
+TopMark requires contributors to certify their contributions under the
+[Developer Certificate of Origin (DCO), version 1.1](https://developercertificate.org/). Read the
+certificate before contributing. Sign off each commit you contribute using your name and email:
+
+```bash
+git commit -s -m "fix: describe the change"
+```
+
+Git adds a `Signed-off-by: Name <email>` trailer using your configured Git identity. The sign-off
+certifies the DCO; it is not a cryptographic signature. To sign off your most recent commit if you
+forgot, use `git commit --amend --signoff`. Amending changes the commit ID; coordinate before
+rewriting a shared branch. Each contributor must sign off their own work; do not add someone else's
+sign-off on their behalf.
+
+You may use your GitHub-provided `noreply` address for your commit and sign-off. To use it:
+
+1. In GitHub, open **Settings → Emails**, enable **Keep my email addresses private**, and copy the
+   `noreply` address GitHub displays. This setting also uses that address for web-based Git
+   operations. See GitHub's
+   [commit email instructions](https://docs.github.com/en/account-and-profile/how-tos/email-preferences/setting-your-commit-email-address).
+
+1. Configure your identity in the TopMark checkout, substituting your name and copied address:
+
+   ```bash
+   git config user.name "Your Name"
+   git config user.email "YOUR-GITHUB-NOREPLY-ADDRESS"
+   ```
+
+1. Check the values with `git config user.name` and `git config user.email`. These repository-local
+   settings apply to future local commits; changing GitHub's setting alone does not configure Git.
+
+The sign-off email must match the commit author's email for the DCO check. For an ordinary commit
+you create yourself, `git commit -s` uses your configured identity for both. If the author and
+committer differ, the author's own sign-off must still be present. Commit metadata and sign-offs are
+public; changing your settings does not remove addresses from earlier commits. A `noreply` address
+cannot receive direct replies.
+
+For squash merges, maintainers should preserve the relevant contributors' sign-off trailers in the
+resulting commit message. The pull request checklist reminds authors of this policy; it does not
+automatically verify commit trailers.
+
+When the local hooks are installed, Commit Check also rejects commit messages without a sign-off
+trailer. It checks the trailer's format, not whether it matches the author or certifies the DCO
+truthfully. The GitHub DCO app checks pull request commits separately. See
+[pre-commit integration (hosted docs)](https://topmark.readthedocs.io/en/latest/usage/pre-commit/)
+for local hook setup and limitations.
 
 ### After a pull request is merged
 
@@ -551,13 +604,15 @@ GitHub CLI access, and is not required for contributing. Review its output befor
 
 ### Pull request checklist
 
-- [ ] PR title follows Conventional Commits
-- [ ] Related issues and PRs referenced when applicable
-- [ ] Docs updated if needed
-- [ ] Public API snapshot updated if applicable
-- [ ] `make pre-pr` passes
-- [ ] `pre-commit run --all-files` passes
-- [ ] Release tag / changelog plan is correct for release-related PRs
+Use the issue forms to report bugs or suggest features, and discuss substantial changes before
+starting implementation. For pull requests, describe the problem and change, link related issues,
+and report the checks run and their results, including any relevant omissions. Follow the
+Conventional Commit title format and run `make pre-pr` before submitting when feasible.
+
+Consider tests, documentation, the changelog, compatibility, and intentional public API snapshot
+changes as applicable. For release-related pull requests, also check the release tag and changelog
+plan. Review and understand all changes you submit, including AI-assisted changes, and be able to
+explain and revise them.
 
 ______________________________________________________________________
 

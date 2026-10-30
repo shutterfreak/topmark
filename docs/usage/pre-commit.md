@@ -65,6 +65,37 @@ pre-commit run --all-files
 
 ______________________________________________________________________
 
+## Contributing to TopMark: commit messages
+
+TopMark's own `.pre-commit-config.yaml` includes the third-party Commit Check `check-message` hook
+at the `commit-msg` stage. Its policy in `.github/cchk.toml` checks Conventional Commit structure
+and allowed types, subject length (10-72 characters), imperative wording, and a
+`Signed-off-by: Name <email>` trailer. The subject is the first line; the length limits do not apply
+to the optional body. Imperative wording is checked heuristically and can produce false positives.
+This is a contributor check for TopMark, not a hook supplied to consumer repositories by TopMark.
+
+Run `pre-commit install` in the TopMark checkout to install both the `pre-commit` and `commit-msg`
+stages declared in the repository configuration. Then sign off each contribution:
+
+```bash
+git commit -s -m "fix: describe the change"
+```
+
+If the hook rejects a missing sign-off, retry the commit with `-s`. For an existing latest commit,
+use `git commit --amend --signoff`; this rewrites the commit, so coordinate before changing a shared
+branch. See the
+[contributor guide](https://github.com/shutterfreak/topmark/blob/main/CONTRIBUTING.md#developer-certificate-of-origin)
+for the DCO policy and identity setup.
+
+Commit Check verifies the trailer's format, not whether its email matches the commit author or
+whether its certification is true. Local hooks must be installed and can be bypassed. The GitHub DCO
+app checks pull request commits separately; neither check guarantees that sign-offs are preserved in
+the final squash commit. Maintainers should review that commit message when merging. GitHub also
+checks pull request title structure and allowed types separately; it does not enforce the local
+subject-length or imperative-wording rules.
+
+______________________________________________________________________
+
 ## Hooks provided by TopMark
 
 TopMark provides three pre-commit hooks to help manage, mutate, and diagnose file headers:

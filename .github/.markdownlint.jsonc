@@ -1,0 +1,15 @@
+// topmark:header:start
+//
+//   project      : TopMark
+//   file         : .markdownlint.jsonc
+//   file_relpath : .github/.markdownlint.jsonc
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
+{
+  "extends": "../.markdownlint.jsonc",
+  // GitHub templates do not need a top-level heading.
+  "MD041": false
+}

@@ -1,0 +1,42 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : 02-feature-request.yml
+#   file_relpath : .github/ISSUE_TEMPLATE/02-feature-request.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+name: Feature request
+description: Suggest an improvement to TopMark.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first. Discuss substantial changes before starting an
+        implementation so maintainers and contributors can agree on the approach.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to accomplish, and what makes it difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: How would you like TopMark to behave?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds
+      description: What other approaches have you considered or tried?
+  - type: textarea
+    id: context
+    attributes:
+      label: Examples or additional context
+      description: Include examples or other details that would help explain the request.

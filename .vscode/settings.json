@@ -16,6 +16,10 @@
     "editor.detectIndentation": false,
     // Enable default formatting on save for all languages where a formatter is configured.
     "editor.formatOnSave": true,
+
+    // Always sign off commits.
+    "git.alwaysSignOff": true,
+
     // --- Language-Specific Settings ---
 
     "makefile.configureOnOpen": false,

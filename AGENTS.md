@@ -187,6 +187,8 @@ ______________________________________________________________________
 
 - Update `CHANGELOG.md` for user-visible changes and material API, configuration, CI, dependency, or
   contributor-workflow changes.
+- When asked to create a commit, sign it off with `git commit -s` after confirming the configured
+  Git identity is appropriate for the contribution. Follow the DCO guidance in `CONTRIBUTING.md`.
 - Use Conventional Commit titles in the form `<type>[optional scope]: <short summary>` and keep
   titles at or below 72 characters. Use commit bodies for non-trivial rationale, compatibility
   impact, or follow-up context; PR bodies should summarize changes, validation (including relevant
