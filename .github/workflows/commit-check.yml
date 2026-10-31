@@ -1,0 +1,43 @@
+# topmark:header:start
+#
+#   project      : TopMark
+#   file         : commit-check.yml
+#   file_relpath : .github/workflows/commit-check.yml
+#   license      : MIT
+#   copyright    : (c) 2025 Olivier Biot
+#
+# topmark:header:end
+
+name: Commit Check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  title:
+    name: Commit Check title (advisory)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out base policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Compare PR title with Commit Check policy
+        uses: commit-check/commit-check-action@b6819c7bfd40f576d670a78712646a67f2659ff3 # v2.18.2
+        env:
+          # A PR title cannot contain a commit sign-off; the DCO app checks commits.
+          CCHK_REQUIRE_SIGNED_OFF_BY: "false"
+        with:
+          message: false
+          branch: false
+          author-name: false
+          author-email: false
+          pr-title: true
+          pr-comments: false

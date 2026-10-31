@@ -80,8 +80,11 @@ ______________________________________________________________________
 ## Maintenance notes
 
 Keep the allowed types synchronized between `.github/cchk.toml`, this workflow, and
-`CONTRIBUTING.md`. The workflow action is pinned to a full commit SHA; update it through the normal
-GitHub Action dependency-maintenance process and action-pin audit.
+`CONTRIBUTING.md`. The CI contribution-policy checker compares the first two lists; review the
+contributor guide separately. The workflow action is pinned to a full commit SHA; update it through
+the normal GitHub Action dependency-maintenance process and action-pin audit.
+
+The separate [Commit Check workflow](./commit-check.md) runs in parallel as an advisory comparison.
 
 ______________________________________________________________________
 

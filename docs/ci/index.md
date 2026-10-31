@@ -39,6 +39,8 @@ workflows rather than correctness-validation or release-gating checks.
   release artifacts produced from trusted CI runs.
 - [Pull request title validation](./pull-request-title.md) - enforces Conventional Commit structure
   for pull request titles without checking out untrusted pull-request code.
+- [Commit Check](./commit-check.md) - compares PR titles against the local commit policy as an
+  advisory check.
 - [Codecov coverage policy](./codecov.md) - documents the repository-level Codecov configuration,
   project-coverage comparison threshold, informational patch status, and pull request comments.
 - [Setup Python + nox action](./setup-python-nox-action.md) - documents the shared Python, uv,

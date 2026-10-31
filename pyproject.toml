@@ -112,6 +112,8 @@ dependencies = [
     "pyright>=1.1.414,<1.2.0",
     # Python linter and formatter:
     "ruff>=0.16.0,<0.18.0",
+    # YAML 1.2 parsing for repository CI checks:
+    "ruamel.yaml>=0.19.1,<0.20.0",
     # TOML formatter:
     "taplo>=0.9.3,<0.10.0",
     # Upload distributions to PyPI:

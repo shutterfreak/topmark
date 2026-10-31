@@ -14,6 +14,7 @@ topmark:header:end
   - [CI workflow](../../ci/ci-workflow.md) - source-tree validation and CI orchestration
   - [Pull request title validation](../../ci/pull-request-title.md) - Conventional Commit structure
     for pull request titles
+  - [Commit Check workflow](../../ci/commit-check.md) - advisory comparison of pull request titles
   - [Codecov coverage policy](../../ci/codecov.md) - project and patch coverage statuses, pull
     request comments, and comparison policy
   - [Release workflow](../../ci/release-workflow.md) - release pipeline and package publication
@@ -26,6 +27,7 @@ topmark:header:end
     direct dependency floors across the supported Python matrix
   - [GitHub Action pin audit](../../ci/action-pin-audit.md) - audit GitHub Action pin consistency
     across workflows and local composite actions
+  - [Python lifecycle audit](../../ci/python-lifecycle-audit.md) - review Python lifecycle changes
 - GitHub actions:
   - [Setup Python + nox action](../../ci/setup-python-nox-action.md) - shared Python, uv, cache, and
     nox bootstrap layer for CI jobs

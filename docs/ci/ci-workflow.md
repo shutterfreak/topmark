@@ -50,6 +50,19 @@ configuration-only change regenerates and uploads coverage for policy evaluation
 writes a short GitHub Step Summary showing which changed-file groups were detected, making
 path-filtered job decisions easier to inspect from the workflow run.
 
+Changes limited to `AGENTS.md`, `.github/cchk.toml`, GitHub issue and pull request templates, or the
+GitHub Markdown lint configuration also trigger the pre-commit job. That job separately runs
+`tools/ci/check_contribution_policy.py` to check policy and path-filter consistency, and
+`tools/ci/check_commit_message_hook.py` to exercise the real `commit-msg` hook in a temporary Git
+repository. The ordinary `pre-commit run --all-files` invocation only runs the default `pre-commit`
+stage.
+
+The contribution-policy checker compares the allowed types in `.github/cchk.toml` with the title
+workflow and verifies that both the CI pull-request trigger and the pre-commit change filter list
+the required contributor paths. It parses workflow YAML and the embedded path-filter YAML as
+structures. The pre-commit job runs it in the locked project environment with the `dev` extra, which
+provides `ruamel.yaml`.
+
 Version-tag pushes are not path-filtered by pull-request change groups. They run the
 release-artifact path after the required validation jobs succeed.
 

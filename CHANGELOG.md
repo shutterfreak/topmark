@@ -77,6 +77,9 @@ ______________________________________________________________________
 
 ### Changed - Unreleased
 
+- Run pre-commit validation for contribution-policy and template changes, check commit-message
+  policy consistency, and exercise the commit-message hook in CI.
+- Add a separate advisory Commit Check workflow for pull request titles.
 - Require contributors to sign off their commits under the Developer Certificate of Origin and
   preserve relevant sign-offs when squash merging; document GitHub `noreply` email setup.
 - Replace the local Conventional Commit hook with Commit Check, enforcing DCO sign-off trailers,
@@ -86,6 +89,7 @@ ______________________________________________________________________
 
 ### Internal - Unreleased
 
+- Add `ruamel.yaml` to the development dependencies for structural CI workflow validation.
 - Centralize typed synthetic configuration origins across defaults, loading, invocation overlays,
   assignment rules, and serialization. Preserve existing emitted labels, duplicate-warning
   identities, and legacy dump source metadata. The new assignment provenance reports anonymous

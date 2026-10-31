@@ -26,6 +26,11 @@ on:
       - "docs/**"
       - ".github/workflows/**"
       - ".github/actions/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/pull_request_template.md"
+      - ".github/.markdownlint.jsonc"
+      - ".github/cchk.toml"
+      - "AGENTS.md"
       - ".pre-commit-config.yaml"
       - ".bake.toml"
       - ".mdformat.toml"
@@ -113,6 +118,11 @@ jobs:
               - 'docs/**'
               - '.github/workflows/**'
               - '.github/actions/**'
+              - '.github/ISSUE_TEMPLATE/**'
+              - '.github/pull_request_template.md'
+              - '.github/.markdownlint.jsonc'
+              - '.github/cchk.toml'
+              - 'AGENTS.md'
               - '.pre-commit-config.yaml'
               - '.bake.toml'
               - '.mdformat.toml'
@@ -253,6 +263,12 @@ jobs:
         env:
           SKIP: lychee-md,lychee-src,pyright,docstring-ref-links
         run: pre-commit run --all-files --show-diff-on-failure
+
+      - name: Check contribution policy and commit-message hook
+        run: |
+          # The policy checker needs ruamel.yaml from the locked dev extra.
+          uv run --locked --extra dev python tools/ci/check_contribution_policy.py
+          python tools/ci/check_commit_message_hook.py
 
   docs:
     name: Docs
