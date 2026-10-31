@@ -85,6 +85,7 @@ nav = [
     { Workflows = [
       { "CI workflow" = "ci/ci-workflow.md" },
       { "Pull request title validation" = "ci/pull-request-title.md" },
+      { "Commit Check" = "ci/commit-check.md" },
       { "Codecov coverage policy" = "ci/codecov.md" },
       { "Published artifact validation" = "ci/published-artifact-validation.md" },
       { "Release workflow" = "ci/release-workflow.md" },
