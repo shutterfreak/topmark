@@ -307,3 +307,197 @@ def test_rejects_missing_precommit_path(
     )
     with pytest.raises(ValueError, match="pre-commit paths.*AGENTS.md"):
         policy.check_policy(tmp_path)
+
+
+_INVALID_WORKFLOWS: list[
+    tuple[
+        dict[str, object],
+        type[Exception],
+        str,
+    ]
+] = [
+    (
+        {
+            "on": {
+                "pull_request": {"paths": []},
+            },
+            "jobs": {
+                "changes": {"steps": "invalid"},
+            },
+        },
+        ValueError,
+        "steps must be a list",
+    ),
+    (
+        {
+            "on": {"pull_request": {"paths": []}},
+            "jobs": {
+                "changes": {
+                    "steps": [
+                        {
+                            "uses": "dorny/paths-filter@v1",
+                            "with": {"filters": []},
+                        }
+                    ],
+                }
+            },
+        },
+        TypeError,
+        "filters must be text",
+    ),
+    (
+        {
+            "on": {"pull_request": {"paths": "invalid"}},
+            "jobs": {
+                "changes": {
+                    "steps": [
+                        {
+                            "uses": "dorny/paths-filter@v1",
+                            "with": {"filters": "precommit: []"},
+                        }
+                    ]
+                }
+            },
+        },
+        ValueError,
+        "PR paths must be a list of strings",
+    ),
+    (
+        {
+            "on": {"pull_request": {"paths": []}},
+            "jobs": {
+                "changes": {
+                    "steps": [
+                        {
+                            "uses": "dorny/paths-filter@v1",
+                            "with": {"filters": "precommit: invalid"},
+                        }
+                    ]
+                }
+            },
+        },
+        ValueError,
+        "pre-commit paths must be a list of strings",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "workflow, error, message",
+    _INVALID_WORKFLOWS,
+    ids=[
+        "invalid-steps",
+        "invalid-filters",
+        "invalid-pr-paths",
+        "invalid-precommit-paths",
+    ],
+)
+def test_rejects_invalid_workflow_values(
+    tmp_path: Path,
+    workflow: dict[str, object],
+    error: type[Exception],
+    message: str,
+) -> None:
+    """Reject invalid value types at the relevant workflow boundaries."""
+    _write_policy(tmp_path)
+    (tmp_path / ".github/workflows/ci.yml").write_text(json.dumps(workflow), encoding="utf-8")
+    with pytest.raises(error, match=message):
+        policy.check_policy(tmp_path)
+
+
+def test_policy_main_reports_success(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The command reports success after validating its configured root."""
+    _write_policy(tmp_path)
+    monkeypatch.setattr(policy, "_ROOT", tmp_path)
+    policy.main()
+    assert "Contribution policy checks passed" in capsys.readouterr().out
+
+
+def test_missing_executable_is_reported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Report a missing executable before trying to run the hook."""
+
+    def missing(name: str) -> str | None:
+        return None
+
+    monkeypatch.setattr(hook.shutil, "which", missing)
+    with pytest.raises(RuntimeError, match="Required executable not found: git"):
+        hook.main()
+
+
+def test_hook_runner_reports_git_init_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fail clearly if the temporary Git repository cannot be initialized."""
+
+    def executable(name: str) -> str:
+        return name
+
+    monkeypatch.setattr(hook, "_executable", executable)
+
+    def run(
+        command: list[str],
+        *,
+        cwd: Path,
+        capture_output: bool,
+        text: bool,
+        encoding: str,
+        errors: str,
+        check: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            command,
+            1,
+            "",
+            "git init failed",
+        )
+
+    monkeypatch.setattr(hook.subprocess, "run", run)
+    with pytest.raises(
+        RuntimeError,
+        match="Could not initialize temporary repository: git init failed",
+    ):
+        hook.main()
+
+
+def test_hook_runner_accepts_expected_results(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Accept valid messages and the expected rule for each invalid message."""
+
+    def executable(name: str) -> str:
+        return name
+
+    monkeypatch.setattr(hook.shutil, "which", executable)
+    hook_calls: list[str] = []
+
+    def run(
+        command: list[str],
+        cwd: Path,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[0] == "git":
+            return subprocess.CompletedProcess(command, 0, "", "")
+        message: str = Path(command[-1]).read_text(encoding="utf-8")
+        hook_calls.append(message)
+        subject: str = message.splitlines()[0]
+        rule: str = ""
+        if "Signed-off-by: Example Person <person@example.com>" not in message:
+            rule = "CC012"
+        elif subject.startswith("invalid:"):
+            rule = "CC001"
+        elif subject.startswith("fix: fixed"):
+            rule = "CC003"
+        elif len(subject) > 72:
+            rule = "CC004"
+        return subprocess.CompletedProcess(command, 1 if rule else 0, rule, "")
+
+    monkeypatch.setattr(hook, "_run", run)
+    hook.main()
+    assert len(hook_calls) == 9
+    assert "Commit hook case long body: passed" in capsys.readouterr().out
