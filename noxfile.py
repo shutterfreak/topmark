@@ -310,8 +310,6 @@ def qa_api(session: nox.Session) -> None:
 
 # ---- Dependency lower-bound validation -----------------------------------
 
-# The detached HEAD may predate dependency groups; include its legacy extras as well.
-
 
 def _run_dependency_lower_bound_tests(
     session: nox.Session,
@@ -326,7 +324,6 @@ def _run_dependency_lower_bound_tests(
         "--directory",
         project_path,
         "--all-groups",
-        "--all-extras",
         "--locked",
         "--resolution",
         "lowest-direct",
@@ -357,7 +354,6 @@ def _run_dependency_lower_bound_types(
         "--directory",
         project_path,
         "--all-groups",
-        "--all-extras",
         "--locked",
         "--resolution",
         "lowest-direct",
@@ -390,7 +386,6 @@ def _run_dependency_lower_bound_ruff(
             "--directory",
             project_path,
             "--all-groups",
-            "--all-extras",
             "--locked",
             "--resolution",
             "lowest-direct",
