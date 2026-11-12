@@ -103,6 +103,7 @@ help:
 	@echo "Dependency lock workflow:"
 	@echo "  uv-lock         Generate or refresh uv.lock from pyproject.toml"
 	@echo "  uv-lock-upgrade Refresh uv.lock with dependency upgrades"
+	@echo "  uv-tree-outdated  Show locked dependencies and their latest available versions"
 	@echo ""
 	@echo "Platform notes: Make recipes require a POSIX shell. On Windows, use Git Bash or WSL."
 	@echo "Setup details: see CONTRIBUTING.md"
@@ -355,3 +356,7 @@ uv-lock: check-uv
 .PHONY: uv-lock-upgrade
 uv-lock-upgrade: check-uv
 	$(UV) lock --upgrade
+
+.PHONY: uv-tree-outdated
+uv-tree-outdated: check-uv
+	$(UV) tree --frozen --all-groups --outdated

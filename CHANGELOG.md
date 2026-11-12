@@ -56,6 +56,7 @@ ______________________________________________________________________
 
 ### Added - Unreleased
 
+- Add `make uv-tree-outdated` to inspect newer versions of locked dependencies.
 - Added GitHub bug report, feature request, and pull request templates with contributor guidance for
   reporting validation and taking responsibility for AI-assisted changes.
 - Single-file apply hints preserve assigned types with canonical exact-path `--assign-filetype`
