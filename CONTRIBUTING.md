@@ -296,6 +296,10 @@ across the supported Python matrix, but it is not an exhaustive minimum-version 
 
 When updating dependencies:
 
+Use `make uv-tree-outdated` to inspect the locked dependency tree and available newer versions
+across all dependency groups. Available versions may fall outside the project's compatibility
+ranges.
+
 1. Adjust **ranges** in `pyproject.toml` if compatibility changes.
 
 1. Refresh the lock with:
