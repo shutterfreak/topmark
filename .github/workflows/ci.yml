@@ -266,8 +266,8 @@ jobs:
 
       - name: Check contribution policy and commit-message hook
         run: |
-          # The policy checker needs ruamel.yaml from the locked dev extra.
-          uv run --locked --extra dev python tools/ci/check_contribution_policy.py
+          # The policy checker needs ruamel.yaml from the locked dev group.
+          uv run --locked --group dev python tools/ci/check_contribution_policy.py
           python tools/ci/check_commit_message_hook.py
 
   docs:
@@ -589,7 +589,7 @@ jobs:
 
       - name: Install docs requirements
         run: |
-          uv pip install --system -e .[docs]
+          uv pip install --system -e . --group docs
 
       - name: Prepare and build Zensical docs
         run: |

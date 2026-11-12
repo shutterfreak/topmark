@@ -42,7 +42,7 @@ jobs:
           python-version: "3.x"
 
       - name: Resolve lifecycle decisions
-        run: uv run --extra dev python tools/ci/audit_python_lifecycle.py > lifecycle-decisions.json
+        run: uv run --group dev python tools/ci/audit_python_lifecycle.py > lifecycle-decisions.json
 
       - name: Maintain lifecycle tracking issues
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

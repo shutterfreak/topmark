@@ -60,7 +60,7 @@ stage.
 The contribution-policy checker compares the allowed types in `.github/cchk.toml` with the title
 workflow and verifies that both the CI pull-request trigger and the pre-commit change filter list
 the required contributor paths. It parses workflow YAML and the embedded path-filter YAML as
-structures. The pre-commit job runs it in the locked project environment with the `dev` extra, which
+structures. The pre-commit job runs it in the locked project environment with the `dev` group, which
 provides `ruamel.yaml`.
 
 Version-tag pushes are not path-filtered by pull-request change groups. They run the

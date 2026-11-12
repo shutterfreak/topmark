@@ -828,10 +828,11 @@ Automated validation includes:
 prose-oriented string literals. `make docs-build` performs the strict build and offline
 project-owned hosted-route validation; `make links-site` adds rendered-site network link checking.
 
-`markdownlint-cli2` is intentionally owned by pre-commit rather than by the Python project extras.
-It is a Node-based tool whose pinned hook and configuration live in `.pre-commit-config.yaml` and
-`.markdownlint.jsonc`; the CI pre-commit job runs it with the other hooks. It is not part of
-`make docs-hygiene`, the Zensical build, or the Read the Docs publishing build.
+`markdownlint-cli2` is intentionally owned by pre-commit rather than by the Python project
+dependency groups. It is a Node-based tool whose pinned hook and configuration live in
+`.pre-commit-config.yaml` and `.markdownlint.jsonc`; the CI pre-commit job runs it with the other
+hooks. It is not part of `make docs-hygiene`, the Zensical build, or the Read the Docs publishing
+build.
 
 The validation fails on objective problems such as:
 

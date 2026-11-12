@@ -80,7 +80,7 @@ The workflow enforces the following policy for newly introduced or updated depen
 
 The action's `fail-on-scopes` input applies to vulnerability failures, not license evaluation.
 GitHub currently reports dependencies resolved from `uv.lock` as runtime without preserving
-TopMark's optional-dependency groups. The workflow therefore cannot reliably distinguish runtime,
+TopMark's dependency groups. The workflow therefore cannot reliably distinguish runtime,
 development, documentation, and test dependencies from that manifest.
 
 The current license allowlist is defined directly in the workflow:

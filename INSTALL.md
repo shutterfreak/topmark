@@ -119,10 +119,10 @@ development. `uv` manages this environment directly.
 Automated validation environments used by CI and quality checks are still created and managed by Nox
 (via the `uv` backend), ensuring reproducible and isolated validation environments while keeping the
 local developer workflow simple. Nox is a project-managed development dependency: the Makefile runs
-it through `uv` using the locked `dev` extra and matching `nox-uv` plugin.
+it through `uv` using the locked `dev` group and matching `nox-uv` plugin.
 
 ```bash
-make venv-sync-all  # syncs dev/docs/test/typing extras into .venv
+make venv-sync-all  # syncs dev/docs/test/typing groups into .venv
 ```
 
 Install the repository hooks, including Conventional Commit validation:
@@ -202,8 +202,8 @@ In practice, Pyright is usually run via `nox` sessions:
 Run QA for a specific Python version (example: 3.13):
 
 ```bash
-uv run --extra dev nox -s qa -p 3.13
-uv run --extra dev nox -s qa_api -p 3.13
+uv run --group dev nox -s qa -p 3.13
+uv run --group dev nox -s qa_api -p 3.13
 ```
 
 Long-running Hypothesis hardening tests (manual, opt-in):
@@ -242,9 +242,9 @@ ______________________________________________________________________
 ## Nox basics
 
 ```bash
-uv run --extra dev nox -l               # list sessions
-uv run --extra dev nox -s qa -p 3.12    # run QA for a single Python
-uv run --extra dev nox -s qa -- -k foo  # forward args to pytest (after --)
+uv run --group dev nox -l               # list sessions
+uv run --group dev nox -s qa -p 3.12    # run QA for a single Python
+uv run --group dev nox -s qa -- -k foo  # forward args to pytest (after --)
 ```
 
 ______________________________________________________________________

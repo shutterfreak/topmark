@@ -51,13 +51,16 @@ numbers.
 
 ### Declared compatibility
 
-Runtime dependencies and optional dependency groups are declared as bounded ranges in
+Runtime dependencies and development dependency groups are declared as bounded ranges in
 `pyproject.toml`. The lower bound is a compatibility claim: TopMark should not require behavior that
 is absent from that version. The upper bound limits resolution across versions that have not yet
 been accepted.
 
-Published wheels and source distributions contain these ranges, not the repository lockfile. Package
-installers therefore resolve a compatible environment for each consumer.
+Published wheels and source distributions expose runtime dependency ranges, while development
+dependency groups remain source-tree tooling requirements and are not published as package metadata.
+Package installers resolve a compatible runtime environment for each consumer. uv has no default
+dependency groups in this project; select groups explicitly, for example with
+`uv sync --group docs`.
 
 ### Resolved repository graph
 
@@ -72,7 +75,7 @@ support for older versions permitted by `pyproject.toml`.
 ### CI validation
 
 The supported Python matrix is derived from `project.requires-python` through
-`nox -s print_python_matrix`. Nox sessions install TopMark and the required optional dependency
+`nox -s print_python_matrix`. Nox sessions install TopMark and the required development dependency
 groups from `pyproject.toml`.
 
 This validates that the declared ranges produce a working contemporary resolution across supported
@@ -84,11 +87,12 @@ When a lower bound depends on a specific API or behavior, maintainers should ret
 coverage for that behavior and verify the boundary version explicitly when practical.
 
 TopMark also validates direct dependency floors through `make dependency-lower-bounds`. The command
-uses uv's `lowest-direct` resolution strategy, runs the normal pytest and Pyright matrix, and
-restores the committed lockfile afterwards. The scheduled Dependency Bounds workflow runs the same
-check weekly and when dependency bounds change in a pull request. It is evidence that the declared
-direct floors resolve and pass TopMark's validation; it does not prove every possible intermediate
-or transitive version combination.
+uses uv's `lowest-direct` resolution strategy in a disposable worktree at `HEAD` and runs the normal
+pytest and Pyright matrix without changing the caller's lockfile. Local staged and unstaged changes
+are not included. The scheduled Dependency Bounds workflow runs the same check weekly and when
+dependency bounds change in a pull request. It is evidence that the declared direct floors resolve
+and pass TopMark's validation; it does not prove every possible intermediate or transitive version
+combination.
 
 ### Pre-commit tooling
 

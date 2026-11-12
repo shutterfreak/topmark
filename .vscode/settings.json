@@ -85,7 +85,7 @@
                 // Matches any .md file in the workspace folder
                 "match": "\\.md$",
                 // Resolve the lockfile-managed formatter on every supported platform.
-                "cmd": "uv run --extra dev mdformat \"${file}\""
+                "cmd": "uv run --group dev mdformat \"${file}\""
             }
         ]
     },

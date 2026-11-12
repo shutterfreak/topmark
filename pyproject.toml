@@ -86,73 +86,73 @@ dependencies = [
   "typing-extensions>=4.15.0,<5.0.0",
 ]
 
-  [project.optional-dependencies]
-  dev = [
-    # Build wheel/sdist artifacts:
-    "build>=1.5.0,<2.0.0",
-    # Formatting and linting for Makefiles:
-    "mbake>=1.4.3,<2.0.0",
-    # Markdown formatter:
-    "mdformat>=1.0.0,<2.0.0",
-    # GitHub Flavored Markdown support for mdformat:
-    "mdformat-gfm>=1.0.0,<2.0.0",
-    # GitHub Flavored Markdown alerts for mdformat:
-    "mdformat-gfm-alerts>=0.0.1,<3.0.0",
-    # Run tests across multiple Python environments:
-    "nox>=2025.11.12,<2027.0.0",
-    # Nox integration for uv-based environments:
-    "nox-uv>=0.7.0,<1.0.0",
-    # Python docstring linter:
-    "pydoclint>=0.8.7,<0.13.0",
-    # Docstring formatter:
-    "pydocstringformatter>=0.7.3,<1.1.0",
-    # Pre-commit hook manager:
-    "pre-commit>=4.4.0,<5.0.0",
-    # Static type checker:
-    "pyright>=1.1.414,<1.2.0",
-    # Python linter and formatter:
-    "ruff>=0.16.0,<0.18.0",
-    # YAML 1.2 parsing for repository CI checks:
-    "ruamel.yaml>=0.19.1,<0.20.0",
-    # TOML formatter:
-    "taplo>=0.9.3,<0.10.0",
-    # Upload distributions to PyPI:
-    "twine>=6.2.0,<8.0.0",
-    # Fast Python package/project manager used by Nox:
-    "uv>=0.13.4,<0.14.0",
-  ]
-  docs = [
-    # Production static-site generator. Its native modules provide search,
-    # callouts, API navigation, and docstring rendering.
-    "zensical>=0.0.71,<0.2.0",
-    # Python handler used by Zensical's native mkdocstrings module.
-    "mkdocstrings-python>=2.0.9,<3.0.0",
-    # Docstring formatter:
-    "pydocstringformatter>=0.7.3,<1.1.0",
-    # Extra Markdown extensions:
-    "pymdown-extensions>=10.17.1,<13.0.0",
-    # Rich rendering on the terminal (ANSI, Markdown, tables...):
-    "rich>=15.0.0,<16.0.0",
-    # Python linter and formatter (formatter used for docs tooling):
-    "ruff>=0.16.0,<0.18.0",
-    # Add typing extensions and deprecation annotations:
-    "typing-extensions>=4.15.0,<5.0.0",
-  ]
-  test = [
-    # Coverage testing framework:
-    "coverage[toml]>=7.14,<8.0",
-    # Property-based testing library:
-    "hypothesis>=6.155.7,<7.0.0",
-    # Unit testing framework:
-    "pytest>=9.1.1,<10.0.0",
-    # Coverage.py support in pytest:
-    "pytest-cov>=7.1.0,<8.0.0",
-    # Parallel test execution:
-    "pytest-xdist>=3.8.0,<4.0.0",
-    # TOML configuration file manipulation:
-    "tomlkit>=0.15.0,<0.16.0",
-  ]
-  typing = []
+[dependency-groups]
+dev = [
+  # Build wheel/sdist artifacts:
+  "build>=1.5.0,<2.0.0",
+  # Formatting and linting for Makefiles:
+  "mbake>=1.4.3,<2.0.0",
+  # Markdown formatter:
+  "mdformat>=1.0.0,<2.0.0",
+  # GitHub Flavored Markdown support for mdformat:
+  "mdformat-gfm>=1.0.0,<2.0.0",
+  # GitHub Flavored Markdown alerts for mdformat:
+  "mdformat-gfm-alerts>=0.0.1,<3.0.0",
+  # Run tests across multiple Python environments:
+  "nox>=2025.11.12,<2027.0.0",
+  # Nox integration for uv-based environments:
+  "nox-uv>=0.7.0,<1.0.0",
+  # Python docstring linter:
+  "pydoclint>=0.8.7,<0.13.0",
+  # Docstring formatter:
+  "pydocstringformatter>=0.7.3,<1.1.0",
+  # Pre-commit hook manager:
+  "pre-commit>=4.4.0,<5.0.0",
+  # Static type checker:
+  "pyright>=1.1.414,<1.2.0",
+  # Python linter and formatter:
+  "ruff>=0.16.0,<0.18.0",
+  # YAML 1.2 parsing for repository CI checks:
+  "ruamel.yaml>=0.19.1,<0.20.0",
+  # TOML formatter:
+  "taplo>=0.9.3,<0.10.0",
+  # Upload distributions to PyPI:
+  "twine>=6.2.0,<8.0.0",
+  # Fast Python package/project manager used by Nox:
+  "uv>=0.13.4,<0.14.0",
+]
+docs = [
+  # Production static-site generator. Its native modules provide search,
+  # callouts, API navigation, and docstring rendering.
+  "zensical>=0.0.71,<0.2.0",
+  # Python handler used by Zensical's native mkdocstrings module.
+  "mkdocstrings-python>=2.0.9,<3.0.0",
+  # Docstring formatter:
+  "pydocstringformatter>=0.7.3,<1.1.0",
+  # Extra Markdown extensions:
+  "pymdown-extensions>=10.17.1,<13.0.0",
+  # Rich rendering on the terminal (ANSI, Markdown, tables...):
+  "rich>=15.0.0,<16.0.0",
+  # Python linter and formatter (formatter used for docs tooling):
+  "ruff>=0.16.0,<0.18.0",
+  # Add typing extensions and deprecation annotations:
+  "typing-extensions>=4.15.0,<5.0.0",
+]
+test = [
+  # Coverage testing framework:
+  "coverage[toml]>=7.14,<8.0",
+  # Property-based testing library:
+  "hypothesis>=6.155.7,<7.0.0",
+  # Unit testing framework:
+  "pytest>=9.1.1,<10.0.0",
+  # Coverage.py support in pytest:
+  "pytest-cov>=7.1.0,<8.0.0",
+  # Parallel test execution:
+  "pytest-xdist>=3.8.0,<4.0.0",
+  # TOML configuration file manipulation:
+  "tomlkit>=0.15.0,<0.16.0",
+]
+typing = []
 
   [project.scripts]
   topmark = "topmark.cli.main:cli"
@@ -195,11 +195,6 @@ output = "coverage.xml"
 [tool.coverage.json]
 output       = "coverage.json"
 pretty_print = true
-
-[tool.deptry]
-# This tells deptry that these groups in [project.optional-dependencies]
-# are for development and shouldn't be flagged as 'unused' in src/
-optional_dependencies_dev_groups = ["dev", "docs", "test", "typing"]
 
 # Pre-commit configuration
 # Coordinates with VS Code settings to ensure consistent formatting and linting across environments
@@ -431,4 +426,5 @@ version_file = "src/topmark/_version.py"
   strategy = "atomic"
 
 [tool.uv]
+default-groups          = []
 constraint-dependencies = []
