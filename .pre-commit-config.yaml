@@ -13,7 +13,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 repos:
   # Commit-message validation
   - repo: https://github.com/commit-check/commit-check
-    rev: v2.19.4
+    rev: v2.20.5
     hooks:
       - id: check-message
         name: check commit message and DCO sign-off
@@ -44,7 +44,7 @@ repos:
           - mdformat-gfm-alerts
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.24.0
+    rev: v0.24.1
     hooks:
       - id: markdownlint-cli2
         # Use args to point to your config or ignore specific folders
@@ -78,7 +78,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3
+    rev: v0.17.4
     hooks:
       - id: ruff-format
       - id: ruff-check
@@ -150,7 +150,7 @@ repos:
 
   # Makefile linting and formatting
   - repo: https://github.com/EbodShojaei/bake
-    rev: v1.4.6
+    rev: v1.5.0
     hooks:
       - id: mbake-format
         # files: (^|/)(M|m)akefile$|GNUMakefile$|\.mak$
