@@ -22,6 +22,8 @@ ______________________________________________________________________
 
 ### Breaking Changes - Unreleased
 
+- Replace the published `dev`, `test`, `docs`, and `typing` extras with source-tree dependency
+  groups. Contributors should use the Make targets or `uv` group options to install tooling.
 - **Public pipeline APIs now reject invalid configuration before processing.** Batch calls raise
   `ConfigValidationError`; streaming calls raise on iteration before yielding events. Errors always
   fail, and warnings fail under resolved source-local strictness, including `config.strict` in

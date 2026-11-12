@@ -50,28 +50,28 @@
     {
       "label": "Nox: Smoke tests",
       "type": "shell",
-      "command": "uv run --extra dev nox -s smoke",
+      "command": "uv run --group dev nox -s smoke",
       "group": "test",
       "problemMatcher": []
     },
     {
       "label": "Nox: QA (all supported Python versions)",
       "type": "shell",
-      "command": "uv run --extra dev nox -s qa",
+      "command": "uv run --group dev nox -s qa",
       "group": "test",
       "problemMatcher": []
     },
     {
       "label": "Nox: Coverage",
       "type": "shell",
-      "command": "uv run --extra dev nox -s coverage",
+      "command": "uv run --group dev nox -s coverage",
       "group": "test",
       "problemMatcher": []
     },
     {
       "label": "Nox: Pre-PR validation (recommended)",
       "type": "shell",
-      "command": "uv run --extra dev nox -s pre_pr",
+      "command": "uv run --group dev nox -s pre_pr",
       "group": {
         "kind": "test",
         "isDefault": true

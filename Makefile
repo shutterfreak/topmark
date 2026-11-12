@@ -11,8 +11,8 @@
 .DEFAULT_GOAL := help
 UV ?= uv
 # Nox is a project development dependency.  Running it through uv keeps its
-# version and the nox-uv plugin aligned with the project's locked dev extra.
-NOX ?= $(UV) run --extra dev nox
+# version and the nox-uv plugin aligned with the project's locked dev group.
+NOX ?= $(UV) run --group dev nox
 NOX_FLAGS ?= --no-verbose       # keep quiet by default; CI can override
 PYTEST_PAR ?= # e.g. set PYTEST_PAR="-n auto" or "-n 4" for pytest-capable targets
 PY ?= python
@@ -29,7 +29,7 @@ check-uv:
 .PHONY: check-nox
 check-nox: check-uv
 	@$(NOX) --version >/dev/null 2>&1 || \
-		(echo "❌ Nox could not run through the project's dev extra. See CONTRIBUTING.md for setup help." && exit 1)
+		(echo "❌ Nox could not run through the project's dev group. See CONTRIBUTING.md for setup help." && exit 1)
 
 .PHONY: check-lychee
 check-lychee:
@@ -95,9 +95,9 @@ help:
 	@echo ""
 	@echo "Local editor environment (optional, for Pyright/import resolution in IDE):"
 	@echo "  venv            Create an empty .venv via uv (sync targets create it when needed)"
-	@echo "  venv-sync-dev   Sync dev/test/typing extras into .venv"
-	@echo "  venv-sync-all   Sync dev/test/typing/docs extras into .venv"
-	@echo "  venv-sync-docs  Sync docs extras into .venv (removes dev/test/typing packages)"
+	@echo "  venv-sync-dev   Sync dev/test/typing groups into .venv"
+	@echo "  venv-sync-all   Sync dev/test/typing/docs groups into .venv"
+	@echo "  venv-sync-docs  Sync docs group into .venv (removes dev/test/typing packages)"
 	@echo "  venv-clean      Remove .venv"
 	@echo ""
 	@echo "Dependency lock workflow:"
@@ -169,12 +169,12 @@ smoke: check-nox
 .PHONY: pytest
 pytest: check-uv
 	@echo "Running pytest locally -- skipping Hypothesis slow tests"
-	$(UV) run --extra dev --extra typing --extra test pytest $(PYTEST_PAR) -m "not hypothesis_slow" -q
+	$(UV) run --group dev --group typing --group test pytest $(PYTEST_PAR) -m "not hypothesis_slow" -q
 
 .PHONY: pytest-full
 pytest-full: check-uv
 	@echo "Running all pytest locally -- including Hypothesis slow tests"
-	$(UV) run --extra dev --extra typing --extra test pytest $(PYTEST_PAR) -q
+	$(UV) run --group dev --group typing --group test pytest $(PYTEST_PAR) -q
 
 # ---- Coverage and API contracts -------------------------------------------
 .PHONY: coverage
@@ -198,7 +198,7 @@ coverage-erase:
 # Fast local check using only the current interpreter.
 .PHONY: api-snapshot-dev
 api-snapshot-dev: check-uv
-	@$(UV) run --extra dev --extra typing --extra test pytest -qq tests/api/test_public_api_snapshot.py tests/tools/test_api_snapshot.py && \
+	@$(UV) run --group dev --group typing --group test pytest -qq tests/api/test_public_api_snapshot.py tests/tools/test_api_snapshot.py && \
 	echo "✅ Public API snapshot unchanged."
 
 .PHONY: api-snapshot
@@ -208,7 +208,7 @@ api-snapshot: check-nox
 # Update the snapshot only after an explicit, portable POSIX-shell confirmation.
 .PHONY: .api-snapshot-update
 .api-snapshot-update: check-uv
-	@$(UV) run --extra dev --extra typing --extra test $(PY) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
+	@$(UV) run --group dev --group typing --group test $(PY) tools/api_snapshot.py "$(PUBLIC_API_JSON)"
 	@if git diff --quiet -- "$(PUBLIC_API_JSON)" ; then \
 		echo "✅ Public API snapshot unchanged: $(PUBLIC_API_JSON)"; \
 	else \
@@ -323,22 +323,22 @@ venv: check-uv
 
 .PHONY: venv-sync-dev
 venv-sync-dev: check-uv
-	$(UV) sync --extra dev --extra typing --extra test
-	@echo "Synced dev/test/typing extras into $(VENV)."
+	$(UV) sync --group dev --group typing --group test
+	@echo "Synced dev/test/typing groups into $(VENV)."
 
-# Sync the union of dev/test/typing/docs extras. This is the recommended local
+# Sync the union of dev/test/typing/docs groups. This is the recommended local
 # environment for Zensical work and VS Code import resolution.
 .PHONY: venv-sync-all
 venv-sync-all: check-uv
-	$(UV) sync --extra dev --extra typing --extra test --extra docs
-	@echo "Synced dev/test/typing/docs extras into $(VENV)."
+	$(UV) sync --group dev --group typing --group test --group docs
+	@echo "Synced dev/test/typing/docs groups into $(VENV)."
 
-# Sync docs-only extras into the shared venv. This removes dev/test/typing
+# Sync docs-only group into the shared venv. This removes dev/test/typing
 # tools, so prefer venv-sync-all when one environment must serve every task.
 .PHONY: venv-sync-docs
 venv-sync-docs: check-uv
-	$(UV) sync --extra docs
-	@echo "Synced docs extras into $(VENV)."
+	$(UV) sync --group docs
+	@echo "Synced docs group into $(VENV)."
 
 .PHONY: venv-clean
 venv-clean:

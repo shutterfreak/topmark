@@ -34,7 +34,7 @@ ______________________________________________________________________
   keep it on your `PATH`)
 
 Nox is a project-managed development dependency and the canonical owner of validation workflows.
-Make targets run Nox through `uv`, using the locked `dev` extra and its matching `nox-uv` plugin; do
+Make targets run Nox through `uv`, using the locked `dev` group and its matching `nox-uv` plugin; do
 not install Nox separately. The Makefile is a convenience layer for common commands, local
 environment management, and cleanup; use the corresponding `nox -s <session>` command when you need
 the underlying validation contract directly.
@@ -93,7 +93,7 @@ make pytest     # supports PYTEST_PAR="-n auto"
 > is managed with `uv` and primarily exists for editor support and local tooling integration.
 > Automated validation and CI-parity checks still run through isolated Nox environments. The
 > Makefile delegates its composite validation targets to Nox through the project's locked `dev`
-> extra and does not define a separate validation workflow.
+> group and does not define a separate validation workflow.
 
 For the full installation and development-environment setup guide, see:
 
@@ -281,7 +281,7 @@ TopMark uses a two-layer dependency strategy:
 
 - **`pyproject.toml`** defines *compatibility ranges*:
 
-  - Runtime and extras are expressed as `>=` / `<` ranges (for example `click>=8.3.1,<9.0.0`).
+  - Runtime and development dependencies use bounded ranges (for example `click>=8.3.1,<9.0.0`).
   - This describes what TopMark is compatible with, without forcing users to install our exact dev
     versions.
 
@@ -290,9 +290,10 @@ TopMark uses a two-layer dependency strategy:
   - `uv.lock` is the committed dependency lock used as the canonical reproducible dependency graph.
   - It supports reproducible `uv sync`, lockfile review, and Dependabot updates.
 
-Published packages expose the compatibility ranges from `pyproject.toml`; they do not force
-consumers to install the versions recorded in `uv.lock`. CI validates representative resolutions
-across the supported Python matrix, but it is not an exhaustive minimum-version matrix.
+Published packages expose runtime compatibility ranges from `pyproject.toml`; development dependency
+groups are for the source checkout and are not published as extras. Packages do not force consumers
+to install the versions recorded in `uv.lock`. CI validates representative resolutions across the
+supported Python matrix, but it is not an exhaustive minimum-version matrix.
 
 When updating dependencies:
 
@@ -330,7 +331,7 @@ ______________________________________________________________________
 Run strict **Pyright** type checks via project-managed Nox:
 
 ```bash
-uv run --extra dev nox -s qa -p 3.15
+uv run --group dev nox -s qa -p 3.15
 ```
 
 Or run the non-test quality checks (format, lint, links, docs):
@@ -357,7 +358,7 @@ the server after changing source documentation, snippets, or generated-reference
 serves a prepared staging snapshot. `make docs-clean` removes the disposable output.
 
 The native `zensical.toml` configuration is the sole production documentation configuration.
-Documentation dependencies are installed from the `docs` extra declared in `pyproject.toml` and
+Documentation dependencies are installed from the `docs` group declared in `pyproject.toml` and
 resolved through `uv.lock`. See [Documentation pipeline](./docs/dev/documentation-pipeline.md) for
 the owned bridges, removal conditions, and rollback procedure.
 
@@ -700,7 +701,7 @@ ______________________________________________________________________
 
 - **Missing tools:** run `make venv` then `make venv-sync-dev` or `make venv-sync-all`.
 - **Documentation build errors:** run `make venv-sync-all` or `make docs-serve` to ensure the docs
-  extras are installed.
+  group is installed.
 - **Python version errors:** install interpreters via `pyenv` or use one supported interpreter for
   local iteration.
 - **Permission issues on Windows:** run PowerShell as Administrator and execute

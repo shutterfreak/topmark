@@ -24,10 +24,10 @@ build:
     post_checkout:
       - git fetch --unshallow || true
     install:
-      # Install uv, then install the project with its production Zensical docs extra:
+      # Install uv, then install the project with its production Zensical docs group:
       - python -m pip install uv
       # Invoke uv as a Python module: RTD jobs do not preserve the installed script's PATH entry.
-      - python -m uv pip install --system -e .[docs]
+      - python -m uv pip install --system -e . --group docs
     build:
       html:
         # Materialize TopMark-owned inputs with only relative Zensical paths:

@@ -37,9 +37,25 @@ CANONICAL_PYTHON: Final[str] = PYTHONS[-1] if len(PYTHONS) > 1 else PYTHONS[0]
 
 CURRENT_PYTHON_VERSION: Final[str] = f"{sys.version_info[0]}.{sys.version_info[1]}"
 
-DEPS_DEV: Final[str] = ".[dev,typing,test]"
-DEPS_DOCS: Final[str] = ".[docs]"
-DEPS_QA: Final[str] = ".[dev,typing,test,docs]"
+DEPS_DEV: Final[tuple[str, ...]] = (
+    ".",
+    "--group",
+    "dev",
+    "--group",
+    "typing",
+    "--group",
+    "test",
+)
+DEPS_DOCS: Final[tuple[str, ...]] = (
+    ".",
+    "--group",
+    "docs",
+)
+DEPS_QA: Final[tuple[str, ...]] = (
+    *DEPS_DEV,
+    "--group",
+    "docs",
+)
 
 DEPENDENCY_LOWER_BOUND_VALIDATIONS: Final[frozenset[str]] = frozenset(
     {
@@ -85,7 +101,7 @@ TEST_PUBLIC_API_SNAPSHOT_SCRIPT = "tests/api/test_public_api_snapshot.py"
 TEST_API_SNAPSHOT_GENERATOR_SCRIPT = "tests/tools/test_api_snapshot.py"
 
 
-# Session installs are resolved from project metadata and extras.
+# Session installs resolve the project and selected dependency groups.
 # With nox-uv, `session.install(...)` is executed via uv under the hood.
 
 
@@ -131,7 +147,7 @@ def package_check(session: nox.Session) -> None:
 
     This is a lightweight packaging sanity check used by release gates.
     """
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     # Ensure a clean dist/ to avoid stale artifacts influencing checks.
     session.run(
@@ -212,7 +228,7 @@ def qa(session: nox.Session) -> None:
     """Run tests + pyright (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install(DEPS_QA)
+    session.install(*DEPS_QA)
 
     # We add *session.posargs to the end of the command
     session.run(
@@ -240,7 +256,7 @@ def qa(session: nox.Session) -> None:
 @nox.session(python=CANONICAL_PYTHON)
 def smoke(session: nox.Session) -> None:
     """Run the minimal marker-selected smoke suite on canonical Python."""
-    session.install(DEPS_QA)
+    session.install(*DEPS_QA)
     session.run(
         "pytest",
         "-q",
@@ -261,7 +277,7 @@ def qa_api(session: nox.Session) -> None:
     """
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install(DEPS_QA)
+    session.install(*DEPS_QA)
 
     # Main test suite (posargs forwarded, e.g. "-n auto")
     session.run(
@@ -294,6 +310,8 @@ def qa_api(session: nox.Session) -> None:
 
 # ---- Dependency lower-bound validation -----------------------------------
 
+# The detached HEAD may predate dependency groups; include its legacy extras as well.
+
 
 def _run_dependency_lower_bound_tests(
     session: nox.Session,
@@ -307,6 +325,7 @@ def _run_dependency_lower_bound_tests(
         "run",
         "--directory",
         project_path,
+        "--all-groups",
         "--all-extras",
         "--locked",
         "--resolution",
@@ -337,6 +356,7 @@ def _run_dependency_lower_bound_types(
         "run",
         "--directory",
         project_path,
+        "--all-groups",
         "--all-extras",
         "--locked",
         "--resolution",
@@ -369,6 +389,7 @@ def _run_dependency_lower_bound_ruff(
             "run",
             "--directory",
             project_path,
+            "--all-groups",
             "--all-extras",
             "--locked",
             "--resolution",
@@ -652,7 +673,7 @@ def test_entrypoints(session: nox.Session) -> None:
 @nox.session(python=CANONICAL_PYTHON)
 def coverage(session: nox.Session) -> None:
     """Run canonical product coverage and generate reports."""
-    session.install("-e", DEPS_QA)
+    session.install("-e", *DEPS_QA)
 
     session.run(
         "pytest",
@@ -673,7 +694,7 @@ def coverage(session: nox.Session) -> None:
 @nox.session(python=CANONICAL_PYTHON)
 def coverage_tools(session: nox.Session) -> None:
     """Run repository-tooling tests with separate tooling coverage reports."""
-    session.install("-e", DEPS_QA)
+    session.install("-e", *DEPS_QA)
 
     session.run(
         "pytest",
@@ -710,7 +731,7 @@ def coverage_changed(session: nox.Session) -> None:
 @nox.session
 def lint(session: nox.Session) -> None:
     """Static analysis and custom validation."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "ruff",
@@ -742,7 +763,7 @@ def lint(session: nox.Session) -> None:
 @nox.session
 def lint_fixall(session: nox.Session) -> None:
     """Run ruff with --fix (auto-fix lint issues)."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "ruff",
@@ -755,7 +776,7 @@ def lint_fixall(session: nox.Session) -> None:
 @nox.session
 def format_check(session: nox.Session) -> None:
     """Check formatting for code, markdown, and TOML."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "ruff",
@@ -794,7 +815,7 @@ def format_check(session: nox.Session) -> None:
 @nox.session
 def format(session: nox.Session) -> None:
     """Format code, markdown, TOML, and Makefiles (auto-fix)."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "ruff",
@@ -826,7 +847,7 @@ def format(session: nox.Session) -> None:
 @nox.session(python=CANONICAL_PYTHON)
 def format_docstrings(session: nox.Session) -> None:
     """Optionally format Python docstrings, then apply Ruff's formatting."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "pydocstringformatter",
@@ -846,7 +867,7 @@ def format_docstrings(session: nox.Session) -> None:
 @nox.session
 def docs(session: nox.Session) -> None:
     """Prepare and strictly build Zensical documentation and validate hosted routes."""
-    session.install(DEPS_DOCS)
+    session.install(*DEPS_DOCS)
 
     session.run(
         "python",
@@ -873,7 +894,7 @@ def docs(session: nox.Session) -> None:
 @nox.session
 def docs_serve(session: nox.Session) -> None:
     """Prepare and serve production Zensical documentation locally."""
-    session.install(DEPS_DOCS)
+    session.install(*DEPS_DOCS)
     session.run(
         "python",
         "-m",
@@ -927,7 +948,7 @@ def links_site(session: nox.Session) -> None:
       - Pass ``-- --skip-project-links`` when a preceding `docs` session has already validated
         project-owned hosted routes.
     """
-    session.install(DEPS_DOCS)
+    session.install(*DEPS_DOCS)
 
     allowed_posargs: frozenset[str] = frozenset({"--skip-project-links"})
     unknown_posargs: set[str] = set(session.posargs) - allowed_posargs
@@ -965,7 +986,7 @@ def links_site(session: nox.Session) -> None:
 @nox.session
 def docstring_links(session: nox.Session) -> None:
     """Enforce docstring link style."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "python",
@@ -977,7 +998,7 @@ def docstring_links(session: nox.Session) -> None:
 @nox.session
 def docs_hygiene(session: nox.Session) -> None:
     """Enforce lightweight Markdown snippet/include hygiene."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "python",
@@ -990,7 +1011,7 @@ def docs_hygiene(session: nox.Session) -> None:
 @nox.session
 def code_hygiene(session: nox.Session) -> None:
     """Enforce lightweight code hygiene (docstrings, inlines)."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "python",
@@ -1003,7 +1024,7 @@ def api_snapshot(session: nox.Session) -> None:
     """Run the public API snapshot test (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     # We add *session.posargs to the end of the command
     session.run(
@@ -1018,7 +1039,7 @@ def api_snapshot(session: nox.Session) -> None:
 @nox.session
 def property_test(session: nox.Session) -> None:
     """Run the long-running property tests (developer only)."""
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     session.run(
         "pytest",
@@ -1035,7 +1056,7 @@ def perf_baseline(session: nox.Session) -> None:
     under `artifacts/perf/`. Pass arguments after `--` to select another suite,
     run id, or output directory.
     """
-    session.install(DEPS_DEV)
+    session.install(*DEPS_DEV)
 
     args: list[str] = list(session.posargs) if session.posargs else ["--suite", "baseline"]
     session.run(
@@ -1063,9 +1084,9 @@ def release_check(session: nox.Session) -> None:
       - Tests + pyright for the session Python
     """
     # Tooling / QA deps, including docs dependencies because pyright checks tools/docs/.
-    session.install(DEPS_QA)
+    session.install(*DEPS_QA)
     # Docs deps (Zensical and build tooling)
-    session.install(DEPS_DOCS)
+    session.install(*DEPS_DOCS)
 
     # --- Quality gates (mirror existing sessions, but as a single gate) ---
     session.run(
