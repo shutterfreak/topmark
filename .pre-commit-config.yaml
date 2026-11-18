@@ -13,7 +13,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 repos:
   # Commit-message validation
   - repo: https://github.com/commit-check/commit-check
-    rev: v2.20.5
+    rev: v2.22.0
     hooks:
       - id: check-message
         name: check commit message and DCO sign-off
@@ -78,7 +78,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.4
+    rev: v0.17.5
     hooks:
       - id: ruff-format
       - id: ruff-check
