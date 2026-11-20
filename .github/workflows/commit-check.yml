@@ -30,7 +30,7 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
       - name: Compare PR title with Commit Check policy
-        uses: commit-check/commit-check-action@08357050a644b85d321164f23054f176c13bb018 # v2.20.2
+        uses: commit-check/commit-check-action@c535fd72e270c2eba22da6ef9860eebda7ec6ebe # v2.23.0
         env:
           # A PR title cannot contain a commit sign-off; the DCO app checks commits.
           CCHK_REQUIRE_SIGNED_OFF_BY: "false"
