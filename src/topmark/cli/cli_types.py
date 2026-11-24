@@ -20,16 +20,12 @@ from __future__ import annotations
 
 import glob
 import re
-from enum import Enum
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Final
 from typing import Generic
-from typing import NoReturn
-from typing import Protocol
 from typing import TypeVar
-from typing import cast
 
 import click
 
@@ -37,25 +33,10 @@ from topmark.registry.query import RegistryIdentityQuery
 from topmark.registry.query import RegistryRegex
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from click.shell_completion import CompletionItem as ClickCompletionItem
 
-    class ParamTypeBase(Protocol):
-        """Minimal typed Click parameter base used only during type checking.
-
-        Runtime code subclasses `click.ParamType` directly. This protocol keeps
-        `EnumChoiceParam` from inheriting from `Any` when Click stubs are not
-        precise enough for strict type checking.
-        """
-
-        name: str
-else:
-    # At runtime, subclass the real Click type.
-    ParamTypeBase = click.ParamType  # type: ignore[assignment]
-
 # Type variable bounded to Enum for generic enum choice parameters.
-E = TypeVar("E", bound=Enum)
+E = TypeVar(name="E", bound=StrEnum)
 
 
 REGISTRY_QUERY_METAVAR: Final[str] = "QUERY"
@@ -81,26 +62,17 @@ class CliWriteMode(StrEnum):
     STDOUT = "stdout"
 
 
-class RegistryQueryParam(ParamTypeBase):
+class RegistryQueryParam(click.ParamType[RegistryIdentityQuery]):
     """Parse one positional registry identity query."""
 
     name: str = REGISTRY_QUERY_METAVAR
-
-    def _fail_noreturn(
-        self,
-        message: str,
-        param: click.Parameter | None,
-        ctx: click.Context | None,
-    ) -> NoReturn:
-        """Raise a typed Click parameter error."""
-        raise click.BadParameter(message, param=param, ctx=ctx)
 
     def convert(
         self,
         value: str | RegistryIdentityQuery | None,
         param: click.Parameter | None,
         ctx: click.Context | None,
-    ) -> RegistryIdentityQuery | None:
+    ) -> RegistryIdentityQuery:
         """Convert one CLI positional query to a typed identity query.
 
         Args:
@@ -110,49 +82,77 @@ class RegistryQueryParam(ParamTypeBase):
 
         Returns:
             A typed registry identity query.
+
+        Note:
+            Raises `click.BadParameter` if the query is missing or cannot be parsed as a
+            valid `RegistryIdentityQuery`.
         """
-        if value is None or isinstance(value, RegistryIdentityQuery):
+        if value is None:
+            self.fail(
+                "Registry query not set",
+                param=param,
+                ctx=ctx,
+            )
+
+        if isinstance(value, RegistryIdentityQuery):
             return value
+
         try:
             return RegistryIdentityQuery.parse(value)
         except ValueError as error:
-            self._fail_noreturn(
+            self.fail(
                 f"Invalid registry query: {error}",
-                param,
-                ctx,
+                param=param,
+                ctx=ctx,
             )
 
 
-class RegistryRegexParam(ParamTypeBase):
+class RegistryRegexParam(click.ParamType[RegistryRegex]):
     """Parse one regular expression used to select a qualified registry key."""
 
     name: str = REGISTRY_REGEX_METAVAR
-
-    def _fail_noreturn(
-        self,
-        message: str,
-        param: click.Parameter | None,
-        ctx: click.Context | None,
-    ) -> NoReturn:
-        """Raise a typed Click parameter error."""
-        raise click.BadParameter(message, param=param, ctx=ctx)
 
     def convert(
         self,
         value: str | RegistryRegex | None,
         param: click.Parameter | None,
         ctx: click.Context | None,
-    ) -> RegistryRegex | None:
-        """Convert one CLI regular expression to a typed selector."""
-        if value is None or isinstance(value, RegistryRegex):
+    ) -> RegistryRegex:
+        """Convert one CLI regular expression to a typed selector.
+
+        Args:
+            value: Raw regex text supplied by Click.
+            param: Click parameter being converted.
+            ctx: Active Click context.
+
+        Returns:
+            A typed registry regex expression.
+
+        Note:
+            Raises `click.BadParameter` if the regex is missing or cannot be parsed as a
+            valid `RegistryRegex`.
+        """
+        if value is None:
+            self.fail(
+                "Regular expression not set",
+                param=param,
+                ctx=ctx,
+            )
+
+        if isinstance(value, RegistryRegex):
             return value
+
         try:
             return RegistryRegex.parse(value)
         except re.error as error:
-            self._fail_noreturn(f"Invalid regular expression: {error}", param, ctx)
+            self.fail(
+                f"Invalid regular expression: {error}",
+                param=param,
+                ctx=ctx,
+            )
 
 
-class EnumChoiceParam(ParamTypeBase, Generic[E]):
+class EnumChoiceParam(click.ParamType[E | None], Generic[E]):
     """Click parameter type that converts CLI text to an enum member.
 
     The parameter requires case-sensitive input by default, can optionally
@@ -180,19 +180,8 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         self.case_sensitive = case_sensitive
         self.kebab_case = kebab_case
         # `choices` contains the user-facing spellings shown in help/errors.
-        # Enum values are expected to be string-like for TopMark CLI options.
-        self.choices = [
-            self._display_value(cast("str", getattr(e, "value", str(e)))) for e in self.enum_cls
-        ]
-
-    def _fail_noreturn(
-        self,
-        message: str,
-        param: click.Parameter | None,
-        ctx: click.Context | None,
-    ) -> NoReturn:
-        """Raise a BadParameter with a NoReturn signature (clear to type checkers)."""
-        raise click.BadParameter(message, param=param, ctx=ctx)
+        # StrEnum values are expected to be string-like for TopMark CLI options.
+        self.choices = [self._display_value(e.value) for e in self.enum_cls]
 
     def _display_value(self, raw: str) -> str:
         """Return the user-facing spelling for an enum value."""
@@ -214,16 +203,32 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         param: click.Parameter | None,
         ctx: click.Context | None,
     ) -> E | None:
-        """Convert CLI text to a member of the configured enum."""
+        """Convert CLI text to a member of the configured enum.
+
+        Args:
+            value: Raw parameter text value supplied by Click.
+            param: Click parameter being converted.
+            ctx: Active Click context.
+
+        Returns:
+            A typed Enum member.
+
+        Note:
+            Raises `click.BadParameter` if the parameter value cannot be parsed
+            as a valid `EnumChoiceParam`.
+        """
         if value is None:
             return None
+
         if isinstance(value, self.enum_cls):
             return value
-        raw_input: str = cast("str", value)
+
+        # Now value is str | StrEnum:
+        raw_input: str = value.value if isinstance(value, StrEnum) else value
 
         lookup: dict[str, tuple[str, E]] = {}
-        for choice in cast("Iterable[E]", self.enum_cls):
-            raw_value: str = cast("str", getattr(choice, "value", str(choice)))
+        for choice in self.enum_cls:
+            raw_value: str = str(choice.value)
             display_value: str = self._display_value(raw_value)
             lookup[self._normalize_input(display_value)] = (display_value, choice)
 
@@ -242,10 +247,10 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
         # Raise a BadParameter exception for invalid input.
         suggestion_text: str = f" Did you mean '{suggestion}'?" if suggestion else ""
         choices_text: str = ", ".join(self.choices)
-        self._fail_noreturn(
+        self.fail(
             f"Invalid value '{raw_input}'.{suggestion_text} Must be one of: {choices_text}",
-            param,
-            ctx,
+            param=param,
+            ctx=ctx,
         )
 
     def shell_complete(
@@ -266,9 +271,9 @@ class EnumChoiceParam(ParamTypeBase, Generic[E]):
 
         prefix: str = self._normalize_input(incomplete or "")
         items: list[ClickCompletionItem] = []
-        for e in cast("Iterable[E]", self.enum_cls):
-            raw_value: str = cast("str", getattr(e, "value", str(e)))
-            display_value: str = self._display_value(raw_value)
+        for e in self.enum_cls:
+            # e is a StrEnum
+            display_value: str = self._display_value(e.value)
             normalized_value: str = self._normalize_input(display_value)
             if normalized_value.startswith(prefix):
                 items.append(RuntimeCompletionItem(display_value))
@@ -307,7 +312,11 @@ def FileTypeParam(
     path: Path = Path(str(value))
     # Check if the path exists and is a file.
     if not path.exists() or not path.is_file():
-        raise click.BadParameter(f"File not found or not a file: {value}")
+        raise click.BadParameter(
+            f"File not found or not a file: {value}",
+            ctx=ctx,
+            param=param,
+        )
     return path
 
 

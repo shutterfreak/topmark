@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,12 +23,14 @@ from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.cli_types import EnumChoiceParam
 from topmark.cli.cli_types import FileTypeParam
 from topmark.cli.cli_types import GlobParam
+from topmark.cli.cli_types import RegistryQueryParam
+from topmark.cli.cli_types import RegistryRegexParam
 
 if TYPE_CHECKING:
     from click.shell_completion import CompletionItem
 
 
-class _Mode(Enum):
+class _Mode(StrEnum):
     """Small enum used to pin enum choice parsing behavior."""
 
     DRY_RUN = "dry_run"
@@ -227,3 +229,19 @@ def test_glob_param_expands_relative_and_absolute_patterns(
         click.Argument(["path"]),
         str(tmp_path / "*.txt"),
     ) == [tmp_path / "b.txt"]
+
+
+def test_registry_query_param_rejects_none() -> None:
+    """Direct conversion of None should raise Click's BadParameter error."""
+    param: RegistryQueryParam = RegistryQueryParam()
+
+    with pytest.raises(click.BadParameter, match="Registry query not set"):
+        param.convert(None, None, None)
+
+
+def test_registry_regex_param_rejects_none() -> None:
+    """Direct conversion of None should raise Click's BadParameter error."""
+    param: RegistryRegexParam = RegistryRegexParam()
+
+    with pytest.raises(click.BadParameter, match="Regular expression not set"):
+        param.convert(None, None, None)
