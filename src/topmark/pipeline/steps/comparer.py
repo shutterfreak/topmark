@@ -19,6 +19,7 @@ current marker-delimited block.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import assert_never
 
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import should_remove_bom_before_shebang
@@ -223,8 +224,8 @@ class ComparerStep(BaseStep):
         Args:
             ctx: The processing context.
 
-        Raises:
-            RuntimeError: If the context contains an unexpected comparison status value.
+        Note:
+            Raises AssertionError if the context contains an unexpected comparison status value.
         """
         st: ComparisonStatus = ctx.status.comparison
 
@@ -270,5 +271,6 @@ class ComparerStep(BaseStep):
                 # BaseStep.__call__() handles PENDING state (step did not complete)
                 pass
 
-            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
-                raise RuntimeError(f"Unexpected ComparisonStatus found: {st!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(st)

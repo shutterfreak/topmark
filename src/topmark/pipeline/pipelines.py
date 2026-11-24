@@ -394,11 +394,11 @@ def select_pipeline(
             # does not have patch/apply variants.
             pipeline = Pipeline.PROBE
 
-        case _:
+        case _:  # pyright: ignore[reportUnnecessaryComparison]  # pragma: no cover
             # Defensive guard:
-            raise RuntimeError(f"Invalid pipeline kind specified: {kind}")
+            raise RuntimeError(f"Invalid pipeline kind specified: {kind!s}")
 
-    selection = PipelineSelection(
+    selection: PipelineSelection = PipelineSelection(
         kind=kind,
         apply=apply,
         diff=diff,

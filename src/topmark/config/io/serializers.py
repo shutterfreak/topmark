@@ -270,7 +270,7 @@ def config_to_topmark_toml_table(
     # Policy serialization (per-type)
     policy_by_type_tbl: TomlTable = {}
     if config.policy_by_type:
-        policy_by_type_tbl: TomlTable = {
+        policy_by_type_tbl = {
             ft: {
                 Toml.KEY_POLICY_HEADER_MUTATION_MODE: p.header_mutation_mode.value,
                 Toml.KEY_POLICY_BOM_BEFORE_SHEBANG: p.bom_before_shebang.value,

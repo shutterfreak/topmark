@@ -43,6 +43,7 @@ Behavior:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import assert_never
 
 from topmark.core.logging import get_logger
 from topmark.filetypes.model import InsertCapability
@@ -435,7 +436,7 @@ class PlannerStep(BaseStep):
 
                 if cap != InsertCapability.OK:
                     pre_insert_reason = ctx.pre_insert_reason or "pre-insert checker skipped update"
-                    origin = ctx.pre_insert_origin or __name__
+                    origin: str = ctx.pre_insert_origin or __name__
                     logger.debug(
                         "pre-insert: %s - %s", getattr(cap, "value", cap), pre_insert_reason
                     )
@@ -457,7 +458,7 @@ class PlannerStep(BaseStep):
                     pre_insert_reason: str = (
                         ctx.pre_insert_reason or "pre-insert check refused insertion"
                     )
-                    origin: str = ctx.pre_insert_origin or __name__
+                    origin = ctx.pre_insert_origin or __name__
                     logger.debug(
                         "pre-insert (advisory): %s - %s",
                         getattr(ctx.pre_insert_capability, "value", ctx.pre_insert_capability),
@@ -474,10 +475,8 @@ class PlannerStep(BaseStep):
             elif ctx.pre_insert_capability != InsertCapability.OK:
                 # Advisory-only pre-insert probe already ran in reader step.
                 # Here we enforce the gate: if the advisory is not OK, skip updating.
-                pre_insert_reason: str = (
-                    ctx.pre_insert_reason or "pre-insert check refused insertion"
-                )
-                origin: str = ctx.pre_insert_origin or __name__
+                pre_insert_reason = ctx.pre_insert_reason or "pre-insert check refused insertion"
+                origin = ctx.pre_insert_origin or __name__
                 logger.debug(
                     "pre-insert (advisory): %s - %s",
                     getattr(ctx.pre_insert_capability, "value", ctx.pre_insert_capability),
@@ -725,8 +724,8 @@ class PlannerStep(BaseStep):
         Args:
             ctx: The processing context.
 
-        Raises:
-            RuntimeError: If an unknown plan status reaches this exhaustive dispatcher.
+        Note:
+            Raises AssertionError if an unknown plan status reaches this exhaustive dispatcher.
         """
         apply: bool = ctx.run_options.apply_changes is True
         ft: FileType | None = ctx.file_type
@@ -804,5 +803,6 @@ class PlannerStep(BaseStep):
                 # BaseStep.__call__() handles PENDING state (step did not complete)
                 pass
 
-            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
-                raise RuntimeError(f"Unexpected PlanStatus found: {st!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(st)

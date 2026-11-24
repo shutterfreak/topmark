@@ -93,7 +93,7 @@ def reset_registry_overlays() -> Iterator[None]:
     from topmark.registry.processors import HeaderProcessorRegistry
 
     def _reset() -> None:
-        # Silence Pyright regarding use of private members:
+        # Silence Basedpyright regarding use of private members:
         ft_reg = cast("Any", FileTypeRegistry)
         hp_reg = cast("Any", HeaderProcessorRegistry)
 

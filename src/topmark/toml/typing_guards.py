@@ -10,7 +10,7 @@
 
 """Type guards and TOML-shape normalization helpers for TopMark TOML handling.
 
-This module provides `TypeGuard`-based predicates that help Pyright narrow
+This module provides `TypeGuard`-based predicates that help Basedpyright narrow
 runtime values coming from TOML parsing, including `tomlkit` objects.
 
 It focuses on:
@@ -155,7 +155,7 @@ def as_toml_table_map(obj: object) -> TomlTableMap:
     if not isinstance(obj, dict):
         return out
 
-    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    # Tell Basedpyright this is a dict, treat the keys/values as base objects:
     items = cast("Mapping[object, object]", obj).items()
 
     for key, value in items:

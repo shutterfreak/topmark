@@ -109,7 +109,10 @@ ______________________________________________________________________
 - Removed the unused internal `enum_from_name` and `KeyedStrEnum` utilities.
 - Simplified Click custom parameter typing (`RegistryQueryParam`, `RegistryRegexParam`, and
   `EnumChoiceParam`) using generic `click.ParamType[...]` and `StrEnum` bounds, removing
-  type-checking shims and redundant `cast()` calls ([#513](https://github.com)).
+  type-checking shims and redundant `cast()` calls.
+- Replace `pyright` with `basedpyright` (`>=1.40.2`) across development dependencies, Nox QA
+  sessions, pre-commit hooks, CI workflows, and editor settings, and tighten exhaustive `match`
+  guards using `typing.assert_never()` alongside stricter type-checking diagnostics.
 
 ______________________________________________________________________
 

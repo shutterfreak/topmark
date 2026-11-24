@@ -576,8 +576,8 @@ class ProcessingResult:
             from_stdin: bool = True
             display_path: str = ctx.run_options.stdin_filename
         else:
-            from_stdin: bool = False
-            display_path: str = str(ctx.path)
+            from_stdin = False
+            display_path = str(ctx.path)
 
         return cls(
             path=Path(ctx.path),

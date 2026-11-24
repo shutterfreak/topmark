@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 from typing import Final
 from typing import Protocol
 from typing import TypedDict
+from typing import assert_never
 from typing import runtime_checkable
 
 from topmark.core.logging import get_logger
@@ -398,6 +399,9 @@ class FileType:
         Returns:
             True if the path matches this file type, False otherwise. Content
             matcher exceptions are caught and treated as non-matches.
+
+        Note:
+            Raises AssertionError if an invalid ContentGate has been provided.
         """
         # Track which name rule (if any) matched; used for content gating.
         matched_by: str | None = None
@@ -458,10 +462,9 @@ class FileType:
 
         # Evaluate whether the content matcher is *allowed* to run, based on the gate.
         gate: Final[ContentGate] = self.content_gate
-        allow_by_gate: bool
         match gate:
             case ContentGate.NEVER:
-                allow_by_gate = False
+                allow_by_gate: bool = False
             case ContentGate.IF_EXTENSION:
                 allow_by_gate = matched_by == "extension"
             case ContentGate.IF_FILENAME:
@@ -478,7 +481,7 @@ class FileType:
             case _:  # pragma: no cover
                 # Defensive fallback for malformed runtime values; valid ContentGate
                 # members are exhaustively handled above.
-                allow_by_gate = False
+                assert_never(gate)
 
         # If gate disallows probing, return the name-rule result.
         if not allow_by_gate:

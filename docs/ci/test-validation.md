@@ -182,10 +182,10 @@ make dependency-lower-bounds
 ```
 
 This command resolves direct dependencies with uv's `lowest-direct` strategy in a disposable
-worktree at `HEAD` and runs the normal pytest and Pyright QA contract across the supported Python
-matrix. It leaves the caller's lockfile unchanged and excludes staged and unstaged changes. It
-validates TopMark's direct dependency-floor claims while keeping transitive dependencies current; it
-does not claim to validate every possible historical transitive-dependency combination.
+worktree at `HEAD` and runs the normal pytest and Basedpyright QA contract across the supported
+Python matrix. It leaves the caller's lockfile unchanged and excludes staged and unstaged changes.
+It validates TopMark's direct dependency-floor claims while keeping transitive dependencies current;
+it does not claim to validate every possible historical transitive-dependency combination.
 
 Run the fast smoke suite when you need an early signal from representative contracts:
 

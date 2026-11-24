@@ -226,8 +226,8 @@ Ruff and is not part of the required formatting or CI gates.
 
 ### Linting policy
 
-TopMark treats Ruff, Pyright, and the supporting tools as the single source of truth for code style
-and typing rules:
+TopMark treats Ruff, Basedpyright, and the supporting tools as the single source of truth for code
+style and typing rules:
 
 - **Ruff**:
 
@@ -248,9 +248,9 @@ and typing rules:
 
 - **Type checking**:
 
-  - Pyright runs in `strict` mode for `src/` and `tests/`.
-  - Public APIs must be fully annotated and pass Pyright without `# type: ignore` (exceptions must
-    be documented and justified in code comments).
+  - Basedpyright runs in `strict` mode for `src/` and `tests/`.
+  - Public APIs must be fully annotated and pass Basedpyright without `# type: ignore` (exceptions
+    must be documented and justified in code comments).
 
 - **Docstrings**:
 
@@ -269,8 +269,8 @@ and typing rules:
 
 - **Pre-commit**:
 
-  - Pre-commit hooks are optional but recommended and primarily run Pyright, Ruff, Taplo, mdformat,
-    pydoclint, TopMark header checks, and related hygiene tools.
+  - Pre-commit hooks are optional but recommended and primarily run Basedpyright, Ruff, Taplo,
+    mdformat, pydoclint, TopMark header checks, and related hygiene tools.
   - We rely on Ruff to enforce import and typing style.
 
 ______________________________________________________________________
@@ -328,7 +328,7 @@ ______________________________________________________________________
 
 ## Type Checking
 
-Run strict **Pyright** type checks via project-managed Nox:
+Run strict **Basedpyright** type checks via project-managed Nox:
 
 ```bash
 uv run --group dev nox -s qa -p 3.15
@@ -459,7 +459,7 @@ Common repository-local hooks include:
   stage
 - `topmark-check` - validates headers without mutating files
 - `topmark-apply` - updates headers when run manually
-- Ruff, Taplo, mdformat, markdownlint-cli2, Pyright, pydoclint, and repository hygiene checks
+- Ruff, Taplo, mdformat, markdownlint-cli2, Basedpyright, pydoclint, and repository hygiene checks
 
 Run the TopMark fixer manually:
 

@@ -143,10 +143,10 @@ repos:
         args: ["--no-schema"]
 
   # Type checker last
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.414
+  - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
+    rev: 1.40.2
     hooks:
-      - id: pyright
+      - id: basedpyright
 
   # Makefile linting and formatting
   - repo: https://github.com/EbodShojaei/bake

@@ -291,7 +291,7 @@ def _rss_bytes() -> int | None:
     except ImportError:
         return None
 
-    # Avoid annotating with `resource.struct_rusage`; Pyright cannot resolve that
+    # Avoid annotating with `resource.struct_rusage`; Basedpyright cannot resolve that
     # symbol on Windows.
     usage = resource.getrusage(resource.RUSAGE_SELF)
     value = int(usage.ru_maxrss)

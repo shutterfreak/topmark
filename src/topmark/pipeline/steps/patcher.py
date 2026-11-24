@@ -35,6 +35,7 @@ import difflib
 import logging
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
+from typing import assert_never
 
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import source_lines_with_remediated_bom
@@ -377,8 +378,8 @@ class PatcherStep(BaseStep):
         Args:
             ctx: The processing context.
 
-        Raises:
-            RuntimeError: If the context contains an unexpected patcher status value.
+        Note:
+            Raises AssertionError if the context contains an unexpected patcher status value.
         """
         apply: bool = ctx.run_options.apply_changes is True
         st: PatchStatus = ctx.status.patch
@@ -415,5 +416,6 @@ class PatcherStep(BaseStep):
                 # BaseStep.__call__() handles PENDING state (step did not complete)
                 pass
 
-            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
-                raise RuntimeError(f"Unexpected PatchStatus found: {st!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(st)

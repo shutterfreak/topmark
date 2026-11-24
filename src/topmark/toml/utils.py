@@ -16,7 +16,7 @@ preserving the strict invariant enforced by
 TopMark TOML tables rather than represented explicitly as `None`.
 
 This module also contains small, side-effect-free builders for TOML-compatible
-list values whose static types remain compatible with `TomlValue` under Pyright
+list values whose static types remain compatible with `TomlValue` under Basedpyright
 strict mode.
 """
 
@@ -57,7 +57,7 @@ def strip_none_for_toml(value: object) -> object:
     and `None` items are dropped from lists.
 
     Notes:
-        - The input is typed as `object` (not `Any`) so Pyright does not treat
+        - The input is typed as `object` (not `Any`) so Basedpyright does not treat
         mapping/list iterators as `Unknown`.
         - Mapping keys are defensively normalized to strings, since TOML tables
         are string-keyed.
@@ -91,7 +91,7 @@ def strip_none_for_toml(value: object) -> object:
 def as_toml_string_list(values: Iterable[str]) -> list[TomlValue]:
     """Return a TOML-compatible list of strings.
 
-    Pyright treats `list[str]` as incompatible with the recursive `TomlValue`
+    Basedpyright treats `list[str]` as incompatible with the recursive `TomlValue`
     alias because `list` is invariant. Building the list through the wider
     element type keeps TOML serializer code strict-typing friendly without
     casts.

@@ -225,7 +225,7 @@ def run_lychee(
 
 @nox.session(python=PYTHONS)
 def qa(session: nox.Session) -> None:
-    """Run tests + pyright (per Python version)."""
+    """Run tests + basedpyright (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
     session.install(*DEPS_QA)
@@ -247,7 +247,7 @@ def qa(session: nox.Session) -> None:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
 
     session.run(
-        "pyright",
+        "basedpyright",
         "--pythonversion",
         py_ver,
     )
@@ -268,10 +268,10 @@ def smoke(session: nox.Session) -> None:
 
 @nox.session(python=PYTHONS)
 def qa_api(session: nox.Session) -> None:
-    """Run tests + API snapshot + pyright (per Python version) in one env.
+    """Run tests + API snapshot + basedpyright (per Python version) in one env.
 
     This is useful for release/CI gates where we want to reuse the same virtual
-    environment for pytest + pyright + the API snapshot test.
+    environment for pytest + basedpyright + the API snapshot test.
 
     Any arguments passed after `--` are forwarded to the main pytest run.
     """
@@ -296,13 +296,13 @@ def qa_api(session: nox.Session) -> None:
         TEST_PUBLIC_API_SNAPSHOT_SCRIPT,
     )
 
-    # Pyright
+    # Basedpyright
     py_ver = session.python
     if not isinstance(py_ver, str) or not py_ver:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
 
     session.run(
-        "pyright",
+        "basedpyright",
         "--pythonversion",
         py_ver,
     )
@@ -347,7 +347,7 @@ def _run_dependency_lower_bound_types(
     virtual_environment_parent: str,
     environment_variables: dict[str, str],
 ) -> None:
-    """Run lower-bound Pyright validation for one Python version."""
+    """Run lower-bound basedpyright validation for one Python version."""
     session.run(
         "uv",
         "run",
@@ -359,7 +359,7 @@ def _run_dependency_lower_bound_types(
         "lowest-direct",
         "--python",
         python_version,
-        "pyright",
+        "basedpyright",
         "--pythonversion",
         python_version,
         "--venvpath",
@@ -515,7 +515,7 @@ def dependency_lower_bounds_tests(session: nox.Session) -> None:
 
 @nox.session(python=False)
 def dependency_lower_bounds_types(session: nox.Session) -> None:
-    """Run lower-bound Pyright validation across supported Python versions."""
+    """Run lower-bound basedpyright validation across supported Python versions."""
     _run_dependency_lower_bounds(
         session,
         frozenset({"types"}),
@@ -536,7 +536,7 @@ def verify(session: nox.Session) -> None:
     """Run the non-test local quality gate, including network link validation.
 
     This is the canonical implementation behind the ``make verify``
-    convenience target. It deliberately excludes pytest and Pyright; use
+    convenience target. It deliberately excludes pytest and basedpyright; use
     ``pre_pr`` for the recommended pre-pull-request gate or ``qa`` for the
     supported-Python test and type-check matrix.
     """
@@ -1076,9 +1076,9 @@ def release_check(session: nox.Session) -> None:
       - Code prose hygiene checks (`tools/docs/check_code_hygiene.py`)
       - Docs build in strict mode (zensical)
       - Packaging build + metadata checks (build, twine)
-      - Tests + pyright for the session Python
+      - Tests + basedpyright for the session Python
     """
-    # Tooling / QA deps, including docs dependencies because pyright checks tools/docs/.
+    # Tooling / QA deps, including docs dependencies because basedpyright checks tools/docs/.
     session.install(*DEPS_QA)
     # Docs deps (Zensical and build tooling)
     session.install(*DEPS_DOCS)
@@ -1179,12 +1179,12 @@ def release_check(session: nox.Session) -> None:
     # Entry point check -- We call it as a function to reuse the current session environment
     test_entrypoints(session)
 
-    # Pyright
+    # basedpyright
     py_ver = session.python
     if not isinstance(py_ver, str) or not py_ver:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
     session.run(
-        "pyright",
+        "basedpyright",
         "--pythonversion",
         py_ver,
     )
@@ -1217,7 +1217,7 @@ def release_full(session: nox.Session) -> None:
 
     Notes:
       - Requires `lychee` to be available as a system binary for `links_all`.
-      - Runs `qa_api` for all configured Python versions (pytest + API snapshot + pyright).
+      - Runs `qa_api` for all configured Python versions (pytest + API snapshot + basedpyright).
       - Uses `package_check` for build/twine verification.
 
     Any arguments passed after `--` are forwarded to the per-Python pytest run.

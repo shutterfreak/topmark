@@ -51,7 +51,7 @@ def _tomlkit_dumps(data: TomlTable) -> str:
     cleaned: object = strip_none_for_toml(data)
     cleaned_mapping: dict[str, object] = as_object_dict(cleaned)
 
-    # A targeted Pyright suppression is appropriate here because the third-party
+    # A targeted Basedpyright suppression is appropriate here because the third-party
     # `tomlkit` stub exposes `dumps()` with partially unknown mapping parameter
     # types.
     rendered: str = tomlkit.dumps(cleaned_mapping)

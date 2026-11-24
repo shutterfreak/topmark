@@ -31,7 +31,7 @@ ______________________________________________________________________
 - `src/topmark/` contains the Python package.
 - `tests/` mirrors the package and contains integration, repository-tooling, and
   developer-validation tests.
-- `tests/typecheck/` contains Pyright-only structural-conformance fixtures. They are not pytest
+- `tests/typecheck/` contains Basedpyright-only structural-conformance fixtures. They are not pytest
   tests and do not contribute runtime coverage; use real production providers rather than test
   doubles. See `docs/dev/protocol-contracts.md`.
 - `docs/` contains the Zensical documentation source.
@@ -72,8 +72,8 @@ ______________________________________________________________________
   explicitly asks.
 - Keep changes focused and add or update tests alongside behavioral changes.
 - Prefer the existing Make, Nox, and repository tool entry points over ad hoc replacements.
-- For ad hoc Python or tool invocation, use `uv run` (e.g., `uv run pytest`, `uv run pyright`) to
-  ensure execution inside the project environment. Prefer the documented Make or Nox entry points
+- For ad hoc Python or tool invocation, use `uv run` (e.g., `uv run pytest`, `uv run basedpyright`)
+  to ensure execution inside the project environment. Prefer the documented Make or Nox entry points
   for repository validation.
 - Keep documentation links relative inside `docs/` unless the documented conventions specifically
   require a hosted URL.
@@ -81,10 +81,10 @@ ______________________________________________________________________
 
 ### Code quality and validation
 
-- When Pyright or Ruff reports an error, fix the root cause (e.g., correct the type annotation or
-  refactor) rather than masking it with `# type: ignore` or `# noqa` unless there is a documented,
-  unavoidable justification.
-- Follow the Ruff and Pyright configuration in `pyproject.toml`.
+- When Basedpyright or Ruff reports an error, fix the root cause (e.g., correct the type annotation
+  or refactor) rather than masking it with `# type: ignore` or `# noqa` unless there is a
+  documented, unavoidable justification.
+- Follow the Ruff and Basedpyright configuration in `pyproject.toml`.
 
 ### Docstring formatting rules
 
@@ -123,15 +123,15 @@ every host.
 
 ### Typing
 
-Every function and method argument and return value must be fully annotated (`ANN` rules and Pyright
-strict mode). Include `from __future__ import annotations` at the top of every new Python file, as
-enforced by isort. Do not use `# type: ignore` or `Any` as shortcuts; fix the type error at its
-root. Use `typing.cast()` only when a documented invariant cannot be expressed to Pyright. Prefer an
-`isinstance` check, a type guard, a protocol, or a better annotation, and keep any necessary cast
-tightly scoped to the boundary it represents. Use built-in generic types in annotations
-(`dict[str, int]`, `list[Path]`, `tuple[str, ...]`) rather than deprecated `typing.Dict`,
-`typing.List`, and similar aliases. Use `collections.abc` for abstract container interfaces where
-appropriate.
+Every function and method argument and return value must be fully annotated (`ANN` rules and
+Basedpyright strict mode). Include `from __future__ import annotations` at the top of every new
+Python file, as enforced by isort. Do not use `# type: ignore` or `Any` as shortcuts; fix the type
+error at its root. Use `typing.cast()` only when a documented invariant cannot be expressed to
+Basedpyright. Prefer an `isinstance` check, a type guard, a protocol, or a better annotation, and
+keep any necessary cast tightly scoped to the boundary it represents. Use built-in generic types in
+annotations (`dict[str, int]`, `list[Path]`, `tuple[str, ...]`) rather than deprecated
+`typing.Dict`, `typing.List`, and similar aliases. Use `collections.abc` for abstract container
+interfaces where appropriate.
 
 ______________________________________________________________________
 

@@ -232,7 +232,7 @@ def patched_effective_registries(
     from topmark.registry.filetypes import FileTypeRegistry
     from topmark.registry.processors import HeaderProcessorRegistry
 
-    # Silence Pyright regarding use of private members:
+    # Silence Basedpyright regarding use of private members:
     ft_reg = cast("Any", FileTypeRegistry)
     hp_reg = cast("Any", HeaderProcessorRegistry)
 

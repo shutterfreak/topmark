@@ -417,7 +417,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(format_assessment(assessment))
             return 0
         base_reference: str = choose_base_reference(args.base)
-        assessment: CoverageAssessment = assess_coverage(
+        assessment = assess_coverage(
             args.coverage,
             changed_files(base_reference),
             repository_root=Path.cwd(),

@@ -77,7 +77,6 @@ def format_patch_styled(
     style_add: TextStyler = styler(StyleRole.DIFF_ADD)
     style_del: TextStyler = styler(StyleRole.DIFF_DEL)
     style_context: TextStyler = styler(StyleRole.NO_STYLE)
-    style_fallback: TextStyler = styler(StyleRole.WARNING)
     style_fallback: TextStyler = styler(StyleRole.NO_STYLE)
     style_line_no: TextStyler = styler(StyleRole.DIFF_LINE_NO)
 

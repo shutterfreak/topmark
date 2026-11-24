@@ -67,7 +67,7 @@ def test_plugins_are_discovered(monkeypatch: pytest.MonkeyPatch) -> None:
     # Also clear the composed/effective registry cache so it re-composes from the
     # freshly patched entry_points() provider.
     #
-    # Silence Pyright regarding use of private members:
+    # Silence Basedpyright regarding use of private members:
     ft_reg = cast("Any", FileTypeRegistry)
     ft_reg._clear_cache()
 

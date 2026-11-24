@@ -308,7 +308,7 @@ def config_dump_command(
     # rewritten-content payloads. It still uses the shared resolver so
     # STDIN-backed pattern-source handling follows the same stream-routing
     # decision point as pipeline commands.
-    console: ConsoleProtocol = resolve_human_console(
+    console = resolve_human_console(
         ctx,
         run_options=run_options,
         enable_color=enable_color,

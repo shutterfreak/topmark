@@ -367,7 +367,7 @@ ______________________________________________________________________
 
 ## Typing and API hardening
 
-Late-beta stabilization tightened internal typing and ownership boundaries under Pyright strict
+Late-beta stabilization tightened internal typing and ownership boundaries under Basedpyright strict
 mode.
 
 Key outcomes included:

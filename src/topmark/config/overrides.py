@@ -378,24 +378,28 @@ def apply_config_overrides(
     # include_file_types / exclude_file_types: set of strings, only override if present
     if overrides.include_file_types is not None:
         # Only override when the user actually passes a value; `()` clears the property
-        filtered: list[str] = [s for s in overrides.include_file_types if s]  # drop empty strings
-        deduped: set[str] = set(filtered)
-        config.include_file_types = deduped
-        dup_count: int = len(filtered) - len(deduped)
-        if dup_count:
+        filtered_included: list[str] = [
+            s for s in overrides.include_file_types if s
+        ]  # drop empty strings
+        deduped_included: set[str] = set(filtered_included)
+        config.include_file_types = deduped_included
+        dup_included_count: int = len(filtered_included) - len(deduped_included)
+        if dup_included_count:
             merged_diagnostics.add_info(
-                f"Ignored {dup_count} duplicate values for override include_file_types"
+                f"Ignored {dup_included_count} duplicate values for override include_file_types"
             )
 
     if overrides.exclude_file_types is not None:
         # Only override when the user actually passes a value; `()` clears the property
-        filtered: list[str] = [s for s in overrides.exclude_file_types if s]  # drop empty strings
-        deduped: set[str] = set(filtered)
-        config.exclude_file_types = deduped
-        dup_count: int = len(filtered) - len(deduped)
-        if dup_count:
+        filtered_excluded: list[str] = [
+            s for s in overrides.exclude_file_types if s
+        ]  # drop empty strings
+        deduped_excluded: set[str] = set(filtered_excluded)
+        config.exclude_file_types = deduped_excluded
+        dup_excluded_count: int = len(filtered_excluded) - len(deduped_excluded)
+        if dup_excluded_count:
             merged_diagnostics.add_info(
-                f"Ignored {dup_count} duplicate values for override exclude_file_types"
+                f"Ignored {dup_excluded_count} duplicate values for override exclude_file_types"
             )
 
     # NOTE: header_fields and field_values still bypass any provenance-aware normalization

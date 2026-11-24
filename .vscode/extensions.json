@@ -14,10 +14,10 @@
         "davidanson.vscode-markdownlint",
         "emeraldwalk.runonsave",
         "ms-python.python",
-        "ms-python.vscode-pylance",
         "ms-python.vscode-python-envs",
         "njpwerner.autodocstring",
         "redhat.vscode-yaml",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        "detachhead.basedpyright"
     ]
 }

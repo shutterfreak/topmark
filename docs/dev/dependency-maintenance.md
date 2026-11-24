@@ -88,11 +88,11 @@ coverage for that behavior and verify the boundary version explicitly when pract
 
 TopMark also validates direct dependency floors through `make dependency-lower-bounds`. The command
 uses uv's `lowest-direct` resolution strategy in a disposable worktree at `HEAD` and runs the normal
-pytest and Pyright matrix without changing the caller's lockfile. Local staged and unstaged changes
-are not included. The scheduled Dependency Bounds workflow runs the same check weekly and when
-dependency bounds change in a pull request. It is evidence that the declared direct floors resolve
-and pass TopMark's validation; it does not prove every possible intermediate or transitive version
-combination.
+pytest and Basedpyright matrix without changing the caller's lockfile. Local staged and unstaged
+changes are not included. The scheduled Dependency Bounds workflow runs the same check weekly and
+when dependency bounds change in a pull request. It is evidence that the declared direct floors
+resolve and pass TopMark's validation; it does not prove every possible intermediate or transitive
+version combination.
 
 ### Pre-commit tooling
 

@@ -109,7 +109,7 @@ dev = [
   # Pre-commit hook manager:
   "pre-commit>=4.4.0,<5.0.0",
   # Static type checker:
-  "pyright>=1.1.414,<1.2.0",
+  "basedpyright>=1.40.2,<2.0.0",
   # Python linter and formatter:
   "ruff>=0.16.0,<0.18.0",
   # YAML 1.2 parsing for repository CI checks:
@@ -165,6 +165,44 @@ typing = []
   Discussions   = "https://github.com/shutterfreak/topmark/discussions"
   CI            = "https://github.com/shutterfreak/topmark/actions"
   Changelog     = "https://github.com/shutterfreak/topmark/releases"
+
+# Basedpyright configuration
+[tool.basedpyright]
+include = ["src", "tests", "tools"]
+exclude = [
+  "**/__pycache__",
+  "**/.*",
+  ".git",
+  ".venv",
+  ".vscode",
+  "build",
+  "dist",
+  "venv",
+]
+pythonVersion = "3.11" # Lowest supported Python version
+# stubPath = "typings"
+typeCheckingMode = "strict"
+
+# Editor-only integration:
+# The settings below help your **editor** (VS Code Basedpyright extension) resolve imports
+# from a local convenience environment (e.g. `.venv`). They are **not** used by CI,
+# because our actual type checks run inside nox-managed environments where Basedpyright
+# is invoked with an explicit `--pythonversion` per env.
+# If you don't maintain a local `.venv`, you can remove these two lines.
+venvPath = "."
+venv     = ".venv"
+
+# Enforce the following rules:
+reportDuplicateImport              = true
+reportIgnoreCommentWithoutRule     = true
+reportImportCycles                 = true
+reportMissingImports               = true
+reportMissingTypeStubs             = false # Set to true if you want to be strict about missing type stubs
+reportPrivateUsage                 = true
+reportRedeclaration                = true
+reportUnnecessaryTypeIgnoreComment = true
+reportUnusedImport                 = true
+reportUnusedVariable               = true
 
 # Coverage testing configuration
 [tool.coverage.run]
@@ -229,41 +267,6 @@ capitalize-first-letter = false
 beginning-quotes = true
 closing-quotes   = true
 final-period     = true
-
-# Pyright configuration
-[tool.pyright]
-include = ["src", "tests", "tools"]
-exclude = [
-  "**/__pycache__",
-  "**/.*",
-  ".git",
-  ".venv",
-  ".vscode",
-  "build",
-  "dist",
-  "venv",
-]
-pythonVersion = "3.11" # Lowest supported Python version
-stubPath = "typings"
-typeCheckingMode = "strict"
-
-# Editor-only integration:
-# The settings below help your **editor** (VS Code Pyright extension) resolve imports
-# from a local convenience environment (e.g. `.venv`). They are **not** used by CI,
-# because our actual type checks run inside nox-managed environments where Pyright
-# is invoked with an explicit `--pythonversion` per env.
-# If you don't maintain a local `.venv`, you can remove these two lines.
-venvPath = "."
-venv     = ".venv"
-
-# Enforce the following rules:
-reportImportCycles                 = true
-reportMissingImports               = true
-reportMissingTypeStubs             = false # Set to true if you want to be strict about missing type stubs
-reportPrivateUsage                 = true
-reportUnnecessaryTypeIgnoreComment = true
-reportUnusedImport                 = true
-reportUnusedVariable               = true
 
 [tool.pytest.ini_options]
 markers = [

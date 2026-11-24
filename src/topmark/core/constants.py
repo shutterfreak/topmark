@@ -107,7 +107,7 @@ try:
     # This returns a Message object containing all pyproject.toml [project] fields
 
     # 3. Resolve properties using Core Metadata keys
-    # Cast to Mapping to satisfy Pyright regarding the .get() method
+    # Cast to Mapping to satisfy Basedpyright regarding the .get() method
     _meta_map: Mapping[str, str] = cast("Mapping[str, str]", _dist_meta)
 
     _topmark: str = _meta_map.get("Name") or PACKAGE_NAME

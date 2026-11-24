@@ -81,7 +81,7 @@ class Releasable(Protocol):
         ...
 
 
-# Keep Protocol explicit so Pyright treats this as a structural protocol,
+# Keep Protocol explicit so Basedpyright treats this as a structural protocol,
 # not as a nominal subclass of Releasable.
 class FileImageView(Releasable, Protocol):
     """Protocol for read-only access to a file's logical lines.
@@ -127,7 +127,7 @@ class ListFileImageView:
     _lines: list[str] | None  # use a leading underscore to signal "internal"
 
     def __init__(self, lines: list[str]) -> None:
-        self._lines: list[str] | None = lines
+        self._lines = lines
 
     def line_count(self) -> int:
         """Return the number of lines in the underlying list.
