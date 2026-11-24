@@ -70,7 +70,12 @@ def test_missing_report_is_not_assessed(tmp_path: Path) -> None:
     """An absent coverage report is a clear non-successful assessment state."""
     assessment: CoverageAssessment = assess_coverage(
         tmp_path / "coverage.json",
-        [ChangedFile("src/topmark/example.py", frozenset({2}))],
+        [
+            ChangedFile(
+                "src/topmark/example.py",
+                frozenset({2}),
+            )
+        ],
         repository_root=tmp_path,
     )
 
@@ -87,7 +92,12 @@ def test_assessment_reports_uncovered_lines_and_branches(
     """Missing changed statements and branch exits include useful source context."""
     assessment: CoverageAssessment = assess_coverage(
         coverage_report,
-        [ChangedFile("src/topmark/example.py", frozenset({2, 3, 7}))],
+        [
+            ChangedFile(
+                "src/topmark/example.py",
+                frozenset({2, 3, 7}),
+            )
+        ],
         repository_root=source_tree,
     )
 
@@ -97,6 +107,7 @@ def test_assessment_reports_uncovered_lines_and_branches(
         (3, "branch"),
         (7, "branch"),
     ]
+
     output: str = format_assessment(assessment)
     assert "src/topmark/example.py:2: line" in output
     assert "missing statement" in output
@@ -110,7 +121,12 @@ def test_assessment_ignores_excluded_non_executable_and_unchanged_lines(
     """Only changed executable coverage entries produce diagnostics."""
     assessment: CoverageAssessment = assess_coverage(
         coverage_report,
-        [ChangedFile("src/topmark/example.py", frozenset({1, 4, 6, 99}))],
+        [
+            ChangedFile(
+                "src/topmark/example.py",
+                frozenset({1, 4, 6, 99}),
+            )
+        ],
         repository_root=source_tree,
     )
 
@@ -148,9 +164,46 @@ new file mode 100644
 """
 
     assert parse_unified_diff(patch) == (
-        ChangedFile("src/topmark/added.py", frozenset({1})),
-        ChangedFile("src/topmark/new.py", frozenset({3, 4})),
+        ChangedFile(
+            "src/topmark/added.py",
+            frozenset({1}),
+        ),
+        ChangedFile(
+            "src/topmark/new.py",
+            frozenset({3, 4}),
+        ),
     )
+
+
+def test_main_assesses_existing_report(
+    coverage_report: Path,
+    source_tree: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """When a coverage report exists, main() assesses changed files and prints diagnostics."""
+
+    def changed(_: str) -> tuple[ChangedFile, ...]:
+        return (
+            ChangedFile(
+                "src/topmark/example.py",
+                frozenset({2}),
+            ),
+        )
+
+    def base(_: str | None) -> str:
+        return "main"
+
+    monkeypatch.setattr("tools.coverage_changed.changed_files", changed)
+    monkeypatch.setattr("tools.coverage_changed.choose_base_reference", base)
+    monkeypatch.chdir(source_tree)
+
+    assert main(["--coverage", str(coverage_report)]) == 0
+
+    captured: CaptureResult[str] = capsys.readouterr()
+    assert "Coverage assessed for changed executable source lines." in captured.out
+    assert "src/topmark/example.py:2: line" in captured.out
+    assert captured.err == ""
 
 
 def test_main_reports_missing_report_without_git_or_traceback(
@@ -161,7 +214,12 @@ def test_main_reports_missing_report_without_git_or_traceback(
     """The command is safe when coverage has not been generated yet."""
 
     def changed(_: str) -> tuple[ChangedFile, ...]:
-        return (ChangedFile("src/topmark/example.py", frozenset({1})),)
+        return (
+            ChangedFile(
+                "src/topmark/example.py",
+                frozenset({1}),
+            ),
+        )
 
     def base(_: str | None) -> str:
         return "main"
@@ -174,6 +232,7 @@ def test_main_reports_missing_report_without_git_or_traceback(
     monkeypatch.chdir(tmp_path)
 
     assert main([]) == 0
+
     captured: CaptureResult[str] = capsys.readouterr()
     assert "Coverage was not assessed" in captured.out
     assert captured.err == ""
