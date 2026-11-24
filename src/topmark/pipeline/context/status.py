@@ -52,6 +52,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import fields
 from typing import TypedDict
+from typing import assert_never
 
 from topmark.pipeline.hints import Axis
 from topmark.pipeline.status import BaseStatus
@@ -152,8 +153,8 @@ class StatusSnapshot:
         Returns:
             The status for the given Axis.
 
-        Raises:
-            RuntimeError: if an invalid `Axis` value has been given (defensive behavior).
+        Note:
+            Raises AssertionError if an invalid `Axis` value has been given (defensive behavior).
         """
         match axis:
             case Axis.RESOLVE:
@@ -178,8 +179,9 @@ class StatusSnapshot:
                 return self.patch
             case Axis.WRITE:
                 return self.write
-            case _:  # pragma: no cover - defensive against invalid untyped callers
-                raise RuntimeError(f"Invalid axis: {axis!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(axis)
 
     def to_dict(self) -> dict[str, AxisStatusPayload]:
         """Return axis → {axis, name, label} payload for all axes.
@@ -272,8 +274,8 @@ class ProcessingStatus:
         Returns:
             The status for the given Axis.
 
-        Raises:
-            RuntimeError: if an invalid `Axis` value has been given (defensive behavior).
+        Note:
+            Raises AssertionError if an invalid `Axis` value has been given (defensive behavior).
         """
         match axis:
             case Axis.RESOLVE:
@@ -298,8 +300,9 @@ class ProcessingStatus:
                 return self.patch
             case Axis.WRITE:
                 return self.write
-            case _:  # pragma: no cover - defensive against invalid untyped callers
-                raise RuntimeError(f"Invalid axis: {axis!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(axis)
 
     def reset(self) -> None:
         """Reset all status fields to ``PENDING``.

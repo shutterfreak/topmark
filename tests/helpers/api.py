@@ -115,7 +115,7 @@ def config_mapping(**overrides: TomlValue) -> dict[str, TomlValue]:
     for k, v in overrides.items():
         existing: TomlValue | None = base.get(k)
 
-        # We use 'existing' as a local variable so Pyright can safely narrow
+        # We use 'existing' as a local variable so Basedpyright can safely narrow
         # the type to dict[str, TomlValue] after the isinstance check.
         if isinstance(v, dict) and isinstance(existing, dict):
             existing.update(v)  # shallow merge for convenience in tests

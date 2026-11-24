@@ -10,8 +10,8 @@
 
 """Generic type guards and normalization helpers for TopMark.
 
-This module provides `TypeGuard`-based predicates that help Pyright narrow runtime values coming
-from weakly typed objects, e.g. values stored in the Click context.
+This module provides `TypeGuard`-based predicates that help Basedpyright narrow runtime values
+coming from weakly typed objects, e.g. values stored in the Click context.
 
 It also includes small, side-effect-free normalization helpers such as `as_object_dict`, plus
 permissive generic mapping-extraction helpers used by runtime/config payload shaping. These helpers
@@ -135,7 +135,7 @@ def get_string_dict_value(mapping: Mapping[str, object], key: str) -> dict[str, 
     if not isinstance(value, dict):
         return {}
 
-    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    # Tell Basedpyright this is a dict, treat the keys/values as base objects:
     items = cast("Mapping[object, object]", value)
 
     result: dict[str, str] = {}
@@ -161,7 +161,7 @@ def get_string_list_dict_value(mapping: Mapping[str, object], key: str) -> dict[
     if not isinstance(value, dict):
         return {}
 
-    # Tell Pyright this is a dict, treat the keys/values as base objects:
+    # Tell Basedpyright this is a dict, treat the keys/values as base objects:
     items = cast("Mapping[object, object]", value)
 
     result: dict[str, list[str]] = {}

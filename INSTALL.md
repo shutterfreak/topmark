@@ -188,16 +188,16 @@ make pytest PYTEST_PAR="-n auto"
 
 ### 4) Additional validation workflows
 
-Run Pyright directly (example, from `.venv`):
+Run Basedpyright directly (example, from `.venv`):
 
 ```bash
-pyright --pythonversion 3.13
+basedpyright --pythonversion 3.13
 ```
 
-In practice, Pyright is usually run via `nox` sessions:
+In practice, Basedpyright is usually run via `nox` sessions:
 
-- `qa`: runs tests (`pytest`) and type checks (`pyright`)
-- `qa_api`: runs tests, the API snapshot check, and type checks (`pyright`)
+- `qa`: runs tests (`pytest`) and type checks (`basedpyright`)
+- `qa_api`: runs tests, the API snapshot check, and type checks (`basedpyright`)
 
 Run QA for a specific Python version (example: 3.13):
 

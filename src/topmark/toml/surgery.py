@@ -133,7 +133,6 @@ def set_root_flag(toml_text: str, *, for_pyproject: bool, root: bool) -> str:
             if "root" in config_tbl:
                 del config_tbl["root"]
     else:
-        config_item: Item | None
         if "config" in doc:  # noqa: SIM108
             config_item = cast("Item", doc["config"])
         else:

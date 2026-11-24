@@ -47,6 +47,7 @@ import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Protocol
+from typing import assert_never
 
 from topmark.config.policy import HeaderMutationMode
 from topmark.config.types import FileWriteStrategy
@@ -532,8 +533,8 @@ class WriterStep(BaseStep):
         Args:
             ctx: The processing context.
 
-        Raises:
-            RuntimeError: If the context contains an unexpected write status value.
+        Note:
+            Raises AssertionError if the context contains an unexpected write status value.
         """
         st: WriteStatus = ctx.status.write
 
@@ -573,5 +574,6 @@ class WriterStep(BaseStep):
                 # BaseStep.__call__() handles PENDING state (step did not complete)
                 pass
 
-            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
-                raise RuntimeError(f"Unexpected WriteStatus found: {st!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(st)

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from itertools import islice
 from typing import TYPE_CHECKING
+from typing import assert_never
 
 from topmark.core.logging import get_logger
 from topmark.pipeline.context.policy import allow_empty_header
@@ -282,8 +283,8 @@ class RendererStep(BaseStep):
         Args:
             ctx: The processing context.
 
-        Raises:
-            RuntimeError: If the context contains an unexpected render status value.
+        Note:
+            Raises AssertionError if the context contains an unexpected render status value.
         """
         st: RenderStatus = ctx.status.render
 
@@ -304,5 +305,6 @@ class RendererStep(BaseStep):
                 # BaseStep.__call__() handles PENDING state (step did not complete)
                 pass
 
-            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
-                raise RuntimeError(f"Unexpected RenderStatus found: {st!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(st)

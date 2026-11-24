@@ -272,7 +272,7 @@ class XmlHeaderProcessor(HeaderProcessor):
             # Internal subsets have no useful fixed maximum length, so inspect the
             # complete prefix rather than relying on a bounded line look-back.
             after_prolog: bool = _ends_with_xml_prolog(original_text[:insert_offset])
-            prev_char_is_eol: bool = original_text[insert_offset - 1] in ("\n", "\r")
+            prev_char_is_eol = original_text[insert_offset - 1] in ("\n", "\r")
 
             if after_prolog and not is_pure_spacer(prev_line, policy):
                 add_leading_blank = True

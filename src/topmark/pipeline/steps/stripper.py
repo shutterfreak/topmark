@@ -19,6 +19,7 @@ It sets ``ctx.views.updated`` with the stripped image (no I/O) and updates
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import assert_never
 
 from topmark.config.policy import MixedLineEndingsMode
 from topmark.core.constants import STANDARD_NEWLINE_SET
@@ -408,7 +409,7 @@ class StripperStep(BaseStep):
 
         # A header was present and removed
         ctx.views.updated = UpdatedView(lines=updated_lines)
-        planned_edit: PlannedEdit | None = infer_single_planned_edit(
+        planned_edit = infer_single_planned_edit(
             kind=PlanEditKind.REMOVE,
             original_lines=source_lines,
             updated_lines=updated_lines,
@@ -437,8 +438,8 @@ class StripperStep(BaseStep):
         Args:
             ctx: The processing context.
 
-        Raises:
-            RuntimeError: If an unexpected strip status is found.
+        Note:
+            Raises AssertionError if an unexpected strip status is found.
         """
         apply: bool = ctx.run_options.apply_changes is True
         st: StripStatus = ctx.status.strip
@@ -480,5 +481,6 @@ class StripperStep(BaseStep):
                 # BaseStep.__call__() handles PENDING state (step did not complete)
                 pass
 
-            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
-                raise RuntimeError(f"Unexpected StripStatus found: {st!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(st)

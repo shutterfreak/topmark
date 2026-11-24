@@ -261,7 +261,7 @@ jobs:
 
       - name: Run pre-commit hooks
         env:
-          SKIP: lychee-md,lychee-src,pyright,docstring-ref-links
+          SKIP: lychee-md,lychee-src,basedpyright,docstring-ref-links
         run: pre-commit run --all-files --show-diff-on-failure
 
       - name: Check contribution policy and commit-message hook

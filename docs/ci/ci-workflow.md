@@ -117,7 +117,7 @@ ______________________________________________________________________
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------ |
 | `changes`           | Detect changed file groups for PR job gating and summarize the result   | `dorny/paths-filter`                       |
 | `python-metadata`   | Resolve supported and canonical Python versions for CI jobs             | `nox`, `pyproject.toml`                    |
-| `lint`              | Validate formatting, linting, typing, and docstring links               | `nox`, `ruff`, `pyright`                   |
+| `lint`              | Validate formatting, linting, typing, and docstring links               | `nox`, `ruff`, `basedpyright`              |
 | `pre-commit`        | Run configured pre-commit hooks                                         | `pre-commit`                               |
 | `docs`              | Prepare and strictly build the production documentation site            | `nox`, `zensical`                          |
 | `tests`             | Run the supported Python test matrix                                    | `nox`, `pytest`                            |

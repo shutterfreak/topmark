@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 def _empty_header_policy() -> dict[str, object]:
-    """Return an empty header-policy mapping with a precise type for Pyright."""
+    """Return an empty header-policy mapping with a precise type for Basedpyright."""
     return {}
 
 

@@ -814,7 +814,7 @@ def resolve_file_list_with_diagnostics(
     # Step 4: Apply exclude subtraction only when at least one usable exclude
     # matcher exists. Empty groups and unreadable exclude_from sources fail open.
     if exclude_specs_all:
-        kept: set[Path] = set()
+        kept = set()
         for p in candidate_set:
             if not _matches_any(exclude_specs_all, p):
                 kept.add(p)

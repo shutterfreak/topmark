@@ -76,9 +76,9 @@ ______________________________________________________________________
 
 ## Jobs and validation scope
 
-| Job                     | Purpose                                                       | Main tools                    |
-| ----------------------- | ------------------------------------------------------------- | ----------------------------- |
-| `validate-lower-bounds` | Validate direct dependency floors across the supported matrix | `uv`, `pytest`, Pyright, Ruff |
+| Job                     | Purpose                                                       | Main tools                         |
+| ----------------------- | ------------------------------------------------------------- | ---------------------------------- |
+| `validate-lower-bounds` | Validate direct dependency floors across the supported matrix | `uv`, `pytest`, Basedpyright, Ruff |
 
 The job runs on `ubuntu-26.04`, installs Nox through the shared setup action, and invokes the
 repository-owned `dependency_lower_bounds` session.
@@ -89,7 +89,7 @@ For every supported Python version, the session:
 
 1. creates a temporary `uv lock --upgrade --resolution lowest-direct` resolution;
 1. runs the normal pytest selection; and
-1. runs Pyright with that interpreter version.
+1. runs Basedpyright with that interpreter version.
 
 On canonical Python, it also runs `ruff check .` and `ruff format --check .`. Ruff does not need a
 full Python matrix, but exercising it once verifies that its declared floor works with TopMark's
@@ -135,11 +135,11 @@ use remain predictable on GitHub-hosted runners.
 For focused local diagnosis, run one validation at a time. Each command creates and restores its own
 temporary lowest-direct resolution:
 
-| Validation | Command                                                   |
-| ---------- | --------------------------------------------------------- |
-| Tests      | `make dependency-lower-bounds-tests PYTEST_PAR="-n auto"` |
-| Pyright    | `make dependency-lower-bounds-types`                      |
-| Ruff       | `make dependency-lower-bounds-ruff`                       |
+| Validation   | Command                                                   |
+| ------------ | --------------------------------------------------------- |
+| Tests        | `make dependency-lower-bounds-tests PYTEST_PAR="-n auto"` |
+| Basedpyright | `make dependency-lower-bounds-types`                      |
+| Ruff         | `make dependency-lower-bounds-ruff`                       |
 
 `make dependency-lower-bounds` remains the aggregate command and is the workflow's CI contract.
 
@@ -154,7 +154,7 @@ rationale, lockfile review, and appropriate normal CI validation.
 
 When adding a new direct dependency, ensure its lower bound is intentional and its normal usage is
 covered by tests or an appropriate tool invocation. Add a focused validation only when pytest,
-Pyright, or canonical Ruff execution cannot exercise the new dependency's contract.
+Basedpyright, or canonical Ruff execution cannot exercise the new dependency's contract.
 
 ______________________________________________________________________
 

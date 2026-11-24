@@ -48,7 +48,7 @@ def _iter_declared_builtin_filetypes() -> Iterable[FileType]:
         module: ModuleType = import_module(module_name)
         filetypes_obj: object = getattr(module, "FILETYPES")  # noqa: B009
         assert isinstance(filetypes_obj, list)
-        # Pyright cannot infer the element type of dynamically imported module globals.
+        # Basedpyright cannot infer the element type of dynamically imported module globals.
         filetypes: list[object] = cast("list[object]", filetypes_obj)
         for filetype_obj in filetypes:
             assert isinstance(filetype_obj, FileType)

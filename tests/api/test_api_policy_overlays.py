@@ -46,7 +46,7 @@ def unsafe_public_policy(data: dict[str, object]) -> PublicPolicy:
     Note that we use a narrow cast in this helper:
     - the public API is correctly typed
     - the test intentionally supplies an invalid runtime value
-    - Pyright would otherwise prevent reaching the runtime validation path you want to test
+    - Basedpyright would otherwise prevent reaching the runtime validation path you want to test
     """
     return cast("PublicPolicy", data)
 

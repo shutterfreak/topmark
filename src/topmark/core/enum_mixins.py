@@ -68,5 +68,5 @@ class EnumIntrospectionMixin:
             The maximum length among all member ``.value`` strings of the enum class that this
             member belongs to.
         """
-        # Pyright doesn't know 'self' is an Enum member; runtime guarantees it.
+        # Basedpyright doesn't know 'self' is an Enum member; runtime guarantees it.
         return max(len(member.value) for member in type(self))  # type: ignore[attr-defined]

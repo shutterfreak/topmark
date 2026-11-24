@@ -1302,7 +1302,7 @@ class HeaderProcessor:
 
         if "\n" not in field_value:
             return [f"{opener} {field_value}"]
-        records: list[str] = [
+        records = [
             "|" if logical_line == "" else f"| {logical_line}"
             for logical_line in field_value.split("\n")
         ]

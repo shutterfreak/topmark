@@ -39,13 +39,19 @@
             "source.organizeImports.ruff": "explicit"
         },
     },
-    // Note: Type checking mode is configured in `pyproject.toml` under [tool.pyright].
-    "python.analysis.autoImportCompletions": true,
-    "python.analysis.diagnosticMode": "workspace",
-    "python.analysis.inlayHints.functionReturnTypes": true,
-    "python.analysis.inlayHints.variableTypes": true,
-    // Ensure Pylance is your language server (Pyright extension should be disabled):
-    "python.languageServer": "Pylance",
+    // Note: Type checking mode is configured in `pyproject.toml` under [tool.basedpyright].
+    // Point VS Code's Python & python-envs extensions directly to the project's .venv:
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    // Basedpyright requires disabling Pylance:
+    "python.languageServer": "None",
+    "python.analysis.typeCheckingMode": "off",
+    // Import Basedpyright from environment:
+    "basedpyright.importStrategy": "fromEnvironment",
+    // Basedpyright settings:
+    "basedpyright.analysis.autoImportCompletions": true,
+    "basedpyright.analysis.diagnosticMode": "workspace",
+    "basedpyright.analysis.inlayHints.functionReturnTypes": true,
+    "basedpyright.analysis.inlayHints.variableTypes": true,
 
     "[toml]": {
         "editor.formatOnSave": true,

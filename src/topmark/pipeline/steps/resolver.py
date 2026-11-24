@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import assert_never
 
 from topmark.core.constants import VALUE_NOT_SET
 from topmark.core.logging import get_logger
@@ -259,8 +260,8 @@ class ResolverStep(BaseStep):
         Args:
             ctx: The processing context.
 
-        Raises:
-            RuntimeError: If the context contains an unknown resolve status.
+        Note:
+            Raises AssertionError if the context contains an unknown resolve status.
         """
         st: ResolveStatus = ctx.status.resolve
 
@@ -307,5 +308,6 @@ class ResolverStep(BaseStep):
                 # BaseStep.__call__() handles PENDING state (step did not complete)
                 pass
 
-            case _:  # pragma: no cover - exhaustive enum guard for untyped callers.
-                raise RuntimeError(f"Unexpected ResolveStatus found: {st!r}")
+            case _:
+                # Exhaustive enum guard for untyped callers.
+                assert_never(st)

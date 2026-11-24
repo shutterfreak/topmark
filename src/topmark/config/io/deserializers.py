@@ -393,16 +393,16 @@ def mutable_config_from_layered_toml_table(
                 diagnostics=merged_diagnostics,
                 default="",
             )
-            patterns: list[str] = get_string_list_value_checked(
+            include_pattern_groups: list[str] = get_string_list_value_checked(
                 item,
                 Toml.KEY_PATTERNS,
                 where=f"{where_files}.{Toml.KEY_INCLUDE_PATTERN_GROUPS}",
                 diagnostics=merged_diagnostics,
             )
-            if base_raw and patterns:
+            if base_raw and include_pattern_groups:
                 draft.include_pattern_groups.append(
                     PatternGroup(
-                        patterns=tuple(patterns),
+                        patterns=tuple(include_pattern_groups),
                         base=Path(base_raw).resolve(),
                     )
                 )
@@ -423,16 +423,16 @@ def mutable_config_from_layered_toml_table(
                 diagnostics=merged_diagnostics,
                 default="",
             )
-            patterns: list[str] = get_string_list_value_checked(
+            exclude_pattern_groups: list[str] = get_string_list_value_checked(
                 item,
                 Toml.KEY_PATTERNS,
                 where=f"{where_files}.{Toml.KEY_EXCLUDE_PATTERN_GROUPS}",
                 diagnostics=merged_diagnostics,
             )
-            if base_raw and patterns:
+            if base_raw and exclude_pattern_groups:
                 draft.exclude_pattern_groups.append(
                     PatternGroup(
-                        patterns=tuple(patterns),
+                        patterns=tuple(exclude_pattern_groups),
                         base=Path(base_raw).resolve(),
                     )
                 )
@@ -444,7 +444,10 @@ def mutable_config_from_layered_toml_table(
 
         # Explicit authorization for types whose declaration is ``activation=opt-in``.
         opt_in_file_types: list[str] = get_string_list_value_checked(
-            files_tbl, Toml.KEY_OPT_IN_FILE_TYPES, where=where_files, diagnostics=merged_diagnostics
+            files_tbl,
+            Toml.KEY_OPT_IN_FILE_TYPES,
+            where=where_files,
+            diagnostics=merged_diagnostics,
         )
         draft.opt_in_file_types = set(opt_in_file_types)
 

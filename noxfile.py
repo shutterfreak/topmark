@@ -20,13 +20,17 @@ environment workflows.
 from __future__ import annotations
 
 import json
-import pathlib
 import sys
 import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Final
 
 import nox
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # Resolve supported Python versions once at startup from project metadata.
 PYPROJECT: Final[dict[str, Any]] = nox.project.load_toml("pyproject.toml")
@@ -105,7 +109,10 @@ TEST_API_SNAPSHOT_GENERATOR_SCRIPT = "tests/tools/test_api_snapshot.py"
 # With nox-uv, `session.install(...)` is executed via uv under the hood.
 
 
-def get_git_files(session: nox.Session, *specs: str) -> list[str]:
+def get_git_files(
+    session: nox.Session,
+    *specs: str,
+) -> list[str]:
     """Return tracked files matching the given git pathspecs.
 
     Args:
@@ -172,8 +179,8 @@ def package_check(session: nox.Session) -> None:
 
 def run_lychee(
     session: nox.Session,
-    targets: list[str],
     *,
+    targets: list[str],
     verbose: bool = True,
     root_dir: str | None = None,
     chunk_size: int = 50,
@@ -205,7 +212,11 @@ def run_lychee(
 
     for i in range(0, len(targets), chunk_size):
         chunk: list[str] = targets[i : i + chunk_size]
-        session.log("lychee: chunk %d--%d", i + 1, min(i + chunk_size, len(targets)))
+        session.log(
+            "lychee: chunk %d--%d",
+            i + 1,
+            min(i + chunk_size, len(targets)),
+        )
         args: list[str] = [
             "lychee",
             "--config",
@@ -223,9 +234,26 @@ def run_lychee(
         )
 
 
+def _run_basedpyright(session: nox.Session) -> None:
+    """Run basedpyright against the active Nox session environment."""
+    # `nox.Session.python` is typed broadly in nox' stubs (it can reflect decorator inputs),
+    # but within a running session it should be a concrete interpreter version string.
+    py_ver: str | Sequence[str] | bool | None = session.python
+    if not isinstance(py_ver, str) or not py_ver:
+        raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
+
+    session.run(
+        "basedpyright",
+        "--pythonversion",
+        py_ver,
+        "--pythonpath",
+        str(Path(session.bin) / "python"),
+    )
+
+
 @nox.session(python=PYTHONS)
 def qa(session: nox.Session) -> None:
-    """Run tests + pyright (per Python version)."""
+    """Run tests + basedpyright (per Python version)."""
     session.log("Supported Python versions: " + ", ".join(PYTHONS))
 
     session.install(*DEPS_QA)
@@ -240,17 +268,7 @@ def qa(session: nox.Session) -> None:
         *session.posargs,
     )
 
-    # `nox.Session.python` is typed broadly in nox' stubs (it can reflect decorator inputs),
-    # but within a running session it should be a concrete interpreter version string.
-    py_ver = session.python
-    if not isinstance(py_ver, str) or not py_ver:
-        raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
-
-    session.run(
-        "pyright",
-        "--pythonversion",
-        py_ver,
-    )
+    _run_basedpyright(session)
 
 
 @nox.session(python=CANONICAL_PYTHON)
@@ -268,10 +286,10 @@ def smoke(session: nox.Session) -> None:
 
 @nox.session(python=PYTHONS)
 def qa_api(session: nox.Session) -> None:
-    """Run tests + API snapshot + pyright (per Python version) in one env.
+    """Run tests + API snapshot + basedpyright (per Python version) in one env.
 
     This is useful for release/CI gates where we want to reuse the same virtual
-    environment for pytest + pyright + the API snapshot test.
+    environment for pytest + basedpyright + the API snapshot test.
 
     Any arguments passed after `--` are forwarded to the main pytest run.
     """
@@ -296,16 +314,8 @@ def qa_api(session: nox.Session) -> None:
         TEST_PUBLIC_API_SNAPSHOT_SCRIPT,
     )
 
-    # Pyright
-    py_ver = session.python
-    if not isinstance(py_ver, str) or not py_ver:
-        raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
-
-    session.run(
-        "pyright",
-        "--pythonversion",
-        py_ver,
-    )
+    # Basedpyright
+    _run_basedpyright(session)
 
 
 # ---- Dependency lower-bound validation -----------------------------------
@@ -313,6 +323,7 @@ def qa_api(session: nox.Session) -> None:
 
 def _run_dependency_lower_bound_tests(
     session: nox.Session,
+    *,
     project_path: str,
     python_version: str,
     environment_variables: dict[str, str],
@@ -342,12 +353,12 @@ def _run_dependency_lower_bound_tests(
 
 def _run_dependency_lower_bound_types(
     session: nox.Session,
+    *,
     project_path: str,
     python_version: str,
-    virtual_environment_parent: str,
     environment_variables: dict[str, str],
 ) -> None:
-    """Run lower-bound Pyright validation for one Python version."""
+    """Run lower-bound basedpyright validation for one Python version."""
     session.run(
         "uv",
         "run",
@@ -359,11 +370,9 @@ def _run_dependency_lower_bound_types(
         "lowest-direct",
         "--python",
         python_version,
-        "pyright",
+        "basedpyright",
         "--pythonversion",
         python_version,
-        "--venvpath",
-        virtual_environment_parent,
         external=True,
         env=environment_variables,
     )
@@ -371,6 +380,7 @@ def _run_dependency_lower_bound_types(
 
 def _run_dependency_lower_bound_ruff(
     session: nox.Session,
+    *,
     project_path: str,
     python_version: str,
     environment_variables: dict[str, str],
@@ -400,6 +410,7 @@ def _run_dependency_lower_bound_ruff(
 
 def _run_dependency_lower_bounds(
     session: nox.Session,
+    *,
     validations: frozenset[str],
 ) -> None:
     """Run selected declared direct-dependency lower-bound validations.
@@ -420,7 +431,7 @@ def _run_dependency_lower_bounds(
         raise ValueError(f"Unknown dependency lower-bound validations: {message}")
 
     with tempfile.TemporaryDirectory(prefix="topmark-dependency-lower-bounds-") as workspace_root:
-        project_path = pathlib.Path(workspace_root, "project")
+        project_path = Path(workspace_root, "project")
         session.run(
             "git",
             "worktree",
@@ -452,7 +463,7 @@ def _run_dependency_lower_bounds(
                 uses_python_matrix = bool(validations & {"tests", "types"})
                 python_versions: list[str] = PYTHONS if uses_python_matrix else [CANONICAL_PYTHON]
                 for python_version in python_versions:
-                    virtual_environment_parent = pathlib.Path(environment_root, python_version)
+                    virtual_environment_parent = Path(environment_root, python_version)
                     environment = str(virtual_environment_parent / ".venv")
                     environment_variables: dict[str, str] = {
                         "UV_PROJECT_ENVIRONMENT": environment,
@@ -465,24 +476,23 @@ def _run_dependency_lower_bounds(
                     if "tests" in validations:
                         _run_dependency_lower_bound_tests(
                             session,
-                            temporary_project,
-                            python_version,
-                            environment_variables,
+                            project_path=temporary_project,
+                            python_version=python_version,
+                            environment_variables=environment_variables,
                         )
                     if "types" in validations:
                         _run_dependency_lower_bound_types(
                             session,
-                            temporary_project,
-                            python_version,
-                            str(virtual_environment_parent),
-                            environment_variables,
+                            project_path=temporary_project,
+                            python_version=python_version,
+                            environment_variables=environment_variables,
                         )
                     if "ruff" in validations and python_version == CANONICAL_PYTHON:
                         _run_dependency_lower_bound_ruff(
                             session,
-                            temporary_project,
-                            python_version,
-                            environment_variables,
+                            project_path=temporary_project,
+                            python_version=python_version,
+                            environment_variables=environment_variables,
                         )
         finally:
             session.run(
@@ -500,7 +510,7 @@ def dependency_lower_bounds(session: nox.Session) -> None:
     """Run every declared direct-dependency lower-bound validation."""
     _run_dependency_lower_bounds(
         session,
-        DEPENDENCY_LOWER_BOUND_VALIDATIONS,
+        validations=DEPENDENCY_LOWER_BOUND_VALIDATIONS,
     )
 
 
@@ -509,16 +519,16 @@ def dependency_lower_bounds_tests(session: nox.Session) -> None:
     """Run lower-bound pytest validation across supported Python versions."""
     _run_dependency_lower_bounds(
         session,
-        frozenset({"tests"}),
+        validations=frozenset[str]({"tests"}),
     )
 
 
 @nox.session(python=False)
 def dependency_lower_bounds_types(session: nox.Session) -> None:
-    """Run lower-bound Pyright validation across supported Python versions."""
+    """Run lower-bound basedpyright validation across supported Python versions."""
     _run_dependency_lower_bounds(
         session,
-        frozenset({"types"}),
+        validations=frozenset[str]({"types"}),
     )
 
 
@@ -527,7 +537,7 @@ def dependency_lower_bounds_ruff(session: nox.Session) -> None:
     """Run lower-bound Ruff validation on the canonical Python version."""
     _run_dependency_lower_bounds(
         session,
-        frozenset({"ruff"}),
+        validations=frozenset[str]({"ruff"}),
     )
 
 
@@ -536,7 +546,7 @@ def verify(session: nox.Session) -> None:
     """Run the non-test local quality gate, including network link validation.
 
     This is the canonical implementation behind the ``make verify``
-    convenience target. It deliberately excludes pytest and Pyright; use
+    convenience target. It deliberately excludes pytest and basedpyright; use
     ``pre_pr`` for the recommended pre-pull-request gate or ``qa`` for the
     supported-Python test and type-check matrix.
     """
@@ -909,7 +919,10 @@ def links(session: nox.Session) -> None:
     # No install needed if lychee is a system binary
     md_files: list[str] = get_git_files(session, *MARKDOWN_PATTERNS)
 
-    run_lychee(session, md_files)
+    run_lychee(
+        session,
+        targets=md_files,
+    )
 
 
 @nox.session
@@ -917,7 +930,10 @@ def links_src(session: nox.Session) -> None:
     """Check links found in Python docstrings under src/ (requires system lychee)."""
     py_files: list[str] = get_git_files(session, *SOURCE_PATTERNS)
 
-    run_lychee(session, py_files)
+    run_lychee(
+        session,
+        targets=py_files,
+    )
 
 
 @nox.session
@@ -926,7 +942,10 @@ def links_all(session: nox.Session) -> None:
     md_files: list[str] = get_git_files(session, *MARKDOWN_PATTERNS)
     py_files: list[str] = get_git_files(session, *SOURCE_PATTERNS)
 
-    run_lychee(session, md_files + py_files)
+    run_lychee(
+        session,
+        targets=md_files + py_files,
+    )
 
 
 @nox.session
@@ -952,7 +971,11 @@ def links_site(session: nox.Session) -> None:
         raise ValueError(f"links_site received unsupported argument(s): {unknown}")
     skip_project_links: bool = "--skip-project-links" in session.posargs
 
-    session.run("python", "-m", "tools.docs.prepare_zensical_docs")
+    session.run(
+        "python",
+        "-m",
+        "tools.docs.prepare_zensical_docs",
+    )
     session.run(
         "zensical",
         "build",
@@ -974,8 +997,13 @@ def links_site(session: nox.Session) -> None:
         )
 
     # Lychee can take a directory and will scan supported formats within.
-    site_dir: str = str(pathlib.Path(".zensical/site").resolve())
-    run_lychee(session, [".zensical/site"], verbose=False, root_dir=site_dir)
+    site_dir: str = str(Path(".zensical/site").resolve())
+    run_lychee(
+        session,
+        targets=[".zensical/site"],
+        verbose=False,
+        root_dir=site_dir,
+    )
 
 
 @nox.session
@@ -1053,7 +1081,14 @@ def perf_baseline(session: nox.Session) -> None:
     """
     session.install(*DEPS_DEV)
 
-    args: list[str] = list(session.posargs) if session.posargs else ["--suite", "baseline"]
+    args: list[str] = (
+        list(session.posargs)
+        if session.posargs
+        else [
+            "--suite",
+            "baseline",
+        ]
+    )
     session.run(
         "python",
         "tools/perf/pipeline_memory_baseline.py",
@@ -1076,9 +1111,9 @@ def release_check(session: nox.Session) -> None:
       - Code prose hygiene checks (`tools/docs/check_code_hygiene.py`)
       - Docs build in strict mode (zensical)
       - Packaging build + metadata checks (build, twine)
-      - Tests + pyright for the session Python
+      - Tests + basedpyright for the session Python
     """
-    # Tooling / QA deps, including docs dependencies because pyright checks tools/docs/.
+    # Tooling / QA deps, including docs dependencies because basedpyright checks tools/docs/.
     session.install(*DEPS_QA)
     # Docs deps (Zensical and build tooling)
     session.install(*DEPS_DOCS)
@@ -1179,15 +1214,8 @@ def release_check(session: nox.Session) -> None:
     # Entry point check -- We call it as a function to reuse the current session environment
     test_entrypoints(session)
 
-    # Pyright
-    py_ver = session.python
-    if not isinstance(py_ver, str) or not py_ver:
-        raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
-    session.run(
-        "pyright",
-        "--pythonversion",
-        py_ver,
-    )
+    # basedpyright
+    _run_basedpyright(session)
 
     # Packaging checks (clean dist/ first to avoid stale artifacts)
     session.run(
@@ -1217,7 +1245,7 @@ def release_full(session: nox.Session) -> None:
 
     Notes:
       - Requires `lychee` to be available as a system binary for `links_all`.
-      - Runs `qa_api` for all configured Python versions (pytest + API snapshot + pyright).
+      - Runs `qa_api` for all configured Python versions (pytest + API snapshot + basedpyright).
       - Uses `package_check` for build/twine verification.
 
     Any arguments passed after `--` are forwarded to the per-Python pytest run.
