@@ -34,9 +34,9 @@ import click
 from topmark.cli.assignments import cli_file_type_rules
 from topmark.cli.cli_types import CliWriteMode
 from topmark.cli.console.click_console import Console
+from topmark.cli.console.color import ColorMode
 from topmark.cli.console.color import resolve_color_mode
 from topmark.cli.emitters.machine import emit_config_diagnostics_machine
-from topmark.cli.options import ColorMode
 from topmark.cli.options import normalize_verbosity
 from topmark.cli.presentation import TextStyler
 from topmark.cli.presentation import style_for_role

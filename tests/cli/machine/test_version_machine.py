@@ -31,7 +31,7 @@ from topmark.cli.keys import CliOpt
 from topmark.core.constants import TOPMARK_VERSION
 from topmark.core.typing_guards import as_object_dict
 from topmark.core.typing_guards import is_mapping
-from topmark.utils.version import convert_pep440_to_semver
+from topmark.version.convert import convert_pep440_to_semver
 
 if TYPE_CHECKING:
     from click.testing import Result

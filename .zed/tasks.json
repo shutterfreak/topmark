@@ -1,0 +1,21 @@
+// topmark:header:start
+//
+//   project      : TopMark
+//   file         : tasks.json
+//   file_relpath : .zed/tasks.json
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
+[
+  { "label": "Make: Verification checks", "command": "make verify" },
+  { "label": "Make: Format checks", "command": "make format-check" },
+  { "label": "Make: Lint", "command": "make lint" },
+  { "label": "Make: Documentation hygiene", "command": "make docs-hygiene" },
+  { "label": "Make: Code hygiene", "command": "make code-hygiene" },
+  { "label": "Nox: Smoke tests", "command": "uv run --group dev nox -s smoke" },
+  { "label": "Nox: QA (all supported Python versions)", "command": "uv run --group dev nox -s qa" },
+  { "label": "Nox: Coverage", "command": "uv run --group dev nox -s coverage" },
+  { "label": "Nox: Pre-PR validation (recommended)", "command": "uv run --group dev nox -s pre_pr" }
+]
