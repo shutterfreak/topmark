@@ -38,7 +38,6 @@ from typing import NotRequired
 from typing import ParamSpec
 from typing import TypedDict
 from typing import TypeVar
-from typing import cast
 
 import click
 from click.core import ParameterSource
@@ -329,7 +328,7 @@ def _normalize_registry_file_type_activations(
         value: Raw option occurrences collected by Click.
 
     Returns:
-        A deduplicated activation filter, or None when the option is absent.
+        A deduplicated activation filter, or `None` when the option is absent.
 
     Raises:
         click.BadParameter: If a segment is empty or not a known activation.
@@ -350,12 +349,11 @@ def _normalize_registry_file_type_activations(
                     ctx=ctx,
                 )
             # `token` is a str; `EnumChoiceParam.convert()` returns None only for None input.
-            activation: FileTypeActivation = cast(
-                "FileTypeActivation",
-                enum_param.convert(token, param, ctx),
-            )
-            parsed.add(activation.value)
-    return frozenset(parsed) if parsed else None
+            activation: FileTypeActivation | None = enum_param.convert(token, param, ctx)
+            if activation:
+                parsed.add(activation.value)
+
+    return frozenset[str](parsed) if parsed else None
 
 
 def normalize_verbosity(verbose_count: int) -> int:

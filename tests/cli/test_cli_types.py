@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from click.shell_completion import CompletionItem
 
 
-class _Mode(Enum):
+class _Mode(StrEnum):
     """Small enum used to pin enum choice parsing behavior."""
 
     DRY_RUN = "dry_run"
