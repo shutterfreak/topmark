@@ -202,25 +202,47 @@ def test_build_config_init_human_report_orders_edit_nesting_and_validation(
 ) -> None:
     """Plain root editing must precede pyproject nesting and final validation."""
     calls: list[str] = []
-    original_edit = shared_config.set_root_flag_in_template_text
-    original_nest = shared_config.nest_toml_under_section
-    original_validate = shared_config.validate_toml_for_config_init
 
-    def recording_edit(*args: object, **kwargs: object) -> object:
+    from topmark.toml.surgery import nest_toml_under_section
+    from topmark.toml.template_surgery import set_root_flag_in_template_text
+    from topmark.toml.template_surgery import validate_toml_for_config_init
+
+    def recording_edit(
+        *args: object,
+        **kwargs: object,
+    ) -> object:
         calls.append("edit")
-        return original_edit(*args, **kwargs)  # type: ignore[arg-type]
+        return set_root_flag_in_template_text(*args, **kwargs)  # type: ignore[arg-type]
 
-    def recording_nest(*args: object, **kwargs: object) -> str:
+    def recording_nest(
+        *args: object,
+        **kwargs: object,
+    ) -> str:
         calls.append("nest")
-        return original_nest(*args, **kwargs)  # type: ignore[arg-type]
+        return nest_toml_under_section(*args, **kwargs)  # type: ignore[arg-type]
 
-    def recording_validate(*args: object, **kwargs: object) -> None:
+    def recording_validate(
+        *args: object,
+        **kwargs: object,
+    ) -> None:
         calls.append("validate")
-        original_validate(*args, **kwargs)  # type: ignore[arg-type]
+        validate_toml_for_config_init(*args, **kwargs)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(shared_config, "set_root_flag_in_template_text", recording_edit)
-    monkeypatch.setattr(shared_config, "nest_toml_under_section", recording_nest)
-    monkeypatch.setattr(shared_config, "validate_toml_for_config_init", recording_validate)
+    monkeypatch.setattr(
+        shared_config,
+        "set_root_flag_in_template_text",
+        recording_edit,
+    )
+    monkeypatch.setattr(
+        shared_config,
+        "nest_toml_under_section",
+        recording_nest,
+    )
+    monkeypatch.setattr(
+        shared_config,
+        "validate_toml_for_config_init",
+        recording_validate,
+    )
 
     report: ConfigInitHumanReport = build_config_init_human_report(
         for_pyproject=True,

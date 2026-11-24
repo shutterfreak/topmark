@@ -39,7 +39,7 @@ from topmark.cli.commands.version import version_command
 from topmark.cli.keys import CliCmd
 from topmark.cli.keys import CliOpt
 from topmark.core.constants import TOPMARK_VERSION
-from topmark.utils.version import convert_pep440_to_semver
+from topmark.version.convert import convert_pep440_to_semver
 
 if TYPE_CHECKING:
     from click.testing import Result

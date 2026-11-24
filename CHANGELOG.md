@@ -113,6 +113,8 @@ ______________________________________________________________________
 - Replace `pyright` with `basedpyright` (`>=1.40.2`) across development dependencies, Nox QA
   sessions, pre-commit hooks, CI workflows, and editor settings, and tighten exhaustive `match`
   guards using `typing.assert_never()` alongside stricter type-checking diagnostics.
+- Add workspace `.zed/settings.json` and `.zed/tasks.json` configured for `basedpyright`, `ruff`,
+  and project Make/Nox tasks.
 
 ______________________________________________________________________
 

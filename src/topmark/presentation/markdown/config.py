@@ -32,8 +32,8 @@ if TYPE_CHECKING:
     from topmark.presentation.shared.config import ConfigDefaultsHumanReport
     from topmark.presentation.shared.config import ConfigDumpHumanReport
     from topmark.presentation.shared.config import ConfigInitHumanReport
-    from topmark.presentation.shared.config import HumanDiagnosticCounts
-    from topmark.presentation.shared.config import HumanDiagnosticLine
+    from topmark.presentation.shared.diagnostic import HumanDiagnosticCounts
+    from topmark.presentation.shared.diagnostic import HumanDiagnosticLine
 
 logger: TopmarkLogger = get_logger(__name__)
 

@@ -175,6 +175,7 @@ exclude = [
   ".git",
   ".venv",
   ".vscode",
+  ".zed",
   "build",
   "dist",
   "venv",
@@ -189,6 +190,7 @@ reportIgnoreCommentWithoutRule     = true
 reportImportCycles                 = true
 reportMissingImports               = true
 reportMissingTypeStubs             = false # Set to true if you want to be strict about missing type stubs
+reportPrivateImportUsage           = true
 reportPrivateUsage                 = true
 reportRedeclaration                = true
 reportUnnecessaryTypeIgnoreComment = true
@@ -275,6 +277,7 @@ norecursedirs = [
   ".hypothesis",
   ".venv",
   ".vscode",
+  ".zed",
   ".zensical",
   "archives",
   "build",
@@ -303,7 +306,16 @@ line-length = 100
   docstring-code-format = true
 
   [tool.ruff.lint]
-  exclude = [".git", ".venv", ".vscode", "artifacts", "build", "dist", "venv"]
+  exclude = [
+    ".git",
+    ".venv",
+    ".vscode",
+    ".zed",
+    "artifacts",
+    "build",
+    "dist",
+    "venv",
+  ]
   select = [
     "ANN",    # (flake8-annotations): enforce function annotations
     "B",      # (flake8-bugbear)

@@ -1,0 +1,63 @@
+// topmark:header:start
+//
+//   project      : TopMark
+//   file         : settings.json
+//   file_relpath : .zed/settings.json
+//   license      : MIT
+//   copyright    : (c) 2025 Olivier Biot
+//
+// topmark:header:end
+
+{
+  "show_wrap_guides": true,
+  "wrap_guides": [80, 100],
+  "format_on_save": "on",
+  "inlay_hints": {
+    "enabled": true
+  },
+  "lsp": {
+    "basedpyright": {
+      "binary": {
+        "path": "uv",
+        "arguments": ["run", "--all-groups", "basedpyright-langserver", "--stdio"]
+      },
+      "settings": {
+        "basedpyright.analysis": {
+          "diagnosticMode": "workspace"
+        }
+      }
+    },
+    "ruff": {
+      "binary": {
+        "path": "uv",
+        "arguments": ["run", "--all-groups", "ruff", "server"]
+      }
+    }
+  },
+  "languages": {
+    "Python": {
+      "language_servers": ["basedpyright", "ruff"],
+      "formatter": [
+        { "code_action": "source.organizeImports.ruff" },
+        { "code_action": "source.fixAll.ruff" },
+        { "language_server": { "name": "ruff" } }
+      ]
+    },
+    "Markdown": {
+      "formatter": {
+        "external": {
+          "command": "uv",
+          "arguments": ["run", "--group", "dev", "mdformat", "-"]
+        }
+      }
+    },
+    "TOML": {
+      "formatter": {
+        "external": {
+          "command": "uv",
+          "arguments": ["run", "--group", "dev", "taplo", "fmt", "--stdin-filepath", "pyproject.toml"]
+        }
+      }
+    }
+  }
+}
