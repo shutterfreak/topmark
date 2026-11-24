@@ -107,6 +107,9 @@ ______________________________________________________________________
 - Run lower-bound dependency validation in a disposable Git worktree so an interrupted run cannot
   leave the contributor checkout with a temporary dependency resolution.
 - Removed the unused internal `enum_from_name` and `KeyedStrEnum` utilities.
+- Simplified Click custom parameter typing (`RegistryQueryParam`, `RegistryRegexParam`, and
+  `EnumChoiceParam`) using generic `click.ParamType[...]` and `StrEnum` bounds, removing
+  type-checking shims and redundant `cast()` calls ([#513](https://github.com)).
 
 ______________________________________________________________________
 
