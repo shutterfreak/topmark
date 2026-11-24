@@ -181,7 +181,7 @@ class EnumChoiceParam(click.ParamType[E | None], Generic[E]):
         self.kebab_case = kebab_case
         # `choices` contains the user-facing spellings shown in help/errors.
         # StrEnum values are expected to be string-like for TopMark CLI options.
-        self.choices = self.choices = [self._display_value(e.value) for e in self.enum_cls]
+        self.choices = [self._display_value(e.value) for e in self.enum_cls]
 
     def _display_value(self, raw: str) -> str:
         """Return the user-facing spelling for an enum value."""

@@ -348,9 +348,10 @@ def _normalize_registry_file_type_activations(
                     param=param,
                     ctx=ctx,
                 )
-            # `token` is a str; `EnumChoiceParam.convert()` returns None only for None input.
+            # `token` is a non-empty `str`, so `convert()` either returns a
+            # `FileTypeActivation` or raises `click.BadParameter` (never `None`).
             activation: FileTypeActivation | None = enum_param.convert(token, param, ctx)
-            if activation:
+            if activation is not None:  # pragma: no branch
                 parsed.add(activation.value)
 
     return frozenset[str](parsed) if parsed else None
