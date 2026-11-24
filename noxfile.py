@@ -242,13 +242,10 @@ def _run_basedpyright(session: nox.Session) -> None:
     if not isinstance(py_ver, str) or not py_ver:
         raise RuntimeError(f"Unexpected session.python value: {py_ver!r}")
 
-    session_venv: Path = Path(session.virtualenv.location)
     session.run(
         "basedpyright",
         "--pythonversion",
         py_ver,
-        "--venvpath",
-        str(session_venv.parent),
         "--pythonpath",
         str(Path(session.bin) / "python"),
     )
@@ -377,8 +374,6 @@ def _run_dependency_lower_bound_types(
         "basedpyright",
         "--pythonversion",
         python_version,
-        "--venvpath",
-        virtual_environment_parent,
         external=True,
         env=environment_variables,
     )
