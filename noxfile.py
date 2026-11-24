@@ -356,7 +356,6 @@ def _run_dependency_lower_bound_types(
     *,
     project_path: str,
     python_version: str,
-    virtual_environment_parent: str,
     environment_variables: dict[str, str],
 ) -> None:
     """Run lower-bound basedpyright validation for one Python version."""
@@ -486,7 +485,6 @@ def _run_dependency_lower_bounds(
                             session,
                             project_path=temporary_project,
                             python_version=python_version,
-                            virtual_environment_parent=str(virtual_environment_parent),
                             environment_variables=environment_variables,
                         )
                     if "ruff" in validations and python_version == CANONICAL_PYTHON:
